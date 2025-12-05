@@ -1,5 +1,5 @@
 /* ========================================
-   🎨 ESTILOS GERAIS
+   🎨 ESTILOS GERAIS - PAINEL 3
    ======================================== */
 
 * {
@@ -9,7 +9,7 @@
 }
 
 body {
-    background: #f8f9fa;
+    background: #f5f7fa;
     padding: 0;
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -35,19 +35,18 @@ body {
    ======================================== */
 
 .painel-header {
-    background: white;
-    color: #333;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
     padding: 20px;
     flex-shrink: 0;
-    border-bottom: 3px solid #dc3545;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     gap: 15px;
     flex-wrap: wrap;
 }
@@ -56,19 +55,115 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-wrap: wrap;
+}
+
+/* Logo no header do painel */
+.header-left img {
+    max-height: 50px;
+    height: auto;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .painel-header h1 {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .painel-header h1 i {
-    color: #dc3545;
-    margin-right: 8px;
+    font-size: 1.3rem;
 }
+
+/* ========================================
+   🔍 FILTROS
+   ======================================== */
+
+.filtros-container {
+    display: flex;
+    gap: 15px;
+    margin: 15px 0;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 200px;
+}
+
+.filtro-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.filtro-group label i {
+    font-size: 0.8rem;
+}
+
+.filtro-select {
+    background: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #333;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 180px;
+}
+
+.filtro-select:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.filtro-select:focus {
+    outline: none;
+    border-color: white;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+.btn-limpar-filtros {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.btn-limpar-filtros:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-limpar-filtros i {
+    font-size: 0.85rem;
+}
+
+/* ========================================
+   📊 ESTATÍSTICAS
+   ======================================== */
 
 .stats {
     display: flex;
@@ -76,7 +171,6 @@ body {
     margin-top: 10px;
     font-size: 0.9rem;
     flex-wrap: wrap;
-    color: #666;
 }
 
 .stat-item {
@@ -92,79 +186,15 @@ body {
 }
 
 /* ========================================
-   🔽 FILTROS
-   ======================================== */
-
-.filtros-container {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 2px solid #f0f0f0;
-}
-
-.filtro-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.filtro-group label {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #666;
-}
-
-.filtro-select {
-    padding: 8px 12px;
-    border: 2px solid #dc3545;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    background: white;
-    color: #333;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 150px;
-}
-
-.filtro-select:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
-}
-
-.filtro-select:hover {
-    border-color: #c82333;
-}
-
-.btn-limpar-filtros {
-    padding: 8px 16px;
-    background: white;
-    color: #dc3545;
-    border: 2px solid #dc3545;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-limpar-filtros:hover {
-    background: #dc3545;
-    color: white;
-}
-
-/* ========================================
-   🎬 BOTÕES
+   🔘 BOTÕES DO HEADER
    ======================================== */
 
 .btn-voltar {
-    background: white;
-    color: #dc3545;
-    border: 2px solid #dc3545;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
     padding: 8px 16px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 600;
@@ -175,18 +205,26 @@ body {
 }
 
 .btn-voltar:hover {
-    background: #dc3545;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
-}
-
-.btn-auto-scroll {
     background: white;
     color: #dc3545;
-    border: 2px solid #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-voltar i {
+    font-size: 0.9rem;
+}
+
+/* ========================================
+   🎬 BOTÃO AUTO SCROLL
+   ======================================== */
+
+.btn-auto-scroll {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
     padding: 8px 16px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 600;
@@ -197,13 +235,14 @@ body {
 }
 
 .btn-auto-scroll:hover {
-    background: rgba(220, 53, 69, 0.1);
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .btn-auto-scroll.active {
     background: #28a745;
     border-color: #28a745;
-    color: white;
     animation: pulse 2s infinite;
 }
 
@@ -230,6 +269,7 @@ body {
 /* Scrollbar customizado */
 .table-container::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 .table-container::-webkit-scrollbar-track {
@@ -256,18 +296,18 @@ thead {
     position: sticky;
     top: 0;
     z-index: 10;
+    background: #dc3545;
 }
 
 thead th {
-    background: white;
-    color: #dc3545;
+    background: #dc3545;
+    color: white;
     font-weight: 600;
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 12px 10px;
-    border: 2px solid #dc3545;
-    border-bottom: 3px solid #dc3545;
+    border: none;
     white-space: nowrap;
     user-select: none;
 }
@@ -279,7 +319,7 @@ thead th.ordenavel {
 }
 
 thead th.ordenavel:hover {
-    background: #fff5f5;
+    background: #c82333;
 }
 
 thead th.ordenavel span {
@@ -304,118 +344,46 @@ thead th.ordenavel:hover .sort-icon {
 /* Linhas */
 tbody tr {
     transition: all 0.2s ease;
-    border-bottom: 1px solid #f0f0f0;
 }
 
 tbody tr:hover {
     background: #fff5f5;
     transform: scale(1.005);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.1);
 }
 
 tbody td {
     padding: 10px;
     font-size: 0.85rem;
-    border-left: 1px solid #f0f0f0;
-    border-right: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
     white-space: nowrap;
     text-align: center;
 }
 
 /* ========================================
-   🎨 ÍCONES DE STATUS
-   ======================================== */
-
-.icon-check {
-    color: #28a745;
-    font-size: 1.2rem;
-    animation: fadeIn 0.3s ease;
-}
-
-.icon-close {
-    width: 24px;
-    height: 24px;
-    vertical-align: middle;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* ========================================
-   🏷️ BADGES DE STATUS
+   🎨 BADGES DE STATUS
    ======================================== */
 
 .badge-status {
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 5px 12px;
+    border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 600;
     display: inline-block;
-    border: 1px solid;
-}
-
-.status-feita {
-    background: #d4edda;
-    color: #155724;
-    border-color: #c3e6cb;
-}
-
-.status-pendente {
-    background: #fff3cd;
-    color: #856404;
-    border-color: #ffeaa7;
-}
-
-.status-nao-feita {
-    background: #f8d7da;
-    color: #721c24;
-    border-color: #f5c6cb;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .status-logado {
     background: #d4edda;
     color: #155724;
-    border-color: #c3e6cb;
-}
-
-.status-logado i {
-    color: #28a745;
-    margin-right: 5px;
-    font-size: 0.7rem;
+    border: 1px solid #c3e6cb;
 }
 
 .status-deslogado {
     background: #f8d7da;
     color: #721c24;
-    border-color: #f5c6cb;
-}
-
-.status-deslogado i {
-    color: #dc3545;
-    margin-right: 5px;
-    font-size: 0.7rem;
-}
-
-.status-desconhecido {
-    background: #e2e3e5;
-    color: #383d41;
-    border-color: #d6d8db;
-}
-
-.linha-logado {
-    background: #f0fff4 !important;
-}
-
-.linha-logado:hover {
-    background: #d4f4dd !important;
+    border: 1px solid #f5c6cb;
 }
 
 /* ========================================
@@ -452,8 +420,8 @@ tbody td {
     color: #721c24;
     padding: 20px;
     margin: 20px;
-    border-radius: 5px;
-    border: 2px solid #dc3545;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
 }
 
 .text-center {
@@ -467,6 +435,20 @@ tbody td {
 /* ========================================
    📱 RESPONSIVIDADE
    ======================================== */
+
+@media (max-width: 1024px) {
+    .filtros-container {
+        gap: 10px;
+    }
+
+    .filtro-group {
+        min-width: 150px;
+    }
+
+    .filtro-select {
+        min-width: 150px;
+    }
+}
 
 @media (max-width: 868px) {
     .painel-header {
@@ -483,33 +465,47 @@ tbody td {
         flex-wrap: wrap;
     }
 
+    .header-left img {
+        max-height: 40px;
+        padding: 6px 10px;
+    }
+
     .painel-header h1 {
         font-size: 1.2rem;
     }
 
-    .btn-voltar,
-    .btn-auto-scroll {
+    .btn-voltar {
         width: 100%;
         justify-content: center;
         margin-bottom: 10px;
     }
 
+    .btn-auto-scroll {
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+    }
+
+    /* Filtros em mobile */
     .filtros-container {
         flex-direction: column;
-        align-items: stretch;
+        gap: 10px;
+        width: 100%;
     }
 
     .filtro-group {
-        flex-direction: column;
-        align-items: stretch;
+        width: 100%;
+        min-width: auto;
     }
 
     .filtro-select {
         width: 100%;
+        min-width: auto;
     }
 
     .btn-limpar-filtros {
         width: 100%;
+        justify-content: center;
     }
 
     .stats {
@@ -533,16 +529,41 @@ tbody td {
         padding: 8px;
     }
 
-    .icon-check {
+    .sort-icon {
+        font-size: 0.7rem;
+    }
+
+    .badge-status {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-left img {
+        max-height: 35px;
+        padding: 5px 8px;
+    }
+
+    .painel-header h1 {
         font-size: 1rem;
     }
 
-    .icon-close {
-        width: 20px;
-        height: 20px;
+    .painel-header h1 i {
+        font-size: 1rem;
     }
 
-    .sort-icon {
-        font-size: 0.7rem;
+    .filtro-group label {
+        font-size: 0.8rem;
+    }
+
+    .filtro-select {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+    }
+
+    .btn-limpar-filtros {
+        font-size: 0.85rem;
+        padding: 6px 12px;
     }
 }

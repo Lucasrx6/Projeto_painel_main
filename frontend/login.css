@@ -6,7 +6,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f5f7fa;
+    background: linear-gradient(135deg, #dc3545 0%, #ffffff 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -23,8 +23,7 @@ body {
     background: white;
     border-radius: 20px;
     padding: 40px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-    border: 3px solid #dc3545;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: slideUp 0.5s ease;
 }
 
@@ -39,18 +38,27 @@ body {
     }
 }
 
+/* Estilos para a logo */
 .login-header {
     text-align: center;
     margin-bottom: 30px;
 }
 
-.logo-container {
+.login-header img {
+    max-width: 200px;
+    height: auto;
     margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border: 3px solid #dc3545;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
 }
 
-.logo-container img {
-    max-width: 250px;
-    height: auto;
+.login-header i {
+    font-size: 3rem;
+    color: #dc3545;
+    margin-bottom: 15px;
 }
 
 .login-header h1 {
@@ -99,9 +107,9 @@ body {
 .btn-login {
     width: 100%;
     padding: 14px;
-    background: white;
-    color: #dc3545;
-    border: 2px solid #dc3545;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    border: none;
     border-radius: 10px;
     font-size: 1rem;
     font-weight: 600;
@@ -111,10 +119,8 @@ body {
 }
 
 .btn-login:hover {
-    background: #dc3545;
-    color: white;
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.4);
 }
 
 .btn-login:active {
@@ -131,33 +137,44 @@ body {
     border-radius: 8px;
     margin-bottom: 15px;
     font-size: 0.9rem;
-    border: 2px solid;
 }
 
 .alert-danger {
-    background: #fff5f5;
-    border-color: #dc3545;
-    color: #dc3545;
+    background: #fee;
+    border: 1px solid #fcc;
+    color: #c33;
 }
 
 .alert-success {
-    background: #f0fff4;
-    border-color: #28a745;
-    color: #28a745;
+    background: #efe;
+    border: 1px solid #cfc;
+    color: #3c3;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    color: #666;
+}
+
+.login-footer strong {
+    color: #dc3545;
 }
 
 /* Responsividade */
 @media (max-width: 480px) {
     .login-box {
         padding: 30px 20px;
-        border-width: 2px;
     }
 
     .login-header h1 {
         font-size: 1.5rem;
     }
 
-    .logo-container img {
-        max-width: 200px;
+    .login-header img {
+        max-width: 180px;
+        padding: 12px;
     }
 }
