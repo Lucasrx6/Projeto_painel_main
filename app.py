@@ -200,7 +200,7 @@ SELECT
     medico_responsavel, 
     medico_atendimento, 
     dias_internado, 
-    TO_CHAR(data_turno::TIMESTAMP, 'DD/MM/YYYY HH24:MI:SS') as data_turno, 
+    TO_CHAR(TO_DATE(data_turno, 'DD/MM/YYYY'), 'MM/DD/YYYY') as data_turno,
     turno, 
     setor, 
     unidade, 
@@ -258,21 +258,8 @@ def get_medicos_ps():
         # Query para buscar médicos logados
         # AJUSTE OS NOMES DAS COLUNAS DE ACORDO COM SUA TABELA medicos_ps
         query = """
-SELECT 
-    consultorio,
-    nome_medico,
-    crm,
-    especialidade,
-    status,
-    data_login,
-    tempo_logado,
-    dt_carga
+SELECT *
 FROM public.medicos_ps
-WHERE 1=1
-ORDER BY 
-    CASE WHEN status = 'LOGADO' THEN 0 ELSE 1 END,
-    consultorio,
-    nome_medico
                 """
 
         cursor.execute(query)

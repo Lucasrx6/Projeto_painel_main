@@ -6,10 +6,9 @@
 const COLUNAS_CONFIG = [
     // Exemplo - ajuste conforme sua necessidade
     { campo: 'consultorio', titulo: 'Consultório', tipo: 'texto', ordenavel: true },
-    { campo: 'medico', titulo: 'Médico', tipo: 'texto', ordenavel: true },
-    { campo: 'status', titulo: 'Status', tipo: 'badge', ordenavel: true },
-    { campo: 'hora_login', titulo: 'Login', tipo: 'hora', ordenavel: true },
-    { campo: 'pacientes_atendidos', titulo: 'Pacientes', tipo: 'numero', ordenavel: true }
+    { campo: 'ds_usuario', titulo: 'Médico', tipo: 'texto', ordenavel: true },
+    { campo: 'especialidade', titulo: 'Especialidade', tipo: 'badge', ordenavel: true },
+    { campo: 'tempo_conectado', titulo: 'Login', tipo: 'hora', ordenavel: true }
 ];
 
 const BASE_URL = window.location.origin;
