@@ -27,32 +27,11 @@
                     <i class="fas fa-play"></i> Auto Scroll
                 </button>
             </div>
-            <!-- Filtros -->
-            <div class="filtros-container">
-                <div class="filtro-group">
-                    <label for="filtro-consultorio"><i class="fas fa-clinic-medical"></i> Consultório:</label>
-                    <select id="filtro-consultorio" class="filtro-select">
-                        <option value="">Todos os Consultórios</option>
-                    </select>
-                </div>
-                <div class="filtro-group">
-                    <label for="filtro-status"><i class="fas fa-circle-dot"></i> Status:</label>
-                    <select id="filtro-status" class="filtro-select">
-                        <option value="">Todos</option>
-                        <option value="LOGADO">Logado</option>
-                        <option value="DESLOGADO">Deslogado</option>
-                    </select>
-                </div>
-                <button id="btn-limpar-filtros" class="btn-limpar-filtros">
-                    <i class="fas fa-times"></i> Limpar Filtros
-                </button>
-            </div>
+
+            <!-- Stats -->
             <div class="stats">
                 <div class="stat-item">
                     <strong>Total:</strong> <span id="total-registros">-</span>
-                </div>
-                <div class="stat-item">
-                    <strong>Filtrados:</strong> <span id="total-filtrados">-</span>
                 </div>
                 <div class="stat-item">
                     <strong>Logados:</strong> <span id="total-logados">-</span>
@@ -65,6 +44,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Tabela -->
         <div class="table-container">
             <table class="table table-hover mb-0" id="tabela-medicos">

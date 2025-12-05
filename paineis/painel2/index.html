@@ -23,31 +23,36 @@
                     </button>
                     <h1><i class="fas fa-notes-medical"></i> Evolução de Turno</h1>
                 </div>
-                <button id="btn-auto-scroll" class="btn-auto-scroll">
-                    <i class="fas fa-play"></i> Auto Scroll
-                </button>
-            </div>
-            <!-- Filtros -->
-            <div class="filtros-container">
-                <div class="filtro-group">
-                    <label for="filtro-setor"><i class="fas fa-building"></i> Setor:</label>
-                    <select id="filtro-setor" class="filtro-select">
-                        <option value="">Todos os Setores</option>
-                    </select>
+
+                <!-- Filtros e Auto-scroll na mesma linha -->
+                <div class="header-right">
+                    <div class="filtros-inline">
+                        <div class="filtro-group">
+                            <label for="filtro-setor"><i class="fas fa-building"></i> Setor:</label>
+                            <select id="filtro-setor" class="filtro-select">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="filtro-group">
+                            <label for="filtro-turno"><i class="fas fa-clock"></i> Turno:</label>
+                            <select id="filtro-turno" class="filtro-select">
+                                <option value="">Todos</option>
+                                <option value="MANHÃ">Manhã</option>
+                                <option value="TARDE">Tarde</option>
+                                <option value="NOITE">Noite</option>
+                            </select>
+                        </div>
+                        <button id="btn-limpar-filtros" class="btn-limpar-filtros">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <button id="btn-auto-scroll" class="btn-auto-scroll">
+                        <i class="fas fa-play"></i> Auto Scroll
+                    </button>
                 </div>
-                <div class="filtro-group">
-                    <label for="filtro-turno"><i class="fas fa-clock"></i> Turno:</label>
-                    <select id="filtro-turno" class="filtro-select">
-                        <option value="">Todos os Turnos</option>
-                        <option value="MANHÃ">Manhã</option>
-                        <option value="TARDE">Tarde</option>
-                        <option value="NOITE">Noite</option>
-                    </select>
-                </div>
-                <button id="btn-limpar-filtros" class="btn-limpar-filtros">
-                    <i class="fas fa-times"></i> Limpar Filtros
-                </button>
             </div>
+
+            <!-- Stats -->
             <div class="stats">
                 <div class="stat-item">
                     <strong>Total:</strong> <span id="total-registros">-</span>
@@ -63,6 +68,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Tabela -->
         <div class="table-container">
             <table class="table table-hover mb-0" id="tabela-evolucao">

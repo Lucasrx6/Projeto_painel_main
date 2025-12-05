@@ -1,5 +1,5 @@
 /* ========================================
-   🎨 ESTILOS GERAIS - PAINEL 3
+   🎨 ESTILOS GERAIS - PAINEL 3 (SEM FILTROS)
    ======================================== */
 
 * {
@@ -128,86 +128,6 @@ body {
     50% {
         box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
     }
-}
-
-/* ========================================
-   🔍 FILTROS COMPACTOS
-   ======================================== */
-
-.filtros-container {
-    display: flex;
-    gap: 12px;
-    margin: 8px 0;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.filtro-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.filtro-group label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-}
-
-.filtro-group label i {
-    font-size: 0.7rem;
-}
-
-.filtro-select {
-    background: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: #333;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 140px;
-}
-
-.filtro-select:hover {
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.filtro-select:focus {
-    outline: none;
-    border-color: white;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
-}
-
-.btn-limpar-filtros {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
-    padding: 5px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-}
-
-.btn-limpar-filtros:hover {
-    background: white;
-    color: #dc3545;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.btn-limpar-filtros i {
-    font-size: 0.7rem;
 }
 
 /* ========================================
@@ -415,16 +335,6 @@ tbody td {
    📱 RESPONSIVIDADE
    ======================================== */
 
-@media (max-width: 1024px) {
-    .filtros-container {
-        gap: 10px;
-    }
-
-    .filtro-select {
-        min-width: 120px;
-    }
-}
-
 @media (max-width: 868px) {
     .painel-header {
         padding: 10px 15px;
@@ -456,30 +366,6 @@ tbody td {
         justify-content: center;
         padding: 8px;
         font-size: 0.85rem;
-    }
-
-    /* Filtros em mobile */
-    .filtros-container {
-        flex-direction: column;
-        gap: 8px;
-        width: 100%;
-    }
-
-    .filtro-group {
-        width: 100%;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .filtro-select {
-        width: 100%;
-        min-width: auto;
-    }
-
-    .btn-limpar-filtros {
-        width: 100%;
-        justify-content: center;
     }
 
     .stats {
@@ -518,19 +404,5 @@ tbody td {
 
     .painel-header h1 {
         font-size: 0.9rem;
-    }
-
-    .filtro-group label {
-        font-size: 0.7rem;
-    }
-
-    .filtro-select {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-    }
-
-    .btn-limpar-filtros {
-        font-size: 0.7rem;
-        padding: 4px 10px;
     }
 }

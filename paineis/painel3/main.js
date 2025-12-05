@@ -1,5 +1,5 @@
 // ========================================
-// 📋 CONFIGURAÇÃO DO PAINEL 3
+// 📋 CONFIGURAÇÃO DO PAINEL 3 (SEM FILTROS)
 // ========================================
 
 // NOTA: Adapte as COLUNAS_CONFIG de acordo com seu painel
@@ -26,14 +26,7 @@ let estadoOrdenacao = {
     direcao: 'asc'
 };
 
-// Estado dos filtros - MANTIDO ENTRE REFRESHES
-let filtrosAtivos = {
-    consultorio: '',
-    status: ''
-};
-
 let dadosAtuais = [];
-let dadosFiltrados = [];
 let autoScrollAtivo = false;
 let intervaloAutoScroll = null;
 
@@ -139,7 +132,7 @@ function ordenarPorColuna(campo, tipo) {
         estadoOrdenacao.direcao = 'asc';
     }
 
-    dadosFiltrados.sort((a, b) => {
+    dadosAtuais.sort((a, b) => {
         let valorA = a[campo];
         let valorB = b[campo];
 
@@ -164,7 +157,7 @@ function ordenarPorColuna(campo, tipo) {
         return estadoOrdenacao.direcao === 'asc' ? resultado : -resultado;
     });
 
-    atualizarTabela(dadosFiltrados);
+    atualizarTabela(dadosAtuais);
     atualizarIconesOrdenacao();
 }
 
@@ -201,9 +194,8 @@ function atualizarTabela(dados) {
     });
 }
 
-function atualizarEstatisticas(total, filtrados, logados) {
+function atualizarEstatisticas(total, logados) {
     document.getElementById('total-registros').textContent = total;
-    document.getElementById('total-filtrados').textContent = filtrados;
     document.getElementById('total-logados').textContent = logados;
     document.getElementById('ultima-atualizacao').textContent =
         new Date().toLocaleTimeString('pt-BR');
@@ -224,86 +216,7 @@ function mostrarErro(mensagem) {
 }
 
 // ========================================
-// 🔍 SISTEMA DE FILTROS COM PERSISTÊNCIA
-// ========================================
-
-function popularFiltroConsultorio(dados) {
-    const selectConsultorio = document.getElementById('filtro-consultorio');
-    const consultoriosUnicos = [...new Set(dados.map(d => d.consultorio).filter(Boolean))].sort();
-
-    // Salvar valor atual
-    const valorAtual = selectConsultorio.value;
-
-    // Limpar e repopular
-    selectConsultorio.innerHTML = '<option value="">Todos os Consultórios</option>';
-    consultoriosUnicos.forEach(consultorio => {
-        const option = document.createElement('option');
-        option.value = consultorio;
-        option.textContent = consultorio;
-        selectConsultorio.appendChild(option);
-    });
-
-    // Restaurar valor se ainda existir
-    if (valorAtual && consultoriosUnicos.includes(valorAtual)) {
-        selectConsultorio.value = valorAtual;
-    }
-}
-
-function aplicarFiltros() {
-    // Salvar estado dos filtros
-    filtrosAtivos.consultorio = document.getElementById('filtro-consultorio').value;
-    filtrosAtivos.status = document.getElementById('filtro-status').value;
-
-    dadosFiltrados = dadosAtuais.filter(registro => {
-        let passa = true;
-
-        // Filtro de Consultório
-        if (filtrosAtivos.consultorio && registro.consultorio !== filtrosAtivos.consultorio) {
-            passa = false;
-        }
-
-        // Filtro de Status
-        if (filtrosAtivos.status && registro.status !== filtrosAtivos.status) {
-            passa = false;
-        }
-
-        return passa;
-    });
-
-    // Contar logados
-    const totalLogados = dadosFiltrados.filter(r =>
-        String(r.status).toUpperCase() === 'LOGADO'
-    ).length;
-
-    // Reaplicar ordenação se houver
-    if (estadoOrdenacao.campo) {
-        const coluna = COLUNAS_CONFIG.find(c => c.campo === estadoOrdenacao.campo);
-        if (coluna) {
-            ordenarPorColuna(estadoOrdenacao.campo, coluna.tipo);
-        }
-    } else {
-        atualizarTabela(dadosFiltrados);
-    }
-
-    atualizarEstatisticas(dadosAtuais.length, dadosFiltrados.length, totalLogados);
-}
-
-function limparFiltros() {
-    document.getElementById('filtro-consultorio').value = '';
-    document.getElementById('filtro-status').value = '';
-    filtrosAtivos.consultorio = '';
-    filtrosAtivos.status = '';
-    aplicarFiltros();
-}
-
-function configurarFiltros() {
-    document.getElementById('filtro-consultorio').addEventListener('change', aplicarFiltros);
-    document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
-    document.getElementById('btn-limpar-filtros').addEventListener('click', limparFiltros);
-}
-
-// ========================================
-// 📊 CARREGAMENTO DE DADOS
+// 📊 CARREGAMENTO DE DADOS (SEM FILTROS)
 // ========================================
 
 async function carregarDados() {
@@ -319,11 +232,22 @@ async function carregarDados() {
         if (resultado.success) {
             dadosAtuais = resultado.data;
 
-            // Popular filtro mantendo seleção anterior
-            popularFiltroConsultorio(dadosAtuais);
+            // Contar logados
+            const totalLogados = dadosAtuais.filter(r =>
+                String(r.status).toUpperCase() === 'LOGADO'
+            ).length;
 
-            // Aplicar filtros (mantém os filtros anteriores)
-            aplicarFiltros();
+            // Reaplicar ordenação se houver
+            if (estadoOrdenacao.campo) {
+                const coluna = COLUNAS_CONFIG.find(c => c.campo === estadoOrdenacao.campo);
+                if (coluna) {
+                    ordenarPorColuna(estadoOrdenacao.campo, coluna.tipo);
+                }
+            } else {
+                atualizarTabela(dadosAtuais);
+            }
+
+            atualizarEstatisticas(dadosAtuais.length, totalLogados);
 
         } else {
             mostrarErro(resultado.error || 'Erro desconhecido');
@@ -336,7 +260,7 @@ async function carregarDados() {
 }
 
 // ========================================
-// 🎬 AUTO SCROLL (MESMO DO PAINEL 2)
+// 🎬 AUTO SCROLL
 // ========================================
 
 function configurarAutoScroll() {
@@ -363,7 +287,7 @@ function configurarAutoScroll() {
     // Ativar auto-scroll automaticamente após 5 segundos
     setTimeout(() => {
         if (!autoScrollAtivo) {
-            console.log('🚀 Ativando auto-scroll automaticamente em 5 segundos...');
+            console.log('🚀 Ativando auto-scroll automaticamente...');
             autoScrollAtivo = true;
             btnAutoScroll.classList.add('active');
             btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
@@ -440,20 +364,19 @@ function configurarBotaoVoltar() {
 }
 
 function inicializar() {
-    console.log('🚀 Inicializando Painel 3...');
+    console.log('🚀 Inicializando Painel 3 (sem filtros)...');
     criarCabecalho();
     configurarBotaoVoltar();
-    configurarFiltros();
     carregarDados();
 
     setTimeout(() => {
         configurarAutoScroll();
     }, 500);
 
-    // Auto-refresh a cada 30s MANTENDO os filtros
+    // Auto-refresh a cada 30s
     setInterval(carregarDados, CONFIG.intervaloRefresh);
     console.log('✅ Painel 3 inicializado com sucesso!');
-    console.log('🔄 Auto-refresh: 30s (filtros serão mantidos)');
+    console.log('🔄 Auto-refresh: 30s');
 }
 
 if (document.readyState === 'loading') {
