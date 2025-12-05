@@ -58,22 +58,8 @@ function formatarData(data) {
 function formatarDataHora(data) {
     if (!data) return '-';
 
-    try {
-        const d = new Date(data);
-
-        if (isNaN(d.getTime())) {
-            return data;
-        }
-
-        const dia = String(d.getDate()).padStart(2, '0');
-        const mes = String(d.getMonth() + 1).padStart(2, '0');
-        const ano = d.getFullYear();
-
-        return `${dia}/${mes}/${ano}`;
-    } catch (erro) {
-        console.error('Erro ao formatar data/hora:', erro);
-        return data;
-    }
+    // Retorna diretamente - já vem DD/MM/YYYY do banco
+    return data;
 }
 
 function formatarStatus(valor) {

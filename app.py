@@ -179,7 +179,7 @@ def serve_painel_files(painel_nome, path):
 @app.route('/api/paineis/painel2/evolucoes', methods=['GET'])
 @login_required
 def get_evolucoes():
-    """Retorna registros de evolução de turno"""
+    """Retorna registros priorizando o turno atual - COM DATA CORRIGIDA"""
     conn = get_db_connection()
     if not conn:
         return jsonify({
@@ -191,35 +191,57 @@ def get_evolucoes():
         cursor = conn.cursor()
 
         query = """
+WITH turno_atual AS (
+    SELECT 
+        CASE 
+            WHEN EXTRACT(HOUR FROM CURRENT_TIME) >= 7 
+                 AND EXTRACT(HOUR FROM CURRENT_TIME) < 19 
+            THEN 'DIURNO'
+            ELSE 'NOTURNO'
+        END as turno_prioritario
+)
 SELECT 
-    nr_atendimento, 
-    ds_convenio, 
-    nm_paciente, 
-    idade, 
-    dt_entrada, 
-    medico_responsavel, 
-    medico_atendimento, 
-    dias_internado, 
-    TO_CHAR(TO_DATE(data_turno, 'DD/MM/YYYY'), 'MM/DD/YYYY') as data_turno,
-    turno, 
-    setor, 
-    unidade, 
-    dt_admissao_unidade, 
-    evol_medico, 
-    evol_enfermeiro, 
-    evol_tec_enfermagem, 
-    evol_nutricionista, 
-    evol_fisioterapeuta, 
-    dt_carga
-FROM public.evolucao_turno
-WHERE 1=1
-AND SETOR IS NOT NULL
-ORDER BY data_turno::TIMESTAMP DESC, turno ASC, nr_atendimento
-                """
+    e.nr_atendimento, 
+    e.ds_convenio, 
+    e.nm_paciente, 
+    e.idade, 
+    e.dt_entrada, 
+    e.medico_responsavel, 
+    e.medico_atendimento, 
+    e.dias_internado, 
+    e.data_turno as data_turno,  -- ✅ SEM CONVERSÃO! Mantém DD/MM/YYYY original
+    e.turno, 
+    e.setor, 
+    e.unidade, 
+    e.dt_admissao_unidade, 
+    e.evol_medico, 
+    e.evol_enfermeiro, 
+    e.evol_tec_enfermagem, 
+    e.evol_nutricionista, 
+    e.evol_fisioterapeuta, 
+    e.dt_carga,
+    CASE 
+        WHEN e.turno = (SELECT turno_prioritario FROM turno_atual) THEN 0
+        ELSE 1
+    END as prioridade_turno
+FROM public.evolucao_turno e
+CROSS JOIN turno_atual
+WHERE e.setor IS NOT NULL
+ORDER BY 
+    TO_DATE(e.data_turno, 'DD/MM/YYYY') DESC,  -- Só para ordenação
+    prioridade_turno ASC,
+    e.turno ASC,
+    e.nr_atendimento ASC
+        """
 
         cursor.execute(query)
         colunas = [desc[0] for desc in cursor.description]
-        evolucoes = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+        evolucoes = []
+        for row in cursor.fetchall():
+            registro = dict(zip(colunas, row))
+            registro.pop('prioridade_turno', None)
+            evolucoes.append(registro)
 
         cursor.close()
         conn.close()
