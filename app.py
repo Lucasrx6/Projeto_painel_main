@@ -1,11 +1,11 @@
-from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_for
+from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 from functools import wraps
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from backend.database import get_db_connection, init_db
-from backend.auth import verificar_usuario, criar_usuario, verificar_admin
+from backend.auth import verificar_usuario, criar_usuario
 import secrets
 
 load_dotenv()
@@ -179,7 +179,7 @@ def serve_painel_files(painel_nome, path):
 @app.route('/api/paineis/painel2/evolucoes', methods=['GET'])
 @login_required
 def get_evolucoes():
-    """Retorna registros dos últimos 3 dias (Painel 2)"""
+    """Retorna registros de evolução de turno"""
     conn = get_db_connection()
     if not conn:
         return jsonify({
@@ -241,6 +241,64 @@ ORDER BY data_turno::TIMESTAMP DESC, turno ASC, nr_atendimento
         }), 500
 
 
+@app.route('/api/paineis/painel3/medicos', methods=['GET'])
+@login_required
+def get_medicos_ps():
+    """Retorna registros de médicos logados no PS"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Query para buscar médicos logados
+        # AJUSTE OS NOMES DAS COLUNAS DE ACORDO COM SUA TABELA medicos_ps
+        query = """
+SELECT 
+    consultorio,
+    nome_medico,
+    crm,
+    especialidade,
+    status,
+    data_login,
+    tempo_logado,
+    dt_carga
+FROM public.medicos_ps
+WHERE 1=1
+ORDER BY 
+    CASE WHEN status = 'LOGADO' THEN 0 ELSE 1 END,
+    consultorio,
+    nome_medico
+                """
+
+        cursor.execute(query)
+        colunas = [desc[0] for desc in cursor.description]
+        medicos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': medicos,
+            'total': len(medicos),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        print(f"❌ Erro ao buscar dados de médicos: {e}")
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 # ==================== INICIALIZAÇÃO ====================
 
 if __name__ == '__main__':
@@ -254,7 +312,9 @@ if __name__ == '__main__':
     print("🚀 SERVIDOR PRINCIPAL INICIADO")
     print("=" * 60)
     print("🔐 Sistema de autenticação ativo")
-    print("📊 Painéis disponíveis: /painel/painel1, /painel/painel2")
+    print("📊 Painéis disponíveis:")
+    print("   • Evolução de Turno: /painel/painel2")
+    print("   • Médicos PS:         /painel/painel3")
     print("\n🌐 URLs de Acesso:")
     print(f"   • Local:        http://localhost:5000")
     print(f"   • Local (IP):   http://127.0.0.1:5000")

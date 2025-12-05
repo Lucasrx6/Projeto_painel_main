@@ -13,7 +13,10 @@
         <!-- Header -->
         <header class="dashboard-header">
             <div class="header-content">
-                <h1>Sistema de Painéis</h1>
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilândia" class="logo-header">
+                    <h1>Sistema de Painéis</h1>
+                </div>
                 <div class="user-info">
                     <span id="usuario-nome">Carregando...</span>
                     <button id="btn-admin" class="btn-admin" style="display: none;">
@@ -29,13 +32,13 @@
         <!-- Painéis -->
         <main class="paineis-grid">
             <div class="painel-card painel-disabled">
-                <div class="painel-icon ">
+                <div class="painel-icon">
                     <i class="fas fa-chart-line"></i>
                 </div>
                 <h3>Painel Teste</h3>
                 <p>Primeiro painel do sistema</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-active"></i> Ativo
+                    <i class="fas fa-circle status-inactive"></i> Em desenvolvimento
                 </div>
             </div>
 
@@ -43,8 +46,19 @@
                 <div class="painel-icon">
                     <i class="fas fa-notes-medical"></i>
                 </div>
-                <h3>Painel Evolução-Turno</h3>
-                <p>Evolução de Turno</p>
+                <h3>Evolução de Turno</h3>
+                <p>Painel de acompanhamento de evoluções médicas</p>
+                <div class="painel-status">
+                    <i class="fas fa-circle status-active"></i> Ativo
+                </div>
+            </div>
+
+            <div class="painel-card" onclick="abrirPainel('painel3')">
+                <div class="painel-icon">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <h3>Médicos PS</h3>
+                <p>Monitoramento de médicos logados nos consultórios</p>
                 <div class="painel-status">
                     <i class="fas fa-circle status-active"></i> Ativo
                 </div>

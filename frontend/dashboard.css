@@ -18,10 +18,11 @@ body {
 
 /* Header */
 .dashboard-header {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-    color: white;
+    background: white;
+    color: #333;
     padding: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border-bottom: 3px solid #dc3545;
 }
 
 .header-content {
@@ -34,13 +35,26 @@ body {
     gap: 15px;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-header {
+    max-height: 50px;
+    width: auto;
+}
+
 .header-content h1 {
     font-size: 1.8rem;
     font-weight: 600;
+    color: #333;
 }
 
 .header-content h1 i {
     margin-right: 10px;
+    color: #dc3545;
 }
 
 .user-info {
@@ -52,12 +66,13 @@ body {
 .user-info span {
     font-size: 1rem;
     font-weight: 500;
+    color: #333;
 }
 
 .btn-admin {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
+    background: white;
+    color: #dc3545;
+    border: 2px solid #dc3545;
     padding: 8px 16px;
     border-radius: 8px;
     cursor: pointer;
@@ -66,14 +81,14 @@ body {
 }
 
 .btn-admin:hover {
-    background: white;
-    color: #dc3545;
+    background: #dc3545;
+    color: white;
 }
 
 .btn-logout {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
+    background: white;
+    color: #dc3545;
+    border: 2px solid #dc3545;
     padding: 8px 16px;
     border-radius: 8px;
     cursor: pointer;
@@ -83,7 +98,7 @@ body {
 
 .btn-logout:hover {
     background: #dc3545;
-    border-color: #dc3545;
+    color: white;
 }
 
 /* Grid de Painéis */
@@ -101,6 +116,7 @@ body {
     border-radius: 15px;
     padding: 30px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border: 3px solid #dc3545;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
@@ -114,6 +130,7 @@ body {
 .painel-card.painel-disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    border-color: #ccc;
 }
 
 .painel-card.painel-disabled:hover {
@@ -124,7 +141,8 @@ body {
 .painel-icon {
     width: 70px;
     height: 70px;
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    background: white;
+    border: 3px solid #dc3545;
     border-radius: 15px;
     display: flex;
     align-items: center;
@@ -134,7 +152,7 @@ body {
 
 .painel-icon i {
     font-size: 2rem;
-    color: white;
+    color: #dc3545;
 }
 
 .painel-card h3 {
@@ -186,6 +204,7 @@ body {
 .modal-content {
     background: white;
     border-radius: 15px;
+    border: 3px solid #dc3545;
     width: 100%;
     max-width: 500px;
     max-height: 90vh;
@@ -206,7 +225,7 @@ body {
 
 .modal-header {
     padding: 25px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 2px solid #dc3545;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -215,6 +234,11 @@ body {
 .modal-header h2 {
     font-size: 1.4rem;
     color: #333;
+}
+
+.modal-header h2 i {
+    color: #dc3545;
+    margin-right: 8px;
 }
 
 .btn-close-modal {
@@ -227,7 +251,7 @@ body {
 }
 
 .btn-close-modal:hover {
-    color: #333;
+    color: #dc3545;
 }
 
 .modal-content form {
@@ -282,7 +306,7 @@ body {
 .btn-secondary {
     flex: 1;
     padding: 12px;
-    border: none;
+    border: 2px solid;
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
@@ -290,11 +314,14 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-    color: white;
+    background: white;
+    color: #dc3545;
+    border-color: #dc3545;
 }
 
 .btn-primary:hover {
+    background: #dc3545;
+    color: white;
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
 }
@@ -302,6 +329,7 @@ body {
 .btn-secondary {
     background: #e0e0e0;
     color: #333;
+    border-color: #e0e0e0;
 }
 
 .btn-secondary:hover {
@@ -312,18 +340,19 @@ body {
     padding: 12px;
     border-radius: 8px;
     margin-bottom: 15px;
+    border: 2px solid;
 }
 
 .alert.alert-danger {
-    background: #fee;
-    border: 1px solid #fcc;
-    color: #c33;
+    background: #fff5f5;
+    border-color: #dc3545;
+    color: #dc3545;
 }
 
 .alert.alert-success {
-    background: #efe;
-    border: 1px solid #cfc;
-    color: #3c3;
+    background: #f0fff4;
+    border-color: #28a745;
+    color: #28a745;
 }
 
 /* Responsividade */
@@ -331,6 +360,16 @@ body {
     .header-content {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .header-left {
+        flex-direction: column;
+        width: 100%;
+        align-items: flex-start;
+    }
+
+    .logo-header {
+        max-height: 40px;
     }
 
     .user-info {
