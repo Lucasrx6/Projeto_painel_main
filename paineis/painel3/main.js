@@ -1,17 +1,21 @@
+// ========================================
+// 📋 CONFIGURAÇÃO DO PAINEL 3
+// ========================================
+
+// NOTA: Adapte as COLUNAS_CONFIG de acordo com seu painel
 const COLUNAS_CONFIG = [
+    // Exemplo - ajuste conforme sua necessidade
     { campo: 'consultorio', titulo: 'Consultório', tipo: 'texto', ordenavel: true },
-    { campo: 'nome_medico', titulo: 'Médico', tipo: 'texto', ordenavel: true },
-    { campo: 'crm', titulo: 'CRM', tipo: 'texto', ordenavel: true },
-    { campo: 'especialidade', titulo: 'Especialidade', tipo: 'texto', ordenavel: true },
-    { campo: 'status', titulo: 'Status', tipo: 'statusMedico', ordenavel: true },
-    { campo: 'data_login', titulo: 'Login', tipo: 'dataHora', ordenavel: true },
-    { campo: 'tempo_logado', titulo: 'Tempo', tipo: 'tempo', ordenavel: false }
+    { campo: 'medico', titulo: 'Médico', tipo: 'texto', ordenavel: true },
+    { campo: 'status', titulo: 'Status', tipo: 'badge', ordenavel: true },
+    { campo: 'hora_login', titulo: 'Login', tipo: 'hora', ordenavel: true },
+    { campo: 'pacientes_atendidos', titulo: 'Pacientes', tipo: 'numero', ordenavel: true }
 ];
 
 const BASE_URL = window.location.origin;
 
 const CONFIG = {
-    apiUrl: `${BASE_URL}/api/paineis/painel3/medicos`,
+    apiUrl: `${BASE_URL}/api/paineis/painel3/medicos`, // Ajuste sua URL
     intervaloRefresh: 30000,
     velocidadeScroll: 0.5,
     limiteLinhas: 30,
@@ -23,133 +27,65 @@ let estadoOrdenacao = {
     direcao: 'asc'
 };
 
+// Estado dos filtros - MANTIDO ENTRE REFRESHES
+let filtrosAtivos = {
+    consultorio: '',
+    status: ''
+};
+
 let dadosAtuais = [];
 let dadosFiltrados = [];
 let autoScrollAtivo = false;
 let intervaloAutoScroll = null;
 
-// ===== FORMATAÇÃO =====
+// ========================================
+// 🎨 FORMATAÇÃO DE DADOS
+// ========================================
 
-function formatarDataHora(data) {
-    if (!data) return '-';
-
+function formatarHora(hora) {
+    if (!hora) return '-';
     try {
-        const d = new Date(data);
-
-        if (isNaN(d.getTime())) {
-            return data;
-        }
-
-        const dia = String(d.getDate()).padStart(2, '0');
-        const mes = String(d.getMonth() + 1).padStart(2, '0');
-        const ano = d.getFullYear();
-        const hora = String(d.getHours()).padStart(2, '0');
-        const minuto = String(d.getMinutes()).padStart(2, '0');
-
-        return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
+        const d = new Date(hora);
+        if (isNaN(d.getTime())) return hora;
+        return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     } catch (erro) {
-        console.error('Erro ao formatar data/hora:', erro);
-        return data;
+        console.error('Erro ao formatar hora:', erro);
+        return hora;
     }
 }
 
-function formatarTempo(minutos) {
-    if (!minutos || minutos <= 0) return '-';
+function formatarBadge(valor) {
+    if (!valor) return '-';
 
-    const horas = Math.floor(minutos / 60);
-    const mins = minutos % 60;
-
-    if (horas > 0) {
-        return `${horas}h ${mins}m`;
-    }
-    return `${mins}m`;
-}
-
-function formatarStatusMedico(valor) {
-    if (!valor) {
-        return '<span class="badge-status status-desconhecido">Desconhecido</span>';
-    }
-
-    const valorUpper = String(valor).toUpperCase().trim();
+    const valorUpper = String(valor).toUpperCase();
 
     if (valorUpper === 'LOGADO') {
-        return '<span class="badge-status status-logado"><i class="fas fa-circle"></i> Logado</span>';
+        return '<span class="badge-status status-logado">Logado</span>';
+    } else if (valorUpper === 'DESLOGADO') {
+        return '<span class="badge-status status-deslogado">Deslogado</span>';
     }
-    else if (valorUpper === 'DESLOGADO') {
-        return '<span class="badge-status status-deslogado"><i class="fas fa-circle"></i> Deslogado</span>';
-    }
-    else {
-        return '<span class="badge-status status-desconhecido">' + valor + '</span>';
-    }
+
+    return '<span class="badge-status">' + valor + '</span>';
 }
 
 function formatarCampo(valor, tipo) {
     if (valor === null || valor === undefined) return '-';
 
     switch (tipo) {
-        case 'dataHora':
-            return formatarDataHora(valor);
-        case 'statusMedico':
-            return formatarStatusMedico(valor);
-        case 'tempo':
-            return formatarTempo(valor);
+        case 'hora':
+            return formatarHora(valor);
+        case 'badge':
+            return formatarBadge(valor);
+        case 'numero':
+            return valor || '0';
         default:
             return valor || '-';
     }
 }
 
-// ===== FILTROS =====
-
-function popularFiltros() {
-    const consultoriosUnicos = [...new Set(dadosAtuais.map(item => item.consultorio).filter(Boolean))];
-    consultoriosUnicos.sort();
-
-    const selectConsultorio = document.getElementById('filtro-consultorio');
-    selectConsultorio.innerHTML = '<option value="">Todos os Consultórios</option>';
-
-    consultoriosUnicos.forEach(consultorio => {
-        const option = document.createElement('option');
-        option.value = consultorio;
-        option.textContent = consultorio;
-        selectConsultorio.appendChild(option);
-    });
-}
-
-function aplicarFiltros() {
-    const consultorioSelecionado = document.getElementById('filtro-consultorio').value.toUpperCase();
-    const statusSelecionado = document.getElementById('filtro-status').value.toUpperCase();
-
-    dadosFiltrados = dadosAtuais.filter(registro => {
-        const consultorioMatch = !consultorioSelecionado ||
-                                (registro.consultorio && registro.consultorio.toUpperCase() === consultorioSelecionado);
-
-        const statusMatch = !statusSelecionado ||
-                          (registro.status && registro.status.toUpperCase() === statusSelecionado);
-
-        return consultorioMatch && statusMatch;
-    });
-
-    if (estadoOrdenacao.campo) {
-        const coluna = COLUNAS_CONFIG.find(c => c.campo === estadoOrdenacao.campo);
-        if (coluna) {
-            ordenarDados(dadosFiltrados, estadoOrdenacao.campo, coluna.tipo);
-        }
-    }
-
-    atualizarTabela(dadosFiltrados);
-    document.getElementById('total-filtrados').textContent = dadosFiltrados.length;
-
-    const logados = dadosFiltrados.filter(r => r.status && r.status.toUpperCase() === 'LOGADO').length;
-    document.getElementById('total-logados').textContent = logados;
-}
-
-function limparFiltros() {
-    document.getElementById('filtro-consultorio').value = '';
-    document.getElementById('filtro-status').value = '';
-    aplicarFiltros();
-}
-
-// ===== TABELA =====
+// ========================================
+// 📊 TABELA
+// ========================================
 
 function criarCabecalho() {
     const thead = document.getElementById('tabela-head');
@@ -196,21 +132,27 @@ function atualizarIconesOrdenacao() {
     }
 }
 
-function ordenarDados(dados, campo, tipo) {
-    dados.sort((a, b) => {
+function ordenarPorColuna(campo, tipo) {
+    if (estadoOrdenacao.campo === campo) {
+        estadoOrdenacao.direcao = estadoOrdenacao.direcao === 'asc' ? 'desc' : 'asc';
+    } else {
+        estadoOrdenacao.campo = campo;
+        estadoOrdenacao.direcao = 'asc';
+    }
+
+    dadosFiltrados.sort((a, b) => {
         let valorA = a[campo];
         let valorB = b[campo];
 
         if (valorA === null || valorA === undefined) valorA = '';
         if (valorB === null || valorB === undefined) valorB = '';
 
-        if (tipo === 'dataHora') {
+        if (tipo === 'numero') {
+            valorA = parseFloat(valorA) || 0;
+            valorB = parseFloat(valorB) || 0;
+        } else if (tipo === 'hora') {
             valorA = new Date(valorA).getTime();
             valorB = new Date(valorB).getTime();
-        } else if (tipo === 'statusMedico') {
-            const ordemStatus = { 'LOGADO': 2, 'DESLOGADO': 1, '': 0 };
-            valorA = ordemStatus[String(valorA).toUpperCase()] || 0;
-            valorB = ordemStatus[String(valorB).toUpperCase()] || 0;
         } else {
             valorA = String(valorA).toLowerCase();
             valorB = String(valorB).toLowerCase();
@@ -222,28 +164,13 @@ function ordenarDados(dados, campo, tipo) {
 
         return estadoOrdenacao.direcao === 'asc' ? resultado : -resultado;
     });
-}
 
-function ordenarPorColuna(campo, tipo) {
-    if (estadoOrdenacao.campo === campo) {
-        estadoOrdenacao.direcao = estadoOrdenacao.direcao === 'asc' ? 'desc' : 'asc';
-    } else {
-        estadoOrdenacao.campo = campo;
-        estadoOrdenacao.direcao = 'asc';
-    }
-
-    ordenarDados(dadosFiltrados, campo, tipo);
     atualizarTabela(dadosFiltrados);
     atualizarIconesOrdenacao();
 }
 
 function criarLinha(registro) {
     const tr = document.createElement('tr');
-
-    // Adiciona classe especial para médicos logados
-    if (registro.status && registro.status.toUpperCase() === 'LOGADO') {
-        tr.classList.add('linha-logado');
-    }
 
     COLUNAS_CONFIG.forEach(coluna => {
         const td = document.createElement('td');
@@ -275,13 +202,10 @@ function atualizarTabela(dados) {
     });
 }
 
-function atualizarEstatisticas(total) {
+function atualizarEstatisticas(total, filtrados, logados) {
     document.getElementById('total-registros').textContent = total;
-    document.getElementById('total-filtrados').textContent = dadosFiltrados.length;
-
-    const logados = dadosAtuais.filter(r => r.status && r.status.toUpperCase() === 'LOGADO').length;
+    document.getElementById('total-filtrados').textContent = filtrados;
     document.getElementById('total-logados').textContent = logados;
-
     document.getElementById('ultima-atualizacao').textContent =
         new Date().toLocaleTimeString('pt-BR');
 }
@@ -300,7 +224,88 @@ function mostrarErro(mensagem) {
     `;
 }
 
-// ===== API =====
+// ========================================
+// 🔍 SISTEMA DE FILTROS COM PERSISTÊNCIA
+// ========================================
+
+function popularFiltroConsultorio(dados) {
+    const selectConsultorio = document.getElementById('filtro-consultorio');
+    const consultoriosUnicos = [...new Set(dados.map(d => d.consultorio).filter(Boolean))].sort();
+
+    // Salvar valor atual
+    const valorAtual = selectConsultorio.value;
+
+    // Limpar e repopular
+    selectConsultorio.innerHTML = '<option value="">Todos os Consultórios</option>';
+    consultoriosUnicos.forEach(consultorio => {
+        const option = document.createElement('option');
+        option.value = consultorio;
+        option.textContent = consultorio;
+        selectConsultorio.appendChild(option);
+    });
+
+    // Restaurar valor se ainda existir
+    if (valorAtual && consultoriosUnicos.includes(valorAtual)) {
+        selectConsultorio.value = valorAtual;
+    }
+}
+
+function aplicarFiltros() {
+    // Salvar estado dos filtros
+    filtrosAtivos.consultorio = document.getElementById('filtro-consultorio').value;
+    filtrosAtivos.status = document.getElementById('filtro-status').value;
+
+    dadosFiltrados = dadosAtuais.filter(registro => {
+        let passa = true;
+
+        // Filtro de Consultório
+        if (filtrosAtivos.consultorio && registro.consultorio !== filtrosAtivos.consultorio) {
+            passa = false;
+        }
+
+        // Filtro de Status
+        if (filtrosAtivos.status && registro.status !== filtrosAtivos.status) {
+            passa = false;
+        }
+
+        return passa;
+    });
+
+    // Contar logados
+    const totalLogados = dadosFiltrados.filter(r =>
+        String(r.status).toUpperCase() === 'LOGADO'
+    ).length;
+
+    // Reaplicar ordenação se houver
+    if (estadoOrdenacao.campo) {
+        const coluna = COLUNAS_CONFIG.find(c => c.campo === estadoOrdenacao.campo);
+        if (coluna) {
+            ordenarPorColuna(estadoOrdenacao.campo, coluna.tipo);
+        }
+    } else {
+        atualizarTabela(dadosFiltrados);
+    }
+
+    atualizarEstatisticas(dadosAtuais.length, dadosFiltrados.length, totalLogados);
+}
+
+function limparFiltros() {
+    document.getElementById('filtro-consultorio').value = '';
+    document.getElementById('filtro-status').value = '';
+    filtrosAtivos.consultorio = '';
+    filtrosAtivos.status = '';
+    aplicarFiltros();
+}
+
+function configurarFiltros() {
+    document.getElementById('filtro-consultorio').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
+    document.getElementById('btn-limpar-filtros').addEventListener('click', limparFiltros);
+}
+
+// ========================================
+// 📊 CARREGAMENTO DE DADOS
+// ========================================
 
 async function carregarDados() {
     try {
@@ -314,9 +319,13 @@ async function carregarDados() {
 
         if (resultado.success) {
             dadosAtuais = resultado.data;
-            popularFiltros();
+
+            // Popular filtro mantendo seleção anterior
+            popularFiltroConsultorio(dadosAtuais);
+
+            // Aplicar filtros (mantém os filtros anteriores)
             aplicarFiltros();
-            atualizarEstatisticas(resultado.total);
+
         } else {
             mostrarErro(resultado.error || 'Erro desconhecido');
         }
@@ -327,58 +336,54 @@ async function carregarDados() {
     }
 }
 
-// ===== AUTO SCROLL =====
+// ========================================
+// 🎬 AUTO SCROLL (MESMO DO PAINEL 2)
+// ========================================
 
 function configurarAutoScroll() {
     const btnAutoScroll = document.getElementById('btn-auto-scroll');
-
-    if (!btnAutoScroll) {
-        console.error('❌ Botão auto-scroll não encontrado!');
-        return;
-    }
+    if (!btnAutoScroll) return;
 
     const container = document.querySelector('.table-container');
-
-    if (!container) {
-        console.error('❌ Container da tabela não encontrado!');
-        return;
-    }
-
-    console.log('✅ Configurando auto-scroll...');
+    if (!container) return;
 
     btnAutoScroll.addEventListener('click', () => {
         autoScrollAtivo = !autoScrollAtivo;
 
         if (autoScrollAtivo) {
             btnAutoScroll.classList.add('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar Scroll';
+            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
             iniciarAutoScroll(container);
-            console.log('▶️ Auto-scroll ativado');
         } else {
             btnAutoScroll.classList.remove('active');
             btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
             pararAutoScroll();
-            console.log('⏸️ Auto-scroll pausado');
         }
     });
+
+    // Ativar auto-scroll automaticamente após 5 segundos
+    setTimeout(() => {
+        if (!autoScrollAtivo) {
+            console.log('🚀 Ativando auto-scroll automaticamente em 5 segundos...');
+            autoScrollAtivo = true;
+            btnAutoScroll.classList.add('active');
+            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+            iniciarAutoScroll(container);
+            console.log('▶️ Auto-scroll iniciado automaticamente!');
+        }
+    }, 5000);
 }
 
 function iniciarAutoScroll(container) {
     pararAutoScroll();
-
     let emPausa = false;
 
     intervaloAutoScroll = setInterval(() => {
-        if (!autoScrollAtivo || emPausa) {
-            return;
-        }
+        if (!autoScrollAtivo || emPausa) return;
 
         const tbody = document.getElementById('tabela-body');
         const linhas = tbody.getElementsByTagName('tr');
-
-        if (linhas.length === 0) {
-            return;
-        }
+        if (linhas.length === 0) return;
 
         const scrollAtual = container.scrollTop;
         let scrollMax;
@@ -397,21 +402,21 @@ function iniciarAutoScroll(container) {
 
         if (scrollAtual >= scrollMax - 10) {
             emPausa = true;
-            console.log('⏸️ Pausando na linha ' + CONFIG.limiteLinhas + '...');
-
             setTimeout(() => {
                 if (autoScrollAtivo) {
                     container.scrollTop = 0;
-                    console.log('🔄 Resetando para o topo...');
-                    emPausa = false;
+
+                    // Aguardar 5 segundos antes de recomeçar
+                    setTimeout(() => {
+                        emPausa = false;
+                        console.log('▶️ Reiniciando auto-scroll...');
+                    }, 5000);
                 }
             }, CONFIG.pausaNaLinha100);
-
             return;
         }
 
         container.scrollTop += CONFIG.velocidadeScroll;
-
     }, 50);
 }
 
@@ -422,11 +427,12 @@ function pararAutoScroll() {
     }
 }
 
-// ===== INICIALIZAÇÃO =====
+// ========================================
+// 🚀 INICIALIZAÇÃO
+// ========================================
 
 function configurarBotaoVoltar() {
     const btnVoltar = document.getElementById('btn-voltar');
-
     if (btnVoltar) {
         btnVoltar.addEventListener('click', () => {
             window.location.href = '/frontend/dashboard.html';
@@ -434,14 +440,8 @@ function configurarBotaoVoltar() {
     }
 }
 
-function configurarFiltros() {
-    document.getElementById('filtro-consultorio').addEventListener('change', aplicarFiltros);
-    document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
-    document.getElementById('btn-limpar-filtros').addEventListener('click', limparFiltros);
-}
-
 function inicializar() {
-    console.log('🚀 Inicializando painel Médicos PS...');
+    console.log('🚀 Inicializando Painel 3...');
     criarCabecalho();
     configurarBotaoVoltar();
     configurarFiltros();
@@ -451,8 +451,10 @@ function inicializar() {
         configurarAutoScroll();
     }, 500);
 
+    // Auto-refresh a cada 30s MANTENDO os filtros
     setInterval(carregarDados, CONFIG.intervaloRefresh);
-    console.log('✅ Painel Médicos PS inicializado com sucesso!');
+    console.log('✅ Painel 3 inicializado com sucesso!');
+    console.log('🔄 Auto-refresh: 30s (filtros serão mantidos)');
 }
 
 if (document.readyState === 'loading') {

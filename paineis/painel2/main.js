@@ -27,12 +27,16 @@ let estadoOrdenacao = {
     direcao: 'asc'
 };
 
+// Estado dos filtros
+let filtrosAtivos = {
+    setor: '',
+    turno: ''
+};
+
 let dadosAtuais = [];
 let dadosFiltrados = [];
 let autoScrollAtivo = false;
 let intervaloAutoScroll = null;
-
-// ===== FORMATAÇÃO =====
 
 function formatarData(data) {
     if (!data) return '-';
@@ -107,56 +111,6 @@ function formatarCampo(valor, tipo) {
     }
 }
 
-// ===== FILTROS =====
-
-function popularFiltros() {
-    const setoresUnicos = [...new Set(dadosAtuais.map(item => item.setor).filter(Boolean))];
-    setoresUnicos.sort();
-
-    const selectSetor = document.getElementById('filtro-setor');
-    selectSetor.innerHTML = '<option value="">Todos os Setores</option>';
-
-    setoresUnicos.forEach(setor => {
-        const option = document.createElement('option');
-        option.value = setor;
-        option.textContent = setor;
-        selectSetor.appendChild(option);
-    });
-}
-
-function aplicarFiltros() {
-    const setorSelecionado = document.getElementById('filtro-setor').value.toUpperCase();
-    const turnoSelecionado = document.getElementById('filtro-turno').value.toUpperCase();
-
-    dadosFiltrados = dadosAtuais.filter(registro => {
-        const setorMatch = !setorSelecionado ||
-                          (registro.setor && registro.setor.toUpperCase() === setorSelecionado);
-
-        const turnoMatch = !turnoSelecionado ||
-                          (registro.turno && registro.turno.toUpperCase() === turnoSelecionado);
-
-        return setorMatch && turnoMatch;
-    });
-
-    if (estadoOrdenacao.campo) {
-        const coluna = COLUNAS_CONFIG.find(c => c.campo === estadoOrdenacao.campo);
-        if (coluna) {
-            ordenarDados(dadosFiltrados, estadoOrdenacao.campo, coluna.tipo);
-        }
-    }
-
-    atualizarTabela(dadosFiltrados);
-    document.getElementById('total-filtrados').textContent = dadosFiltrados.length;
-}
-
-function limparFiltros() {
-    document.getElementById('filtro-setor').value = '';
-    document.getElementById('filtro-turno').value = '';
-    aplicarFiltros();
-}
-
-// ===== TABELA =====
-
 function criarCabecalho() {
     const thead = document.getElementById('tabela-head');
     const tr = document.createElement('tr');
@@ -202,8 +156,15 @@ function atualizarIconesOrdenacao() {
     }
 }
 
-function ordenarDados(dados, campo, tipo) {
-    dados.sort((a, b) => {
+function ordenarPorColuna(campo, tipo) {
+    if (estadoOrdenacao.campo === campo) {
+        estadoOrdenacao.direcao = estadoOrdenacao.direcao === 'asc' ? 'desc' : 'asc';
+    } else {
+        estadoOrdenacao.campo = campo;
+        estadoOrdenacao.direcao = 'asc';
+    }
+
+    dadosFiltrados.sort((a, b) => {
         let valorA = a[campo];
         let valorB = b[campo];
 
@@ -231,17 +192,7 @@ function ordenarDados(dados, campo, tipo) {
 
         return estadoOrdenacao.direcao === 'asc' ? resultado : -resultado;
     });
-}
 
-function ordenarPorColuna(campo, tipo) {
-    if (estadoOrdenacao.campo === campo) {
-        estadoOrdenacao.direcao = estadoOrdenacao.direcao === 'asc' ? 'desc' : 'asc';
-    } else {
-        estadoOrdenacao.campo = campo;
-        estadoOrdenacao.direcao = 'asc';
-    }
-
-    ordenarDados(dadosFiltrados, campo, tipo);
     atualizarTabela(dadosFiltrados);
     atualizarIconesOrdenacao();
 }
@@ -279,9 +230,9 @@ function atualizarTabela(dados) {
     });
 }
 
-function atualizarEstatisticas(total) {
+function atualizarEstatisticas(total, filtrados) {
     document.getElementById('total-registros').textContent = total;
-    document.getElementById('total-filtrados').textContent = dadosFiltrados.length;
+    document.getElementById('total-filtrados').textContent = filtrados;
     document.getElementById('ultima-atualizacao').textContent =
         new Date().toLocaleTimeString('pt-BR');
 }
@@ -300,7 +251,83 @@ function mostrarErro(mensagem) {
     `;
 }
 
-// ===== API =====
+// ========================================
+// 🔍 SISTEMA DE FILTROS COM PERSISTÊNCIA
+// ========================================
+
+function popularFiltroSetor(dados) {
+    const selectSetor = document.getElementById('filtro-setor');
+    const setoresUnicos = [...new Set(dados.map(d => d.setor).filter(Boolean))].sort();
+
+    // Salvar valor atual
+    const valorAtual = selectSetor.value;
+
+    // Limpar e repopular
+    selectSetor.innerHTML = '<option value="">Todos os Setores</option>';
+    setoresUnicos.forEach(setor => {
+        const option = document.createElement('option');
+        option.value = setor;
+        option.textContent = setor;
+        selectSetor.appendChild(option);
+    });
+
+    // Restaurar valor se ainda existir
+    if (valorAtual && setoresUnicos.includes(valorAtual)) {
+        selectSetor.value = valorAtual;
+    }
+}
+
+function aplicarFiltros() {
+    // Salvar estado dos filtros
+    filtrosAtivos.setor = document.getElementById('filtro-setor').value;
+    filtrosAtivos.turno = document.getElementById('filtro-turno').value;
+
+    dadosFiltrados = dadosAtuais.filter(registro => {
+        let passa = true;
+
+        // Filtro de Setor
+        if (filtrosAtivos.setor && registro.setor !== filtrosAtivos.setor) {
+            passa = false;
+        }
+
+        // Filtro de Turno
+        if (filtrosAtivos.turno && registro.turno !== filtrosAtivos.turno) {
+            passa = false;
+        }
+
+        return passa;
+    });
+
+    // Reaplicar ordenação se houver
+    if (estadoOrdenacao.campo) {
+        const coluna = COLUNAS_CONFIG.find(c => c.campo === estadoOrdenacao.campo);
+        if (coluna) {
+            ordenarPorColuna(estadoOrdenacao.campo, coluna.tipo);
+        }
+    } else {
+        atualizarTabela(dadosFiltrados);
+    }
+
+    atualizarEstatisticas(dadosAtuais.length, dadosFiltrados.length);
+}
+
+function limparFiltros() {
+    document.getElementById('filtro-setor').value = '';
+    document.getElementById('filtro-turno').value = '';
+    filtrosAtivos.setor = '';
+    filtrosAtivos.turno = '';
+    aplicarFiltros();
+}
+
+function configurarFiltros() {
+    document.getElementById('filtro-setor').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-turno').addEventListener('change', aplicarFiltros);
+    document.getElementById('btn-limpar-filtros').addEventListener('click', limparFiltros);
+}
+
+// ========================================
+// 📊 CARREGAMENTO DE DADOS
+// ========================================
 
 async function carregarDados() {
     try {
@@ -314,9 +341,13 @@ async function carregarDados() {
 
         if (resultado.success) {
             dadosAtuais = resultado.data;
-            popularFiltros();
+
+            // Popular filtro de setores mantendo seleção anterior
+            popularFiltroSetor(dadosAtuais);
+
+            // Aplicar filtros (mantém os filtros anteriores)
             aplicarFiltros();
-            atualizarEstatisticas(resultado.total);
+
         } else {
             mostrarErro(resultado.error || 'Erro desconhecido');
         }
@@ -327,7 +358,9 @@ async function carregarDados() {
     }
 }
 
-// ===== AUTO SCROLL =====
+// ========================================
+// 🎬 AUTO SCROLL
+// ========================================
 
 function configurarAutoScroll() {
     const btnAutoScroll = document.getElementById('btn-auto-scroll');
@@ -351,7 +384,7 @@ function configurarAutoScroll() {
 
         if (autoScrollAtivo) {
             btnAutoScroll.classList.add('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar Scroll';
+            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
             iniciarAutoScroll(container);
             console.log('▶️ Auto-scroll ativado');
         } else {
@@ -361,6 +394,18 @@ function configurarAutoScroll() {
             console.log('⏸️ Auto-scroll pausado');
         }
     });
+
+    // Ativar auto-scroll automaticamente após 5 segundos
+    setTimeout(() => {
+        if (!autoScrollAtivo) {
+            console.log('🚀 Ativando auto-scroll automaticamente em 5 segundos...');
+            autoScrollAtivo = true;
+            btnAutoScroll.classList.add('active');
+            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+            iniciarAutoScroll(container);
+            console.log('▶️ Auto-scroll iniciado automaticamente!');
+        }
+    }, 5000);
 }
 
 function iniciarAutoScroll(container) {
@@ -403,7 +448,12 @@ function iniciarAutoScroll(container) {
                 if (autoScrollAtivo) {
                     container.scrollTop = 0;
                     console.log('🔄 Resetando para o topo...');
-                    emPausa = false;
+
+                    // Aguardar 5 segundos antes de recomeçar
+                    setTimeout(() => {
+                        emPausa = false;
+                        console.log('▶️ Reiniciando auto-scroll...');
+                    }, 5000);
                 }
             }, CONFIG.pausaNaLinha100);
 
@@ -422,7 +472,9 @@ function pararAutoScroll() {
     }
 }
 
-// ===== INICIALIZAÇÃO =====
+// ========================================
+// 🚀 INICIALIZAÇÃO
+// ========================================
 
 function configurarBotaoVoltar() {
     const btnVoltar = document.getElementById('btn-voltar');
@@ -432,12 +484,6 @@ function configurarBotaoVoltar() {
             window.location.href = '/frontend/dashboard.html';
         });
     }
-}
-
-function configurarFiltros() {
-    document.getElementById('filtro-setor').addEventListener('change', aplicarFiltros);
-    document.getElementById('filtro-turno').addEventListener('change', aplicarFiltros);
-    document.getElementById('btn-limpar-filtros').addEventListener('click', limparFiltros);
 }
 
 function inicializar() {
@@ -451,8 +497,10 @@ function inicializar() {
         configurarAutoScroll();
     }, 500);
 
+    // Auto-refresh a cada 30s MANTENDO os filtros
     setInterval(carregarDados, CONFIG.intervaloRefresh);
     console.log('✅ Painel inicializado com sucesso!');
+    console.log('🔄 Auto-refresh: 30s (filtros serão mantidos)');
 }
 
 if (document.readyState === 'loading') {
