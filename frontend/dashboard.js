@@ -1,4 +1,5 @@
 let usuarioAtual = null;
+let permissoesUsuario = [];
 
 // Verifica autenticação ao carregar
 verificarAutenticacao();
@@ -18,15 +19,114 @@ async function verificarAutenticacao() {
         usuarioAtual = data;
         document.getElementById('usuario-nome').textContent = `Olá, ${data.usuario}`;
 
+        // 🆕 Mostrar botões de admin
         if (data.is_admin) {
+            document.getElementById('btn-gestao-usuarios').style.display = 'block';
             document.getElementById('btn-admin').style.display = 'block';
         }
+
+        // Carregar permissões e filtrar painéis
+        await carregarPermissoes();
 
     } catch (erro) {
         console.error('Erro ao verificar autenticação:', erro);
         window.location.href = '/login.html';
     }
 }
+
+async function carregarPermissoes() {
+    try {
+        const response = await fetch('/api/minhas-permissoes', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            permissoesUsuario = data.permissoes;
+            filtrarPaineisVisiveis();
+        }
+
+    } catch (erro) {
+        console.error('Erro ao carregar permissões:', erro);
+    }
+}
+
+function filtrarPaineisVisiveis() {
+    const paineis = [
+        { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },
+        { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' }
+    ];
+
+    let paineisVisiveis = 0;
+
+    paineis.forEach(painel => {
+        const card = document.querySelector(painel.selector);
+        if (!card) return;
+
+        const temPermissao = permissoesUsuario.includes(painel.nome);
+
+        if (temPermissao) {
+            card.style.display = 'block';
+            card.classList.remove('painel-disabled');
+            card.style.pointerEvents = 'auto';
+            card.style.opacity = '1';
+            paineisVisiveis++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Mostrar mensagem se não houver painéis
+    mostrarMensagemSemPaineis(paineisVisiveis);
+}
+
+function mostrarMensagemSemPaineis(quantidade) {
+    const grid = document.querySelector('.paineis-grid');
+    let mensagemExistente = document.getElementById('mensagem-sem-paineis');
+
+    if (quantidade === 0) {
+        // Não tem painéis - mostrar mensagem
+        if (!mensagemExistente) {
+            const mensagem = document.createElement('div');
+            mensagem.id = 'mensagem-sem-paineis';
+            mensagem.className = 'mensagem-sem-paineis';
+            mensagem.innerHTML = `
+                <div class="sem-paineis-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2>Nenhum Painel Disponível</h2>
+                <p>Você ainda não tem permissão para acessar nenhum painel.</p>
+                <p>Entre em contato com o administrador para solicitar acesso.</p>
+            `;
+            grid.appendChild(mensagem);
+        }
+    } else {
+        // Tem painéis - remover mensagem se existir
+        if (mensagemExistente) {
+            mensagemExistente.remove();
+        }
+    }
+}
+
+function abrirPainel(nomePainel) {
+    // Verifica permissão
+    if (!permissoesUsuario.includes(nomePainel)) {
+        alert('Você não tem permissão para acessar este painel.');
+        return;
+    }
+
+    window.location.href = `/painel/${nomePainel}`;
+}
+
+// 🆕 Botão Gestão de Usuários
+document.getElementById('btn-gestao-usuarios')?.addEventListener('click', () => {
+    window.location.href = '/admin/usuarios';
+});
+
+// Botão Cadastrar Usuário (modal rápido)
+document.getElementById('btn-admin')?.addEventListener('click', () => {
+    document.getElementById('modal-cadastro').style.display = 'flex';
+});
 
 // Logout
 document.getElementById('btn-logout').addEventListener('click', async () => {
@@ -39,11 +139,6 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
     } catch (erro) {
         console.error('Erro no logout:', erro);
     }
-});
-
-// Abrir Modal de Cadastro
-document.getElementById('btn-admin')?.addEventListener('click', () => {
-    document.getElementById('modal-cadastro').style.display = 'flex';
 });
 
 // Fechar Modal
@@ -105,9 +200,4 @@ function mostrarMensagem(mensagem, tipo) {
     div.textContent = mensagem;
     div.className = `alert alert-${tipo}`;
     div.style.display = 'block';
-}
-
-// Abrir Painel
-function abrirPainel(nomePainel) {
-    window.location.href = `/painel/${nomePainel}`;
 }

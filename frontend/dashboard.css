@@ -387,3 +387,78 @@ body {
         font-size: 1.2rem;
     }
 }
+
+
+
+.mensagem-sem-paineis {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.sem-paineis-icon {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 30px;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sem-paineis-icon i {
+    font-size: 4rem;
+    color: white;
+}
+
+.mensagem-sem-paineis h2 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.mensagem-sem-paineis p {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.mensagem-sem-paineis p:last-child {
+    font-weight: 600;
+    color: #dc3545;
+}
+
+@media (max-width: 768px) {
+    .mensagem-sem-paineis {
+        padding: 40px 20px;
+    }
+
+    .sem-paineis-icon {
+        width: 80px;
+        height: 80px;
+    }
+
+    .sem-paineis-icon i {
+        font-size: 2.5rem;
+    }
+
+    .mensagem-sem-paineis h2 {
+        font-size: 1.5rem;
+    }
+
+    .mensagem-sem-paineis p {
+        font-size: 1rem;
+    }
+}
+
+
+
+
+
+
+
+
