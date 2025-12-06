@@ -34,6 +34,14 @@ body {
     gap: 15px;
 }
 
+/* ✅ CORREÇÃO: Logo + Título na mesma linha */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-direction: row;
+}
+
 /* Logo no header do dashboard */
 .header-content img {
     max-height: 50px;
@@ -47,6 +55,7 @@ body {
 .header-content h1 {
     font-size: 1.8rem;
     font-weight: 600;
+    margin: 0;
 }
 
 .header-content h1 i {
@@ -96,7 +105,7 @@ body {
     border-color: #dc3545;
 }
 
-/* Grid de Painéis - CORRIGIDO PARA RESPONSIVIDADE */
+/* Grid de Painéis */
 .paineis-grid {
     max-width: 1400px;
     margin: 40px auto;
@@ -343,6 +352,10 @@ body {
         align-items: flex-start;
     }
 
+    .header-left {
+        flex-wrap: wrap;
+    }
+
     .header-content img {
         max-height: 40px;
         padding: 6px 10px;
@@ -351,6 +364,7 @@ body {
     .user-info {
         width: 100%;
         justify-content: space-between;
+        flex-wrap: wrap;
     }
 
     .paineis-grid {
@@ -358,11 +372,14 @@ body {
     }
 }
 
-/* Responsividade extra para telas pequenas */
 @media (max-width: 480px) {
     .header-content img {
         max-height: 35px;
         padding: 5px 8px;
+    }
+
+    .header-content h1 {
+        font-size: 1.4rem;
     }
 
     .paineis-grid {
@@ -388,8 +405,7 @@ body {
     }
 }
 
-
-
+/* Mensagem quando não há painéis */
 .mensagem-sem-paineis {
     grid-column: 1 / -1;
     text-align: center;
@@ -454,11 +470,3 @@ body {
         font-size: 1rem;
     }
 }
-
-
-
-
-
-
-
-
