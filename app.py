@@ -488,6 +488,315 @@ def get_medicos_ps():
         }), 500
 
 
+# ==========================================
+# 🏥 ROTAS DO PAINEL 4 - OCUPAÇÃO HOSPITALAR
+# ==========================================
+
+@app.route('/painel/painel4')
+@login_required
+def painel4():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel4'):
+            app.logger.warning(f'Acesso negado ao painel4: {session.get("usuario")}')
+            return send_from_directory('frontend', 'acesso-negado.html')
+
+    return send_from_directory('paineis/painel4', 'index.html')
+
+
+@app.route('/painel/painel4/detalhes')
+@login_required
+def painel4_detalhes():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel4'):
+            app.logger.warning(f'Acesso negado ao painel4/detalhes: {session.get("usuario")}')
+            return send_from_directory('frontend', 'acesso-negado.html')
+
+    return send_from_directory('paineis/painel4', 'detalhes.html')
+
+
+# API: Dashboard - Estatísticas Gerais
+@app.route('/api/paineis/painel4/dashboard', methods=['GET'])
+@login_required
+def api_painel4_dashboard():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel4'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Usa a view criada para estatísticas gerais
+        cursor.execute("SELECT * FROM vw_ocupacao_dashboard")
+
+        colunas = [desc[0] for desc in cursor.description]
+        resultado = cursor.fetchone()
+
+        if resultado:
+            dados = dict(zip(colunas, resultado))
+        else:
+            dados = {
+                'total_leitos': 0,
+                'leitos_ocupados': 0,
+                'leitos_livres': 0,
+                'leitos_higienizacao': 0,
+                'leitos_interditados': 0,
+                'taxa_ocupacao_geral': 0,
+                'taxa_disponibilidade': 0,
+                'total_setores': 0,
+                'media_permanencia_geral': 0,
+                'ultima_atualizacao': None
+            }
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': dados,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar dashboard painel4: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+# API: Ocupação por Setor
+@app.route('/api/paineis/painel4/setores', methods=['GET'])
+@login_required
+def api_painel4_setores():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel4'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Usa a view para estatísticas por setor
+        cursor.execute("SELECT * FROM vw_ocupacao_por_setor")
+
+        colunas = [desc[0] for desc in cursor.description]
+        setores = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': setores,
+            'total': len(setores),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar setores painel4: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+# API: Leitos Ocupados (com pacientes)
+@app.route('/api/paineis/painel4/leitos-ocupados', methods=['GET'])
+@login_required
+def api_painel4_leitos_ocupados():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel4'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Usa a view para pacientes internados
+        cursor.execute("SELECT * FROM vw_pacientes_internados")
+
+        colunas = [desc[0] for desc in cursor.description]
+        leitos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': leitos,
+            'total': len(leitos),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar leitos ocupados painel4: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+# API: Leitos Disponíveis (livres, higienização, interditados)
+@app.route('/api/paineis/painel4/leitos-disponiveis', methods=['GET'])
+@login_required
+def api_painel4_leitos_disponiveis():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel4'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Usa a view para leitos disponíveis
+        cursor.execute("SELECT * FROM vw_leitos_disponiveis")
+
+        colunas = [desc[0] for desc in cursor.description]
+        leitos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': leitos,
+            'total': len(leitos),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar leitos disponíveis painel4: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+# API: Todos os Leitos (ocupados + disponíveis)
+@app.route('/api/paineis/painel4/todos-leitos', methods=['GET'])
+@login_required
+def api_painel4_todos_leitos():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel4'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Usa a view principal com todos os dados
+        cursor.execute("SELECT * FROM vw_ocupacao_hospitalar ORDER BY setor, leito")
+
+        colunas = [desc[0] for desc in cursor.description]
+        leitos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': leitos,
+            'total': len(leitos),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar todos leitos painel4: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @app.route('/api/minhas-permissoes', methods=['GET'])
 @login_required
 def api_minhas_permissoes():
@@ -734,6 +1043,12 @@ def api_listar_paineis():
                 'nome': 'painel3',
                 'titulo': 'Médicos PS',
                 'descricao': 'Monitoramento de médicos logados',
+                'ativo': True
+            },
+            {
+                'nome': 'painel4',
+                'titulo': 'Ocupação Hospitalar',
+                'descricao': 'Monitoramento de ocupação de leitos',
                 'ativo': True
             }
         ]

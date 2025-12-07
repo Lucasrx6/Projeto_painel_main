@@ -54,7 +54,8 @@ async function carregarPermissoes() {
 function filtrarPaineisVisiveis() {
     const paineis = [
         { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },
-        { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' }
+        { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' },
+        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' }
     ];
 
     let paineisVisiveis = 0;
