@@ -53,10 +53,10 @@ function inicializar() {
     // Auto-refresh mantendo filtros
     setInterval(carregarDados, CONFIG.intervaloRefresh);
 
-    // Ativa auto-scroll após 5 segundos
+    // ✅ CORREÇÃO: Ativa auto-scroll após dados carregarem
     setTimeout(() => {
         configurarAutoScroll();
-    }, 500);
+    }, 2000); // Aguarda 2 segundos para garantir que a tabela foi renderizada
 
     console.log('✅ Página inicializada com sucesso!');
     console.log('🔄 Auto-refresh: 30s (filtros mantidos)');
@@ -113,6 +113,20 @@ function configurarAbas() {
             // Ativa o selecionado
             botao.classList.add('active');
             document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            // ✅ CORREÇÃO: Reseta auto-scroll ao trocar de aba
+            if (autoScrollAtivo) {
+                console.log('🔄 Trocou de aba - Reiniciando auto-scroll...');
+                pararAutoScroll();
+
+                setTimeout(() => {
+                    const container = document.querySelector('.tab-pane.active .table-container');
+                    if (container) {
+                        container.scrollTop = 0; // Reseta posição
+                        iniciarAutoScroll(container);
+                    }
+                }, 300); // Aguarda a aba renderizar
+            }
 
             // Atualiza estatísticas
             atualizarEstatisticasFiltro();
@@ -241,6 +255,14 @@ function aplicarFiltros() {
 
     // Atualiza estatísticas
     atualizarEstatisticasFiltro();
+
+    // ✅ CORREÇÃO: Reseta scroll ao aplicar filtros
+    if (autoScrollAtivo) {
+        const container = document.querySelector('.tab-pane.active .table-container');
+        if (container) {
+            container.scrollTop = 0;
+        }
+    }
 }
 
 // ========================================
@@ -530,15 +552,17 @@ function atualizarIconesOrdenacao(campoAtivo) {
 }
 
 // ========================================
-// 🎬 AUTO SCROLL (IGUAL PAINEL 2)
+// 🎬 AUTO SCROLL (CORRIGIDO)
 // ========================================
 
 function configurarAutoScroll() {
     const btnAutoScroll = document.getElementById('btn-auto-scroll');
-    if (!btnAutoScroll) return;
+    if (!btnAutoScroll) {
+        console.warn('⚠️ Botão auto-scroll não encontrado');
+        return;
+    }
 
-    const container = document.querySelector('.table-container');
-    if (!container) return;
+    console.log('✅ Configurando auto-scroll...');
 
     btnAutoScroll.addEventListener('click', () => {
         autoScrollAtivo = !autoScrollAtivo;
@@ -546,85 +570,128 @@ function configurarAutoScroll() {
         if (autoScrollAtivo) {
             btnAutoScroll.classList.add('active');
             btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-            iniciarAutoScroll(container);
+
+            // ✅ CORREÇÃO: Busca o container correto da aba ativa
+            const container = document.querySelector('.tab-pane.active .table-container');
+            if (container) {
+                container.scrollTop = 0; // Reseta posição
+                iniciarAutoScroll(container);
+                console.log('▶️ Auto-scroll ATIVADO manualmente');
+            } else {
+                console.error('❌ Container não encontrado');
+            }
         } else {
             btnAutoScroll.classList.remove('active');
             btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
             pararAutoScroll();
+            console.log('⏸️ Auto-scroll PAUSADO');
         }
     });
 
-    // Ativa automaticamente após 5 segundos
+    // ✅ CORREÇÃO: Ativa automaticamente após 5 segundos
     setTimeout(() => {
         if (!autoScrollAtivo) {
-            console.log('🚀 Ativando auto-scroll automaticamente...');
-            autoScrollAtivo = true;
-            btnAutoScroll.classList.add('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-            iniciarAutoScroll(container);
-            console.log('▶️ Auto-scroll iniciado!');
+            console.log('🚀 Ativando auto-scroll automaticamente em 5s...');
+
+            const container = document.querySelector('.tab-pane.active .table-container');
+            if (container) {
+                autoScrollAtivo = true;
+                btnAutoScroll.classList.add('active');
+                btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+                container.scrollTop = 0;
+                iniciarAutoScroll(container);
+                console.log('▶️ Auto-scroll iniciado AUTOMATICAMENTE!');
+            } else {
+                console.error('❌ Container não encontrado para auto-start');
+            }
         }
     }, 5000);
 }
 
 function iniciarAutoScroll(container) {
+    if (!container) {
+        console.error('❌ Container inválido para auto-scroll');
+        return;
+    }
+
     pararAutoScroll();
+
     let emPausa = false;
+    let ciclos = 0;
+
+    console.log('🎬 Iniciando loop de auto-scroll...');
 
     intervaloAutoScroll = setInterval(() => {
-        if (!autoScrollAtivo || emPausa) return;
-
-        const abaAtiva = document.querySelector('.tab-button.active')?.getAttribute('data-tab');
-        let tbody;
-
-        if (abaAtiva === 'leitos-ocupados') {
-            tbody = document.getElementById('tbody-ocupados');
-        } else if (abaAtiva === 'leitos-disponiveis') {
-            tbody = document.getElementById('tbody-disponiveis');
-        } else {
-            tbody = document.getElementById('tbody-todos');
-        }
-
-        const linhas = tbody?.getElementsByTagName('tr');
-        if (!linhas || linhas.length === 0) return;
-
-        const scrollAtual = container.scrollTop;
-        let scrollMax;
-
-        if (linhas.length <= CONFIG.limiteLinhas) {
-            scrollMax = container.scrollHeight - container.clientHeight;
-        } else {
-            const linha100 = linhas[CONFIG.limiteLinhas - 1];
-            if (!linha100) {
-                scrollMax = container.scrollHeight - container.clientHeight;
-            } else {
-                const posicaoLinha100 = linha100.offsetTop + linha100.offsetHeight;
-                scrollMax = posicaoLinha100 - container.clientHeight + 50;
-            }
-        }
-
-        if (scrollAtual >= scrollMax - 10) {
-            emPausa = true;
-            setTimeout(() => {
-                if (autoScrollAtivo) {
-                    container.scrollTop = 0;
-                    setTimeout(() => {
-                        emPausa = false;
-                        console.log('▶️ Reiniciando auto-scroll...');
-                    }, 5000);
-                }
-            }, CONFIG.pausaNaLinha100);
+        if (!autoScrollAtivo) {
+            console.log('⏸️ Auto-scroll desativado - parando loop');
             return;
         }
 
+        if (emPausa) {
+            return;
+        }
+
+        // ✅ CORREÇÃO: Busca tbody da aba ativa
+        const abaAtiva = document.querySelector('.tab-pane.active');
+        if (!abaAtiva) {
+            console.warn('⚠️ Nenhuma aba ativa encontrada');
+            return;
+        }
+
+        const tbody = abaAtiva.querySelector('tbody');
+        if (!tbody) {
+            console.warn('⚠️ Tbody não encontrado');
+            return;
+        }
+
+        const linhas = tbody.getElementsByTagName('tr');
+
+        if (!linhas || linhas.length === 0) {
+            console.warn('⚠️ Nenhuma linha encontrada na tabela');
+            return;
+        }
+
+        const scrollAtual = container.scrollTop;
+        const scrollMax = container.scrollHeight - container.clientHeight;
+
+        // Debug a cada 100 ciclos
+        if (ciclos % 100 === 0) {
+            console.log(`📊 Scroll: ${Math.round(scrollAtual)}/${Math.round(scrollMax)} | Linhas: ${linhas.length}`);
+        }
+        ciclos++;
+
+        // ✅ Chegou no final
+        if (scrollAtual >= scrollMax - 10) {
+            console.log('🏁 Chegou no final - Aguardando 2s e voltando ao topo...');
+            emPausa = true;
+
+            setTimeout(() => {
+                if (autoScrollAtivo) {
+                    container.scrollTop = 0;
+                    console.log('🔄 Voltou ao topo - Aguardando 5s para reiniciar...');
+
+                    setTimeout(() => {
+                        emPausa = false;
+                        ciclos = 0;
+                        console.log('▶️ Reiniciando auto-scroll!');
+                    }, 5000); // Pausa 5s no topo antes de recomeçar
+                }
+            }, CONFIG.pausaNaLinha100);
+
+            return;
+        }
+
+        // ✅ Continua scrollando suavemente
         container.scrollTop += CONFIG.velocidadeScroll;
-    }, 50);
+
+    }, 50); // A cada 50ms
 }
 
 function pararAutoScroll() {
     if (intervaloAutoScroll) {
         clearInterval(intervaloAutoScroll);
         intervaloAutoScroll = null;
+        console.log('🛑 Intervalo de auto-scroll limpo');
     }
 }
 

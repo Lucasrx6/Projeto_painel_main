@@ -19,7 +19,7 @@ async function verificarAutenticacao() {
         usuarioAtual = data;
         document.getElementById('usuario-nome').textContent = `Olá, ${data.usuario}`;
 
-        // 🆕 Mostrar botões de admin
+        // Mostrar botões de admin
         if (data.is_admin) {
             document.getElementById('btn-gestao-usuarios').style.display = 'block';
             document.getElementById('btn-admin').style.display = 'block';
@@ -43,12 +43,45 @@ async function carregarPermissoes() {
 
         if (data.success) {
             permissoesUsuario = data.permissoes;
-            filtrarPaineisVisiveis();
+
+            // ✅ CORREÇÃO: Se for admin, mostrar TODOS os painéis
+            if (data.is_admin) {
+                mostrarTodosPaineis();
+            } else {
+                filtrarPaineisVisiveis();
+            }
         }
 
     } catch (erro) {
         console.error('Erro ao carregar permissões:', erro);
     }
+}
+
+// ✅ NOVA FUNÇÃO: Mostrar todos os painéis para admins
+function mostrarTodosPaineis() {
+    const paineis = [
+        { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },
+        { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' },
+        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' }
+    ];
+
+    paineis.forEach(painel => {
+        const card = document.querySelector(painel.selector);
+        if (card) {
+            card.style.display = 'block';
+            card.classList.remove('painel-disabled');
+            card.style.pointerEvents = 'auto';
+            card.style.opacity = '1';
+        }
+    });
+
+    // Remove mensagem de "sem painéis" se existir
+    const mensagemExistente = document.getElementById('mensagem-sem-paineis');
+    if (mensagemExistente) {
+        mensagemExistente.remove();
+    }
+
+    console.log('✅ Admin: Todos os painéis liberados');
 }
 
 function filtrarPaineisVisiveis() {
@@ -110,7 +143,13 @@ function mostrarMensagemSemPaineis(quantidade) {
 }
 
 function abrirPainel(nomePainel) {
-    // Verifica permissão
+    // ✅ CORREÇÃO: Admin sempre pode acessar
+    if (usuarioAtual.is_admin) {
+        window.location.href = `/painel/${nomePainel}`;
+        return;
+    }
+
+    // Verifica permissão para usuários normais
     if (!permissoesUsuario.includes(nomePainel)) {
         alert('Você não tem permissão para acessar este painel.');
         return;
@@ -119,7 +158,7 @@ function abrirPainel(nomePainel) {
     window.location.href = `/painel/${nomePainel}`;
 }
 
-// 🆕 Botão Gestão de Usuários
+// Botão Gestão de Usuários
 document.getElementById('btn-gestao-usuarios')?.addEventListener('click', () => {
     window.location.href = '/admin/usuarios';
 });
