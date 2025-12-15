@@ -7,16 +7,17 @@ const BASE_URL = window.location.origin;
 const CONFIG = {
     apiDashboard: `${BASE_URL}/api/paineis/painel5/dashboard`,
     apiCirurgias: `${BASE_URL}/api/paineis/painel5/cirurgias`,
-    intervaloRefresh: 30000,
+    intervaloRefresh: 130000,
     velocidadeScroll: 0.5,
     delayInicioAutoScroll: 10000,
-    pausaAntesReset: 5000,
+    pausaFinal: 10000,
     pausaAposReset: 10000
 };
 
 let dadosCirurgias = [];
 let autoScrollAtivo = false;
 let intervaloAutoScroll = null;
+let timeoutAutoScrollInicial = null;
 
 function inicializar() {
     console.log('🚀 Inicializando Painel de Cirurgias...');
@@ -54,8 +55,8 @@ function configurarBotoes() {
             if (autoScrollAtivo) {
                 btnAutoScroll.classList.add('active');
                 btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                console.log('▶️ Auto-scroll ATIVADO');
-                iniciarAutoScrollTodosGrupos();
+                console.log('▶️ Auto-scroll ATIVADO manualmente');
+                iniciarAutoScroll();
             } else {
                 btnAutoScroll.classList.remove('active');
                 btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
@@ -88,17 +89,16 @@ async function carregarDados() {
             renderizarCirurgias(dadosCirurgias);
             atualizarHoraAtualizacao();
 
-            if (!autoScrollAtivo && !intervaloAutoScroll) {
-                setTimeout(() => {
-                    if (!autoScrollAtivo) {
-                        console.log('🚀 Ativando auto-scroll automaticamente após 10s...');
-                        const btnAutoScroll = document.getElementById('btn-auto-scroll');
-                        if (btnAutoScroll) {
-                            autoScrollAtivo = true;
-                            btnAutoScroll.classList.add('active');
-                            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                            iniciarAutoScrollTodosGrupos();
-                        }
+            // ✅ Ativa auto-scroll automaticamente após 10s (apenas na primeira vez)
+            if (!autoScrollAtivo && timeoutAutoScrollInicial === null) {
+                timeoutAutoScrollInicial = setTimeout(() => {
+                    console.log('🚀 Ativando auto-scroll automaticamente após 10s...');
+                    const btnAutoScroll = document.getElementById('btn-auto-scroll');
+                    if (btnAutoScroll) {
+                        autoScrollAtivo = true;
+                        btnAutoScroll.classList.add('active');
+                        btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+                        iniciarAutoScroll();
                     }
                 }, CONFIG.delayInicioAutoScroll);
             }
@@ -210,7 +210,13 @@ window.addEventListener('resize', () => {
     }
 });
 
-function iniciarAutoScrollTodosGrupos() {
+
+
+// ========================================
+// 🎬 AUTO-SCROLL SIMPLIFICADO E CORRIGIDO
+// ========================================
+
+function iniciarAutoScroll() {
     pararAutoScroll();
 
     const grupos = document.querySelectorAll('.grupo-dia');
@@ -220,8 +226,6 @@ function iniciarAutoScrollTodosGrupos() {
     }
 
     let grupoAtualIndex = 0;
-    let emPausa = false;
-
     console.log(`🎬 Iniciando auto-scroll em ${grupos.length} grupo(s)...`);
 
     intervaloAutoScroll = setInterval(() => {
@@ -230,41 +234,70 @@ function iniciarAutoScrollTodosGrupos() {
             return;
         }
 
-        if (emPausa) return;
-
         const grupoAtual = grupos[grupoAtualIndex];
         if (!grupoAtual) {
-            console.warn('⚠️ Grupo atual não encontrado, resetando...');
-            grupoAtualIndex = 0;
+            console.warn('⚠️ Grupo não encontrado');
             return;
         }
 
         const tbody = grupoAtual.querySelector('.cirurgias-table tbody');
         if (!tbody) {
-            console.warn('⚠️ Tbody não encontrado no grupo, pulando...');
-            grupoAtualIndex++;
-            if (grupoAtualIndex >= grupos.length) grupoAtualIndex = 0;
+            console.warn('⚠️ Tbody não encontrado');
             return;
         }
 
         const scrollAtual = tbody.scrollTop;
         const scrollMax = tbody.scrollHeight - tbody.clientHeight;
 
-        if (scrollAtual >= scrollMax - 5) {
-            console.log(`🏁 Final do grupo ${grupoAtualIndex + 1}/${grupos.length}`);
+        // ✅ Se não tem scroll (conteúdo cabe na tela), pula para próximo grupo
+        if (scrollMax <= 0) {
+            console.log(`⏭️ Grupo ${grupoAtualIndex + 1} não precisa de scroll, avançando...`);
+            grupoAtualIndex++;
 
-            if (grupoAtualIndex === grupos.length - 1) {
-                console.log('⏸️ Último grupo - pausando 5s...');
-                emPausa = true;
+            if (grupoAtualIndex >= grupos.length) {
+                console.log('🏁 Final de todos os grupos - iniciando ciclo de reset');
+                pararAutoScroll();
+
+                setTimeout(() => {
+                    if (!autoScrollAtivo) return;
+
+                    console.log('🔄 Voltando ao topo...');
+                    grupos.forEach((g, idx) => {
+                        const tb = g.querySelector('.cirurgias-table tbody');
+                        if (tb) tb.scrollTop = 0;
+                    });
+
+                    console.log('⏳ Aguardando 10s para recomeçar...');
+                    setTimeout(() => {
+                        if (autoScrollAtivo) {
+                            console.log('▶️ Reiniciando auto-scroll!');
+                            iniciarAutoScroll();
+                        }
+                    }, CONFIG.pausaAposReset);
+
+                }, CONFIG.pausaFinal);
+            }
+            return;
+        }
+
+        // ✅ Verifica se chegou ao final do grupo atual
+        if (scrollAtual >= scrollMax - 1) {
+            grupoAtualIndex++;
+            console.log(`✅ Grupo ${grupoAtualIndex}/${grupos.length} concluído`);
+
+            // ✅ Se chegou no final de todos os grupos
+            if (grupoAtualIndex >= grupos.length) {
+                console.log('🏁 Final de todos os grupos - iniciando ciclo de reset');
+                pararAutoScroll();
 
                 setTimeout(() => {
                     if (!autoScrollAtivo) {
-                        console.log('⚠️ Auto-scroll foi desativado, abortando reset');
-                        emPausa = false;
+                        console.log('⚠️ Auto-scroll foi desativado durante pausa');
                         return;
                     }
 
-                    console.log('🔄 Resetando todos os grupos para o topo...');
+                    console.log('🔄 Voltando ao topo de todos os grupos...');
+
                     grupos.forEach((g, idx) => {
                         const tb = g.querySelector('.cirurgias-table tbody');
                         if (tb) {
@@ -273,28 +306,22 @@ function iniciarAutoScrollTodosGrupos() {
                         }
                     });
 
-                    grupoAtualIndex = 0;
-                    console.log('⏳ Aguardando 10s antes de recomeçar...');
-
+                    console.log('⏳ Aguardando 10s para recomeçar...');
                     setTimeout(() => {
                         if (autoScrollAtivo) {
-                            emPausa = false;
                             console.log('▶️ Reiniciando auto-scroll!');
+                            iniciarAutoScroll();
                         } else {
-                            console.log('⚠️ Auto-scroll desativado durante pausa');
+                            console.log('⚠️ Auto-scroll foi desativado');
                         }
                     }, CONFIG.pausaAposReset);
 
-                }, CONFIG.pausaAntesReset);
-
-            } else {
-                grupoAtualIndex++;
-                console.log(`➡️ Avançando para grupo ${grupoAtualIndex + 1}/${grupos.length}`);
+                }, CONFIG.pausaFinal);
             }
-
             return;
         }
 
+        // ✅ Scroll normal
         tbody.scrollTop += CONFIG.velocidadeScroll;
 
     }, 50);
@@ -319,10 +346,6 @@ function formatarNome(nomeCompleto) {
 
 function criarLinhaCirurgia(cirurgia) {
     const statusIcon = obterIconeStatus(cirurgia.evento, cirurgia.nr_cirurgia);
-
-    // ✅ DEBUG: Mostra evento recebido
-    console.log('Evento:', `"${cirurgia.evento}"`, 'nr_cirurgia:', cirurgia.nr_cirurgia, 'Status:', statusIcon.texto);
-
     const nomePacienteFormatado = formatarNome(cirurgia.nm_paciente_pf);
     const nomeMedicoFormatado = formatarNome(cirurgia.nm_medico);
 
@@ -368,12 +391,7 @@ function criarLinhaCirurgia(cirurgia) {
     `;
 }
 
-// ========================================
-// 🎨 OBTER ÍCONE DE STATUS - LÓGICA CORRIGIDA
-// ========================================
-
 function obterIconeStatus(evento, nr_cirurgia) {
-    // ✅ REGRA 1: Se não tem nr_cirurgia, é PREVISTO
     if (!nr_cirurgia || nr_cirurgia === null || nr_cirurgia === '' || nr_cirurgia === 'null') {
         return {
             classe: 'status-prevista',
@@ -383,10 +401,8 @@ function obterIconeStatus(evento, nr_cirurgia) {
         };
     }
 
-    // ✅ REGRA 2: Status baseado no evento (EXATO do banco)
     const eventoNormalizado = (evento || '').trim();
 
-    // Status 1: Entrada Paciente CC
     if (eventoNormalizado === 'Entrada Paciente CC') {
         return {
             classe: 'status-entrada-cc',
@@ -396,17 +412,15 @@ function obterIconeStatus(evento, nr_cirurgia) {
         };
     }
 
-    // Status 2: Início da Cirurgia
     if (eventoNormalizado === 'Inicio da Cirurgia') {
         return {
             classe: 'status-inicio-cirurgia',
             icone: 'fas fa-procedures',
             titulo: 'Início da Cirurgia',
-            texto: 'Início da Cirurgia'
+            texto: 'Em Cirurgia'
         };
     }
 
-    // Status 3: Entrada no RPA
     if (eventoNormalizado === 'Entrada no RPA') {
         return {
             classe: 'status-entrada-rpa',
@@ -416,7 +430,6 @@ function obterIconeStatus(evento, nr_cirurgia) {
         };
     }
 
-    // ✅ Status 4: Saída do RPA = REALIZADA (com acento)
     if (eventoNormalizado === 'Sáida do RPA' || eventoNormalizado === 'Saida do RPA') {
         return {
             classe: 'status-realizada',
@@ -426,7 +439,6 @@ function obterIconeStatus(evento, nr_cirurgia) {
         };
     }
 
-    // ✅ Status 5: Saída do CC = REALIZADA
     if (eventoNormalizado === 'Saida do CC') {
         return {
             classe: 'status-realizada',
@@ -436,7 +448,6 @@ function obterIconeStatus(evento, nr_cirurgia) {
         };
     }
 
-    // Status 6: Sem Status (default)
     return {
         classe: 'status-sem-status',
         icone: 'fas fa-clock',
