@@ -10,7 +10,7 @@ const CONFIG = {
     intervaloRefresh: 30000, // 30 segundos
     velocidadeScroll: 0.5,
     delayInicioAutoScroll: 10000, // 10 segundos antes de iniciar
-    pausaNoFinal: 5000, // 5 segundos no final antes de resetar
+    pausaNoFinal: 10000, // 5 segundos no final antes de resetar
     pausaAposReset: 10000  // 10 segundos após resetar antes de recomeçar
 };
 
