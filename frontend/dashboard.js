@@ -62,7 +62,8 @@ function mostrarTodosPaineis() {
     const paineis = [
         { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },
         { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' },
-        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' }
+        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' },
+        { nome: 'painel5', selector: '.painel-card[onclick*="painel5"]' }
     ];
 
     paineis.forEach(painel => {
@@ -88,7 +89,8 @@ function filtrarPaineisVisiveis() {
     const paineis = [
         { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },
         { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' },
-        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' }
+        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' },
+        { nome: 'painel5', selector: '.painel-card[onclick*="painel5"]' }
     ];
 
     let paineisVisiveis = 0;

@@ -699,3 +699,32 @@ tbody td {
 .fw-bold {
     font-weight: 700;
 }
+
+
+/* ========================================
+   🎨 CORES POR GÊNERO (MAIS VISÍVEIS E DISCRETAS)
+   ======================================== */
+
+tbody tr.genero-masculino {
+    background-color: #cfe2f3 !important; /* Azul mais visível */
+}
+
+tbody tr.genero-feminino {
+    background-color: #f4c7d7 !important; /* Rosa mais visível */
+}
+
+tbody tr.genero-masculino:hover {
+    background-color: #9fc5e8 !important; /* Azul mais forte no hover */
+    transform: scale(1.002);
+}
+
+tbody tr.genero-feminino:hover {
+    background-color: #ea9ab2 !important; /* Rosa mais forte no hover */
+    transform: scale(1.002);
+}
+
+/* Mantém o texto legível */
+tbody tr.genero-masculino td,
+tbody tr.genero-feminino td {
+    color: #333 !important;
+}

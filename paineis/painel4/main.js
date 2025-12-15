@@ -127,6 +127,7 @@ function atualizarListaSetores(setores) {
         const totalLeitos = parseInt(setor.total_leitos) || 0;
         const ocupados = parseInt(setor.leitos_ocupados) || 0;
         const livres = parseInt(setor.leitos_livres) || 0;
+        const nomeSetor = setor.nm_setor || 'Setor Desconhecido';
 
         // Define classe baseada na taxa de ocupação
         let classeOcupacao = '';
@@ -139,8 +140,8 @@ function atualizarListaSetores(setores) {
         }
 
         return `
-            <div class="setor-card ${classeOcupacao}">
-                <div class="setor-card-nome">${setor.nm_setor || 'Setor Desconhecido'}</div>
+            <div class="setor-card ${classeOcupacao}" onclick="abrirDetalhesSetor('${nomeSetor}')" style="cursor: pointer;">
+                <div class="setor-card-nome">${nomeSetor}</div>
                 <div class="setor-card-taxa">${taxaOcupacao.toFixed(0)}%</div>
                 <div class="setor-card-label">Ocupação</div>
                 <div class="setor-card-info">
@@ -151,6 +152,18 @@ function atualizarListaSetores(setores) {
             </div>
         `;
     }).join('');
+}
+
+// ========================================
+// 🔗 NOVA FUNÇÃO: ABRIR DETALHES COM FILTRO
+// ========================================
+
+function abrirDetalhesSetor(nomeSetor) {
+    // Codifica o nome do setor para URL
+    const setorCodificado = encodeURIComponent(nomeSetor);
+
+    // Redireciona para detalhes com parâmetro de setor
+    window.location.href = `/painel/painel4/detalhes?setor=${setorCodificado}`;
 }
 
 // ========================================

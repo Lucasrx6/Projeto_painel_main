@@ -1050,6 +1050,12 @@ def api_listar_paineis():
                 'titulo': 'Ocupação Hospitalar',
                 'descricao': 'Monitoramento de ocupação de leitos',
                 'ativo': True
+            },
+            {
+                'nome': 'painel5',
+                'titulo': 'Cirurgias do Dia',
+                'descricao': 'Acompanhamento de cirurgias agendadas',
+                'ativo': True
             }
         ]
 
@@ -1061,6 +1067,190 @@ def api_listar_paineis():
     except Exception as e:
         app.logger.error(f'Erro ao listar painéis: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno'}), 500
+
+
+# ==========================================
+# 🏥 ROTAS DO PAINEL 5 - CIRURGIAS DO DIA
+# ==========================================
+
+@app.route('/painel/painel5')
+@login_required
+def painel5():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel5'):
+            app.logger.warning(f'Acesso negado ao painel5: {session.get("usuario")}')
+            return send_from_directory('frontend', 'acesso-negado.html')
+
+    return send_from_directory('paineis/painel5', 'index.html')
+
+
+# API: Dashboard - Estatísticas Gerais das Cirurgias
+@app.route('/api/paineis/painel5/dashboard', methods=['GET'])
+@login_required
+def api_painel5_dashboard():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel5'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # ✅ CORREÇÃO: Usar a VIEW ao invés da tabela
+        query = """
+            SELECT 
+                COUNT(*) as total_cirurgias,
+                COUNT(*) FILTER (WHERE ie_status_cirurgia = -1) as cirurgias_previstas,
+                COUNT(*) FILTER (WHERE ie_status_cirurgia NOT IN (-1, 2)) as cirurgias_andamento,
+                COUNT(*) FILTER (WHERE ie_status_cirurgia = 2) as cirurgias_realizadas
+            FROM vw_cirurgias_dia
+        """
+
+        cursor.execute(query)
+        resultado = cursor.fetchone()
+
+        dados = {
+            'total_cirurgias': resultado[0] or 0,
+            'cirurgias_previstas': resultado[1] or 0,
+            'cirurgias_andamento': resultado[2] or 0,
+            'cirurgias_realizadas': resultado[3] or 0
+        }
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': dados,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar dashboard painel5: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+# API: Lista de Cirurgias Agrupadas por Dia
+@app.route('/api/paineis/painel5/cirurgias', methods=['GET'])
+@login_required
+def api_painel5_cirurgias():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel5'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Busca todas as cirurgias ordenadas
+        query = """
+            SELECT 
+                id,
+                grupo_dia,
+                data_formatada,
+                data_cirurgia,
+                hr_inicio,
+                previsao_termino,
+                setor_cirurgia,
+                nm_paciente_pf,
+                nm_medico,
+                ds_proc_cir,
+                ie_status_cirurgia,
+                ds_status,
+                ds_convenio,
+                ds_idade_abrev,
+                nr_minuto_duracao,
+                nm_instrumentador,
+                nm_circulante,
+                nr_atendimento,
+                nr_cirurgia
+            FROM vw_cirurgias_dia
+            ORDER BY data_cirurgia ASC, hr_inicio ASC
+        """
+
+        cursor.execute(query)
+        colunas = [desc[0] for desc in cursor.description]
+        cirurgias = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+        # Agrupa cirurgias por dia
+        cirurgias_agrupadas = {}
+        for cirurgia in cirurgias:
+            dia = cirurgia['data_formatada']
+            grupo = cirurgia['grupo_dia']
+
+            if dia not in cirurgias_agrupadas:
+                cirurgias_agrupadas[dia] = {
+                    'data': dia,
+                    'grupo': grupo,
+                    'cirurgias': []
+                }
+
+            cirurgias_agrupadas[dia]['cirurgias'].append(cirurgia)
+
+        # Converte para lista ordenada
+        resultado = sorted(
+            cirurgias_agrupadas.values(),
+            key=lambda x: cirurgias[0]['data_cirurgia'] if cirurgias else datetime.now()
+        )
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': resultado,
+            'total': len(cirurgias),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar cirurgias painel5: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':

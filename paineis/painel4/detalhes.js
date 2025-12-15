@@ -44,6 +44,9 @@ let intervaloAutoScroll = null;
 function inicializar() {
     console.log('🚀 Inicializando Página de Detalhes...');
 
+    // Detecta parâmetro de setor na URL
+    detectarSetorURL();
+
     configurarBotoes();
     configurarAbas();
     configurarFiltros();
@@ -53,13 +56,53 @@ function inicializar() {
     // Auto-refresh mantendo filtros
     setInterval(carregarDados, CONFIG.intervaloRefresh);
 
-    // ✅ CORREÇÃO: Ativa auto-scroll após dados carregarem
+    // Configura auto-scroll após 1 segundo (aguarda elementos renderizarem)
     setTimeout(() => {
         configurarAutoScroll();
-    }, 2000); // Aguarda 2 segundos para garantir que a tabela foi renderizada
+    }, 1000);
 
     console.log('✅ Página inicializada com sucesso!');
     console.log('🔄 Auto-refresh: 30s (filtros mantidos)');
+}
+
+// ========================================
+// 🆕 DETECTAR SETOR NA URL
+// ========================================
+
+function detectarSetorURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const setorParam = urlParams.get('setor');
+
+    if (setorParam) {
+        const setorDecodificado = decodeURIComponent(setorParam);
+        filtrosAtivos.setor = setorDecodificado.toLowerCase();
+        console.log(`🎯 Setor detectado na URL: ${setorDecodificado}`);
+
+        // Ativa a aba "Todos os Leitos" após um delay
+        setTimeout(() => {
+            ativarAbaTodosLeitos();
+        }, 100);
+    }
+}
+
+// ========================================
+// 🆕 ATIVAR ABA "TODOS OS LEITOS"
+// ========================================
+
+function ativarAbaTodosLeitos() {
+    const botaoTodos = document.querySelector('[data-tab="todos-leitos"]');
+
+    if (botaoTodos) {
+        // Remove active de todas
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+        // Ativa "Todos os Leitos"
+        botaoTodos.classList.add('active');
+        document.getElementById('tab-todos-leitos').classList.add('active');
+
+        console.log('✅ Aba "Todos os Leitos" ativada automaticamente');
+    }
 }
 
 if (document.readyState === 'loading') {
@@ -106,27 +149,13 @@ function configurarAbas() {
         botao.addEventListener('click', () => {
             const tabId = botao.getAttribute('data-tab');
 
-            // Remove active de todos
+            // Remove active de todas
             botoes.forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
-            // Ativa o selecionado
+            // Ativa a selecionada
             botao.classList.add('active');
             document.getElementById(`tab-${tabId}`).classList.add('active');
-
-            // ✅ CORREÇÃO: Reseta auto-scroll ao trocar de aba
-            if (autoScrollAtivo) {
-                console.log('🔄 Trocou de aba - Reiniciando auto-scroll...');
-                pararAutoScroll();
-
-                setTimeout(() => {
-                    const container = document.querySelector('.tab-pane.active .table-container');
-                    if (container) {
-                        container.scrollTop = 0; // Reseta posição
-                        iniciarAutoScroll(container);
-                    }
-                }, 300); // Aguarda a aba renderizar
-            }
 
             // Atualiza estatísticas
             atualizarEstatisticasFiltro();
@@ -159,7 +188,7 @@ function limparFiltros() {
 }
 
 function aplicarFiltros() {
-    // SALVA o estado dos filtros (PERSISTÊNCIA)
+    // Salva o estado dos filtros
     filtrosAtivos.setor = document.getElementById('filtro-setor').value.toLowerCase();
     filtrosAtivos.status = document.getElementById('filtro-status').value;
     filtrosAtivos.busca = document.getElementById('filtro-busca').value.toLowerCase();
@@ -248,21 +277,11 @@ function aplicarFiltros() {
         }
     }
 
-    // Atualiza tabelas
+    // Atualiza as tabelas
     renderizarTabelaOcupados();
     renderizarTabelaDisponiveis();
     renderizarTabelaTodos();
-
-    // Atualiza estatísticas
     atualizarEstatisticasFiltro();
-
-    // ✅ CORREÇÃO: Reseta scroll ao aplicar filtros
-    if (autoScrollAtivo) {
-        const container = document.querySelector('.tab-pane.active .table-container');
-        if (container) {
-            container.scrollTop = 0;
-        }
-    }
 }
 
 // ========================================
@@ -285,16 +304,17 @@ async function carregarDados() {
             dadosDisponiveis = disponiveis.data;
             dadosTodos = todos.data;
 
-            // Popula filtro de setores (mantém seleção)
+            // Popula filtro de setores mantendo seleção
             popularFiltroSetores(setores.data);
 
-            // Aplica filtros (MANTÉM os filtros anteriores!)
+            // Aplica filtros (mantém os anteriores)
             aplicarFiltros();
 
             // Atualiza badges das abas
             atualizarBadgesAbas();
 
             console.log('✅ Dados carregados! Filtros mantidos.');
+
         } else {
             mostrarErro('Erro ao carregar dados');
         }
@@ -307,9 +327,9 @@ async function carregarDados() {
 
 function popularFiltroSetores(setores) {
     const select = document.getElementById('filtro-setor');
-    const valorAtual = select.value; // SALVA seleção atual
+    const valorAtual = select.value;
 
-    // Limpar e repopular
+    // Limpa e repopula
     select.innerHTML = '<option value="">Todos os Setores</option>';
 
     setores
@@ -321,8 +341,16 @@ function popularFiltroSetores(setores) {
             select.appendChild(option);
         });
 
-    // RESTAURA valor anterior
-    if (valorAtual) {
+    // Restaura valor da URL ou valor anterior
+    if (filtrosAtivos.setor) {
+        const opcaoCorrespondente = Array.from(select.options).find(
+            opt => opt.value.toLowerCase() === filtrosAtivos.setor.toLowerCase()
+        );
+
+        if (opcaoCorrespondente) {
+            select.value = opcaoCorrespondente.value;
+        }
+    } else if (valorAtual) {
         select.value = valorAtual;
     }
 }
@@ -356,7 +384,7 @@ function atualizarEstatisticasFiltro() {
 }
 
 // ========================================
-// 📋 RENDERIZAÇÃO DAS TABELAS
+// 📋 RENDERIZAÇÃO DAS TABELAS (COM CORES POR GÊNERO)
 // ========================================
 
 function renderizarTabelaOcupados() {
@@ -375,19 +403,29 @@ function renderizarTabelaOcupados() {
         return;
     }
 
-    tbody.innerHTML = dadosOcupadosFiltrados.map(item => `
-        <tr>
-            <td><strong>${item.leito || '-'}</strong></td>
-            <td>${item.paciente || '-'}</td>
-            <td>${item.idade || '-'}</td>
-            <td>${formatarSexo(item.sexo)}</td>
-            <td>${item.convenio || '-'}</td>
-            <td>${item.medico || '-'}</td>
-            <td><strong>${item.dias_internado || 0}</strong></td>
-            <td>${item.clinica || '-'}</td>
-            <td>${item.tipo_acomodacao || '-'}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = dadosOcupadosFiltrados.map(item => {
+        // Define classe de gênero
+        let classeGenero = '';
+        if (item.sexo === 'M') {
+            classeGenero = 'genero-masculino';
+        } else if (item.sexo === 'F') {
+            classeGenero = 'genero-feminino';
+        }
+
+        return `
+            <tr class="${classeGenero}">
+                <td><strong>${item.leito || '-'}</strong></td>
+                <td>${item.paciente || '-'}</td>
+                <td>${item.idade || '-'}</td>
+                <td>${formatarSexo(item.sexo)}</td>
+                <td>${item.convenio || '-'}</td>
+                <td>${item.medico || '-'}</td>
+                <td><strong>${item.dias_internado || 0}</strong></td>
+                <td>${item.clinica || '-'}</td>
+                <td>${item.tipo_acomodacao || '-'}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function renderizarTabelaDisponiveis() {
@@ -432,19 +470,31 @@ function renderizarTabelaTodos() {
         return;
     }
 
-    tbody.innerHTML = dadosTodosFiltrados.map(item => `
-        <tr>
-            <td><strong>${item.leito || '-'}</strong></td>
-            <td>${item.setor || '-'}</td>
-            <td>${formatarStatusLeito(item.status_leito, item.status_leito_desc)}</td>
-            <td>${item.paciente || '-'}</td>
-            <td>${item.idade || '-'}</td>
-            <td>${item.convenio || '-'}</td>
-            <td>${item.medico || '-'}</td>
-            <td>${item.dias_internado || '-'}</td>
-            <td>${item.tipo_acomodacao || '-'}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = dadosTodosFiltrados.map(item => {
+        // Define classe de gênero (apenas para leitos ocupados)
+        let classeGenero = '';
+        if (item.paciente) { // Se tem paciente, está ocupado
+            if (item.sexo === 'M') {
+                classeGenero = 'genero-masculino';
+            } else if (item.sexo === 'F') {
+                classeGenero = 'genero-feminino';
+            }
+        }
+
+        return `
+            <tr class="${classeGenero}">
+                <td><strong>${item.leito || '-'}</strong></td>
+                <td>${item.setor || '-'}</td>
+                <td>${formatarStatusLeito(item.status_leito, item.status_leito_desc)}</td>
+                <td>${item.paciente || '-'}</td>
+                <td>${item.idade || '-'}</td>
+                <td>${item.convenio || '-'}</td>
+                <td>${item.medico || '-'}</td>
+                <td>${item.dias_internado || '-'}</td>
+                <td>${item.tipo_acomodacao || '-'}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // ========================================
@@ -552,146 +602,140 @@ function atualizarIconesOrdenacao(campoAtivo) {
 }
 
 // ========================================
-// 🎬 AUTO SCROLL (CORRIGIDO)
+// 🎬 AUTO SCROLL - VERSÃO DEFINITIVA
 // ========================================
 
 function configurarAutoScroll() {
     const btnAutoScroll = document.getElementById('btn-auto-scroll');
-    if (!btnAutoScroll) {
-        console.warn('⚠️ Botão auto-scroll não encontrado');
+    const container = document.querySelector('.table-container');
+
+    if (!btnAutoScroll || !container) {
+        console.warn('⚠️ Elementos de auto-scroll não encontrados');
         return;
     }
 
     console.log('✅ Configurando auto-scroll...');
 
+    // Botão manual de controle
     btnAutoScroll.addEventListener('click', () => {
         autoScrollAtivo = !autoScrollAtivo;
 
         if (autoScrollAtivo) {
             btnAutoScroll.classList.add('active');
             btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-
-            // ✅ CORREÇÃO: Busca o container correto da aba ativa
-            const container = document.querySelector('.tab-pane.active .table-container');
-            if (container) {
-                container.scrollTop = 0; // Reseta posição
-                iniciarAutoScroll(container);
-                console.log('▶️ Auto-scroll ATIVADO manualmente');
-            } else {
-                console.error('❌ Container não encontrado');
-            }
+            iniciarAutoScroll(container);
+            console.log('▶️ Auto-scroll ativado manualmente');
         } else {
             btnAutoScroll.classList.remove('active');
             btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
             pararAutoScroll();
-            console.log('⏸️ Auto-scroll PAUSADO');
+            console.log('⏸️ Auto-scroll pausado');
         }
     });
 
-    // ✅ CORREÇÃO: Ativa automaticamente após 5 segundos
+    // Ativa automaticamente após 5 segundos
     setTimeout(() => {
         if (!autoScrollAtivo) {
-            console.log('🚀 Ativando auto-scroll automaticamente em 5s...');
-
-            const container = document.querySelector('.tab-pane.active .table-container');
-            if (container) {
-                autoScrollAtivo = true;
-                btnAutoScroll.classList.add('active');
-                btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                container.scrollTop = 0;
-                iniciarAutoScroll(container);
-                console.log('▶️ Auto-scroll iniciado AUTOMATICAMENTE!');
-            } else {
-                console.error('❌ Container não encontrado para auto-start');
-            }
+            console.log('🚀 Ativando auto-scroll automaticamente...');
+            autoScrollAtivo = true;
+            btnAutoScroll.classList.add('active');
+            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+            iniciarAutoScroll(container);
+            console.log('▶️ Auto-scroll INICIADO automaticamente!');
         }
     }, 5000);
 }
 
 function iniciarAutoScroll(container) {
-    if (!container) {
-        console.error('❌ Container inválido para auto-scroll');
-        return;
-    }
-
-    pararAutoScroll();
+    pararAutoScroll(); // Limpa qualquer interval anterior
 
     let emPausa = false;
-    let ciclos = 0;
+    let aguardandoReinicio = false;
 
-    console.log('🎬 Iniciando loop de auto-scroll...');
+    console.log('🎬 Iniciando ciclo de auto-scroll...');
 
     intervaloAutoScroll = setInterval(() => {
-        if (!autoScrollAtivo) {
-            console.log('⏸️ Auto-scroll desativado - parando loop');
-            return;
+        // Se não está ativo ou em pausa, não faz nada
+        if (!autoScrollAtivo || emPausa || aguardandoReinicio) return;
+
+        // Identifica aba ativa DINAMICAMENTE
+        const abaAtiva = document.querySelector('.tab-button.active')?.getAttribute('data-tab');
+        let tbody;
+
+        if (abaAtiva === 'leitos-ocupados') {
+            tbody = document.getElementById('tbody-ocupados');
+        } else if (abaAtiva === 'leitos-disponiveis') {
+            tbody = document.getElementById('tbody-disponiveis');
+        } else if (abaAtiva === 'todos-leitos') {
+            tbody = document.getElementById('tbody-todos');
         }
 
-        if (emPausa) {
-            return;
-        }
-
-        // ✅ CORREÇÃO: Busca tbody da aba ativa
-        const abaAtiva = document.querySelector('.tab-pane.active');
-        if (!abaAtiva) {
-            console.warn('⚠️ Nenhuma aba ativa encontrada');
-            return;
-        }
-
-        const tbody = abaAtiva.querySelector('tbody');
-        if (!tbody) {
-            console.warn('⚠️ Tbody não encontrado');
+        // Valida se tbody existe e está visível
+        if (!tbody || tbody.offsetParent === null) {
             return;
         }
 
         const linhas = tbody.getElementsByTagName('tr');
 
-        if (!linhas || linhas.length === 0) {
-            console.warn('⚠️ Nenhuma linha encontrada na tabela');
+        // Valida se tem linhas válidas
+        if (!linhas || linhas.length === 0 || linhas[0].querySelector('.empty-message, .loading')) {
             return;
         }
 
         const scrollAtual = container.scrollTop;
-        const scrollMax = container.scrollHeight - container.clientHeight;
+        let scrollMax;
 
-        // Debug a cada 100 ciclos
-        if (ciclos % 100 === 0) {
-            console.log(`📊 Scroll: ${Math.round(scrollAtual)}/${Math.round(scrollMax)} | Linhas: ${linhas.length}`);
+        // Calcula até onde scrollar
+        if (linhas.length <= CONFIG.limiteLinhas) {
+            scrollMax = container.scrollHeight - container.clientHeight;
+        } else {
+            const linha30 = linhas[CONFIG.limiteLinhas - 1];
+            if (!linha30) {
+                scrollMax = container.scrollHeight - container.clientHeight;
+            } else {
+                const posicaoLinha30 = linha30.offsetTop + linha30.offsetHeight;
+                scrollMax = posicaoLinha30 - container.clientHeight + 50;
+            }
         }
-        ciclos++;
 
-        // ✅ Chegou no final
+        // Chegou no final?
         if (scrollAtual >= scrollMax - 10) {
-            console.log('🏁 Chegou no final - Aguardando 2s e voltando ao topo...');
+            console.log('⏸️ Chegou no final! Pausando 2s...');
             emPausa = true;
 
+            // Pausa 2 segundos
             setTimeout(() => {
-                if (autoScrollAtivo) {
-                    container.scrollTop = 0;
-                    console.log('🔄 Voltou ao topo - Aguardando 5s para reiniciar...');
+                if (!autoScrollAtivo) return;
 
-                    setTimeout(() => {
+                console.log('🔄 Resetando para o topo...');
+                container.scrollTop = 0;
+                aguardandoReinicio = true;
+
+                // Aguarda 5 segundos antes de recomeçar
+                setTimeout(() => {
+                    if (autoScrollAtivo) {
+                        aguardandoReinicio = false;
                         emPausa = false;
-                        ciclos = 0;
-                        console.log('▶️ Reiniciando auto-scroll!');
-                    }, 5000); // Pausa 5s no topo antes de recomeçar
-                }
+                        console.log('▶️ Reiniciando scroll após 5s!');
+                    }
+                }, 5000);
+
             }, CONFIG.pausaNaLinha100);
 
             return;
         }
 
-        // ✅ Continua scrollando suavemente
+        // Continua scrollando
         container.scrollTop += CONFIG.velocidadeScroll;
 
-    }, 50); // A cada 50ms
+    }, 50); // Executa a cada 50ms
 }
 
 function pararAutoScroll() {
     if (intervaloAutoScroll) {
         clearInterval(intervaloAutoScroll);
         intervaloAutoScroll = null;
-        console.log('🛑 Intervalo de auto-scroll limpo');
+        console.log('🛑 Auto-scroll parado');
     }
 }
 
