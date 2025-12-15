@@ -1111,13 +1111,22 @@ def api_painel5_dashboard():
     try:
         cursor = conn.cursor()
 
-        # ✅ CORREÇÃO: Usar a VIEW ao invés da tabela
+        # ✅ Match exato com acentuação do Oracle
         query = """
             SELECT 
                 COUNT(*) as total_cirurgias,
-                COUNT(*) FILTER (WHERE ie_status_cirurgia in (-1, 1)) as cirurgias_previstas,
-                COUNT(*) FILTER (WHERE ie_status_cirurgia NOT IN (-1, 1, 2)) as cirurgias_andamento,
-                COUNT(*) FILTER (WHERE ie_status_cirurgia = 2) as cirurgias_realizadas
+                COUNT(*) FILTER (
+                    WHERE evento = 'Sem status' 
+                    OR nr_cirurgia IS NULL
+                ) as cirurgias_previstas,
+                COUNT(*) FILTER (
+                    WHERE evento IN ('Entrada Paciente CC', 'Inicio da Cirurgia', 'Entrada no RPA') 
+                    AND nr_cirurgia IS NOT NULL
+                ) as cirurgias_andamento,
+                COUNT(*) FILTER (
+                    WHERE evento IN ('Sáida do RPA', 'Saida do RPA', 'Saida do CC') 
+                    AND nr_cirurgia IS NOT NULL
+                ) as cirurgias_realizadas
             FROM vw_cirurgias_dia
         """
 
@@ -1174,55 +1183,69 @@ def api_painel5_cirurgias():
     try:
         cursor = conn.cursor()
 
-        # Busca todas as cirurgias ordenadas
         query = """
             SELECT 
-                id,
-                grupo_dia,
-                data_formatada,
-                data_cirurgia,
-                hr_inicio,
-                previsao_termino,
-                setor_cirurgia,
-                nm_paciente_pf,
-                nm_medico,
-                ds_proc_cir,
-                ie_status_cirurgia,
-                ds_status,
-                ds_convenio,
-                ds_idade_abrev,
+                dt_agenda,
+                ds_agenda,
+                cd_agenda,
                 nr_minuto_duracao,
+                nm_paciente_pf,
+                ds_convenio,
+                nm_medico,
+                ds_idade_abrev,
+                setor_cirurgia,
                 nm_instrumentador,
                 nm_circulante,
+                dt_entrada_tasy,
                 nr_atendimento,
-                nr_cirurgia
+                nr_cirurgia,
+                cd_pessoa_fisica,
+                nr_sequencia,
+                ie_origem_proced,
+                ie_tipo_classif,
+                unidade_atendimento,
+                ds_tipo_atendimento,
+                hr_inicio,
+                previsao_termino,
+                nr_seq_proc_interno,
+                ie_cancelada,
+                nr_prescr_agenda,
+                ds_proc_cir,
+                evento,
+                ie_status_cirurgia,
+                ds_status,
+                nr_prescricao,
+                ie_tipo_atendimento,
+                cd_medico,
+                cd_procedimento,
+                ds_carater_cirurgia,
+                dt_carga,
+                timestamp_completo,
+                periodo_dia
             FROM vw_cirurgias_dia
-            ORDER BY data_cirurgia ASC, hr_inicio ASC
+            ORDER BY dt_agenda ASC, hr_inicio ASC
         """
 
         cursor.execute(query)
         colunas = [desc[0] for desc in cursor.description]
         cirurgias = [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
-        # Agrupa cirurgias por dia
         cirurgias_agrupadas = {}
         for cirurgia in cirurgias:
-            dia = cirurgia['data_formatada']
-            grupo = cirurgia['grupo_dia']
+            dia_key = cirurgia['dt_agenda'].strftime('%d/%m/%Y') if cirurgia['dt_agenda'] else 'Sem data'
 
-            if dia not in cirurgias_agrupadas:
-                cirurgias_agrupadas[dia] = {
-                    'data': dia,
-                    'grupo': grupo,
+            if dia_key not in cirurgias_agrupadas:
+                cirurgias_agrupadas[dia_key] = {
+                    'data': dia_key,
+                    'grupo': f"{dia_key} - {cirurgia['periodo_dia']}",
                     'cirurgias': []
                 }
 
-            cirurgias_agrupadas[dia]['cirurgias'].append(cirurgia)
+            cirurgias_agrupadas[dia_key]['cirurgias'].append(cirurgia)
 
-        # Converte para lista ordenada
         resultado = sorted(
             cirurgias_agrupadas.values(),
-            key=lambda x: cirurgias[0]['data_cirurgia'] if cirurgias else datetime.now()
+            key=lambda x: x['data']
         )
 
         cursor.close()
