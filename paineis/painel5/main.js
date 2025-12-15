@@ -573,6 +573,13 @@ function obterIconeStatus(status) {
         };
     }
 
+        if (statusNum === 1) {
+        return {
+            classe: 'status-prevista',
+            icone: 'fas fa-clock'
+        };
+    }
+
     return {
         classe: 'status-andamento',
         icone: 'fas fa-heartbeat'

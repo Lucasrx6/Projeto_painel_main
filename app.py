@@ -1115,8 +1115,8 @@ def api_painel5_dashboard():
         query = """
             SELECT 
                 COUNT(*) as total_cirurgias,
-                COUNT(*) FILTER (WHERE ie_status_cirurgia = -1) as cirurgias_previstas,
-                COUNT(*) FILTER (WHERE ie_status_cirurgia NOT IN (-1, 2)) as cirurgias_andamento,
+                COUNT(*) FILTER (WHERE ie_status_cirurgia in (-1, 1)) as cirurgias_previstas,
+                COUNT(*) FILTER (WHERE ie_status_cirurgia NOT IN (-1, 1, 2)) as cirurgias_andamento,
                 COUNT(*) FILTER (WHERE ie_status_cirurgia = 2) as cirurgias_realizadas
             FROM vw_cirurgias_dia
         """
