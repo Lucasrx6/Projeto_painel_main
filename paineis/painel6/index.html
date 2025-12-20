@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Priorização Clínica - Anchieta Ceilândia</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- CSS (mesmo padrão do painel5) -->
+  <link rel="stylesheet" href="/paineis/painel6/style.css">
+  <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+  <div class="painel-container">
+    <!-- Cabeçalho Compacto -->
+    <div class="painel-header">
+      <div class="header-content">
+        <div class="header-left">
+          <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
+          <h1><i class="fas fa-triangle-exclamation"></i> Priorização Clínica</h1>
+        </div>
+        <div class="header-right">
+          <button id="btn-voltar" class="btn-voltar">
+            <i class="fas fa-arrow-left"></i> Voltar
+          </button>
+
+          <button id="btn-auto-scroll" class="btn-auto-scroll">
+            <i class="fas fa-play"></i> Auto Scroll
+          </button>
+
+          <button id="btn-refresh" class="btn-refresh">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+
+          <span class="ultima-atualizacao">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini Dashboard -->
+    <div class="mini-dashboard">
+      <div class="stat-card">
+        <div class="stat-icon icon-total">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-pacientes">-</h3>
+          <p>Total</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-critico">
+          <i class="fas fa-skull-crossbones"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-critico">-</h3>
+          <p>Crítico</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-alto">
+          <i class="fas fa-triangle-exclamation"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-alto">-</h3>
+          <p>Alto</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-moderado">
+          <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-moderado">-</h3>
+          <p>Moderado</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo -->
+    <div class="cirurgias-content" id="painel6-content">
+      <!-- Linha de filtros (compacta) -->
+      <div class="filtros-bar">
+        <div class="filtros-left">
+          <div class="filtro">
+            <label for="filtro-setor"><i class="fas fa-hospital"></i></label>
+            <input id="filtro-setor" type="text" placeholder="Filtrar setor (ex: UTI, Clínica...)" />
+          </div>
+          <div class="filtro">
+            <label for="filtro-convenio"><i class="fas fa-id-card"></i></label>
+            <input id="filtro-convenio" type="text" placeholder="Filtrar convênio" />
+          </div>
+          <div class="filtro">
+            <label for="filtro-risco"><i class="fas fa-bolt"></i></label>
+            <select id="filtro-risco">
+              <option value="">Risco (todos)</option>
+              <option value="Crítico">Crítico</option>
+              <option value="Alto">Alto</option>
+              <option value="Moderado">Moderado</option>
+              <option value="Baixo">Baixo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filtros-right">
+          <button id="btn-limpar" class="btn-secondary">
+            <i class="fas fa-eraser"></i> Limpar
+          </button>
+          <button id="btn-aplicar" class="btn-secondary">
+            <i class="fas fa-filter"></i> Aplicar
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading inicial -->
+      <div class="loading-container" id="loading">
+        <div class="loading-spinner"></div>
+        <p>Carregando priorização...</p>
+      </div>
+
+      <!-- Tabela -->
+      <div class="grupo-dia" id="grupo-unico" style="display:none;">
+        <div class="grupo-dia-header">
+          <i class="fas fa-list-ol"></i>
+          Prioridade por Score (vw_painel_clinico_risco)
+          <span class="grupo-dia-badge" id="badge-qtd">-</span>
+        </div>
+
+        <div class="cirurgias-table-wrapper">
+          <table class="cirurgias-table">
+            <thead>
+              <tr>
+                <th>Risco</th>
+                <th>Paciente</th>
+                <th>Setor / Leito</th>
+                <th>Score</th>
+                <th>Sinais Vitais</th>
+                <th>Labs</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-body">
+              <!-- rows via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mensagem vazia -->
+      <div class="empty-message" id="empty" style="display:none;">
+        <i class="fas fa-inbox"></i>
+        <h3>Nenhum paciente encontrado</h3>
+        <p>Verifique os filtros ou aguarde a próxima atualização.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de detalhes -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fas fa-user-injured"></i>
+          <span id="modal-title-text">Detalhes do Paciente</span>
+        </div>
+        <button class="modal-close" id="modal-close" title="Fechar">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" id="modal-body">
+        <div class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Carregando detalhes...</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" id="modal-fechar">
+          <i class="fas fa-times"></i> Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/paineis/painel6/main.js"></script>
+</body>
+</html>

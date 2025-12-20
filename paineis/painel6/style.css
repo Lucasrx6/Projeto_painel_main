@@ -1,0 +1,633 @@
+/* ========================================
+   🎨 PAINEL 6: PRIORIZAÇÃO CLÍNICA - PADRÃO PAINEL5
+   ======================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #f5f7fa;
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+
+.painel-container {
+  background: white;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ========================================
+   🎯 CABEÇALHO ULTRA COMPACTO
+   ======================================== */
+
+.painel-header {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  padding: 8px 15px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-left img {
+  max-height: 30px;
+  padding: 4px 6px;
+  background: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.painel-header h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.painel-header h1 i { font-size: 0.9rem; }
+
+.header-right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Botões do Header */
+.btn-voltar, .btn-refresh, .btn-auto-scroll {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 2px solid white;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.btn-voltar i, .btn-refresh i, .btn-auto-scroll i { font-size: 0.75rem; }
+
+.btn-voltar:hover, .btn-refresh:hover, .btn-auto-scroll:hover {
+  background: white;
+  color: #dc3545;
+  transform: translateY(-2px);
+}
+
+.btn-auto-scroll.active {
+  background: #28a745;
+  border-color: #28a745;
+  animation: pulse-auto-scroll 2s infinite;
+}
+
+@keyframes pulse-auto-scroll {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(40,167,69,0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(40,167,69,0); }
+}
+
+.ultima-atualizacao { font-size: 0.7rem; opacity: 0.9; }
+
+/* ========================================
+   📊 MINI DASHBOARD COMPACTO
+   ======================================== */
+
+.mini-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px 15px;
+  background: white;
+  border-bottom: 2px solid #e9ecef;
+  flex-shrink: 0;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.3s ease;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+
+.stat-icon {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stat-icon i { font-size: 1.3rem; color: white; }
+
+/* Cores dos ícones */
+.icon-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.icon-critico { background: linear-gradient(135deg, #343a40 0%, #000 100%); }
+.icon-alto { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+.icon-moderado { background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); }
+
+.stat-info h3 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+  line-height: 1;
+}
+.stat-info p { font-size: 0.75rem; color: #666; margin: 3px 0 0 0; }
+
+/* ========================================
+   📋 CONTEÚDO
+   ======================================== */
+
+.cirurgias-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 10px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ========================================
+   🔎 FILTROS
+   ======================================== */
+
+.filtros-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.filtros-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #f8f9fa;
+}
+
+.filtro label {
+  color: #dc3545;
+  font-size: 0.85rem;
+}
+
+.filtro input, .filtro select {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.8rem;
+  min-width: 220px;
+}
+.filtro select { min-width: 170px; }
+
+.filtros-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-secondary {
+  background: rgba(220, 53, 69, 0.08);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background: #dc3545;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   📅 GRUPO (bloco único)
+   ======================================== */
+
+.grupo-dia {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.grupo-dia-header {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.grupo-dia-header i { font-size: 0.9rem; }
+
+.grupo-dia-badge {
+  background: rgba(255,255,255,0.25);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+/* ========================================
+   📊 TABELA (padrão painel5)
+   ======================================== */
+
+.cirurgias-table-wrapper { flex: 1; min-height: 0; overflow: hidden; background: white; }
+.cirurgias-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+/* THEAD fixo */
+.cirurgias-table thead { display: table; width: 100%; table-layout: fixed; }
+.cirurgias-table thead th {
+  padding: 10px 8px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Larguras */
+.cirurgias-table thead th:nth-child(1) { width: 120px; } /* risco */
+.cirurgias-table thead th:nth-child(2) { width: 22%; }  /* paciente */
+.cirurgias-table thead th:nth-child(3) { width: 18%; }  /* setor/leito */
+.cirurgias-table thead th:nth-child(4) { width: 110px; }/* score */
+.cirurgias-table thead th:nth-child(5) { width: 30%; }  /* vitais */
+.cirurgias-table thead th:nth-child(6) { width: calc(30% - 230px); } /* labs (resto) */
+
+.cirurgias-table tbody {
+  display: block;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.cirurgias-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+}
+.cirurgias-table tbody tr:hover { background: #fff5f5; }
+
+.cirurgias-table tbody td {
+  padding: 10px 8px;
+  font-size: 0.8rem;
+  color: #333;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mesmas larguras do thead */
+.cirurgias-table tbody td:nth-child(1) { width: 120px; }
+.cirurgias-table tbody td:nth-child(2) { width: 22%; }
+.cirurgias-table tbody td:nth-child(3) { width: 18%; }
+.cirurgias-table tbody td:nth-child(4) { width: 110px; }
+.cirurgias-table tbody td:nth-child(5) { width: 30%; }
+.cirurgias-table tbody td:nth-child(6) { width: calc(30% - 230px); }
+
+/* Scrollbar */
+.cirurgias-table tbody::-webkit-scrollbar { width: 6px; }
+.cirurgias-table tbody::-webkit-scrollbar-track { background: #f1f1f1; }
+.cirurgias-table tbody::-webkit-scrollbar-thumb { background: #dc3545; border-radius: 3px; }
+
+/* ========================================
+   🧠 BADGES E TEXTOS
+   ======================================== */
+
+.paciente-nome {
+  font-weight: 700;
+  color: #333;
+  font-size: 0.8rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paciente-info {
+  color: #6c757d;
+  font-size: 0.7rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.badge-setor {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.badge-score {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #dc3545;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Risco */
+.risco-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  border: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.risco-critico {
+  background: #212529;
+  color: #fff;
+  border-color: #000;
+  animation: pulse-critico 2s infinite;
+}
+@keyframes pulse-critico {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(33,37,41,0.55); }
+  50% { box-shadow: 0 0 0 10px rgba(33,37,41,0); }
+}
+
+.risco-alto {
+  background: #f8d7da;
+  color: #842029;
+  border-color: #dc3545;
+}
+
+.risco-moderado {
+  background: #fff3cd;
+  color: #664d03;
+  border-color: #ffc107;
+}
+
+.risco-baixo {
+  background: #d4edda;
+  color: #155724;
+  border-color: #28a745;
+}
+
+/* Blocos compactos de vitais/labs */
+.kv {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 0.72rem;
+  color: #495057;
+  line-height: 1.2;
+}
+.kv span {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 4px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.kv b { color: #dc3545; }
+
+/* ========================================
+   ⏳ LOADING / EMPTY
+   ======================================== */
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #dc3545;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #dc3545;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+.loading-container p { font-size: 1rem; color: #666; font-weight: 500; }
+
+.empty-message {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+.empty-message i {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  display: block;
+  color: #ccc;
+}
+.empty-message h3 { font-size: 1.3rem; margin-bottom: 10px; color: #333; }
+.empty-message p { font-size: 1rem; color: #666; }
+
+/* ========================================
+   🪟 MODAL
+   ======================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 9999;
+}
+
+.modal {
+  width: min(1100px, 98vw);
+  max-height: 92vh;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: #fff;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.modal-close {
+  background: rgba(255,255,255,0.2);
+  border: 2px solid #fff;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.modal-close:hover { background: #fff; color: #dc3545; }
+
+.modal-body {
+  padding: 12px;
+  overflow: auto;
+}
+
+.modal-footer {
+  padding: 10px 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.detalhes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+}
+
+.card h4 {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #dc3545;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card .kv { font-size: 0.75rem; }
+
+/* ========================================
+   📱 RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 1200px) {
+  .mini-dashboard { grid-template-columns: repeat(2, 1fr); }
+  .filtro input { min-width: 180px; }
+  .detalhes-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 868px) {
+  .painel-header { padding: 6px 12px; }
+  .header-left img { max-height: 26px; }
+  .painel-header h1 { font-size: 0.85rem; }
+
+  .mini-dashboard { grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 8px 12px; }
+  .stat-card { padding: 8px; }
+  .stat-icon { width: 38px; height: 38px; }
+  .stat-icon i { font-size: 1.1rem; }
+  .stat-info h3 { font-size: 1.4rem; }
+  .stat-info p { font-size: 0.7rem; }
+
+  .cirurgias-content { padding: 8px 12px; }
+  .grupo-dia-header { font-size: 0.8rem; padding: 6px 10px; }
+  .cirurgias-table thead th { font-size: 0.6rem; padding: 6px 4px; }
+  .cirurgias-table tbody td { font-size: 0.65rem; padding: 6px 4px; }
+}
+
+@media (max-width: 480px) {
+  .mini-dashboard { grid-template-columns: 1fr; }
+  .filtros-bar { flex-direction: column; align-items: stretch; }
+  .filtros-right { justify-content: flex-end; }
+}

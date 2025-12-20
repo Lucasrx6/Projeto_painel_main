@@ -426,7 +426,7 @@ function obterIconeStatus(evento, nr_cirurgia) {
             classe: 'status-entrada-rpa',
             icone: 'fas fa-bed',
             titulo: 'Entrada no RPA',
-            texto: 'Término de Cirurgia'
+            texto: 'Recuperação Pós Antestesica'
         };
     }
 

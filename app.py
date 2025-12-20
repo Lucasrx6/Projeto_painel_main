@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 from functools import wraps
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 from backend.database import get_db_connection, init_db
 from backend.auth import verificar_usuario, criar_usuario
@@ -62,6 +62,7 @@ def setup_logging():
     app.logger.addHandler(console_handler)
     app.logger.setLevel(log_level)
 
+    # evita duplicação de logs no console
     app.logger.handlers = [h for h in app.logger.handlers
                            if not isinstance(h, logging.StreamHandler)
                            or h == console_handler]
@@ -343,6 +344,311 @@ def serve_painel_files(painel_nome, path):
     return send_from_directory(f'paineis/{painel_nome}', path)
 
 
+# =========================================================
+# ✅ PAINEL 6 - PRIORIZAÇÃO CLÍNICA (VITAIS + LABS)
+# =========================================================
+
+@app.route('/painel/painel6')
+@login_required
+def painel6():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel6'):
+            app.logger.warning(f'Acesso negado ao painel6: {session.get("usuario")}')
+            return send_from_directory('frontend', 'acesso-negado.html')
+
+    # Você vai criar esse arquivo: paineis/painel6/index.html
+    return send_from_directory('paineis/painel6', 'index.html')
+
+
+@app.route('/api/paineis/painel6/dashboard', methods=['GET'])
+@login_required
+def api_painel6_dashboard():
+    """
+    Retorna cards de resumo:
+    - total pacientes na view
+    - contagem por nivel_risco_total
+    - média score_total
+    - última dt_carga
+    Filtros opcionais via querystring:
+      ?setor=...&convenio=...
+    """
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel6'):
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
+
+    setor = request.args.get('setor')
+    convenio = request.args.get('convenio')
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
+
+    try:
+        cursor = conn.cursor()
+
+        where = []
+        params = []
+
+        if setor:
+            where.append("nm_setor ILIKE %s")
+            params.append(f"%{setor}%")
+
+        if convenio:
+            where.append("ds_convenio ILIKE %s")
+            params.append(f"%{convenio}%")
+
+        where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+
+        query = f"""
+            SELECT
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE nivel_risco_total = 'Crítico')  AS critico,
+                COUNT(*) FILTER (WHERE nivel_risco_total = 'Alto')     AS alto,
+                COUNT(*) FILTER (WHERE nivel_risco_total = 'Moderado') AS moderado,
+                COUNT(*) FILTER (WHERE nivel_risco_total = 'Baixo')    AS baixo,
+                ROUND(AVG(score_total)::numeric, 2) AS media_score_total,
+                MAX(dt_carga) AS ultima_carga
+            FROM public.vw_painel_clinico_risco
+            {where_sql}
+        """
+
+        cursor.execute(query, params)
+        row = cursor.fetchone()
+
+        data = {
+            'total': row[0] or 0,
+            'critico': row[1] or 0,
+            'alto': row[2] or 0,
+            'moderado': row[3] or 0,
+            'baixo': row[4] or 0,
+            'media_score_total': float(row[5]) if row[5] is not None else 0,
+            'ultima_carga': row[6].isoformat() if row[6] else None
+        }
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'data': data, 'timestamp': datetime.now().isoformat()})
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar dashboard painel6: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+
+
+@app.route('/api/paineis/painel6/lista', methods=['GET'])
+@login_required
+def api_painel6_lista():
+    """
+    Lista priorizada para a tela principal.
+
+    Query params:
+      - setor: filtra nm_setor (ILIKE)
+      - convenio: filtra ds_convenio (ILIKE)
+      - risco: filtra nivel_risco_total (ex: Critico/Alto/Moderado/Baixo)
+      - limit: default 200
+      - offset: default 0
+    """
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel6'):
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
+
+    setor = request.args.get('setor')
+    convenio = request.args.get('convenio')
+    risco = request.args.get('risco')
+    limit = request.args.get('limit', default=200, type=int)
+    offset = request.args.get('offset', default=0, type=int)
+
+    # limites defensivos
+    limit = max(1, min(limit, 1000))
+    offset = max(0, offset)
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
+
+    try:
+        cursor = conn.cursor()
+
+        where = []
+        params = []
+
+        if setor:
+            where.append("nm_setor ILIKE %s")
+            params.append(f"%{setor}%")
+
+        if convenio:
+            where.append("ds_convenio ILIKE %s")
+            params.append(f"%{convenio}%")
+
+        if risco:
+            # aceita variações: "critico" / "Crítico"
+            risco_norm = risco.strip().lower()
+            if risco_norm in ['critico', 'crítico']:
+                where.append("nivel_risco_total = 'Crítico'")
+            elif risco_norm == 'alto':
+                where.append("nivel_risco_total = 'Alto'")
+            elif risco_norm == 'moderado':
+                where.append("nivel_risco_total = 'Moderado'")
+            elif risco_norm == 'baixo':
+                where.append("nivel_risco_total = 'Baixo'")
+            else:
+                # fallback: substring
+                where.append("nivel_risco_total ILIKE %s")
+                params.append(f"%{risco}%")
+
+        where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+
+        # Seleciona colunas principais (não precisa mandar tudo)
+        query = f"""
+            SELECT
+                nr_atendimento,
+                nm_pessoa_fisica,
+                nm_setor,
+                cd_unidade,
+                ds_convenio,
+                dt_nascimento,
+                ie_sexo,
+
+                score_vital,
+                score_lab,
+                score_total,
+                nivel_risco_total,
+
+                qt_pa_sistolica,
+                qt_pa_diastolica,
+                qt_pam,
+                qt_freq_cardiaca,
+                qt_freq_resp,
+                qt_temp,
+                qt_saturacao_o2,
+                qt_glicemia_capilar,
+                qt_escala_dor,
+
+                exm_creatinina,
+                exm_ureia,
+                exm_sodio,
+                exm_potassio,
+                exm_lactato_art,
+                exm_lactato_ven,
+                exm_troponina,
+                exm_dimero_d,
+                exm_leucocitos,
+                exm_hemoglobina,
+
+                resumo_clinico_basico,
+                dt_carga
+            FROM public.vw_painel_clinico_risco
+            {where_sql}
+            ORDER BY score_total DESC NULLS LAST, dt_carga DESC NULLS LAST
+            LIMIT %s OFFSET %s
+        """
+
+        params.extend([limit, offset])
+        cursor.execute(query, params)
+
+        colunas = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+
+        data = []
+        for row in rows:
+            registro = dict(zip(colunas, row))
+            # serialização segura
+            if registro.get('dt_carga'):
+                registro['dt_carga'] = registro['dt_carga'].isoformat()
+            if registro.get('dt_nascimento'):
+                # dt_nascimento pode ser date
+                registro['dt_nascimento'] = registro['dt_nascimento'].isoformat()
+            data.append(registro)
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': data,
+            'total': len(data),
+            'limit': limit,
+            'offset': offset,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar lista painel6: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+
+
+@app.route('/api/paineis/painel6/paciente/<int:nr_atendimento>', methods=['GET'])
+@login_required
+def api_painel6_paciente(nr_atendimento):
+    """
+    Detalhe de um atendimento específico para modal/tela de detalhes.
+    """
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel6'):
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
+
+    try:
+        cursor = conn.cursor()
+
+        query = """
+            SELECT *
+            FROM public.vw_painel_clinico_risco
+            WHERE nr_atendimento = %s
+            ORDER BY dt_carga DESC NULLS LAST
+            LIMIT 1
+        """
+        cursor.execute(query, (nr_atendimento,))
+        row = cursor.fetchone()
+
+        if not row:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Atendimento não encontrado'}), 404
+
+        colunas = [desc[0] for desc in cursor.description]
+        registro = dict(zip(colunas, row))
+
+        # serialização
+        for k, v in list(registro.items()):
+            if hasattr(v, 'isoformat'):
+                registro[k] = v.isoformat()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'data': registro, 'timestamp': datetime.now().isoformat()})
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar paciente painel6: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+
+
+# ==========================================
+# 🩺 PAINEL 2 - EVOLUÇÃO DE TURNO (existente)
+# ==========================================
+
 @app.route('/api/paineis/painel2/evolucoes', methods=['GET'])
 @login_required
 def get_evolucoes():
@@ -368,42 +674,42 @@ def get_evolucoes():
 
         query = """
 WITH turno_atual AS (
-    SELECT 
-        CASE 
-            WHEN EXTRACT(HOUR FROM CURRENT_TIME) >= 7 
-                 AND EXTRACT(HOUR FROM CURRENT_TIME) < 19 
+    SELECT
+        CASE
+            WHEN EXTRACT(HOUR FROM CURRENT_TIME) >= 7
+                 AND EXTRACT(HOUR FROM CURRENT_TIME) < 19
             THEN 'DIURNO'
             ELSE 'NOTURNO'
         END as turno_prioritario
 )
-SELECT 
-    e.nr_atendimento, 
-    e.ds_convenio, 
-    e.nm_paciente, 
-    e.idade, 
-    e.dt_entrada, 
-    e.medico_responsavel, 
-    e.medico_atendimento, 
-    e.dias_internado, 
+SELECT
+    e.nr_atendimento,
+    e.ds_convenio,
+    e.nm_paciente,
+    e.idade,
+    e.dt_entrada,
+    e.medico_responsavel,
+    e.medico_atendimento,
+    e.dias_internado,
     e.data_turno as data_turno,
-    e.turno, 
-    e.setor, 
-    e.unidade, 
-    e.dt_admissao_unidade, 
-    e.evol_medico, 
-    e.evol_enfermeiro, 
-    e.evol_tec_enfermagem, 
-    e.evol_nutricionista, 
-    e.evol_fisioterapeuta, 
+    e.turno,
+    e.setor,
+    e.unidade,
+    e.dt_admissao_unidade,
+    e.evol_medico,
+    e.evol_enfermeiro,
+    e.evol_tec_enfermagem,
+    e.evol_nutricionista,
+    e.evol_fisioterapeuta,
     e.dt_carga,
-    CASE 
+    CASE
         WHEN e.turno = (SELECT turno_prioritario FROM turno_atual) THEN 0
         ELSE 1
     END as prioridade_turno
 FROM public.evolucao_turno e
 CROSS JOIN turno_atual
 WHERE e.setor IS NOT NULL
-ORDER BY 
+ORDER BY
     TO_DATE(e.data_turno, 'DD/MM/YYYY') DESC,
     prioridade_turno ASC,
     e.turno ASC,
@@ -489,7 +795,7 @@ def get_medicos_ps():
 
 
 # ==========================================
-# 🏥 ROTAS DO PAINEL 4 - OCUPAÇÃO HOSPITALAR
+# 🏥 ROTAS DO PAINEL 4 - OCUPAÇÃO HOSPITALAR (existente)
 # ==========================================
 
 @app.route('/painel/painel4')
@@ -520,7 +826,6 @@ def painel4_detalhes():
     return send_from_directory('paineis/painel4', 'detalhes.html')
 
 
-# API: Dashboard - Estatísticas Gerais
 @app.route('/api/paineis/painel4/dashboard', methods=['GET'])
 @login_required
 def api_painel4_dashboard():
@@ -529,24 +834,15 @@ def api_painel4_dashboard():
 
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel4'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
 
     try:
         cursor = conn.cursor()
-
-        # Usa a view criada para estatísticas gerais
         cursor.execute("SELECT * FROM vw_ocupacao_dashboard")
-
         colunas = [desc[0] for desc in cursor.description]
         resultado = cursor.fetchone()
 
@@ -579,13 +875,9 @@ def api_painel4_dashboard():
         app.logger.error(f'Erro ao buscar dashboard painel4: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
-# API: Ocupação por Setor
 @app.route('/api/paineis/painel4/setores', methods=['GET'])
 @login_required
 def api_painel4_setores():
@@ -594,22 +886,14 @@ def api_painel4_setores():
 
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel4'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
 
     try:
         cursor = conn.cursor()
-
-        # Usa a view para estatísticas por setor
         cursor.execute("SELECT * FROM vw_ocupacao_por_setor")
 
         colunas = [desc[0] for desc in cursor.description]
@@ -629,13 +913,9 @@ def api_painel4_setores():
         app.logger.error(f'Erro ao buscar setores painel4: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
-# API: Leitos Ocupados (com pacientes)
 @app.route('/api/paineis/painel4/leitos-ocupados', methods=['GET'])
 @login_required
 def api_painel4_leitos_ocupados():
@@ -644,22 +924,14 @@ def api_painel4_leitos_ocupados():
 
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel4'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
 
     try:
         cursor = conn.cursor()
-
-        # Usa a view para pacientes internados
         cursor.execute("SELECT * FROM vw_pacientes_internados")
 
         colunas = [desc[0] for desc in cursor.description]
@@ -679,13 +951,9 @@ def api_painel4_leitos_ocupados():
         app.logger.error(f'Erro ao buscar leitos ocupados painel4: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
-# API: Leitos Disponíveis (livres, higienização, interditados)
 @app.route('/api/paineis/painel4/leitos-disponiveis', methods=['GET'])
 @login_required
 def api_painel4_leitos_disponiveis():
@@ -694,22 +962,14 @@ def api_painel4_leitos_disponiveis():
 
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel4'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
 
     try:
         cursor = conn.cursor()
-
-        # Usa a view para leitos disponíveis
         cursor.execute("SELECT * FROM vw_leitos_disponiveis")
 
         colunas = [desc[0] for desc in cursor.description]
@@ -729,13 +989,9 @@ def api_painel4_leitos_disponiveis():
         app.logger.error(f'Erro ao buscar leitos disponíveis painel4: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
-# API: Todos os Leitos (ocupados + disponíveis)
 @app.route('/api/paineis/painel4/todos-leitos', methods=['GET'])
 @login_required
 def api_painel4_todos_leitos():
@@ -744,22 +1000,14 @@ def api_painel4_todos_leitos():
 
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel4'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
 
     try:
         cursor = conn.cursor()
-
-        # Usa a view principal com todos os dados
         cursor.execute("SELECT * FROM vw_ocupacao_hospitalar ORDER BY setor, leito")
 
         colunas = [desc[0] for desc in cursor.description]
@@ -779,22 +1027,7 @@ def api_painel4_todos_leitos():
         app.logger.error(f'Erro ao buscar todos leitos painel4: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
-
-
-
-
-
-
-
-
-
-
-
-
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
 @app.route('/api/minhas-permissoes', methods=['GET'])
@@ -805,9 +1038,10 @@ def api_minhas_permissoes():
         is_admin = session.get('is_admin', False)
 
         if is_admin:
+            # admin tem acesso geral; se quiser incluir painel6 também, coloque aqui:
             return jsonify({
                 'success': True,
-                'permissoes': ['painel2', 'painel3'],
+                'permissoes': ['painel2', 'painel3', 'painel4', 'painel5', 'painel6'],
                 'is_admin': True
             })
 
@@ -1033,36 +1267,16 @@ def api_obter_historico(usuario_id):
 def api_listar_paineis():
     try:
         paineis = [
-            {
-                'nome': 'painel2',
-                'titulo': 'Evolução de Turno',
-                'descricao': 'Acompanhamento de evoluções médicas',
-                'ativo': True
-            },
-            {
-                'nome': 'painel3',
-                'titulo': 'Médicos PS',
-                'descricao': 'Monitoramento de médicos logados',
-                'ativo': True
-            },
-            {
-                'nome': 'painel4',
-                'titulo': 'Ocupação Hospitalar',
-                'descricao': 'Monitoramento de ocupação de leitos',
-                'ativo': True
-            },
-            {
-                'nome': 'painel5',
-                'titulo': 'Cirurgias do Dia',
-                'descricao': 'Acompanhamento de cirurgias agendadas',
-                'ativo': True
-            }
+            {'nome': 'painel2', 'titulo': 'Evolução de Turno', 'descricao': 'Acompanhamento de evoluções médicas', 'ativo': True},
+            {'nome': 'painel3', 'titulo': 'Médicos PS', 'descricao': 'Monitoramento de médicos logados', 'ativo': True},
+            {'nome': 'painel4', 'titulo': 'Ocupação Hospitalar', 'descricao': 'Monitoramento de ocupação de leitos', 'ativo': True},
+            {'nome': 'painel5', 'titulo': 'Cirurgias do Dia', 'descricao': 'Acompanhamento de cirurgias agendadas', 'ativo': True},
+
+            # ✅ NOVO
+            {'nome': 'painel6', 'titulo': 'Priorização Clínica', 'descricao': 'Risco por sinais vitais + exames (vw_painel_clinico_risco)', 'ativo': True},
         ]
 
-        return jsonify({
-            'success': True,
-            'paineis': paineis
-        }), 200
+        return jsonify({'success': True, 'paineis': paineis}), 200
 
     except Exception as e:
         app.logger.error(f'Erro ao listar painéis: {e}', exc_info=True)
@@ -1070,7 +1284,7 @@ def api_listar_paineis():
 
 
 # ==========================================
-# 🏥 ROTAS DO PAINEL 5 - CIRURGIAS DO DIA
+# 🏥 ROTAS DO PAINEL 5 - CIRURGIAS DO DIA (existente)
 # ==========================================
 
 @app.route('/painel/painel5')
@@ -1087,7 +1301,6 @@ def painel5():
     return send_from_directory('paineis/painel5', 'index.html')
 
 
-# API: Dashboard - Estatísticas Gerais das Cirurgias
 @app.route('/api/paineis/painel5/dashboard', methods=['GET'])
 @login_required
 def api_painel5_dashboard():
@@ -1096,40 +1309,31 @@ def api_painel5_dashboard():
 
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel5'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
 
     try:
         cursor = conn.cursor()
-
-        # ✅ Match exato com acentuação do Oracle
         query = """
-            SELECT 
+            SELECT
                 COUNT(*) as total_cirurgias,
                 COUNT(*) FILTER (
-                    WHERE evento = 'Sem status' 
+                    WHERE evento = 'Sem status'
                     OR nr_cirurgia IS NULL
                 ) as cirurgias_previstas,
                 COUNT(*) FILTER (
-                    WHERE evento IN ('Entrada Paciente CC', 'Inicio da Cirurgia', 'Entrada no RPA') 
+                    WHERE evento IN ('Entrada Paciente CC', 'Inicio da Cirurgia', 'Entrada no RPA')
                     AND nr_cirurgia IS NOT NULL
                 ) as cirurgias_andamento,
                 COUNT(*) FILTER (
-                    WHERE evento IN ('Sáida do RPA', 'Saida do RPA', 'Saida do CC') 
+                    WHERE evento IN ('Sáida do RPA', 'Saida do RPA', 'Saida do CC')
                     AND nr_cirurgia IS NOT NULL
                 ) as cirurgias_realizadas
             FROM vw_cirurgias_dia
         """
-
         cursor.execute(query)
         resultado = cursor.fetchone()
 
@@ -1143,23 +1347,15 @@ def api_painel5_dashboard():
         cursor.close()
         conn.close()
 
-        return jsonify({
-            'success': True,
-            'data': dados,
-            'timestamp': datetime.now().isoformat()
-        })
+        return jsonify({'success': True, 'data': dados, 'timestamp': datetime.now().isoformat()})
 
     except Exception as e:
         app.logger.error(f'Erro ao buscar dashboard painel5: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
-# API: Lista de Cirurgias Agrupadas por Dia
 @app.route('/api/paineis/painel5/cirurgias', methods=['GET'])
 @login_required
 def api_painel5_cirurgias():
@@ -1168,23 +1364,16 @@ def api_painel5_cirurgias():
 
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel5'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+            return jsonify({'success': False, 'error': 'Sem permissão para acessar este painel'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexão com o banco'}), 500
 
     try:
         cursor = conn.cursor()
-
         query = """
-            SELECT 
+            SELECT
                 dt_agenda,
                 ds_agenda,
                 cd_agenda,
@@ -1225,7 +1414,6 @@ def api_painel5_cirurgias():
             FROM vw_cirurgias_dia
             ORDER BY dt_agenda ASC, hr_inicio ASC
         """
-
         cursor.execute(query)
         colunas = [desc[0] for desc in cursor.description]
         cirurgias = [dict(zip(colunas, row)) for row in cursor.fetchall()]
@@ -1233,20 +1421,15 @@ def api_painel5_cirurgias():
         cirurgias_agrupadas = {}
         for cirurgia in cirurgias:
             dia_key = cirurgia['dt_agenda'].strftime('%d/%m/%Y') if cirurgia['dt_agenda'] else 'Sem data'
-
             if dia_key not in cirurgias_agrupadas:
                 cirurgias_agrupadas[dia_key] = {
                     'data': dia_key,
                     'grupo': f"{dia_key} - {cirurgia['periodo_dia']}",
                     'cirurgias': []
                 }
-
             cirurgias_agrupadas[dia_key]['cirurgias'].append(cirurgia)
 
-        resultado = sorted(
-            cirurgias_agrupadas.values(),
-            key=lambda x: x['data']
-        )
+        resultado = sorted(cirurgias_agrupadas.values(), key=lambda x: x['data'])
 
         cursor.close()
         conn.close()
@@ -1262,18 +1445,7 @@ def api_painel5_cirurgias():
         app.logger.error(f'Erro ao buscar cirurgias painel5: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
-
-
-
-
-
-
-
-
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
 if __name__ == '__main__':
@@ -1292,6 +1464,9 @@ if __name__ == '__main__':
     print("\n📊 Painéis disponíveis:")
     print("   • Evolução de Turno: /painel/painel2")
     print("   • Médicos PS:         /painel/painel3")
+    print("   • Ocupação Hosp.:     /painel/painel4")
+    print("   • Cirurgias do Dia:   /painel/painel5")
+    print("   • Priorização Clínica:/painel/painel6")
     print("\n🌐 URLs de Acesso:")
     print(f"   • Local:        http://localhost:5000")
     print(f"   • Local (IP):   http://127.0.0.1:5000")
