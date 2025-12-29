@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Priorização Clínica - Anchieta Ceilândia</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/paineis/painel6/style.css">
+  <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+  <div class="painel-container">
+    <!-- Cabeçalho -->
+    <div class="painel-header">
+      <div class="header-content">
+        <div class="header-left">
+          <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
+          <h1><i class="fas fa-triangle-exclamation"></i> Priorização Clínica</h1>
+        </div>
+        <div class="header-right">
+          <button id="btn-voltar" class="btn-voltar">
+            <i class="fas fa-arrow-left"></i> Voltar
+          </button>
+          <button id="btn-auto-scroll" class="btn-auto-scroll">
+            <i class="fas fa-play"></i> Auto Scroll
+          </button>
+          <button id="btn-refresh" class="btn-refresh">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+          <span class="ultima-atualizacao">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini Dashboard -->
+    <div class="mini-dashboard">
+      <div class="stat-card">
+        <div class="stat-icon icon-total">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-pacientes">-</h3>
+          <p>Total</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-critico">
+          <i class="fas fa-skull-crossbones"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-critico">-</h3>
+          <p>Crítico</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-alto">
+          <i class="fas fa-triangle-exclamation"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-alto">-</h3>
+          <p>Alto</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-moderado">
+          <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="stat-info">
+          <h3 id="total-moderado">-</h3>
+          <p>Moderado</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo -->
+    <div class="cirurgias-content" id="painel6-content">
+      <!-- Loading inicial -->
+      <div class="loading-container" id="loading">
+        <div class="loading-spinner"></div>
+        <p>Carregando priorização...</p>
+      </div>
+
+      <!-- Tabela -->
+      <div class="grupo-dia" id="grupo-unico" style="display:none;">
+        <div class="grupo-dia-header">
+          <i class="fas fa-list-ol"></i>
+          Pacientes Priorizados por Risco
+          <span class="grupo-dia-badge" id="badge-qtd">-</span>
+        </div>
+
+        <div class="cirurgias-table-wrapper">
+          <table class="cirurgias-table">
+            <thead>
+              <tr>
+                <th class="col-risco">Risco</th>
+                <th class="col-atendimento">Atendimento</th>
+                <th class="col-paciente">Paciente</th>
+                <th class="col-leito">Leito</th>
+                <th class="col-analise">Análise Clínica</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-body">
+              <!-- rows via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mensagem vazia -->
+      <div class="empty-message" id="empty" style="display:none;">
+        <i class="fas fa-inbox"></i>
+        <h3>Nenhum paciente encontrado</h3>
+        <p>Aguardando dados...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/paineis/painel6/main.js"></script>
+</body>
+</html>

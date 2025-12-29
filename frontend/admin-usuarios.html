@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Usuários - Sistema de Painéis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/frontend/admin-usuarios.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <!-- Header -->
+    <header class="admin-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="Anchieta Ceilândia" class="logo-header">
+                <h1><i class="fas fa-users-cog"></i> Gestão de Usuários</h1>
+            </div>
+            <div class="header-right">
+                <span id="admin-nome">Carregando...</span>
+                <button id="btn-voltar-dashboard" class="btn-header">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </button>
+                <button id="btn-logout" class="btn-header btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Estatísticas -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-total">0</h3>
+                <p>Total de Usuários</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-ativos">0</h3>
+                <p>Usuários Ativos</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                <i class="fas fa-user-times"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-inativos">0</h3>
+                <p>Usuários Inativos</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-admins">0</h3>
+                <p>Administradores</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="controls-container">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="search-input" placeholder="Buscar usuário...">
+        </div>
+        <div class="controls-buttons">
+            <button id="btn-novo-usuario" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Novo Usuário
+            </button>
+            <button id="btn-refresh" class="btn-secondary">
+                <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabela de Usuários -->
+    <div class="table-container">
+        <table class="usuarios-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Usuário</th>
+                    <th>Nome Completo</th>
+                    <th>Email</th>
+                    <th>Cargo</th>
+                    <th>Status</th>
+                    <th>Admin</th>
+                    <th>Último Acesso</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="usuarios-tbody">
+                <tr>
+                    <td colspan="9" class="loading">
+                        <div class="loading-spinner"></div>
+                        <div>Carregando usuários...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal: Novo Usuário -->
+    <div id="modal-novo-usuario" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> Novo Usuário</h2>
+                <button class="btn-close-modal" onclick="fecharModalNovoUsuario()">&times;</button>
+            </div>
+            <form id="form-novo-usuario">
+                <div class="form-group">
+                    <label>Usuário (Login) *</label>
+                    <input type="text" id="novo-usuario" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="novo-email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha *</label>
+                    <input type="password" id="novo-senha" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="novo-nome-completo" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <input type="text" id="novo-cargo" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="novo-is-admin"> Administrador
+                    </label>
+                </div>
+                <div id="mensagem-novo-usuario" class="alert" style="display: none;"></div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="fecharModalNovoUsuario()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Criar Usuário</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Usuário -->
+    <div id="modal-editar-usuario" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-edit"></i> Editar Usuário</h2>
+                <button class="btn-close-modal" onclick="fecharModalEditarUsuario()">&times;</button>
+            </div>
+            <form id="form-editar-usuario">
+                <input type="hidden" id="editar-usuario-id">
+                <div class="form-group">
+                    <label>Usuário (Login)</label>
+                    <input type="text" id="editar-usuario-login" class="form-control" disabled>
+                    <small>O login não pode ser alterado</small>
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="editar-email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="editar-nome-completo" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <input type="text" id="editar-cargo" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="editar-observacoes" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="editar-is-admin"> Administrador
+                    </label>
+                </div>
+                <div id="mensagem-editar-usuario" class="alert" style="display: none;"></div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="fecharModalEditarUsuario()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Reset Senha -->
+    <div id="modal-reset-senha" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2><i class="fas fa-key"></i> Resetar Senha</h2>
+                <button class="btn-close-modal" onclick="fecharModalResetSenha()">&times;</button>
+            </div>
+            <form id="form-reset-senha">
+                <input type="hidden" id="reset-usuario-id">
+                <p>Resetar senha do usuário: <strong id="reset-usuario-nome"></strong></p>
+                <div class="form-group">
+                    <label>Nova Senha *</label>
+                    <input type="password" id="reset-nova-senha" class="form-control" required minlength="4">
+                    <small>Mínimo de 4 caracteres</small>
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Senha *</label>
+                    <input type="password" id="reset-confirma-senha" class="form-control" required>
+                </div>
+                <div id="mensagem-reset-senha" class="alert" style="display: none;"></div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="fecharModalResetSenha()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Resetar Senha</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Permissões -->
+    <div id="modal-permissoes" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-shield-alt"></i> Gerenciar Permissões</h2>
+                <button class="btn-close-modal" onclick="fecharModalPermissoes()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="permissoes-usuario-id">
+                <p>Usuário: <strong id="permissoes-usuario-nome"></strong></p>
+
+                <h3>Painéis Disponíveis</h3>
+                <div id="lista-paineis" class="paineis-lista">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando painéis...</p>
+                </div>
+
+                <div id="mensagem-permissoes" class="alert" style="display: none;"></div>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="btn-secondary" onclick="fecharModalPermissoes()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Histórico -->
+    <div id="modal-historico" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2><i class="fas fa-history"></i> Histórico de Ações</h2>
+                <button class="btn-close-modal" onclick="fecharModalHistorico()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="historico-usuario-id">
+                <p>Usuário: <strong id="historico-usuario-nome"></strong></p>
+
+                <div id="lista-historico" class="historico-lista">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando histórico...</p>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="btn-secondary" onclick="fecharModalHistorico()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/frontend/admin-usuarios.js"></script>
+</body>
+</html>
