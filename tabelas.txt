@@ -1,0 +1,1191 @@
+-- Table: public.usuarios
+
+-- DROP TABLE IF EXISTS public.usuarios;
+
+CREATE TABLE IF NOT EXISTS public.usuarios
+(
+    id integer NOT NULL DEFAULT nextval('usuarios_id_seq'::regclass),
+    usuario character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    senha_hash character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    email character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    is_admin boolean DEFAULT false,
+    criado_em timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    ultimo_acesso timestamp without time zone,
+    nome_completo character varying(200) COLLATE pg_catalog."default",
+    ativo boolean DEFAULT true,
+    cargo character varying(100) COLLATE pg_catalog."default",
+    observacoes text COLLATE pg_catalog."default",
+    atualizado_em timestamp without time zone,
+    atualizado_por integer,
+    CONSTRAINT usuarios_pkey PRIMARY KEY (id),
+    CONSTRAINT usuarios_email_key UNIQUE (email),
+    CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
+    CONSTRAINT usuarios_atualizado_por_fkey FOREIGN KEY (atualizado_por)
+        REFERENCES public.usuarios (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.usuarios
+    OWNER to postgres;
+
+
+
+
+-- Table: public.setores_hospital
+
+-- DROP TABLE IF EXISTS public.setores_hospital;
+
+CREATE TABLE IF NOT EXISTS public.setores_hospital
+(
+    cd_setor integer NOT NULL,
+    nm_setor character varying(200) COLLATE pg_catalog."default" NOT NULL,
+    qt_leitos_total integer DEFAULT 0,
+    ativo boolean DEFAULT true,
+    criado_em timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT setores_hospital_pkey PRIMARY KEY (cd_setor)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.setores_hospital
+    OWNER to postgres;
+
+
+
+
+
+-- Table: public.permissoes_paineis
+
+-- DROP TABLE IF EXISTS public.permissoes_paineis;
+
+CREATE TABLE IF NOT EXISTS public.permissoes_paineis
+(
+    id integer NOT NULL DEFAULT nextval('permissoes_paineis_id_seq'::regclass),
+    usuario_id integer,
+    painel_nome character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    criado_em timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT permissoes_paineis_pkey PRIMARY KEY (id),
+    CONSTRAINT permissoes_paineis_usuario_id_painel_nome_key UNIQUE (usuario_id, painel_nome),
+    CONSTRAINT permissoes_paineis_usuario_id_fkey FOREIGN KEY (usuario_id)
+        REFERENCES public.usuarios (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.permissoes_paineis
+    OWNER to postgres;
+
+
+
+
+
+
+
+
+
+
+-- Table: public.painel_clinico_tasy
+
+-- DROP TABLE IF EXISTS public.painel_clinico_tasy;
+
+CREATE TABLE IF NOT EXISTS public.painel_clinico_tasy
+(
+    nr_atendimento bigint NOT NULL,
+    dt_entrada_unidade date,
+    dt_entrada_unid text COLLATE pg_catalog."default",
+    cd_unidade character varying(20) COLLATE pg_catalog."default",
+    cd_unidade_basica character varying(20) COLLATE pg_catalog."default",
+    nm_pessoa_fisica character varying(200) COLLATE pg_catalog."default",
+    cd_setor_atendimento integer,
+    nm_setor character varying(100) COLLATE pg_catalog."default",
+    dt_nascimento date,
+    ie_sexo character(1) COLLATE pg_catalog."default",
+    ds_convenio character varying(100) COLLATE pg_catalog."default",
+    nr_crm character varying(20) COLLATE pg_catalog."default",
+    nm_guerra character varying(150) COLLATE pg_catalog."default",
+    qt_dia_permanencia integer,
+    ds_clinica character varying(100) COLLATE pg_catalog."default",
+    dt_alta_medico date,
+    ds_tipo_acomodacao character varying(50) COLLATE pg_catalog."default",
+    classif character varying(50) COLLATE pg_catalog."default",
+    ie_status_unidade character varying(20) COLLATE pg_catalog."default",
+    qt_pa_sistolica numeric(10,2),
+    qt_pa_diastolica numeric(10,2),
+    qt_pam numeric(10,2),
+    qt_freq_cardiaca numeric(10,2),
+    qt_freq_resp numeric(10,2),
+    qt_temp numeric(10,2),
+    qt_saturacao_o2 numeric(10,2),
+    qt_peso numeric(10,2),
+    qt_imc numeric(10,2),
+    qt_glicemia_capilar numeric(10,2),
+    qt_escala_dor numeric(10,2),
+    exm_glicose text COLLATE pg_catalog."default",
+    exm_creatinina text COLLATE pg_catalog."default",
+    exm_ureia text COLLATE pg_catalog."default",
+    exm_sodio text COLLATE pg_catalog."default",
+    exm_potassio text COLLATE pg_catalog."default",
+    exm_calcio_ionico text COLLATE pg_catalog."default",
+    exm_fosforo text COLLATE pg_catalog."default",
+    exm_magnesio text COLLATE pg_catalog."default",
+    exm_hematocrito text COLLATE pg_catalog."default",
+    exm_hemoglobina text COLLATE pg_catalog."default",
+    exm_leucocitos text COLLATE pg_catalog."default",
+    exm_plaquetas text COLLATE pg_catalog."default",
+    exm_bilir_total text COLLATE pg_catalog."default",
+    exm_bilir_indireta text COLLATE pg_catalog."default",
+    exm_bilir_direta text COLLATE pg_catalog."default",
+    exm_ggt text COLLATE pg_catalog."default",
+    exm_rni text COLLATE pg_catalog."default",
+    exm_troponina text COLLATE pg_catalog."default",
+    exm_dimero_d text COLLATE pg_catalog."default",
+    exm_lactato_art text COLLATE pg_catalog."default",
+    exm_lactato_ven text COLLATE pg_catalog."default",
+    exm_ca_art text COLLATE pg_catalog."default",
+    exm_ca_ven text COLLATE pg_catalog."default",
+    exm_ph_art text COLLATE pg_catalog."default",
+    exm_pco2_art text COLLATE pg_catalog."default",
+    exm_po2_art text COLLATE pg_catalog."default",
+    exm_so2_art text COLLATE pg_catalog."default",
+    exm_hco3_art text COLLATE pg_catalog."default",
+    exm_be_art text COLLATE pg_catalog."default",
+    exm_pao2_art text COLLATE pg_catalog."default",
+    exm_fio2_art text COLLATE pg_catalog."default",
+    exm_ph_ven text COLLATE pg_catalog."default",
+    exm_pco2_ven text COLLATE pg_catalog."default",
+    exm_po2_ven text COLLATE pg_catalog."default",
+    exm_so2_ven text COLLATE pg_catalog."default",
+    exm_hco3_ven text COLLATE pg_catalog."default",
+    exm_be_ven text COLLATE pg_catalog."default",
+    exm_ag_ven text COLLATE pg_catalog."default",
+    exm_pao2_ven text COLLATE pg_catalog."default",
+    dt_carga timestamp without time zone DEFAULT now(),
+    CONSTRAINT pk_painel_clinico_tasy PRIMARY KEY (nr_atendimento)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.painel_clinico_tasy
+    OWNER to postgres;
+-- Index: idx_painel_clinico_convenio
+
+-- DROP INDEX IF EXISTS public.idx_painel_clinico_convenio;
+
+CREATE INDEX IF NOT EXISTS idx_painel_clinico_convenio
+    ON public.painel_clinico_tasy USING btree
+    (ds_convenio COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_painel_clinico_setor
+
+-- DROP INDEX IF EXISTS public.idx_painel_clinico_setor;
+
+CREATE INDEX IF NOT EXISTS idx_painel_clinico_setor
+    ON public.painel_clinico_tasy USING btree
+    (cd_setor_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_painel_clinico_status
+
+-- DROP INDEX IF EXISTS public.idx_painel_clinico_status;
+
+CREATE INDEX IF NOT EXISTS idx_painel_clinico_status
+    ON public.painel_clinico_tasy USING btree
+    (ie_status_unidade COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+
+
+
+
+
+-- Table: public.painel_clinico_analise_ia
+
+-- DROP TABLE IF EXISTS public.painel_clinico_analise_ia;
+
+CREATE TABLE IF NOT EXISTS public.painel_clinico_analise_ia
+(
+    id integer NOT NULL DEFAULT nextval('painel_clinico_analise_ia_id_seq'::regclass),
+    nr_atendimento bigint NOT NULL,
+    dt_analise timestamp without time zone DEFAULT now(),
+    nm_paciente character varying(200) COLLATE pg_catalog."default",
+    cd_leito character varying(20) COLLATE pg_catalog."default",
+    nm_setor character varying(100) COLLATE pg_catalog."default",
+    analise_ia text COLLATE pg_catalog."default",
+    pontos_atencao text COLLATE pg_catalog."default",
+    recomendacoes text COLLATE pg_catalog."default",
+    nivel_criticidade character varying(20) COLLATE pg_catalog."default",
+    score_ia numeric(5,2),
+    modelo_ia character varying(50) COLLATE pg_catalog."default" DEFAULT 'llama-3.3-70b'::character varying,
+    versao_prompt character varying(20) COLLATE pg_catalog."default" DEFAULT 'v1.0'::character varying,
+    tempo_processamento_ms integer,
+    dt_atualizacao timestamp without time zone DEFAULT now(),
+    hash_dados character varying(64) COLLATE pg_catalog."default",
+    ie_ativo boolean DEFAULT true,
+    dt_expiracao timestamp without time zone,
+    CONSTRAINT painel_clinico_analise_ia_pkey PRIMARY KEY (id),
+    CONSTRAINT uk_analise_atendimento UNIQUE (nr_atendimento)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.painel_clinico_analise_ia
+    OWNER to postgres;
+
+COMMENT ON TABLE public.painel_clinico_analise_ia
+    IS 'Armazena análises de risco clínico geradas por IA (Groq/Llama) para o Painel 6';
+
+COMMENT ON COLUMN public.painel_clinico_analise_ia.analise_ia
+    IS 'Texto completo da análise gerada pela IA';
+
+COMMENT ON COLUMN public.painel_clinico_analise_ia.hash_dados
+    IS 'Hash MD5 dos dados clínicos. Usado para detectar mudanças nos dados.';
+
+COMMENT ON COLUMN public.painel_clinico_analise_ia.ie_ativo
+    IS 'Indica se a análise está ativa (TRUE) ou foi arquivada (FALSE)';
+
+COMMENT ON COLUMN public.painel_clinico_analise_ia.dt_expiracao
+    IS 'Data de expiração da análise (futuro uso)';
+-- Index: idx_analise_ia_atendimento
+
+-- DROP INDEX IF EXISTS public.idx_analise_ia_atendimento;
+
+CREATE INDEX IF NOT EXISTS idx_analise_ia_atendimento
+    ON public.painel_clinico_analise_ia USING btree
+    (nr_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_analise_ia_ativo
+
+-- DROP INDEX IF EXISTS public.idx_analise_ia_ativo;
+
+CREATE INDEX IF NOT EXISTS idx_analise_ia_ativo
+    ON public.painel_clinico_analise_ia USING btree
+    (ie_ativo ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_analise_ia_criticidade
+
+-- DROP INDEX IF EXISTS public.idx_analise_ia_criticidade;
+
+CREATE INDEX IF NOT EXISTS idx_analise_ia_criticidade
+    ON public.painel_clinico_analise_ia USING btree
+    (nivel_criticidade COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_analise_ia_data
+
+-- DROP INDEX IF EXISTS public.idx_analise_ia_data;
+
+CREATE INDEX IF NOT EXISTS idx_analise_ia_data
+    ON public.painel_clinico_analise_ia USING btree
+    (dt_analise DESC NULLS FIRST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_analise_ia_hash
+
+-- DROP INDEX IF EXISTS public.idx_analise_ia_hash;
+
+CREATE INDEX IF NOT EXISTS idx_analise_ia_hash
+    ON public.painel_clinico_analise_ia USING btree
+    (hash_dados COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+
+
+
+
+
+
+-- Table: public.ocupacao_hospitalar
+
+-- DROP TABLE IF EXISTS public.ocupacao_hospitalar;
+
+CREATE TABLE IF NOT EXISTS public.ocupacao_hospitalar
+(
+    id integer NOT NULL DEFAULT nextval('ocupacao_hospitalar_id_seq'::regclass),
+    nr_atendimento character varying(50) COLLATE pg_catalog."default",
+    dt_entrada_unidade timestamp without time zone,
+    dt_entrada_unid character varying(50) COLLATE pg_catalog."default",
+    cd_unidade character varying(20) COLLATE pg_catalog."default",
+    cd_unidade_basica character varying(20) COLLATE pg_catalog."default",
+    nm_pessoa_fisica character varying(200) COLLATE pg_catalog."default",
+    cd_setor_atendimento integer,
+    "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" character varying(200) COLLATE pg_catalog."default",
+    dt_nascimento date,
+    ie_sexo character(1) COLLATE pg_catalog."default",
+    ds_convenio character varying(200) COLLATE pg_catalog."default",
+    nr_crm character varying(20) COLLATE pg_catalog."default",
+    nm_guerra character varying(200) COLLATE pg_catalog."default",
+    qt_dia_permanencia numeric,
+    ds_clinica character varying(200) COLLATE pg_catalog."default",
+    dt_alta_medico timestamp without time zone,
+    ds_tipo_acomodacao character varying(100) COLLATE pg_catalog."default",
+    classif character varying(50) COLLATE pg_catalog."default",
+    ie_status_unidade character(1) COLLATE pg_catalog."default",
+    dt_carga timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ocupacao_hospitalar_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.ocupacao_hospitalar
+    OWNER to postgres;
+
+COMMENT ON TABLE public.ocupacao_hospitalar
+    IS 'Dados de ocupação de leitos hospitalares (carga via Apache Hop)';
+
+COMMENT ON COLUMN public.ocupacao_hospitalar.ie_status_unidade
+    IS 'P=Paciente, L=Livre, H=Higienização, I=Interditado';
+-- Index: idx_ocupacao_atendimento
+
+-- DROP INDEX IF EXISTS public.idx_ocupacao_atendimento;
+
+CREATE INDEX IF NOT EXISTS idx_ocupacao_atendimento
+    ON public.ocupacao_hospitalar USING btree
+    (nr_atendimento COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_ocupacao_carga
+
+-- DROP INDEX IF EXISTS public.idx_ocupacao_carga;
+
+CREATE INDEX IF NOT EXISTS idx_ocupacao_carga
+    ON public.ocupacao_hospitalar USING btree
+    (dt_carga ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_ocupacao_setor
+
+-- DROP INDEX IF EXISTS public.idx_ocupacao_setor;
+
+CREATE INDEX IF NOT EXISTS idx_ocupacao_setor
+    ON public.ocupacao_hospitalar USING btree
+    (cd_setor_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_ocupacao_status
+
+-- DROP INDEX IF EXISTS public.idx_ocupacao_status;
+
+CREATE INDEX IF NOT EXISTS idx_ocupacao_status
+    ON public.ocupacao_hospitalar USING btree
+    (ie_status_unidade COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+
+
+
+
+
+
+
+
+
+-- Table: public.medicos_ps
+
+-- DROP TABLE IF EXISTS public.medicos_ps;
+
+CREATE TABLE IF NOT EXISTS public.medicos_ps
+(
+    id integer NOT NULL DEFAULT nextval('medicos_ps_id_seq'::regclass),
+    nm_usuario character varying(100) COLLATE pg_catalog."default",
+    nm_maq_cliente character varying(100) COLLATE pg_catalog."default",
+    consultorio character varying(50) COLLATE pg_catalog."default",
+    ds_usuario character varying(200) COLLATE pg_catalog."default",
+    especialidade character varying(200) COLLATE pg_catalog."default",
+    machine character varying(100) COLLATE pg_catalog."default",
+    logon_time timestamp without time zone,
+    tempo_conectado character varying(50) COLLATE pg_catalog."default",
+    dt_carga timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT medicos_ps_pkey PRIMARY KEY (id),
+    CONSTRAINT uk_usuario_maquina_medicos_ps UNIQUE (nm_usuario, nm_maq_cliente, logon_time)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.medicos_ps
+    OWNER to postgres;
+
+COMMENT ON TABLE public.medicos_ps
+    IS 'Tabela de controle de médicos conectados no pronto socorro';
+
+COMMENT ON COLUMN public.medicos_ps.id
+    IS 'ID sequencial auto-incremento';
+
+COMMENT ON COLUMN public.medicos_ps.nm_usuario
+    IS 'Nome de usuário do sistema';
+
+COMMENT ON COLUMN public.medicos_ps.nm_maq_cliente
+    IS 'Nome da máquina cliente';
+
+COMMENT ON COLUMN public.medicos_ps.consultorio
+    IS 'Consultório formatado (ex: Consultório 01)';
+
+COMMENT ON COLUMN public.medicos_ps.ds_usuario
+    IS 'Descrição/nome completo do usuário';
+
+COMMENT ON COLUMN public.medicos_ps.especialidade
+    IS 'Especialidade médica do usuário';
+
+COMMENT ON COLUMN public.medicos_ps.machine
+    IS 'Nome da máquina (campo técnico)';
+
+COMMENT ON COLUMN public.medicos_ps.logon_time
+    IS 'Data/hora de login';
+
+COMMENT ON COLUMN public.medicos_ps.tempo_conectado
+    IS 'Tempo conectado formatado (ex: 2h 30min)';
+
+COMMENT ON COLUMN public.medicos_ps.dt_carga
+    IS 'Data/hora da carga dos dados';
+-- Index: idx_dt_carga_medicos_ps
+
+-- DROP INDEX IF EXISTS public.idx_dt_carga_medicos_ps;
+
+CREATE INDEX IF NOT EXISTS idx_dt_carga_medicos_ps
+    ON public.medicos_ps USING btree
+    (dt_carga ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_logon_time_medicos_ps
+
+-- DROP INDEX IF EXISTS public.idx_logon_time_medicos_ps;
+
+CREATE INDEX IF NOT EXISTS idx_logon_time_medicos_ps
+    ON public.medicos_ps USING btree
+    (logon_time ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_nm_maq_cliente_medicos_ps
+
+-- DROP INDEX IF EXISTS public.idx_nm_maq_cliente_medicos_ps;
+
+CREATE INDEX IF NOT EXISTS idx_nm_maq_cliente_medicos_ps
+    ON public.medicos_ps USING btree
+    (nm_maq_cliente COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_nm_usuario_medicos_ps
+
+-- DROP INDEX IF EXISTS public.idx_nm_usuario_medicos_ps;
+
+CREATE INDEX IF NOT EXISTS idx_nm_usuario_medicos_ps
+    ON public.medicos_ps USING btree
+    (nm_usuario COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+
+
+
+
+
+
+
+-- Table: public.historico_usuarios
+
+-- DROP TABLE IF EXISTS public.historico_usuarios;
+
+CREATE TABLE IF NOT EXISTS public.historico_usuarios
+(
+    id integer NOT NULL DEFAULT nextval('historico_usuarios_id_seq'::regclass),
+    usuario_id integer,
+    acao character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    detalhes text COLLATE pg_catalog."default",
+    realizado_por integer,
+    data_hora timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT historico_usuarios_pkey PRIMARY KEY (id),
+    CONSTRAINT historico_usuarios_realizado_por_fkey FOREIGN KEY (realizado_por)
+        REFERENCES public.usuarios (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT historico_usuarios_usuario_id_fkey FOREIGN KEY (usuario_id)
+        REFERENCES public.usuarios (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.historico_usuarios
+    OWNER to postgres;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Table: public.gestao_tempo_ps
+
+-- DROP TABLE IF EXISTS public.gestao_tempo_ps;
+
+CREATE TABLE IF NOT EXISTS public.gestao_tempo_ps
+(
+    nr_atendimento bigint,
+    dt_geracao_senha timestamp without time zone,
+    cd_senha_gerada character varying(50) COLLATE pg_catalog."default",
+    ds_fila_origem character varying(255) COLLATE pg_catalog."default",
+    classificacao character varying(4000) COLLATE pg_catalog."default",
+    dt_chamada_classif timestamp without time zone,
+    local_classificacao character varying(20) COLLATE pg_catalog."default",
+    usuario_classif character varying(4000) COLLATE pg_catalog."default",
+    qtd_chamada_classif double precision,
+    dt_chamada_recepcao timestamp without time zone,
+    local_recepcao character varying(20) COLLATE pg_catalog."default",
+    usuario_recep character varying(4000) COLLATE pg_catalog."default",
+    qtd_chamada_recep double precision,
+    dt_chamada_consultorio timestamp without time zone,
+    local_consultorio character varying(20) COLLATE pg_catalog."default",
+    usuario_consultorio character varying(4000) COLLATE pg_catalog."default",
+    qtd_chamada_consult double precision,
+    data_local_desconhec timestamp without time zone,
+    local_desconhecido character varying(20) COLLATE pg_catalog."default",
+    usuario_desc character varying(15) COLLATE pg_catalog."default",
+    qtd_chamada_desc double precision,
+    dt_inutilizacao timestamp without time zone,
+    ds_justificativa_classif character varying(255) COLLATE pg_catalog."default",
+    dt_inicio_triagem timestamp without time zone,
+    paciente character varying(4000) COLLATE pg_catalog."default",
+    dt_atendimento timestamp without time zone,
+    dt_recebimento_senha timestamp without time zone,
+    ie_utilizacao character varying(5) COLLATE pg_catalog."default",
+    ds_convenio character varying(255) COLLATE pg_catalog."default",
+    dt_alta timestamp without time zone,
+    nr_sequencia bigint,
+    clinica character varying(4000) COLLATE pg_catalog."default",
+    dt_impressao timestamp without time zone
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.gestao_tempo_ps
+    OWNER to postgres;
+-- Index: idx_gestao_tempo_ps_lookup
+
+-- DROP INDEX IF EXISTS public.idx_gestao_tempo_ps_lookup;
+
+CREATE INDEX IF NOT EXISTS idx_gestao_tempo_ps_lookup
+    ON public.gestao_tempo_ps USING btree
+    (nr_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+
+
+
+
+
+
+
+
+-- Table: public.evolucao_turno
+
+-- DROP TABLE IF EXISTS public.evolucao_turno;
+
+CREATE TABLE IF NOT EXISTS public.evolucao_turno
+(
+    nr_atendimento bigint NOT NULL,
+    ds_convenio character varying(100) COLLATE pg_catalog."default",
+    nm_paciente character varying(200) COLLATE pg_catalog."default" NOT NULL,
+    idade character varying(10) COLLATE pg_catalog."default",
+    dt_entrada character varying(20) COLLATE pg_catalog."default",
+    medico_responsavel character varying(150) COLLATE pg_catalog."default",
+    medico_atendimento character varying(150) COLLATE pg_catalog."default",
+    dias_internado character varying(10) COLLATE pg_catalog."default",
+    data_turno character varying(10) COLLATE pg_catalog."default" NOT NULL,
+    turno character varying(10) COLLATE pg_catalog."default" NOT NULL,
+    setor character varying(60) COLLATE pg_catalog."default",
+    unidade character varying(20) COLLATE pg_catalog."default",
+    dt_admissao_unidade character varying(20) COLLATE pg_catalog."default",
+    evol_medico character varying(10) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_enfermeiro character varying(10) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_tec_enfermagem character varying(10) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_nutricionista character varying(10) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_fisioterapeuta character varying(10) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    dt_carga timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_evolucao_turno PRIMARY KEY (nr_atendimento, data_turno, turno)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.evolucao_turno
+    OWNER to postgres;
+
+COMMENT ON TABLE public.evolucao_turno
+    IS 'Tabela de controle de evoluções por turno (diurno/noturno) dos pacientes internados';
+
+COMMENT ON COLUMN public.evolucao_turno.nr_atendimento
+    IS 'Número do atendimento no sistema origem';
+
+COMMENT ON COLUMN public.evolucao_turno.idade
+    IS 'Idade do paciente em anos (armazenado como texto)';
+
+COMMENT ON COLUMN public.evolucao_turno.dias_internado
+    IS 'Dias de internação (armazenado como texto)';
+
+COMMENT ON COLUMN public.evolucao_turno.data_turno
+    IS 'Data do turno no formato DD/MM/YYYY';
+
+COMMENT ON COLUMN public.evolucao_turno.turno
+    IS 'DIURNO (07:00-19:00) ou NOTURNO (19:00-07:00)';
+
+COMMENT ON COLUMN public.evolucao_turno.evol_medico
+    IS 'Status da evolução médica: Feito ou X';
+
+COMMENT ON COLUMN public.evolucao_turno.evol_enfermeiro
+    IS 'Status da evolução de enfermagem: Feito ou X';
+
+COMMENT ON COLUMN public.evolucao_turno.evol_tec_enfermagem
+    IS 'Status da evolução de técnico de enfermagem: Feito ou X';
+
+COMMENT ON COLUMN public.evolucao_turno.evol_nutricionista
+    IS 'Status da evolução de nutricionista: Feito ou X';
+
+COMMENT ON COLUMN public.evolucao_turno.evol_fisioterapeuta
+    IS 'Status da evolução de fisioterapeuta: Feito ou X';
+
+COMMENT ON COLUMN public.evolucao_turno.dt_carga
+    IS 'Data e hora da carga dos dados';
+-- Index: idx_evolucao_turno_convenio
+
+-- DROP INDEX IF EXISTS public.idx_evolucao_turno_convenio;
+
+CREATE INDEX IF NOT EXISTS idx_evolucao_turno_convenio
+    ON public.evolucao_turno USING btree
+    (ds_convenio COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_evolucao_turno_data
+
+-- DROP INDEX IF EXISTS public.idx_evolucao_turno_data;
+
+CREATE INDEX IF NOT EXISTS idx_evolucao_turno_data
+    ON public.evolucao_turno USING btree
+    (data_turno COLLATE pg_catalog."default" DESC NULLS FIRST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_evolucao_turno_ordem
+
+-- DROP INDEX IF EXISTS public.idx_evolucao_turno_ordem;
+
+CREATE INDEX IF NOT EXISTS idx_evolucao_turno_ordem
+    ON public.evolucao_turno USING btree
+    (data_turno COLLATE pg_catalog."default" DESC NULLS FIRST, turno COLLATE pg_catalog."default" ASC NULLS LAST, setor COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_evolucao_turno_paciente
+
+-- DROP INDEX IF EXISTS public.idx_evolucao_turno_paciente;
+
+CREATE INDEX IF NOT EXISTS idx_evolucao_turno_paciente
+    ON public.evolucao_turno USING btree
+    (nm_paciente COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_evolucao_turno_pendentes
+
+-- DROP INDEX IF EXISTS public.idx_evolucao_turno_pendentes;
+
+CREATE INDEX IF NOT EXISTS idx_evolucao_turno_pendentes
+    ON public.evolucao_turno USING btree
+    (data_turno COLLATE pg_catalog."default" ASC NULLS LAST, setor COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default
+    WHERE evol_medico::text = 'X'::text OR evol_enfermeiro::text = 'X'::text OR evol_tec_enfermagem::text = 'X'::text OR evol_nutricionista::text = 'X'::text OR evol_fisioterapeuta::text = 'X'::text;
+-- Index: idx_evolucao_turno_setor
+
+-- DROP INDEX IF EXISTS public.idx_evolucao_turno_setor;
+
+CREATE INDEX IF NOT EXISTS idx_evolucao_turno_setor
+    ON public.evolucao_turno USING btree
+    (setor COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_evolucao_turno_unidade
+
+-- DROP INDEX IF EXISTS public.idx_evolucao_turno_unidade;
+
+CREATE INDEX IF NOT EXISTS idx_evolucao_turno_unidade
+    ON public.evolucao_turno USING btree
+    (unidade COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_cirurgias_dia
+
+-- DROP VIEW public.vw_cirurgias_dia;
+
+CREATE OR REPLACE VIEW public.vw_cirurgias_dia
+ AS
+ SELECT a.dt_agenda,
+    a.ds_agenda,
+    a.cd_agenda,
+    a.nr_minuto_duracao,
+    a.nm_paciente_pf,
+    a.ds_convenio,
+    a.nm_medico,
+    a.ds_idade_abrev,
+    COALESCE(NULLIF(TRIM(BOTH FROM a.setor_cirurgia), ''::text), a.ds_agenda::text) AS setor_cirurgia,
+    a.nm_instrumentador,
+    a.nm_circulante,
+    a.dt_entrada_tasy,
+    a.nr_atendimento,
+    a.nr_cirurgia,
+    a.cd_pessoa_fisica,
+    a.nr_sequencia,
+    a.ie_origem_proced,
+    a.ie_tipo_classif,
+    a.unidade_atendimento,
+    a.ds_tipo_atendimento,
+    a.hr_inicio,
+        CASE
+            WHEN a.hr_inicio IS NOT NULL AND a.nr_minuto_duracao IS NOT NULL THEN (a.hr_inicio::text || ' às '::text) || to_char((a.hr_inicio::time without time zone + ((a.nr_minuto_duracao || ' minutes'::text)::interval))::interval, 'HH24:MI'::text)
+            ELSE 'Não definida'::text
+        END AS previsao_termino,
+    a.nr_seq_proc_interno,
+    a.ie_cancelada,
+    a.nr_prescr_agenda,
+    a.ds_proc_cir,
+    COALESCE(a.evento, 'Sem status'::character varying) AS evento,
+    a.ie_status_cirurgia,
+    a.ds_status,
+    a.nr_prescricao,
+    a.ie_tipo_atendimento,
+    a.cd_medico,
+    a.cd_procedimento,
+    a.ds_carater_cirurgia,
+    a.dt_carga,
+    a.dt_agenda + a.hr_inicio::time without time zone::interval AS timestamp_completo,
+        CASE
+            WHEN EXTRACT(hour FROM a.hr_inicio::time without time zone) >= 6::numeric AND EXTRACT(hour FROM a.hr_inicio::time without time zone) <= 11::numeric THEN 'MANHÃ'::text
+            WHEN EXTRACT(hour FROM a.hr_inicio::time without time zone) >= 12::numeric AND EXTRACT(hour FROM a.hr_inicio::time without time zone) <= 17::numeric THEN 'TARDE'::text
+            ELSE 'NOITE'::text
+        END AS periodo_dia
+   FROM agenda_paciente_cirurgias a
+  WHERE a.dt_agenda >= (CURRENT_DATE - '12:00:00'::interval) AND a.dt_agenda <= (CURRENT_DATE + '36:00:00'::interval)
+  ORDER BY a.dt_agenda, a.hr_inicio;
+
+ALTER TABLE public.vw_cirurgias_dia
+    OWNER TO postgres;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_evolucao_turno_numerico
+
+-- DROP VIEW public.vw_evolucao_turno_numerico;
+
+CREATE OR REPLACE VIEW public.vw_evolucao_turno_numerico
+ AS
+ SELECT evolucao_turno.nr_atendimento,
+    evolucao_turno.ds_convenio,
+    evolucao_turno.nm_paciente,
+    evolucao_turno.idade::integer AS idade_int,
+    evolucao_turno.dt_entrada,
+    evolucao_turno.medico_responsavel,
+    evolucao_turno.medico_atendimento,
+    evolucao_turno.dias_internado::integer AS dias_internado_int,
+    evolucao_turno.data_turno,
+    to_date(evolucao_turno.data_turno::text, 'DD/MM/YYYY'::text) AS data_turno_date,
+    evolucao_turno.turno,
+    evolucao_turno.setor,
+    evolucao_turno.unidade,
+    evolucao_turno.dt_admissao_unidade,
+    evolucao_turno.evol_medico,
+    evolucao_turno.evol_enfermeiro,
+    evolucao_turno.evol_tec_enfermagem,
+    evolucao_turno.evol_nutricionista,
+    evolucao_turno.evol_fisioterapeuta,
+    evolucao_turno.dt_carga
+   FROM evolucao_turno;
+
+ALTER TABLE public.vw_evolucao_turno_numerico
+    OWNER TO postgres;
+COMMENT ON VIEW public.vw_evolucao_turno_numerico
+    IS 'View com campos numéricos convertidos para facilitar análises';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_evolucao_turno_pendencias
+
+-- DROP VIEW public.vw_evolucao_turno_pendencias;
+
+CREATE OR REPLACE VIEW public.vw_evolucao_turno_pendencias
+ AS
+ SELECT evolucao_turno.data_turno,
+    evolucao_turno.turno,
+    evolucao_turno.setor,
+    count(*) AS total_pacientes,
+    sum(
+        CASE
+            WHEN evolucao_turno.evol_medico::text = 'X'::text THEN 1
+            ELSE 0
+        END) AS pendente_medico,
+    sum(
+        CASE
+            WHEN evolucao_turno.evol_enfermeiro::text = 'X'::text THEN 1
+            ELSE 0
+        END) AS pendente_enfermeiro,
+    sum(
+        CASE
+            WHEN evolucao_turno.evol_tec_enfermagem::text = 'X'::text THEN 1
+            ELSE 0
+        END) AS pendente_tec_enf,
+    sum(
+        CASE
+            WHEN evolucao_turno.evol_nutricionista::text = 'X'::text THEN 1
+            ELSE 0
+        END) AS pendente_nutricionista,
+    sum(
+        CASE
+            WHEN evolucao_turno.evol_fisioterapeuta::text = 'X'::text THEN 1
+            ELSE 0
+        END) AS pendente_fisioterapeuta,
+    round(sum(
+        CASE
+            WHEN evolucao_turno.evol_medico::text = 'Feito'::text THEN 1
+            ELSE 0
+        END)::numeric * 100.0 / NULLIF(count(*), 0)::numeric, 2) AS perc_medico_feito,
+    round(sum(
+        CASE
+            WHEN evolucao_turno.evol_enfermeiro::text = 'Feito'::text THEN 1
+            ELSE 0
+        END)::numeric * 100.0 / NULLIF(count(*), 0)::numeric, 2) AS perc_enfermeiro_feito
+   FROM evolucao_turno
+  GROUP BY evolucao_turno.data_turno, evolucao_turno.turno, evolucao_turno.setor
+  ORDER BY evolucao_turno.data_turno DESC, evolucao_turno.turno, evolucao_turno.setor;
+
+ALTER TABLE public.vw_evolucao_turno_pendencias
+    OWNER TO postgres;
+COMMENT ON VIEW public.vw_evolucao_turno_pendencias
+    IS 'View agregada mostrando pendências de evolução por turno e setor';
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_leitos_disponiveis
+
+-- DROP VIEW public.vw_leitos_disponiveis;
+
+CREATE OR REPLACE VIEW public.vw_leitos_disponiveis
+ AS
+ SELECT ocupacao_hospitalar.cd_unidade_basica AS leito,
+    ocupacao_hospitalar."OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS setor,
+    ocupacao_hospitalar.ds_tipo_acomodacao AS tipo_acomodacao,
+    ocupacao_hospitalar.ie_status_unidade AS status_leito,
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'L'::bpchar THEN 'Disponível'::text
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'H'::bpchar THEN 'Em Higienização'::text
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'I'::bpchar THEN 'Interditado'::text
+            ELSE NULL::text
+        END AS status
+   FROM ocupacao_hospitalar
+  WHERE ocupacao_hospitalar.ie_status_unidade = ANY (ARRAY['L'::bpchar, 'H'::bpchar, 'I'::bpchar])
+  ORDER BY ocupacao_hospitalar."OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)", (
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'L'::bpchar THEN 1
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'H'::bpchar THEN 2
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'I'::bpchar THEN 3
+            ELSE NULL::integer
+        END), ocupacao_hospitalar.cd_unidade_basica;
+
+ALTER TABLE public.vw_leitos_disponiveis
+    OWNER TO postgres;
+COMMENT ON VIEW public.vw_leitos_disponiveis
+    IS 'Lista de leitos livres, em higienização ou interditados';
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_ocupacao_dashboard
+
+-- DROP VIEW public.vw_ocupacao_dashboard;
+
+CREATE OR REPLACE VIEW public.vw_ocupacao_dashboard
+ AS
+ SELECT count(*)::integer AS total_leitos,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_ocupados,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'L'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_livres,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'H'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_higienizacao,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'I'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_interditados,
+    round(count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::numeric / NULLIF(count(*), 0)::numeric * 100::numeric, 2) AS taxa_ocupacao_geral,
+    round(count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'L'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::numeric / NULLIF(count(*), 0)::numeric * 100::numeric, 2) AS taxa_disponibilidade,
+    count(DISTINCT ocupacao_hospitalar.cd_setor_atendimento)::integer AS total_setores,
+    round(avg(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN ocupacao_hospitalar.qt_dia_permanencia
+            ELSE NULL::numeric
+        END), 1) AS media_permanencia_geral,
+    max(ocupacao_hospitalar.dt_carga) AS ultima_atualizacao
+   FROM ocupacao_hospitalar;
+
+ALTER TABLE public.vw_ocupacao_dashboard
+    OWNER TO postgres;
+COMMENT ON VIEW public.vw_ocupacao_dashboard
+    IS 'Estatísticas gerais para o dashboard';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_ocupacao_hospitalar
+
+-- DROP VIEW public.vw_ocupacao_hospitalar;
+
+CREATE OR REPLACE VIEW public.vw_ocupacao_hospitalar
+ AS
+ SELECT ocupacao_hospitalar.id,
+    ocupacao_hospitalar.nr_atendimento,
+    ocupacao_hospitalar.dt_entrada_unidade,
+    ocupacao_hospitalar.dt_entrada_unid,
+    ocupacao_hospitalar.cd_unidade,
+    ocupacao_hospitalar.cd_unidade_basica AS leito,
+    ocupacao_hospitalar.nm_pessoa_fisica AS paciente,
+    ocupacao_hospitalar.cd_setor_atendimento,
+    ocupacao_hospitalar."OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS setor,
+    ocupacao_hospitalar.dt_nascimento,
+    EXTRACT(year FROM age(CURRENT_DATE::timestamp with time zone, ocupacao_hospitalar.dt_nascimento::timestamp with time zone))::integer AS idade,
+    ocupacao_hospitalar.ie_sexo AS sexo,
+    ocupacao_hospitalar.ds_convenio AS convenio,
+    ocupacao_hospitalar.nr_crm,
+    ocupacao_hospitalar.nm_guerra AS medico,
+    ocupacao_hospitalar.qt_dia_permanencia AS dias_internado,
+    ocupacao_hospitalar.ds_clinica AS clinica,
+    ocupacao_hospitalar.dt_alta_medico,
+    ocupacao_hospitalar.ds_tipo_acomodacao AS tipo_acomodacao,
+    ocupacao_hospitalar.classif,
+    ocupacao_hospitalar.ie_status_unidade AS status_leito,
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN 'Ocupado'::text
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'L'::bpchar THEN 'Livre'::text
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'H'::bpchar THEN 'Higienização'::text
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'I'::bpchar THEN 'Interditado'::text
+            ELSE 'Desconhecido'::text
+        END AS status_leito_desc,
+    ocupacao_hospitalar.dt_carga
+   FROM ocupacao_hospitalar;
+
+ALTER TABLE public.vw_ocupacao_hospitalar
+    OWNER TO postgres;
+COMMENT ON VIEW public.vw_ocupacao_hospitalar
+    IS 'View principal com dados limpos de ocupação hospitalar';
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_ocupacao_por_setor
+
+-- DROP VIEW public.vw_ocupacao_por_setor;
+
+CREATE OR REPLACE VIEW public.vw_ocupacao_por_setor
+ AS
+ SELECT ocupacao_hospitalar.cd_setor_atendimento,
+    ocupacao_hospitalar."OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS nm_setor,
+    count(*)::integer AS total_leitos,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_ocupados,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'L'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_livres,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'H'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_higienizacao,
+    count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'I'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::integer AS leitos_interditados,
+    round(count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::numeric / NULLIF(count(*), 0)::numeric * 100::numeric, 2) AS taxa_ocupacao,
+    round(count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'L'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::numeric / NULLIF(count(*), 0)::numeric * 100::numeric, 2) AS taxa_disponibilidade,
+    round(avg(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN ocupacao_hospitalar.qt_dia_permanencia
+            ELSE NULL::numeric
+        END), 1) AS media_permanencia
+   FROM ocupacao_hospitalar
+  GROUP BY ocupacao_hospitalar.cd_setor_atendimento, ocupacao_hospitalar."OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)"
+  ORDER BY (round(count(
+        CASE
+            WHEN ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar THEN 1
+            ELSE NULL::integer
+        END)::numeric / NULLIF(count(*), 0)::numeric * 100::numeric, 2)) DESC NULLS LAST;
+
+ALTER TABLE public.vw_ocupacao_por_setor
+    OWNER TO postgres;
+COMMENT ON VIEW public.vw_ocupacao_por_setor
+    IS 'Estatísticas de ocupação agrupadas por setor';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- View: public.vw_pacientes_internados
+
+-- DROP VIEW public.vw_pacientes_internados;
+
+CREATE OR REPLACE VIEW public.vw_pacientes_internados
+ AS
+ SELECT ocupacao_hospitalar.nr_atendimento,
+    ocupacao_hospitalar.cd_unidade_basica AS leito,
+    ocupacao_hospitalar.nm_pessoa_fisica AS paciente,
+    ocupacao_hospitalar."OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS setor,
+    ocupacao_hospitalar.ds_convenio AS convenio,
+    ocupacao_hospitalar.nm_guerra AS medico,
+    ocupacao_hospitalar.dt_entrada_unidade,
+    ocupacao_hospitalar.qt_dia_permanencia AS dias_internado,
+    ocupacao_hospitalar.ds_tipo_acomodacao AS tipo_acomodacao,
+    ocupacao_hospitalar.ie_sexo AS sexo,
+    EXTRACT(year FROM age(CURRENT_DATE::timestamp with time zone, ocupacao_hospitalar.dt_nascimento::timestamp with time zone))::integer AS idade,
+    ocupacao_hospitalar.ds_clinica AS clinica,
+    ocupacao_hospitalar.classif AS classificacao
+   FROM ocupacao_hospitalar
+  WHERE ocupacao_hospitalar.ie_status_unidade = 'P'::bpchar
+  ORDER BY ocupacao_hospitalar."OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)", ocupacao_hospitalar.cd_unidade_basica;
+
+ALTER TABLE public.vw_pacientes_internados
+    OWNER TO postgres;
+COMMENT ON VIEW public.vw_pacientes_internados
+    IS 'Lista de pacientes atualmente internados';
+
