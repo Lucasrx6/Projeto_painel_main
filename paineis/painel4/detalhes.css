@@ -1,0 +1,730 @@
+/* ========================================
+   🎨 ESTILOS - PÁGINA DE DETALHES (ULTRA COMPACTO)
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fa;
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* ========================================
+   📦 CONTAINER (SEM PADDING INFERIOR)
+   ======================================== */
+
+.painel-container {
+    background: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   🎯 CABEÇALHO ULTRA COMPACTO
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 8px 15px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Logo compacta */
+.header-left img {
+    max-height: 30px;
+    height: auto;
+    padding: 4px 6px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.painel-header h1 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.painel-header h1 i {
+    font-size: 0.9rem;
+}
+
+/* Botões do Header */
+.btn-voltar,
+.btn-refresh,
+.btn-auto-scroll {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.btn-voltar i,
+.btn-refresh i,
+.btn-auto-scroll i {
+    font-size: 0.75rem;
+}
+
+.btn-voltar:hover,
+.btn-refresh:hover,
+.btn-auto-scroll:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-auto-scroll.active {
+    background: #28a745;
+    border-color: #28a745;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+}
+
+/* ========================================
+   🔍 FILTROS ULTRA COMPACTOS
+   ======================================== */
+
+.filtros-container {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 150px;
+}
+
+.filtro-group label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.filtro-group label i {
+    font-size: 0.7rem;
+}
+
+.filtro-select,
+.filtro-input {
+    background: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+}
+
+.filtro-select:focus,
+.filtro-input:focus {
+    outline: none;
+    border-color: white;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+.btn-limpar {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.btn-limpar i {
+    font-size: 0.75rem;
+}
+
+.btn-limpar:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+}
+
+/* ========================================
+   📊 ESTATÍSTICAS DO FILTRO ULTRA COMPACTAS
+   ======================================== */
+
+.stats-filtro {
+    display: flex;
+    gap: 10px;
+    font-size: 0.7rem;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.stats-filtro .stat-item {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.stats-filtro strong {
+    font-weight: 600;
+}
+
+/* ========================================
+   📑 ABAS COMPACTAS
+   ======================================== */
+
+.tabs-container {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid #e9ecef;
+    padding: 0 15px;
+    gap: 3px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.tab-button {
+    background: transparent;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.tab-button:hover {
+    color: #dc3545;
+    background: #f8f9fa;
+}
+
+.tab-button.active {
+    color: #dc3545;
+    border-bottom-color: #dc3545;
+}
+
+.tab-button i {
+    font-size: 0.9rem;
+}
+
+.badge {
+    background: #dc3545;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.badge-success {
+    background: #28a745;
+}
+
+.badge-secondary {
+    background: #6c757d;
+}
+
+/* ========================================
+   📋 CONTEÚDO DAS ABAS (SEM MARGIN/PADDING)
+   ======================================== */
+
+.tabs-content {
+    flex: 1;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.tab-pane {
+    display: none;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* ========================================
+   📊 TABELA OCUPANDO TODA A TELA
+   ======================================== */
+
+.table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    height: calc(100vh - 200px);
+    padding-bottom: 0;
+}
+
+/* Scrollbar customizado */
+.table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #c82333;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin: 0;
+}
+
+thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #dc3545;
+}
+
+thead th {
+    background: #dc3545;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 10px;
+    border: none;
+    white-space: nowrap;
+    user-select: none;
+}
+
+/* Colunas ordenáveis */
+thead th.ordenavel {
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+thead th.ordenavel:hover {
+    background: #c82333;
+}
+
+thead th.ordenavel span {
+    margin-right: 5px;
+}
+
+.sort-icon {
+    opacity: 0.5;
+    font-size: 0.75rem;
+    margin-left: 5px;
+    transition: opacity 0.2s ease;
+}
+
+.sort-icon.active {
+    opacity: 1;
+}
+
+thead th.ordenavel:hover .sort-icon {
+    opacity: 0.8;
+}
+
+/* Linhas */
+tbody tr {
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+tbody tr:hover {
+    background: #fff5f5;
+    transform: scale(1.002);
+}
+
+tbody td {
+    padding: 10px;
+    font-size: 0.85rem;
+    color: #333;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* ========================================
+   🎨 BADGES E STATUS
+   ======================================== */
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.status-ocupado {
+    background: #ffe5e5;
+    color: #dc3545;
+}
+
+.status-livre {
+    background: #d4edda;
+    color: #28a745;
+}
+
+.status-higienizacao {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-interditado {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* ========================================
+   ⏳ LOADING
+   ======================================== */
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #dc3545;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ========================================
+   ❌ MENSAGEM VAZIA
+   ======================================== */
+
+.empty-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-message i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    display: block;
+    color: #ccc;
+}
+
+.empty-message h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.empty-message p {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 1200px) {
+    .filtros-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filtro-group {
+        min-width: 100%;
+    }
+
+    .btn-limpar {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .table-container {
+        height: calc(100vh - 280px);
+    }
+}
+
+@media (max-width: 868px) {
+    .painel-header {
+        padding: 6px 12px;
+    }
+
+    .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 5px;
+    }
+
+    .header-left {
+        width: 100%;
+        gap: 6px;
+    }
+
+    .header-left img {
+        max-height: 26px;
+        padding: 3px 5px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.85rem;
+    }
+
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .btn-voltar,
+    .btn-refresh,
+    .btn-auto-scroll {
+        flex: 1;
+        justify-content: center;
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+
+    .filtros-container {
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+
+    .filtro-group label {
+        font-size: 0.65rem;
+    }
+
+    .filtro-select,
+    .filtro-input {
+        padding: 3px 6px;
+        font-size: 0.75rem;
+    }
+
+    .stats-filtro {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+        gap: 8px;
+    }
+
+    .tabs-container {
+        padding: 0 10px;
+        overflow-x: auto;
+    }
+
+    .tab-button {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+
+    .badge {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+    }
+
+    .table-container {
+        height: calc(100vh - 280px);
+    }
+
+    thead th {
+        font-size: 0.75rem;
+        padding: 10px 8px;
+    }
+
+    tbody td {
+        font-size: 0.8rem;
+        padding: 8px;
+    }
+
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .painel-header {
+        padding: 5px 10px;
+    }
+
+    .header-left img {
+        max-height: 24px;
+        padding: 2px 4px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.8rem;
+    }
+
+    .btn-voltar,
+    .btn-refresh,
+    .btn-auto-scroll {
+        font-size: 0.65rem;
+        padding: 3px 6px;
+    }
+
+    .filtro-group label {
+        font-size: 0.6rem;
+    }
+
+    .filtro-select,
+    .filtro-input {
+        font-size: 0.7rem;
+    }
+
+    .stats-filtro {
+        flex-direction: column;
+        gap: 6px;
+        font-size: 0.6rem;
+    }
+
+    .tab-button {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+
+    .table-container {
+        height: calc(100vh - 300px);
+    }
+
+    thead th {
+        font-size: 0.7rem;
+        padding: 8px 6px;
+    }
+
+    tbody td {
+        font-size: 0.75rem;
+        padding: 6px;
+    }
+}
+
+/* ========================================
+   🎯 UTILIDADES
+   ======================================== */
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+.fw-bold {
+    font-weight: 700;
+}
+
+
+/* ========================================
+   🎨 CORES POR GÊNERO (MAIS VISÍVEIS E DISCRETAS)
+   ======================================== */
+
+tbody tr.genero-masculino {
+    background-color: #cfe2f3 !important; /* Azul mais visível */
+}
+
+tbody tr.genero-feminino {
+    background-color: #f4c7d7 !important; /* Rosa mais visível */
+}
+
+tbody tr.genero-masculino:hover {
+    background-color: #9fc5e8 !important; /* Azul mais forte no hover */
+    transform: scale(1.002);
+}
+
+tbody tr.genero-feminino:hover {
+    background-color: #ea9ab2 !important; /* Rosa mais forte no hover */
+    transform: scale(1.002);
+}
+
+/* Mantém o texto legível */
+tbody tr.genero-masculino td,
+tbody tr.genero-feminino td {
+    color: #333 !important;
+}

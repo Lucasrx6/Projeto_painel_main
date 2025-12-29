@@ -1,0 +1,408 @@
+/* ========================================
+   🎨 ESTILOS GERAIS - PAINEL 3 (SEM FILTROS)
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fa;
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* ========================================
+   📦 CONTAINER DO PAINEL
+   ======================================== */
+
+.painel-container {
+    background: white;
+    overflow: hidden;
+    max-width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========================================
+   🎯 CABEÇALHO COMPACTO
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 12px 20px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Logo compacta no header */
+.header-left img {
+    max-height: 35px;
+    height: auto;
+    padding: 5px 8px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.painel-header h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.painel-header h1 i {
+    font-size: 1rem;
+}
+
+/* ========================================
+   🔘 BOTÕES COMPACTOS DO HEADER
+   ======================================== */
+
+.btn-voltar,
+.btn-auto-scroll {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.btn-voltar i,
+.btn-auto-scroll i {
+    font-size: 0.8rem;
+}
+
+.btn-voltar:hover,
+.btn-auto-scroll:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-auto-scroll.active {
+    background: #28a745;
+    border-color: #28a745;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+}
+
+/* ========================================
+   📊 ESTATÍSTICAS COMPACTAS
+   ======================================== */
+
+.stats {
+    display: flex;
+    gap: 15px;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.auto-refresh {
+    margin-left: auto;
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+/* ========================================
+   📊 TABELA
+   ======================================== */
+
+.table-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    padding: 0;
+}
+
+/* Scrollbar customizado */
+.table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #c82333;
+}
+
+/* Tabela */
+table {
+    margin: 0;
+    width: 100%;
+}
+
+/* Cabeçalho fixo */
+thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #dc3545;
+}
+
+thead th {
+    background: #dc3545;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 10px;
+    border: none;
+    white-space: nowrap;
+    user-select: none;
+}
+
+/* Colunas ordenáveis */
+thead th.ordenavel {
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+thead th.ordenavel:hover {
+    background: #c82333;
+}
+
+thead th.ordenavel span {
+    margin-right: 5px;
+}
+
+.sort-icon {
+    opacity: 0.5;
+    font-size: 0.75rem;
+    margin-left: 5px;
+    transition: opacity 0.2s ease;
+}
+
+.sort-icon.active {
+    opacity: 1;
+}
+
+thead th.ordenavel:hover .sort-icon {
+    opacity: 0.8;
+}
+
+/* Linhas */
+tbody tr {
+    transition: all 0.2s ease;
+}
+
+tbody tr:hover {
+    background: #fff5f5;
+    transform: scale(1.005);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.1);
+}
+
+tbody td {
+    padding: 10px;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* ========================================
+   🎨 BADGES DE STATUS
+   ======================================== */
+
+.badge-status {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-logado {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-deslogado {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* ========================================
+   ⏳ LOADING
+   ======================================== */
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #dc3545;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ========================================
+   ❌ MENSAGENS DE ERRO
+   ======================================== */
+
+.error {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 868px) {
+    .painel-header {
+        padding: 10px 15px;
+    }
+
+    .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .header-left {
+        width: 100%;
+        gap: 8px;
+    }
+
+    .header-left img {
+        max-height: 30px;
+        padding: 4px 6px;
+    }
+
+    .painel-header h1 {
+        font-size: 1rem;
+    }
+
+    .btn-voltar,
+    .btn-auto-scroll {
+        width: 100%;
+        justify-content: center;
+        padding: 8px;
+        font-size: 0.85rem;
+    }
+
+    .stats {
+        font-size: 0.7rem;
+        gap: 10px;
+    }
+
+    .auto-refresh {
+        margin-left: 0;
+    }
+
+    thead th {
+        font-size: 0.75rem;
+        padding: 10px 8px;
+    }
+
+    tbody td {
+        font-size: 0.8rem;
+        padding: 8px;
+    }
+
+    .sort-icon {
+        font-size: 0.7rem;
+    }
+
+    .badge-status {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-left img {
+        max-height: 28px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.9rem;
+    }
+}
