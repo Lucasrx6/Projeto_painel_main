@@ -99,6 +99,8 @@ class ClinicalAIAnalyzer:
         1. Nunca foram analisados
         2. Dados clínicos mudaram (hash diferente)
         3. Análise tem mais de 24 horas
+
+        ✅ PROTEÇÃO: Só busca pacientes que existem no painel
         """
         conn = self.get_db_connection()
         if not conn:
@@ -128,7 +130,8 @@ class ClinicalAIAnalyzer:
                     p.exm_lactato_ven,
                     p.exm_troponina,
                     p.exm_hemoglobina,
-                    ia.dt_analise AS ultima_analise
+                    ia.dt_analise AS ultima_analise,
+                    ia.hash_dados AS hash_anterior
                 FROM 
                     public.painel_clinico_tasy p
                     LEFT JOIN public.painel_clinico_analise_ia ia
@@ -336,10 +339,11 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
     def arquivar_analises_antigas(self):
         """
         Marca como inativo análises de pacientes que:
-        1. Saíram do painel há mais de 24 horas
-        2. Não estão mais presentes
+        1. NÃO estão mais no painel (saíram)
+        2. Análise tem mais de 24 horas
 
-        ✅ Protege análises recentes de serem arquivadas prematuramente
+        ✅ PRESERVA o histórico - não apaga, só marca como inativo
+        ✅ PROTEÇÃO: Trabalha sem foreign key, mantém dados históricos
         """
         conn = self.get_db_connection()
         if not conn:
@@ -348,7 +352,8 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
         try:
             cursor = conn.cursor()
 
-            query = """
+            # Arquiva análises de pacientes que saíram do painel há >24h
+            query_arquivar = """
                 UPDATE public.painel_clinico_analise_ia ia
                 SET 
                     ie_ativo = FALSE,
@@ -362,22 +367,74 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
                             p.nr_atendimento = ia.nr_atendimento
                             AND p.ie_status_unidade = 'P'
                     )
-                    -- ✅ SÓ ARQUIVA SE A ANÁLISE TEM MAIS DE 24 HORAS
                     AND EXTRACT(EPOCH FROM (NOW() - ia.dt_analise)) / 3600 > %s
             """
 
-            cursor.execute(query, (HORAS_VALIDADE_ANALISE,))
+            cursor.execute(query_arquivar, (HORAS_VALIDADE_ANALISE,))
             arquivados = cursor.rowcount
+
+            if arquivados > 0:
+                print(f"📦 {arquivados} análise(s) arquivada(s) (pacientes saíram há >24h)")
+
+            # LIMPEZA OPCIONAL: Remove análises muito antigas (>30 dias inativas)
+            # Descomente se quiser limpar histórico antigo
+            """
+            query_limpar = '''
+                DELETE FROM public.painel_clinico_analise_ia
+                WHERE 
+                    ie_ativo = FALSE
+                    AND EXTRACT(EPOCH FROM (NOW() - dt_atualizacao)) / 86400 > 30
+            '''
+            cursor.execute(query_limpar)
+            removidos = cursor.rowcount
+            if removidos > 0:
+                print(f"🗑️  {removidos} análise(s) antigas removida(s) (>30 dias inativas)")
+            """
 
             conn.commit()
             cursor.close()
             conn.close()
 
-            if arquivados > 0:
-                print(f"📦 {arquivados} análise(s) arquivada(s) (>24h ausentes)")
-
         except Exception as e:
             print(f"⚠️ Erro ao arquivar análises: {e}")
+            if conn:
+                conn.rollback()
+                conn.close()
+
+    def monitorar_analises_orfas(self):
+        """
+        Monitora análises de atendimentos que não existem mais no painel
+        Útil para debug e estatísticas
+        """
+        conn = self.get_db_connection()
+        if not conn:
+            return
+
+        try:
+            cursor = conn.cursor()
+
+            query = """
+                SELECT 
+                    COUNT(*) as total_orfas,
+                    COUNT(*) FILTER (WHERE ie_ativo = TRUE) as orfas_ativas
+                FROM public.painel_clinico_analise_ia ia
+                WHERE NOT EXISTS (
+                    SELECT 1 
+                    FROM public.painel_clinico_tasy p
+                    WHERE p.nr_atendimento = ia.nr_atendimento
+                )
+            """
+
+            cursor.execute(query)
+            resultado = cursor.fetchone()
+            cursor.close()
+            conn.close()
+
+            if resultado and resultado[0] > 0:
+                print(f"ℹ️  Análises órfãs: {resultado[0]} total ({resultado[1]} ativas)")
+
+        except Exception as e:
+            print(f"⚠️ Erro ao monitorar órfãs: {e}")
             if conn:
                 conn.close()
 
@@ -389,6 +446,7 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
         print(f"🔄 CICLO {self.ciclo_atual}/{MAX_CICLOS} - {datetime.now().strftime('%H:%M:%S')}")
         print(f"{'=' * 60}")
 
+        self.monitorar_analises_orfas()
         # Arquiva análises antigas (1x por ciclo)
         self.arquivar_analises_antigas()
 
