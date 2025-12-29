@@ -335,7 +335,11 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
 
     def arquivar_analises_antigas(self):
         """
-        Marca como inativo análises de pacientes que saíram do painel
+        Marca como inativo análises de pacientes que:
+        1. Saíram do painel há mais de 24 horas
+        2. Não estão mais presentes
+
+        ✅ Protege análises recentes de serem arquivadas prematuramente
         """
         conn = self.get_db_connection()
         if not conn:
@@ -358,9 +362,11 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
                             p.nr_atendimento = ia.nr_atendimento
                             AND p.ie_status_unidade = 'P'
                     )
+                    -- ✅ SÓ ARQUIVA SE A ANÁLISE TEM MAIS DE 24 HORAS
+                    AND EXTRACT(EPOCH FROM (NOW() - ia.dt_analise)) / 3600 > %s
             """
 
-            cursor.execute(query)
+            cursor.execute(query, (HORAS_VALIDADE_ANALISE,))
             arquivados = cursor.rowcount
 
             conn.commit()
@@ -368,7 +374,7 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
             conn.close()
 
             if arquivados > 0:
-                print(f"📦 {arquivados} análise(s) arquivada(s)")
+                print(f"📦 {arquivados} análise(s) arquivada(s) (>24h ausentes)")
 
         except Exception as e:
             print(f"⚠️ Erro ao arquivar análises: {e}")
