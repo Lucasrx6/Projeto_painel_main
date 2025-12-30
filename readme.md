@@ -1,4 +1,4 @@
-# 🏥 Sistema de Painéis Hospitalares - Anchieta Ceilândia
+# 🏥 Sistema de Painéis Hospitalares
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0%2B-green.svg)](https://flask.palletsprojects.com/)
@@ -6,8 +6,6 @@
 [![License](https://img.shields.io/badge/License-Internal-red.svg)]()
 
 > Sistema web modular para monitoramento em tempo real de operações hospitalares com autenticação, controle de acesso e inteligência artificial.
-
-![Logo Anchieta Ceilândia](static/img/logo.png)
 
 ---
 
