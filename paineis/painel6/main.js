@@ -464,6 +464,8 @@
     const btnRefresh = el("btn-refresh");
 
     if (btnVoltar) {
+
+
       btnVoltar.addEventListener("click", () => {
         console.log('🔙 Voltando...');
         window.location.href = "/";
