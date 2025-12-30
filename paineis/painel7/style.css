@@ -1,0 +1,538 @@
+/* ========================================
+   🎨 PAINEL 7: DETECÇÃO DE SEPSE
+   ======================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #f5f7fa;
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+
+.painel-container {
+  background: white;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ========================================
+   🎯 CABEÇALHO
+   ======================================== */
+
+.painel-header {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  padding: 8px 15px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-left img {
+  max-height: 30px;
+  padding: 4px 6px;
+  background: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.painel-header h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.painel-header h1 i { font-size: 0.9rem; }
+
+.header-right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-voltar, .btn-refresh, .btn-auto-scroll {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 2px solid white;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.btn-voltar i, .btn-refresh i, .btn-auto-scroll i { font-size: 0.75rem; }
+
+.btn-voltar:hover, .btn-refresh:hover, .btn-auto-scroll:hover {
+  background: white;
+  color: #dc3545;
+  transform: translateY(-2px);
+}
+
+.btn-auto-scroll.active {
+  background: #28a745;
+  border-color: #28a745;
+  animation: pulse-auto 2s infinite;
+}
+
+@keyframes pulse-auto {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(40,167,69,0.7); }
+  50% { box-shadow: 0 0 0 8px rgba(40,167,69,0); }
+}
+
+.ultima-atualizacao {
+  font-size: 0.7rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+/* ========================================
+   📊 MINI DASHBOARD
+   ======================================== */
+
+.mini-dashboard {
+  display: flex;
+  gap: 10px;
+  padding: 10px 15px;
+  background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+  border-bottom: 2px solid #e9ecef;
+  flex-shrink: 0;
+}
+
+.stat-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: white;
+}
+
+.icon-total { background: linear-gradient(135deg, #6c757d, #495057); }
+.icon-critico { background: linear-gradient(135deg, #dc3545, #c82333); }
+.icon-alto { background: linear-gradient(135deg, #fd7e14, #e8590c); }
+.icon-moderado { background: linear-gradient(135deg, #ffc107, #e0a800); }
+.icon-baixo { background: linear-gradient(135deg, #28a745, #218838); }
+
+.stat-info h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.stat-info p {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   📋 CONTEÚDO PRINCIPAL
+   ======================================== */
+
+.cirurgias-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 15px;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #dc3545;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6c757d;
+  text-align: center;
+}
+
+.empty-message i {
+  font-size: 4rem;
+  margin-bottom: 15px;
+  opacity: 0.3;
+}
+
+.empty-message h3 {
+  font-size: 1.2rem;
+  margin-bottom: 5px;
+}
+
+.empty-message p {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* ========================================
+   📦 GRUPO E HEADER
+   ======================================== */
+
+.grupo-dia {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.grupo-dia-header {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.grupo-dia-header i { font-size: 0.9rem; }
+
+.grupo-dia-badge {
+  background: rgba(255,255,255,0.25);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+/* ========================================
+   📊 TABELA - COLUNAS ALINHADAS
+   ======================================== */
+
+.cirurgias-table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: white;
+  position: relative;
+}
+
+.cirurgias-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* THEAD */
+.cirurgias-table thead {
+  display: block;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f8f9fa;
+}
+
+.cirurgias-table thead tr {
+  display: flex;
+  width: 100%;
+}
+
+.cirurgias-table thead th {
+  padding: 10px 8px;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  flex-shrink: 0;
+}
+
+/* LARGURAS DAS COLUNAS */
+.col-risco { width: 120px; }
+.col-atendimento { width: 130px; }
+.col-paciente { width: 20%; }
+.col-leito { width: 15%; }
+.col-criterios { width: 200px; }
+.col-analise { flex: 1; min-width: 0; }
+
+/* TBODY */
+.cirurgias-table tbody {
+  display: block;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: calc(100vh - 280px);
+}
+
+.cirurgias-table tbody tr {
+  display: flex;
+  width: 100%;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+}
+
+.cirurgias-table tbody tr:hover {
+  background: #fff5f5;
+}
+
+.cirurgias-table tbody td {
+  padding: 12px 8px;
+  font-size: 0.85rem;
+  color: #333;
+  vertical-align: middle;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+.cirurgias-table tbody::-webkit-scrollbar { width: 8px; }
+.cirurgias-table tbody::-webkit-scrollbar-track { background: #f1f1f1; }
+.cirurgias-table tbody::-webkit-scrollbar-thumb {
+  background: #dc3545;
+  border-radius: 4px;
+}
+.cirurgias-table tbody::-webkit-scrollbar-thumb:hover { background: #c82333; }
+
+/* ========================================
+   🎨 BADGES E INDICADORES
+   ======================================== */
+
+.badge-risco {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-risco.critico {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  box-shadow: 0 2px 8px rgba(220,53,69,0.3);
+}
+
+.badge-risco.alto {
+  background: linear-gradient(135deg, #fd7e14, #e8590c);
+  color: white;
+  box-shadow: 0 2px 8px rgba(253,126,20,0.3);
+}
+
+.badge-risco.moderado {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #333;
+  box-shadow: 0 2px 8px rgba(255,193,7,0.3);
+}
+
+.badge-risco.baixo {
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: white;
+  box-shadow: 0 2px 8px rgba(40,167,69,0.3);
+}
+
+.badge-atendimento {
+  background: #007bff;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: 3px;
+}
+
+.badge-leito {
+  background: linear-gradient(135deg, #6c757d, #495057);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: 3px;
+}
+
+.paciente-nome {
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.paciente-info {
+  font-size: 0.75rem;
+  color: #6c757d;
+  display: block;
+}
+
+/* ========================================
+   🔬 CRITÉRIOS DE SEPSE
+   ======================================== */
+
+.criterios-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.criterio-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #f8f9fa;
+}
+
+.criterio-item.ativo {
+  background: #fff3cd;
+  border-left: 3px solid #ffc107;
+  font-weight: 600;
+}
+
+.criterio-item.ativo i {
+  color: #ffc107;
+}
+
+.criterio-item i {
+  font-size: 0.7rem;
+  color: #6c757d;
+}
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #dc3545;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-top: 5px;
+}
+
+/* ========================================
+   💬 ANÁLISE CLÍNICA
+   ======================================== */
+
+.analise-clinica {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analise-ia-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #6f42c1, #5a32a3);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.analise-basica-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 1400px) {
+  .col-paciente { width: 18%; }
+  .col-leito { width: 14%; }
+  .col-criterios { width: 180px; }
+}
+
+@media (max-width: 1200px) {
+  .mini-dashboard { gap: 8px; padding: 8px 12px; }
+  .stat-card { padding: 8px 10px; }
+  .stat-icon { width: 35px; height: 35px; font-size: 1rem; }
+  .stat-info h3 { font-size: 1.2rem; }
+  .stat-info p { font-size: 0.7rem; }
+}

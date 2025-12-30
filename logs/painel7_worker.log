@@ -1,0 +1,97 @@
+[2025-12-30 09:37:23,455] INFO: ============================================================
+[2025-12-30 09:37:23,455] INFO: 🦠 WORKER PAINEL 7 - DETECÇÃO DE SEPSE
+[2025-12-30 09:37:23,455] INFO: ============================================================
+[2025-12-30 09:37:23,456] INFO: Modelo IA: Groq (Llama 3.3 70B)
+[2025-12-30 09:37:23,456] INFO: Intervalo entre ciclos: 300s
+[2025-12-30 09:37:23,456] INFO: Batch size: 10 pacientes
+[2025-12-30 09:37:23,457] INFO: ============================================================
+
+[2025-12-30 09:37:23,457] INFO: 
+🔄 CICLO #1 - 30/12/2025 09:37:23
+[2025-12-30 09:37:23,460] INFO: ============================================================
+[2025-12-30 09:37:23,461] INFO: 🚀 INICIANDO CICLO DE ANÁLISE DE SEPSE
+[2025-12-30 09:37:23,461] INFO: ============================================================
+[2025-12-30 09:37:23,581] INFO: 📊 10 pacientes para processar
+[2025-12-30 09:37:23,582] INFO: 
+--- Paciente 1/10 ---
+[2025-12-30 09:37:23,582] INFO: 🔍 Processando: 2797798 - MELISSA DA SILVA ALMEIDA (CRITICO)
+[2025-12-30 09:37:23,583] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:26,017] INFO: ✅ Análise recebida (1364 caracteres)
+[2025-12-30 09:37:26,118] INFO: ✅ Análise salva: Atendimento 2797798
+[2025-12-30 09:37:26,119] INFO: ✅ Sucesso: 2797798 (2438ms)
+[2025-12-30 09:37:28,119] INFO: 
+--- Paciente 2/10 ---
+[2025-12-30 09:37:28,120] INFO: 🔍 Processando: 2802072 - RN DE MONALISA BEATRIZ SILVA LIMA (CRITICO)
+[2025-12-30 09:37:28,120] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:30,149] INFO: ✅ Análise recebida (1309 caracteres)
+[2025-12-30 09:37:30,263] INFO: ✅ Análise salva: Atendimento 2802072
+[2025-12-30 09:37:30,263] INFO: ✅ Sucesso: 2802072 (2031ms)
+[2025-12-30 09:37:32,264] INFO: 
+--- Paciente 3/10 ---
+[2025-12-30 09:37:32,265] INFO: 🔍 Processando: 2800600 - RN JORGE BORGES JERONIMO (ALTO)
+[2025-12-30 09:37:32,265] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:34,650] INFO: ✅ Análise recebida (1854 caracteres)
+[2025-12-30 09:37:34,728] INFO: ✅ Análise salva: Atendimento 2800600
+[2025-12-30 09:37:34,728] INFO: ✅ Sucesso: 2800600 (2386ms)
+[2025-12-30 09:37:36,729] INFO: 
+--- Paciente 4/10 ---
+[2025-12-30 09:37:36,730] INFO: 🔍 Processando: 2796783 - FRANCISCO XAVIER ALVES (ALTO)
+[2025-12-30 09:37:36,730] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:38,929] INFO: ✅ Análise recebida (1524 caracteres)
+[2025-12-30 09:37:39,785] INFO: ✅ Análise salva: Atendimento 2796783
+[2025-12-30 09:37:39,805] INFO: ✅ Sucesso: 2796783 (2574ms)
+[2025-12-30 09:37:41,805] INFO: 
+--- Paciente 5/10 ---
+[2025-12-30 09:37:41,806] INFO: 🔍 Processando: 2799275 - APARECIDA DAS GRAÇAS GIANIN (ALTO)
+[2025-12-30 09:37:41,806] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:44,197] INFO: ✅ Análise recebida (1567 caracteres)
+[2025-12-30 09:37:44,282] INFO: ✅ Análise salva: Atendimento 2799275
+[2025-12-30 09:37:44,282] INFO: ✅ Sucesso: 2799275 (2393ms)
+[2025-12-30 09:37:46,283] INFO: 
+--- Paciente 6/10 ---
+[2025-12-30 09:37:46,283] INFO: 🔍 Processando: 2802181 - ANDREIA ALVES FELIX GOMES (MODERADO)
+[2025-12-30 09:37:46,283] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:48,466] INFO: ✅ Análise recebida (1379 caracteres)
+[2025-12-30 09:37:48,645] INFO: ✅ Análise salva: Atendimento 2802181
+[2025-12-30 09:37:48,646] INFO: ✅ Sucesso: 2802181 (2184ms)
+[2025-12-30 09:37:50,647] INFO: 
+--- Paciente 7/10 ---
+[2025-12-30 09:37:50,648] INFO: 🔍 Processando: 2797618 - RN DE LUINE GASPAR RAMOS (MODERADO)
+[2025-12-30 09:37:50,648] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:52,624] INFO: ✅ Análise recebida (1589 caracteres)
+[2025-12-30 09:37:52,704] INFO: ✅ Análise salva: Atendimento 2797618
+[2025-12-30 09:37:52,704] INFO: ✅ Sucesso: 2797618 (1977ms)
+[2025-12-30 09:37:54,705] INFO: 
+--- Paciente 8/10 ---
+[2025-12-30 09:37:54,706] INFO: 🔍 Processando: 2801126 - LEANDRO LIMA OLIVEIRA (MODERADO)
+[2025-12-30 09:37:54,706] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:37:56,597] INFO: ✅ Análise recebida (1394 caracteres)
+[2025-12-30 09:37:56,691] INFO: ✅ Análise salva: Atendimento 2801126
+[2025-12-30 09:37:56,691] INFO: ✅ Sucesso: 2801126 (1892ms)
+[2025-12-30 09:37:58,692] INFO: 
+--- Paciente 9/10 ---
+[2025-12-30 09:37:58,693] INFO: 🔍 Processando: 2801816 - DEBORAH STELLA FERREIRA DOS SANTOS (MODERADO)
+[2025-12-30 09:37:58,693] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:38:00,776] INFO: ✅ Análise recebida (1543 caracteres)
+[2025-12-30 09:38:00,861] INFO: ✅ Análise salva: Atendimento 2801816
+[2025-12-30 09:38:00,861] INFO: ✅ Sucesso: 2801816 (2085ms)
+[2025-12-30 09:38:02,862] INFO: 
+--- Paciente 10/10 ---
+[2025-12-30 09:38:02,862] INFO: 🔍 Processando: 2794040 - EDSON COELHO REIS (MODERADO)
+[2025-12-30 09:38:02,863] INFO: 📡 Chamando Groq API (modelo: llama-3.3-70b-versatile)...
+[2025-12-30 09:38:05,013] INFO: ✅ Análise recebida (1552 caracteres)
+[2025-12-30 09:38:05,097] INFO: ✅ Análise salva: Atendimento 2794040
+[2025-12-30 09:38:05,098] INFO: ✅ Sucesso: 2794040 (2152ms)
+[2025-12-30 09:38:05,098] INFO: 
+============================================================
+[2025-12-30 09:38:05,099] INFO: ✅ CICLO CONCLUÍDO
+[2025-12-30 09:38:05,099] INFO: Tempo total: 41.6s
+[2025-12-30 09:38:05,099] INFO: Sucessos: 10
+[2025-12-30 09:38:05,099] INFO: Falhas: 0
+[2025-12-30 09:38:05,100] INFO: Taxa de sucesso: 100.0%
+[2025-12-30 09:38:05,100] INFO: ============================================================
+
+[2025-12-30 09:38:05,100] INFO: ⏸️ Aguardando 300s até próximo ciclo...
+
+[2025-12-30 09:38:08,471] INFO: 
+👋 Worker finalizado pelo usuário
