@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento de Enfermaria - Anchieta Ceilândia</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Customizado -->
+    <link rel="stylesheet" href="/paineis/painel8/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+        <!-- Cabeçalho Compacto -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-bed"></i> Monitoramento de Enfermaria</h1>
+                </div>
+                <div class="header-right">
+                    <!-- Filtro de Setor -->
+                    <select id="filtro-setor" class="filtro-setor-select">
+                        <option value="">Carregando setores...</option>
+                    </select>
+                    <button id="btn-voltar" class="btn-voltar">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                    <button id="btn-auto-scroll" class="btn-auto-scroll">
+                        <i class="fas fa-play"></i> Auto Scroll
+                    </button>
+                    <button id="btn-refresh" class="btn-refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <span class="ultima-atualizacao">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mini Dashboard Compacto -->
+        <div class="mini-dashboard">
+            <div class="stat-card">
+                <div class="stat-icon icon-setor">
+                    <i class="fas fa-hospital"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="nome-setor">-</h3>
+                    <p>Setor</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-ocupados">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <div class="stat-info">
+                    <h3><span id="leitos-ocupados">-</span>/<span id="total-leitos">-</span></h3>
+                    <p>Ocupação (<span id="percentual-ocupacao">-</span>%)</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-livres">
+                    <i class="fas fa-door-open"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="leitos-livres">-</h3>
+                    <p>Livres</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-criticos">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="pacientes-criticos">-</h3>
+                    <p>Críticos (NEWS≥5)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div class="enfermaria-content" id="enfermaria-content">
+            <!-- Loading inicial -->
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+        </div>
+    </div>
+    <!-- JavaScript -->
+    <script src="/paineis/painel8/main.js"></script>
+</body>
+</html>
