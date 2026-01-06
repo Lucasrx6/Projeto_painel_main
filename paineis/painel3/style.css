@@ -209,6 +209,7 @@ thead th {
     border: none;
     white-space: nowrap;
     user-select: none;
+    text-align: center; /* ✅ ALINHAMENTO CENTRALIZADO */
 }
 
 /* Colunas ordenáveis */
