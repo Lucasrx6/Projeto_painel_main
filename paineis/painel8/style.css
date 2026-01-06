@@ -1,0 +1,582 @@
+/* ========================================
+   🎨 PAINEL 8: ENFERMARIA - PADRÃO PAINEL 5
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fa;
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* ========================================
+   📦 CONTAINER - SEM SCROLL
+   ======================================== */
+
+.painel-container {
+    background: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   🎯 CABEÇALHO ULTRA COMPACTO
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 8px 15px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-left img {
+    max-height: 30px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.painel-header h1 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.painel-header h1 i {
+    font-size: 0.9rem;
+}
+
+.header-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Filtro de Setor */
+.filtro-setor-select {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    max-width: 200px;
+}
+
+.filtro-setor-select option {
+    color: #333;
+    background: white;
+}
+
+/* Botões do Header */
+.btn-voltar,
+.btn-refresh,
+.btn-auto-scroll {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.btn-voltar i,
+.btn-refresh i,
+.btn-auto-scroll i {
+    font-size: 0.75rem;
+}
+
+.btn-voltar:hover,
+.btn-refresh:hover,
+.btn-auto-scroll:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+}
+
+/* Botão Auto-Scroll Ativo */
+.btn-auto-scroll.active {
+    background: #28a745;
+    border-color: #28a745;
+    animation: pulse-auto-scroll 2s infinite;
+}
+
+@keyframes pulse-auto-scroll {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+}
+
+.ultima-atualizacao {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+/* ========================================
+   📊 MINI DASHBOARD COMPACTO - 1 LINHA
+   ======================================== */
+
+.mini-dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 6px 15px;
+    background: white;
+    border-bottom: 2px solid #e9ecef;
+    flex-shrink: 0;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 6px 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon i {
+    font-size: 1.1rem;
+    color: white;
+}
+
+/* Cores dos ícones */
+.icon-setor {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.icon-ocupados {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+}
+
+.icon-livres {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.icon-criticos {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.icon-evolucao {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+}
+
+.stat-info h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+    line-height: 1;
+}
+
+.stat-info p {
+    font-size: 0.7rem;
+    color: #666;
+    margin: 2px 0 0 0;
+}
+
+/* ========================================
+   📋 CONTEÚDO - SEM SCROLL, DINÂMICO
+   ======================================== */
+
+.enfermaria-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 10px 15px;
+}
+
+/* ========================================
+   📊 TABELA - ALINHAMENTO PERFEITO
+   ======================================== */
+
+.enfermaria-table-wrapper {
+    height: 100%;
+    overflow: hidden;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.enfermaria-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* THEAD: Larguras fixas */
+.enfermaria-table thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    flex-shrink: 0;
+}
+
+.enfermaria-table thead tr {
+    display: table-row;
+}
+
+.enfermaria-table thead th {
+    padding: 10px 8px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Larguras das colunas */
+.enfermaria-table thead th:nth-child(1) { width: 80px; }   /* Leito */
+.enfermaria-table thead th:nth-child(2) { width: 100px; }  /* Atendimento */
+.enfermaria-table thead th:nth-child(3) { width: 15%; }    /* Paciente */
+.enfermaria-table thead th:nth-child(4) { width: 60px; }   /* Idade */
+.enfermaria-table thead th:nth-child(5) { width: 60px; }   /* Dias */
+.enfermaria-table thead th:nth-child(6) { width: 90px; }   /* Prescrição */
+.enfermaria-table thead th:nth-child(7) { width: 90px; }   /* Lab */
+.enfermaria-table thead th:nth-child(8) { width: 90px; }   /* Imagem */
+.enfermaria-table thead th:nth-child(9) { width: 100px; }  /* Evolução */
+.enfermaria-table thead th:nth-child(10) { width: 80px; }  /* Parecer */
+.enfermaria-table thead th:nth-child(11) { width: 80px; }  /* Alergia */
+.enfermaria-table thead th:nth-child(12) { width: 70px; }  /* NEWS */
+
+/* Centraliza colunas de badges */
+.enfermaria-table thead th:nth-child(n+6) {
+    text-align: center;
+}
+
+/* TBODY: Mesmas larguras + scroll */
+.enfermaria-table tbody {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+}
+
+.enfermaria-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s ease;
+}
+
+.enfermaria-table tbody tr:hover {
+    background: #fff5f5;
+}
+
+/* Leitos vazios */
+.enfermaria-table tbody tr.leito-vazio {
+    background: #f8f9fa;
+    opacity: 0.6;
+}
+
+.enfermaria-table tbody tr.leito-vazio td {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Pacientes críticos */
+.enfermaria-table tbody tr.paciente-critico {
+    background: #fff3cd !important;
+    border-left: 4px solid #ffc107;
+}
+
+.enfermaria-table tbody tr.paciente-critico:hover {
+    background: #ffe69c !important;
+}
+
+.enfermaria-table tbody td {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    color: #333;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Mesmas larguras do THEAD */
+.enfermaria-table tbody td:nth-child(1) { width: 80px; }
+.enfermaria-table tbody td:nth-child(2) { width: 100px; }
+.enfermaria-table tbody td:nth-child(3) { width: 15%; }
+.enfermaria-table tbody td:nth-child(4) { width: 60px; }
+.enfermaria-table tbody td:nth-child(5) { width: 60px; }
+.enfermaria-table tbody td:nth-child(6) { width: 90px; }
+.enfermaria-table tbody td:nth-child(7) { width: 90px; }
+.enfermaria-table tbody td:nth-child(8) { width: 90px; }
+.enfermaria-table tbody td:nth-child(9) { width: 100px; }
+.enfermaria-table tbody td:nth-child(10) { width: 80px; }
+.enfermaria-table tbody td:nth-child(11) { width: 80px; }
+.enfermaria-table tbody td:nth-child(12) { width: 70px; }
+
+/* Centraliza colunas de badges */
+.enfermaria-table tbody td:nth-child(n+6) {
+    text-align: center;
+}
+
+/* Scrollbar customizado */
+.enfermaria-table tbody::-webkit-scrollbar {
+    width: 6px;
+}
+
+.enfermaria-table tbody::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.enfermaria-table tbody::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 3px;
+}
+
+/* ========================================
+   🎨 BADGES
+   ======================================== */
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.badge-news {
+    font-size: 0.85rem;
+    font-weight: 700;
+    min-width: 40px;
+    text-align: center;
+}
+
+.badge-news-0 {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.badge-news-baixo {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.badge-news-medio {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.badge-news-alto {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* ========================================
+   🎯 ÍCONES COLORIDOS
+   ======================================== */
+
+.icone-verde {
+    color: #28a745;
+    font-size: 1.2rem;
+}
+
+.icone-vermelho {
+    color: #dc3545;
+    font-size: 1.2rem;
+}
+
+.icone-amarelo {
+    color: #ffc107;
+    font-size: 1.2rem;
+}
+
+.texto-neutro {
+    color: #adb5bd;
+    font-size: 1rem;
+    font-weight: 300;
+}
+
+/* ========================================
+   ⏳ LOADING
+   ======================================== */
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #dc3545;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+    font-size: 1rem;
+    color: #666;
+    font-weight: 500;
+}
+
+/* ========================================
+   ❌ MENSAGEM VAZIA
+   ======================================== */
+
+.empty-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-message i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    display: block;
+    color: #ccc;
+}
+
+.empty-message h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.empty-message p {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 1400px) {
+    .mini-dashboard {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .enfermaria-table thead th {
+        font-size: 0.7rem;
+        padding: 8px 6px;
+    }
+
+    .enfermaria-table tbody td {
+        font-size: 0.75rem;
+        padding: 8px 6px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .mini-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 868px) {
+    .painel-header {
+        padding: 6px 12px;
+    }
+
+    .header-left img {
+        max-height: 26px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.85rem;
+    }
+
+    .mini-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        padding: 8px 12px;
+    }
+
+    .enfermaria-table thead th {
+        font-size: 0.65rem;
+        padding: 6px 4px;
+    }
+
+    .enfermaria-table tbody td {
+        font-size: 0.7rem;
+        padding: 6px 4px;
+    }
+}
