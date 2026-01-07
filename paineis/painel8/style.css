@@ -342,14 +342,87 @@ body {
     font-style: italic;
 }
 
-/* Pacientes críticos */
-.enfermaria-table tbody tr.paciente-critico {
-    background: #fff3cd !important;
+/* ========================================
+   ⚠️ ALERTAS NEWS - ERGONÔMICOS
+   ======================================== */
+
+/* Médio Risco: Amarelo suave + borda esquerda */
+.enfermaria-table tbody tr.news-medio-risco {
+    background: #fffbf0 !important;
     border-left: 4px solid #ffc107;
+    animation: pulso-medio 3s ease-in-out infinite;
 }
 
-.enfermaria-table tbody tr.paciente-critico:hover {
-    background: #ffe69c !important;
+.enfermaria-table tbody tr.news-medio-risco:hover {
+    background: #fff8e1 !important;
+}
+
+@keyframes pulso-medio {
+    0%, 100% {
+        border-left-color: #ffc107;
+        box-shadow: -2px 0 8px rgba(255, 193, 7, 0);
+    }
+    50% {
+        border-left-color: #ffb300;
+        box-shadow: -2px 0 8px rgba(255, 193, 7, 0.3);
+    }
+}
+
+/* Alto Risco: Vermelho suave + borda esquerda */
+.enfermaria-table tbody tr.news-alto-risco {
+    background: #fff5f5 !important;
+    border-left: 4px solid #dc3545;
+    animation: pulso-alto 2.5s ease-in-out infinite;
+}
+
+.enfermaria-table tbody tr.news-alto-risco:hover {
+    background: #ffe5e5 !important;
+}
+
+@keyframes pulso-alto {
+    0%, 100% {
+        border-left-color: #dc3545;
+        box-shadow: -2px 0 10px rgba(220, 53, 69, 0);
+    }
+    50% {
+        border-left-color: #c82333;
+        box-shadow: -2px 0 10px rgba(220, 53, 69, 0.4);
+    }
+}
+
+/* Ícones NEWS na coluna */
+.news-icon-medio {
+    color: #ffc107;
+    font-size: 1.3rem;
+    animation: pulso-icone-medio 3s ease-in-out infinite;
+}
+
+.news-icon-alto {
+    color: #dc3545;
+    font-size: 1.3rem;
+    animation: pulso-icone-alto 2.5s ease-in-out infinite;
+}
+
+@keyframes pulso-icone-medio {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+@keyframes pulso-icone-alto {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.15);
+    }
 }
 
 .enfermaria-table tbody td {
@@ -392,50 +465,6 @@ body {
 .enfermaria-table tbody::-webkit-scrollbar-thumb {
     background: #dc3545;
     border-radius: 3px;
-}
-
-/* ========================================
-   🎨 BADGES
-   ======================================== */
-
-.badge {
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    display: inline-block;
-    white-space: nowrap;
-}
-
-.badge-news {
-    font-size: 0.85rem;
-    font-weight: 700;
-    min-width: 40px;
-    text-align: center;
-}
-
-.badge-news-0 {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.badge-news-baixo {
-    background: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
-}
-
-.badge-news-medio {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-}
-
-.badge-news-alto {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
 }
 
 /* ========================================

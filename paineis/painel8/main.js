@@ -243,8 +243,17 @@ function renderizarTabela(dados) {
 
 function criarLinhaTabela(registro) {
     const isVazio = !registro.atendimento;
-    const isCritico = registro.score_news >= 5;
-    const rowClass = isVazio ? 'leito-vazio' : (isCritico ? 'paciente-critico' : '');
+    const scoreNews = registro.score_news || 0;
+
+    // ✅ Classifica risco NEWS
+    let rowClass = '';
+    if (isVazio) {
+        rowClass = 'leito-vazio';
+    } else if (scoreNews >= 7) {
+        rowClass = 'news-alto-risco';
+    } else if (scoreNews >= 5) {
+        rowClass = 'news-medio-risco';
+    }
 
     const nomeFormatado = formatarNome(registro.paciente);
     const idadeFormatada = registro.idade ? `${registro.idade} anos` : '-';
@@ -283,7 +292,7 @@ function criarLinhaTabela(registro) {
             <td>${getIconeEvolucao(registro.evol_medico)}</td>
             <td>${getIconeParecer(registro.parecer_pendente)}</td>
             <td>${getIconeAlergia(registro.alergia)}</td>
-            <td>${getBadgeNEWS(registro.score_news)}</td>
+            <td>${getBadgeNEWS(scoreNews)}</td>
         </tr>
     `;
 }
@@ -352,18 +361,18 @@ function getIconeAlergia(valor) {
 }
 
 function getBadgeNEWS(score) {
-    if (!score || score === 0) {
-        return '<span class="badge badge-news badge-news-0">0</span>';
+    // Baixo risco ou vazio: apenas traço
+    if (!score || score < 5) {
+        return '<span class="texto-neutro">-</span>';
     }
 
-    let badgeClass = 'badge-news-baixo';
-    if (score >= 5) {
-        badgeClass = 'badge-news-alto';
-    } else if (score >= 3) {
-        badgeClass = 'badge-news-medio';
+    // Médio risco: ícone amarelo
+    if (score >= 5 && score < 7) {
+        return '<i class="fas fa-exclamation-circle news-icon-medio" title="Médio Risco (NEWS 5-6)"></i>';
     }
 
-    return `<span class="badge badge-news ${badgeClass}">${score}</span>`;
+    // Alto risco: ícone vermelho
+    return '<i class="fas fa-exclamation-triangle news-icon-alto" title="Alto Risco (NEWS ≥7)"></i>';
 }
 
 // ========================================
