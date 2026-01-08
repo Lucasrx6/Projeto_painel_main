@@ -1189,3 +1189,154 @@ ALTER TABLE public.vw_pacientes_internados
 COMMENT ON VIEW public.vw_pacientes_internados
     IS 'Lista de pacientes atualmente internados';
 
+
+
+
+
+
+
+
+
+
+
+
+-- Table: public.painel_enfermaria
+
+-- DROP TABLE IF EXISTS public.painel_enfermaria;
+
+CREATE TABLE IF NOT EXISTS public.painel_enfermaria
+(
+    nr_atendimento bigint,
+    cd_unidade character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    cd_unidade_basica character varying(20) COLLATE pg_catalog."default",
+    cd_setor_atendimento integer NOT NULL,
+    nm_setor character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    nm_pessoa_fisica character varying(200) COLLATE pg_catalog."default",
+    nr_anos integer,
+    dt_nascimento character varying(30) COLLATE pg_catalog."default",
+    ie_sexo character(1) COLLATE pg_catalog."default",
+    ds_convenio character varying(100) COLLATE pg_catalog."default",
+    dt_entrada_unidade character varying(30) COLLATE pg_catalog."default",
+    dt_entrada_unid character varying(30) COLLATE pg_catalog."default",
+    qt_dia_permanencia integer DEFAULT 0,
+    ds_clinica character varying(100) COLLATE pg_catalog."default",
+    dt_alta_medico character varying(30) COLLATE pg_catalog."default",
+    ds_tipo_acomodacao character varying(50) COLLATE pg_catalog."default",
+    classif character varying(50) COLLATE pg_catalog."default",
+    ie_status_unidade character(1) COLLATE pg_catalog."default",
+    nr_crm character varying(20) COLLATE pg_catalog."default",
+    nm_guerra character varying(100) COLLATE pg_catalog."default",
+    nr_prescricao bigint,
+    medico character varying(200) COLLATE pg_catalog."default",
+    dt_inicio_prescr character varying(30) COLLATE pg_catalog."default",
+    dt_validade_prescr character varying(30) COLLATE pg_catalog."default",
+    dt_liberacao_medico character varying(30) COLLATE pg_catalog."default",
+    prescrito_lab_dia character varying(3) COLLATE pg_catalog."default" DEFAULT 'Não'::character varying,
+    prescrito_proc_dia character varying(3) COLLATE pg_catalog."default" DEFAULT 'Não'::character varying,
+    evol_medico character varying(5) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_enfermeiro character varying(5) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_tec_enfermagem character varying(5) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_nutricionista character varying(5) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    evol_fisioterapeuta character varying(5) COLLATE pg_catalog."default" DEFAULT 'X'::character varying,
+    parecer_pendente character varying(3) COLLATE pg_catalog."default" DEFAULT 'Não'::character varying,
+    alergia character varying(3) COLLATE pg_catalog."default" DEFAULT 'Não'::character varying,
+    score_news integer DEFAULT 0,
+    dt_atualizacao timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.painel_enfermaria
+    OWNER to postgres;
+
+GRANT ALL ON TABLE public.painel_enfermaria TO postgres;
+
+COMMENT ON TABLE public.painel_enfermaria
+    IS 'Painel 8 - Monitoramento de Enfermaria - Dados de leitos e internações';
+
+COMMENT ON COLUMN public.painel_enfermaria.nr_atendimento
+    IS 'Número do atendimento - NULL indica leito vazio';
+
+COMMENT ON COLUMN public.painel_enfermaria.cd_unidade
+    IS 'Código do leito (chave primária)';
+
+COMMENT ON COLUMN public.painel_enfermaria.ie_status_unidade
+    IS 'P=Paciente, L=Livre, R=Reservado, H=Higienização';
+
+COMMENT ON COLUMN public.painel_enfermaria.score_news
+    IS 'National Early Warning Score - 0 a 20 (maior = mais grave)';
+-- Index: idx_painel_enfermaria_atendimento
+
+-- DROP INDEX IF EXISTS public.idx_painel_enfermaria_atendimento;
+
+CREATE INDEX IF NOT EXISTS idx_painel_enfermaria_atendimento
+    ON public.painel_enfermaria USING btree
+    (nr_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default
+    WHERE nr_atendimento IS NOT NULL;
+-- Index: idx_painel_enfermaria_atualizacao
+
+-- DROP INDEX IF EXISTS public.idx_painel_enfermaria_atualizacao;
+
+CREATE INDEX IF NOT EXISTS idx_painel_enfermaria_atualizacao
+    ON public.painel_enfermaria USING btree
+    (dt_atualizacao ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_painel_enfermaria_leito
+
+-- DROP INDEX IF EXISTS public.idx_painel_enfermaria_leito;
+
+CREATE INDEX IF NOT EXISTS idx_painel_enfermaria_leito
+    ON public.painel_enfermaria USING btree
+    (cd_unidade COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_painel_enfermaria_nm_setor
+
+-- DROP INDEX IF EXISTS public.idx_painel_enfermaria_nm_setor;
+
+CREATE INDEX IF NOT EXISTS idx_painel_enfermaria_nm_setor
+    ON public.painel_enfermaria USING btree
+    (nm_setor COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_painel_enfermaria_score
+
+-- DROP INDEX IF EXISTS public.idx_painel_enfermaria_score;
+
+CREATE INDEX IF NOT EXISTS idx_painel_enfermaria_score
+    ON public.painel_enfermaria USING btree
+    (score_news ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default
+    WHERE score_news > 0;
+-- Index: idx_painel_enfermaria_setor
+
+-- DROP INDEX IF EXISTS public.idx_painel_enfermaria_setor;
+
+CREATE INDEX IF NOT EXISTS idx_painel_enfermaria_setor
+    ON public.painel_enfermaria USING btree
+    (cd_setor_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_painel_enfermaria_status
+
+-- DROP INDEX IF EXISTS public.idx_painel_enfermaria_status;
+
+CREATE INDEX IF NOT EXISTS idx_painel_enfermaria_status
+    ON public.painel_enfermaria USING btree
+    (ie_status_unidade COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+-- Trigger: trg_painel_enfermaria_update
+
+-- DROP TRIGGER IF EXISTS trg_painel_enfermaria_update ON public.painel_enfermaria;
+
+CREATE OR REPLACE TRIGGER trg_painel_enfermaria_update
+    BEFORE UPDATE 
+    ON public.painel_enfermaria
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_painel_enfermaria_timestamp();
