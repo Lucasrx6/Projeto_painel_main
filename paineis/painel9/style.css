@@ -1,0 +1,338 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.painel-container {
+    background: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   CABEÇALHO
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 8px 15px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-left img {
+    max-height: 30px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.painel-header h1 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.header-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.filtro-setor-select,
+.btn-voltar,
+.btn-refresh,
+.btn-auto-scroll {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.filtro-setor-select {
+    max-width: 200px;
+}
+
+.filtro-setor-select option {
+    color: #333;
+    background: white;
+}
+
+.btn-voltar:hover,
+.btn-refresh:hover,
+.btn-auto-scroll:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+}
+
+.btn-auto-scroll.active {
+    background: #28a745;
+    border-color: #28a745;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+}
+
+.ultima-atualizacao {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+/* ========================================
+   MINI DASHBOARD
+   ======================================== */
+
+.mini-dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 6px 15px;
+    background: white;
+    border-bottom: 2px solid #e9ecef;
+    flex-shrink: 0;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 6px 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon i {
+    font-size: 1.1rem;
+    color: white;
+}
+
+.icon-total {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+}
+
+.icon-setor {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.icon-exames {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-info h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+}
+
+.stat-info p {
+    font-size: 0.7rem;
+    color: #666;
+    margin: 2px 0 0 0;
+}
+
+/* ========================================
+   CONTEÚDO
+   ======================================== */
+
+.lab-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 10px 15px;
+}
+
+.lab-table-wrapper {
+    height: 100%;
+    overflow: hidden;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.lab-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.lab-table thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    flex-shrink: 0;
+}
+
+.lab-table thead th {
+    padding: 10px 8px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.lab-table thead th:nth-child(1) { width: 80px; }   /* Leito */
+.lab-table thead th:nth-child(2) { width: 12%; }    /* Setor */
+.lab-table thead th:nth-child(3) { width: 100px; }  /* Atend */
+.lab-table thead th:nth-child(4) { width: 12%; }    /* Paciente */
+.lab-table thead th:nth-child(5) { width: 60px; }   /* Idade */
+.lab-table thead th:nth-child(6) { width: 60px; }   /* Dias */
+.lab-table thead th:nth-child(7) { width: auto; }   /* Exames */
+
+.lab-table tbody {
+    display: block;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.lab-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s ease;
+}
+
+.lab-table tbody tr:hover {
+    background: #f0f8ff;
+}
+
+.lab-table tbody td {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    color: #333;
+    vertical-align: middle;
+}
+
+.lab-table tbody td:nth-child(1) { width: 80px; }
+.lab-table tbody td:nth-child(2) { width: 12%; }
+.lab-table tbody td:nth-child(3) { width: 100px; }
+.lab-table tbody td:nth-child(4) { width: 12%; }
+.lab-table tbody td:nth-child(5) { width: 60px; }
+.lab-table tbody td:nth-child(6) { width: 60px; }
+.lab-table tbody td:nth-child(7) { width: auto; }
+
+.lab-table tbody::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lab-table tbody::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.lab-table tbody::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 3px;
+}
+
+/* ========================================
+   BADGES EXAMES
+   ======================================== */
+
+.exames-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.badge-exame {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ========================================
+   LOADING/EMPTY
+   ======================================== */
+
+.loading-container,
+.empty-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.empty-message i {
+    font-size: 4rem;
+    color: #ccc;
+    margin-bottom: 20px;
+}

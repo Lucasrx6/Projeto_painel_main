@@ -670,3 +670,438 @@ AND A.NR_ATENDIMENTO IS NOT NULL
   AND B.ie_situacao = 'A';
 
 
+
+
+
+
+
+
+
+WITH
+-- ============ TURNO ATUAL DINÂMICO ============
+TURNO_ATUAL AS (
+    SELECT
+        CASE 
+            WHEN TO_CHAR(SYSDATE, 'HH24:MI') BETWEEN '07:00' AND '18:59' THEN 'DIURNO'
+            ELSE 'NOTURNO'
+        END AS turno,
+        CASE 
+            WHEN TO_CHAR(SYSDATE, 'HH24:MI') BETWEEN '07:00' AND '18:59' 
+            THEN TRUNC(SYSDATE) + 7/24
+            ELSE TRUNC(SYSDATE) + 19/24
+        END AS dt_inicio_turno,
+        CASE 
+            WHEN TO_CHAR(SYSDATE, 'HH24:MI') BETWEEN '07:00' AND '18:59' 
+            THEN TRUNC(SYSDATE) + 19/24
+            ELSE TRUNC(SYSDATE) + 1 + 7/24
+        END AS dt_fim_turno
+    FROM DUAL
+),
+-- ============ BASE DE ATENDIMENTOS ATIVOS (FILTRO ANTECIPADO) ============
+ATENDIMENTOS_ATIVOS AS (
+    SELECT /*+ MATERIALIZE */
+        A.nr_atendimento,
+        A.nr_seq_interno,
+        A.dt_entrada_unidade,
+        A.dt_entrada_unid,
+        A.cd_unidade,
+        A.cd_unidade_basica,
+        A.NM_PESSOA_FISICA,
+        A.CD_SETOR_ATENDIMENTO,
+        A.DT_NASCIMENTO,
+        A.IE_SEXO,
+        A.DS_CONVENIO,
+        A.NR_CRM,
+        A.NM_GUERRA,
+        A.QT_DIA_PERMANENCIA,
+        A.DS_CLINICA,
+        A.DT_ALTA_MEDICO,
+        A.ds_tipo_acomodacao,
+        A.classif,
+        A.ie_status_unidade
+    FROM ocupacao_unidade_v A
+    WHERE A.cd_setor_atendimento IN (41,54,168,184,63,105,78,88,133)
+),
+ATENDIMENTOS_FILTRADOS AS (
+    SELECT /*+ MATERIALIZE */
+        AA.*
+    FROM ATENDIMENTOS_ATIVOS AA
+    JOIN UNIDADE_ATENDIMENTO B
+      ON AA.nr_seq_interno = B.nr_seq_interno
+    WHERE B.ie_situacao = 'A'
+),
+-- ============ EVOLUÇÕES DO TURNO ATUAL (COM FILTRO DE ATENDIMENTOS) ============
+EVOLUCOES_AGREGADAS AS (
+    SELECT /*+ LEADING(AF t e) USE_HASH(AF e) */
+        e.nr_atendimento,
+        MAX(CASE WHEN e.ie_tipo_evolucao = 1 THEN 'Feito' END) AS evol_medico,
+        MAX(CASE WHEN e.ie_tipo_evolucao = 3 THEN 'Feito' END) AS evol_enfermeiro,
+        MAX(CASE WHEN e.ie_tipo_evolucao = 13 THEN 'Feito' END) AS evol_tec_enfermagem,
+        MAX(CASE WHEN e.ie_tipo_evolucao = 4 THEN 'Feito' END) AS evol_nutricionista,
+        MAX(CASE WHEN e.ie_tipo_evolucao = 10 THEN 'Feito' END) AS evol_fisioterapeuta
+    FROM ATENDIMENTOS_FILTRADOS AF
+    CROSS JOIN TURNO_ATUAL t
+    JOIN EVOLUCAO_PACIENTE e 
+      ON e.nr_atendimento = AF.nr_atendimento
+     AND e.ie_tipo_evolucao IN (1, 3, 13, 4, 10)
+     AND e.dt_evolucao >= t.dt_inicio_turno
+     AND e.dt_evolucao < t.dt_fim_turno
+    GROUP BY e.nr_atendimento
+),
+-- ============ PRESCRIÇÃO DO DIA (COM FILTRO DE ATENDIMENTOS) ============
+PRESCRICAO_DIA AS (
+    SELECT /*+ LEADING(AF) USE_HASH(PM) */
+        PM.NR_PRESCRICAO,
+        PM.NR_ATENDIMENTO,
+        OBTER_NOME_PESSOA_FISICA(PM.CD_MEDICO, NULL) AS MEDICO,
+        PM.DT_INICIO_PRESCR,
+        PM.DT_VALIDADE_PRESCR,
+        PM.DT_LIBERACAO_MEDICO,
+        ROW_NUMBER() OVER (
+            PARTITION BY PM.NR_ATENDIMENTO 
+            ORDER BY PM.DT_LIBERACAO_MEDICO DESC
+        ) AS rn
+    FROM ATENDIMENTOS_FILTRADOS AF
+    JOIN PRESCR_MEDICA PM
+      ON PM.NR_ATENDIMENTO = AF.nr_atendimento
+     AND TRUNC(PM.DT_LIBERACAO_MEDICO) = TRUNC(SYSDATE)
+     AND PM.DT_SUSPENSAO IS NULL
+     AND OBTER_FUNCAO_USUARIO_ORIG(PM.NM_USUARIO_ORIGINAL) = 'Médico'
+),
+-- ============================================
+-- 🔬 NOVA LÓGICA LAB - 3 ESTADOS
+-- ============================================
+-- Verifica se há PRESCRIÇÃO de LAB (qualquer status)
+LAB_PRESCRITO AS (
+    SELECT /*+ LEADING(AF) USE_HASH(PM PP) */
+        PM.NR_PRESCRICAO,
+        PM.NR_ATENDIMENTO,
+        1 AS HAS_LAB
+    FROM ATENDIMENTOS_FILTRADOS AF
+    JOIN PRESCR_MEDICA PM
+      ON PM.NR_ATENDIMENTO = AF.nr_atendimento
+     AND TRUNC(PM.DT_PRESCRICAO) >= TRUNC(SYSDATE)
+     AND PM.DT_SUSPENSAO IS NULL
+    JOIN PRESCR_PROCEDIMENTO PP
+      ON PP.NR_PRESCRICAO = PM.NR_PRESCRICAO
+     AND PP.IE_SUSPENSO <> 'S'
+     AND PP.IE_STATUS_EXECUCAO <> 'BE'
+     AND PP.DT_CANCELAMENTO IS NULL
+     AND PP.NR_SEQ_EXAME IS NOT NULL
+    GROUP BY PM.NR_PRESCRICAO, PM.NR_ATENDIMENTO
+),
+-- Verifica se há LAB com RESULTADO LIBERADO
+LAB_LIBERADO AS (
+    SELECT /*+ LEADING(LP) USE_HASH(RL) */
+        LP.NR_PRESCRICAO,
+        LP.NR_ATENDIMENTO,
+        1 AS HAS_RESULT
+    FROM LAB_PRESCRITO LP
+    JOIN PRESCR_PROCEDIMENTO PP
+      ON PP.NR_PRESCRICAO = LP.NR_PRESCRICAO
+     AND PP.NR_SEQ_EXAME IS NOT NULL
+    JOIN RESULT_LABORATORIO RL
+      ON RL.NR_PRESCRICAO = PP.NR_PRESCRICAO
+     AND RL.NR_SEQ_PRESCRICAO = PP.NR_SEQUENCIA
+     AND RL.DT_COLETA IS NOT NULL
+     AND RL.IE_STATUS <> 'I'
+    WHERE PP.IE_STATUS_ATEND >= 35
+    GROUP BY LP.NR_PRESCRICAO, LP.NR_ATENDIMENTO
+),
+-- Consolida STATUS LAB por ATENDIMENTO
+STATUS_LAB AS (
+    SELECT 
+        AF.NR_ATENDIMENTO,
+        CASE 
+            WHEN MAX(LP.HAS_LAB) IS NULL THEN NULL  -- Sem prescrição
+            WHEN MAX(LL.HAS_RESULT) = 1 THEN 'Sim'  -- Tem resultado liberado
+            ELSE 'Não'                               -- Prescrito mas pendente
+        END AS STATUS_LAB
+    FROM ATENDIMENTOS_FILTRADOS AF
+    LEFT JOIN LAB_PRESCRITO LP
+      ON LP.NR_ATENDIMENTO = AF.NR_ATENDIMENTO
+    LEFT JOIN LAB_LIBERADO LL
+      ON LL.NR_ATENDIMENTO = AF.NR_ATENDIMENTO
+    GROUP BY AF.NR_ATENDIMENTO
+),
+-- ============================================
+-- 🏥 NOVA LÓGICA IMAGEM - 3 ESTADOS
+-- ============================================
+-- Verifica se há PRESCRIÇÃO de IMAGEM (qualquer status)
+IMG_PRESCRITO AS (
+    SELECT /*+ LEADING(AF) USE_HASH(PM PP PROC) */
+        PM.NR_PRESCRICAO,
+        PM.NR_ATENDIMENTO,
+        1 AS HAS_IMG
+    FROM ATENDIMENTOS_FILTRADOS AF
+    JOIN PRESCR_MEDICA PM
+      ON PM.NR_ATENDIMENTO = AF.nr_atendimento
+     AND TRUNC(PM.DT_PRESCRICAO) >= TRUNC(SYSDATE)
+     AND PM.DT_SUSPENSAO IS NULL
+     AND (PM.DT_LIBERACAO IS NOT NULL OR PM.DT_LIBERACAO_MEDICO IS NOT NULL)
+    JOIN PRESCR_PROCEDIMENTO PP
+      ON PP.NR_PRESCRICAO = PM.NR_PRESCRICAO
+     AND PP.NR_SEQ_EXAME IS NULL  -- NÃO É EXAME LAB
+     AND PP.IE_SUSPENSO <> 'S'
+     AND PP.IE_STATUS_EXECUCAO <> 'BE'
+    JOIN PROCEDIMENTO PROC
+      ON PROC.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO
+     AND PROC.IE_ORIGEM_PROCED = PP.IE_ORIGEM_PROCED
+     AND PROC.IE_CLASSIFICACAO = '1'
+     AND PROC.CD_TIPO_PROCEDIMENTO IS NOT NULL
+    GROUP BY PM.NR_PRESCRICAO, PM.NR_ATENDIMENTO
+),
+-- Verifica se há IMAGEM com LAUDO LIBERADO
+IMG_LIBERADO AS (
+    SELECT /*+ LEADING(IP) USE_HASH(PP PROC_PAC LP) */
+        IP.NR_PRESCRICAO,
+        IP.NR_ATENDIMENTO,
+        1 AS HAS_LAUDO
+    FROM IMG_PRESCRITO IP
+    JOIN PRESCR_PROCEDIMENTO PP
+      ON PP.NR_PRESCRICAO = IP.NR_PRESCRICAO
+     AND PP.NR_SEQ_EXAME IS NULL
+    JOIN PROCEDIMENTO_PACIENTE PROC_PAC
+      ON PROC_PAC.NR_PRESCRICAO = PP.NR_PRESCRICAO
+     AND PROC_PAC.NR_SEQUENCIA_PRESCRICAO = PP.NR_SEQUENCIA
+    JOIN LAUDO_PACIENTE LP
+      ON LP.NR_SEQ_PROC = PROC_PAC.NR_SEQUENCIA
+     AND LP.DT_LIBERACAO IS NOT NULL
+    GROUP BY IP.NR_PRESCRICAO, IP.NR_ATENDIMENTO
+),
+-- Consolida STATUS IMAGEM por ATENDIMENTO
+STATUS_IMG AS (
+    SELECT 
+        AF.NR_ATENDIMENTO,
+        CASE 
+            WHEN MAX(IP.HAS_IMG) IS NULL THEN NULL  -- Sem prescrição
+            WHEN MAX(IL.HAS_LAUDO) = 1 THEN 'Sim'   -- Tem laudo liberado
+            ELSE 'Não'                               -- Prescrito mas pendente
+        END AS STATUS_IMG
+    FROM ATENDIMENTOS_FILTRADOS AF
+    LEFT JOIN IMG_PRESCRITO IP
+      ON IP.NR_ATENDIMENTO = AF.NR_ATENDIMENTO
+    LEFT JOIN IMG_LIBERADO IL
+      ON IL.NR_ATENDIMENTO = AF.NR_ATENDIMENTO
+    GROUP BY AF.NR_ATENDIMENTO
+),
+-- ============ VERIFICAÇÃO DE PARECERES PENDENTES (OTIMIZADO) ============
+PARECERES_PENDENTES AS (
+    SELECT /*+ LEADING(AF) USE_HASH(A B) */
+        A.NR_ATENDIMENTO,
+        'Sim' AS PARECER_PENDENTE
+    FROM ATENDIMENTOS_FILTRADOS AF
+    JOIN PARECER_MEDICO_REQ A 
+      ON A.NR_ATENDIMENTO = AF.nr_atendimento
+     AND A.IE_SITUACAO = 'A'
+    LEFT JOIN PARECER_MEDICO B 
+      ON A.NR_PARECER = B.NR_PARECER
+    WHERE (B.IE_STATUS = 'A' OR B.IE_STATUS IS NULL)
+    GROUP BY A.NR_ATENDIMENTO
+),
+-- ============ VERIFICAÇÃO DE ALERGIAS (OTIMIZADO) ============
+VERIFICA_ALERGIA AS (
+    SELECT /*+ LEADING(AF) USE_HASH(PA) */
+        PA.NR_ATENDIMENTO,
+        'Sim' AS ALERGIA
+    FROM ATENDIMENTOS_FILTRADOS AF
+    JOIN PACIENTE_ALERGIA PA
+      ON PA.NR_ATENDIMENTO = AF.nr_atendimento
+    GROUP BY PA.NR_ATENDIMENTO
+),
+-- ============================================
+-- ✅ SINAIS VITAIS PARA NEWS - CORRIGIDO
+-- ============================================
+SV_BASE_NEWS AS (
+    SELECT
+        NR_ATENDIMENTO,
+        DT_SINAL_VITAL,
+        QT_PA_SISTOLICA,
+        QT_FREQ_CARDIACA,
+        QT_FREQ_RESP,
+        QT_TEMP,
+        QT_SATURACAO_O2,
+        IE_SITUACAO
+    FROM ATENDIMENTO_SINAL_VITAL
+    WHERE IE_SITUACAO = 'A'
+),
+ULT_PA_SIST AS (
+    SELECT /*+ MATERIALIZE */ *
+    FROM (
+        SELECT
+            NR_ATENDIMENTO,
+            QT_PA_SISTOLICA,
+            DT_SINAL_VITAL,
+            ROW_NUMBER() OVER (
+                PARTITION BY NR_ATENDIMENTO
+                ORDER BY DT_SINAL_VITAL DESC
+            ) AS rn
+        FROM SV_BASE_NEWS
+        WHERE QT_PA_SISTOLICA IS NOT NULL
+    ) X
+    WHERE rn = 1
+),
+ULT_FC_NEWS AS (
+    SELECT /*+ MATERIALIZE */ *
+    FROM (
+        SELECT
+            NR_ATENDIMENTO,
+            QT_FREQ_CARDIACA,
+            DT_SINAL_VITAL,
+            ROW_NUMBER() OVER (
+                PARTITION BY NR_ATENDIMENTO
+                ORDER BY DT_SINAL_VITAL DESC
+            ) AS rn
+        FROM SV_BASE_NEWS
+        WHERE QT_FREQ_CARDIACA IS NOT NULL
+    ) X
+    WHERE rn = 1
+),
+ULT_FR_NEWS AS (
+    SELECT /*+ MATERIALIZE */ *
+    FROM (
+        SELECT
+            NR_ATENDIMENTO,
+            QT_FREQ_RESP,
+            DT_SINAL_VITAL,
+            ROW_NUMBER() OVER (
+                PARTITION BY NR_ATENDIMENTO
+                ORDER BY DT_SINAL_VITAL DESC
+            ) AS rn
+        FROM SV_BASE_NEWS
+        WHERE QT_FREQ_RESP IS NOT NULL
+    ) X
+    WHERE rn = 1
+),
+ULT_TEMP_NEWS AS (
+    SELECT /*+ MATERIALIZE */ *
+    FROM (
+        SELECT
+            NR_ATENDIMENTO,
+            QT_TEMP,
+            DT_SINAL_VITAL,
+            ROW_NUMBER() OVER (
+                PARTITION BY NR_ATENDIMENTO
+                ORDER BY DT_SINAL_VITAL DESC
+            ) AS rn
+        FROM SV_BASE_NEWS
+        WHERE QT_TEMP IS NOT NULL
+    ) X
+    WHERE rn = 1
+),
+ULT_SAT_NEWS AS (
+    SELECT /*+ MATERIALIZE */ *
+    FROM (
+        SELECT
+            NR_ATENDIMENTO,
+            QT_SATURACAO_O2,
+            DT_SINAL_VITAL,
+            ROW_NUMBER() OVER (
+                PARTITION BY NR_ATENDIMENTO
+                ORDER BY DT_SINAL_VITAL DESC
+            ) AS rn
+        FROM SV_BASE_NEWS
+        WHERE QT_SATURACAO_O2 IS NOT NULL
+    ) X
+    WHERE rn = 1
+),
+-- ============================================
+-- 🎯 CÁLCULO NEWS
+-- ============================================
+NEWS_CALC AS (
+    SELECT
+        AF.nr_atendimento,
+        NVL(CASE WHEN FR.QT_FREQ_RESP <= 8 THEN 3 WHEN FR.QT_FREQ_RESP BETWEEN 9 AND 11 THEN 1 WHEN FR.QT_FREQ_RESP BETWEEN 12 AND 20 THEN 0 WHEN FR.QT_FREQ_RESP BETWEEN 21 AND 24 THEN 2 WHEN FR.QT_FREQ_RESP >= 25 THEN 3 ELSE 0 END, 0) AS PONTOS_FR,
+        NVL(CASE WHEN SAT.QT_SATURACAO_O2 <= 91 THEN 3 WHEN SAT.QT_SATURACAO_O2 BETWEEN 92 AND 93 THEN 2 WHEN SAT.QT_SATURACAO_O2 BETWEEN 94 AND 95 THEN 1 WHEN SAT.QT_SATURACAO_O2 >= 96 THEN 0 ELSE 0 END, 0) AS PONTOS_SAT,
+        NVL(CASE WHEN PA.QT_PA_SISTOLICA <= 90 THEN 3 WHEN PA.QT_PA_SISTOLICA BETWEEN 91 AND 100 THEN 2 WHEN PA.QT_PA_SISTOLICA BETWEEN 101 AND 110 THEN 1 WHEN PA.QT_PA_SISTOLICA BETWEEN 111 AND 219 THEN 0 WHEN PA.QT_PA_SISTOLICA >= 220 THEN 3 ELSE 0 END, 0) AS PONTOS_PA,
+        NVL(CASE WHEN FC.QT_FREQ_CARDIACA <= 40 THEN 3 WHEN FC.QT_FREQ_CARDIACA BETWEEN 41 AND 50 THEN 1 WHEN FC.QT_FREQ_CARDIACA BETWEEN 51 AND 90 THEN 0 WHEN FC.QT_FREQ_CARDIACA BETWEEN 91 AND 110 THEN 1 WHEN FC.QT_FREQ_CARDIACA BETWEEN 111 AND 130 THEN 2 WHEN FC.QT_FREQ_CARDIACA >= 131 THEN 3 ELSE 0 END, 0) AS PONTOS_FC,
+        NVL(CASE WHEN TEMP.QT_TEMP <= 35.0 THEN 3 WHEN TEMP.QT_TEMP BETWEEN 35.1 AND 36.0 THEN 1 WHEN TEMP.QT_TEMP BETWEEN 36.1 AND 38.0 THEN 0 WHEN TEMP.QT_TEMP BETWEEN 38.1 AND 39.0 THEN 1 WHEN TEMP.QT_TEMP >= 39.1 THEN 2 ELSE 0 END, 0) AS PONTOS_TEMP,
+        CASE 
+            WHEN NVL(CASE WHEN FR.QT_FREQ_RESP <= 8 THEN 3 WHEN FR.QT_FREQ_RESP >= 25 THEN 3 ELSE 0 END, 0) = 3 THEN 1
+            WHEN NVL(CASE WHEN SAT.QT_SATURACAO_O2 <= 91 THEN 3 ELSE 0 END, 0) = 3 THEN 1
+            WHEN NVL(CASE WHEN PA.QT_PA_SISTOLICA <= 90 THEN 3 WHEN PA.QT_PA_SISTOLICA >= 220 THEN 3 ELSE 0 END, 0) = 3 THEN 1
+            WHEN NVL(CASE WHEN FC.QT_FREQ_CARDIACA <= 40 THEN 3 WHEN FC.QT_FREQ_CARDIACA >= 131 THEN 3 ELSE 0 END, 0) = 3 THEN 1
+            WHEN NVL(CASE WHEN TEMP.QT_TEMP <= 35.0 THEN 3 ELSE 0 END, 0) = 3 THEN 1
+            ELSE 0
+        END AS TEM_PARAMETRO_CRITICO
+    FROM ATENDIMENTOS_FILTRADOS AF
+    LEFT JOIN ULT_PA_SIST PA ON PA.NR_ATENDIMENTO = AF.nr_atendimento
+    LEFT JOIN ULT_FC_NEWS FC ON FC.NR_ATENDIMENTO = AF.nr_atendimento
+    LEFT JOIN ULT_FR_NEWS FR ON FR.NR_ATENDIMENTO = AF.nr_atendimento
+    LEFT JOIN ULT_TEMP_NEWS TEMP ON TEMP.NR_ATENDIMENTO = AF.nr_atendimento
+    LEFT JOIN ULT_SAT_NEWS SAT ON SAT.NR_ATENDIMENTO = AF.nr_atendimento
+)
+-- ============ SELECT PRINCIPAL ============
+SELECT 
+    AF.nr_atendimento,
+    AF.dt_entrada_unidade,
+    AF.dt_entrada_unid,
+    AF.cd_unidade,
+    AF.cd_unidade_basica,
+    AF.NM_PESSOA_FISICA,
+    C.NR_ANOS,
+    AF.CD_SETOR_ATENDIMENTO,
+    obter_nome_setor(AF.cd_setor_atendimento) AS nm_setor,
+    AF.DT_NASCIMENTO,
+    AF.IE_SEXO,
+    AF.DS_CONVENIO,
+    AF.NR_CRM,
+    AF.NM_GUERRA,
+    AF.QT_DIA_PERMANENCIA,
+    AF.DS_CLINICA,
+    AF.DT_ALTA_MEDICO,
+    AF.ds_tipo_acomodacao,
+    AF.classif,
+    AF.ie_status_unidade,
+    -- Campos da Prescrição
+    PD.NR_PRESCRICAO,
+    PD.MEDICO,
+    PD.DT_INICIO_PRESCR,
+    PD.DT_VALIDADE_PRESCR,
+    PD.DT_LIBERACAO_MEDICO,
+    -- ✅ NOVA LÓGICA: NULL / Não / Sim
+    SL.STATUS_LAB AS PRESCRITO_LAB_DIA,
+    SI.STATUS_IMG AS PRESCRITO_PROC_DIA,
+    -- Evoluções do Turno Atual
+    NVL(EV.evol_medico, 'X') AS evol_medico,
+    NVL(EV.evol_enfermeiro, 'X') AS evol_enfermeiro,
+    NVL(EV.evol_tec_enfermagem, 'X') AS evol_tec_enfermagem,
+    NVL(EV.evol_nutricionista, 'X') AS evol_nutricionista,
+    NVL(EV.evol_fisioterapeuta, 'X') AS evol_fisioterapeuta,
+    -- Parecer Pendente
+    NVL(PP.PARECER_PENDENTE, 'Não') AS PARECER_PENDENTE,
+    -- Alergia
+    NVL(AL.ALERGIA, 'Não') AS ALERGIA,
+    -- NEWS SCORE
+    NVL(NEWS.PONTOS_FR + NEWS.PONTOS_SAT + NEWS.PONTOS_PA + NEWS.PONTOS_FC + NEWS.PONTOS_TEMP, 0) AS SCORE_NEWS
+FROM ATENDIMENTOS_FILTRADOS AF
+LEFT JOIN ATENDIMENTO_PACIENTE_V C
+  ON C.NR_ATENDIMENTO = AF.nr_atendimento
+LEFT JOIN PRESCRICAO_DIA PD
+  ON PD.NR_ATENDIMENTO = AF.nr_atendimento
+  AND PD.rn = 1
+LEFT JOIN STATUS_LAB SL
+  ON SL.NR_ATENDIMENTO = AF.nr_atendimento
+LEFT JOIN STATUS_IMG SI
+  ON SI.NR_ATENDIMENTO = AF.nr_atendimento
+LEFT JOIN EVOLUCOES_AGREGADAS EV
+  ON EV.nr_atendimento = AF.nr_atendimento
+LEFT JOIN PARECERES_PENDENTES PP
+  ON PP.NR_ATENDIMENTO = AF.nr_atendimento
+LEFT JOIN VERIFICA_ALERGIA AL
+  ON AL.NR_ATENDIMENTO = AF.nr_atendimento
+LEFT JOIN NEWS_CALC NEWS
+  ON NEWS.NR_ATENDIMENTO = AF.nr_atendimento
+ORDER BY nm_setor, AF.cd_unidade
+
+-- ============================================
+-- 📋 INTERPRETAÇÃO CLÍNICA DO NEWS
+-- ============================================
+-- Score 0-4 + SEM parâmetro=3: Baixo risco
+-- Score 5-6 OU QUALQUER parâmetro=3: Médio risco ⚠️
+-- Score ≥7: Alto risco 🚨
+-- ============================================
+-- ✅ A regra "parâmetro=3 → Médio risco no mínimo"
+-- está calculada no campo TEM_PARAMETRO_CRITICO
+-- Use no frontend para classificação visual!
+-- ===========================================+
