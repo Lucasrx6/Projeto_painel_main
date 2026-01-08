@@ -1034,11 +1034,11 @@ def api_painel5_dashboard():
                     OR nr_cirurgia IS NULL
                 ) as cirurgias_previstas,
                 COUNT(*) FILTER (
-                    WHERE evento IN ('Entrada Paciente CC', 'Inicio da Cirurgia', 'Entrada no RPA')
+                    WHERE evento_codigo IN (12, 13)
                     AND nr_cirurgia IS NOT NULL
                 ) as cirurgias_andamento,
                 COUNT(*) FILTER (
-                    WHERE evento IN ('Sáida do RPA', 'Saida do RPA', 'Saida do CC')
+                    WHERE evento_codigo IN (14, 15,16)
                     AND nr_cirurgia IS NOT NULL
                 ) as cirurgias_realizadas
             FROM vw_cirurgias_dia
@@ -1088,6 +1088,7 @@ def api_painel5_cirurgias():
         query = """
             SELECT
                 dt_agenda,
+                evento_codigo,
                 ds_agenda,
                 cd_agenda,
                 nr_minuto_duracao,
