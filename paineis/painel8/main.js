@@ -329,14 +329,22 @@ function getIconeLab(valor) {
     if (valor === 'Sim') {
         return '<i class="fas fa-flask icone-verde" title="Lab prescrito"></i>';
     }
-    return '<i class="fas fa-flask icone-vermelho" title="Lab não prescrito"></i>';
+
+    else if (valor === 'Não') {
+        return '<i class="fas fa-flask icone-vermelho" title="Lab prescrito"></i>';
+    }
+    return '<span class="texto-neutro">-</span>';
 }
 
 function getIconeImagem(valor) {
     if (valor === 'Sim') {
         return '<i class="fas fa-x-ray icone-verde" title="Imagem prescrita"></i>';
     }
-    return '<i class="fas fa-x-ray icone-vermelho" title="Imagem não prescrita"></i>';
+
+    else if (valor === 'Não') {
+        return '<i class="fas fa-x-ray icone-vermelho" title="Imagem prescrita"></i>';
+    }
+    return '<span class="texto-neutro">-</span>';
 }
 
 function getIconeEvolucao(valor) {
