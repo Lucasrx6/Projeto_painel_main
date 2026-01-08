@@ -210,8 +210,6 @@ window.addEventListener('resize', () => {
     }
 });
 
-
-
 // ========================================
 // 🎬 AUTO-SCROLL SIMPLIFICADO E CORRIGIDO
 // ========================================
@@ -345,7 +343,7 @@ function formatarNome(nomeCompleto) {
 }
 
 function criarLinhaCirurgia(cirurgia) {
-    const statusIcon = obterIconeStatus(cirurgia.evento, cirurgia.nr_cirurgia);
+    const statusIcon = obterIconeStatus(cirurgia.evento_codigo, cirurgia.nr_cirurgia);
     const nomePacienteFormatado = formatarNome(cirurgia.nm_paciente_pf);
     const nomeMedicoFormatado = formatarNome(cirurgia.nm_medico);
 
@@ -391,69 +389,84 @@ function criarLinhaCirurgia(cirurgia) {
     `;
 }
 
-function obterIconeStatus(evento, nr_cirurgia) {
+// ========================================
+// 🎨 FUNÇÃO DE STATUS - LIMPA E OTIMIZADA
+// ========================================
+
+function obterIconeStatus(eventoCodigo, nr_cirurgia) {
+    // ✅ Se não tem cirurgia registrada, está prevista
     if (!nr_cirurgia || nr_cirurgia === null || nr_cirurgia === '' || nr_cirurgia === 'null') {
         return {
             classe: 'status-prevista',
             icone: 'fas fa-calendar-check',
-            titulo: 'Previsto',
+            titulo: 'Cirurgia Prevista',
             texto: 'Previsto'
         };
     }
 
-    const eventoNormalizado = (evento || '').trim();
+    // ✅ Converte para número inteiro
+    const codigo = parseInt(eventoCodigo);
 
-    if (eventoNormalizado === 'Entrada Paciente CC') {
+    // ✅ Se não é número válido, retorna status padrão
+    if (isNaN(codigo)) {
         return {
-            classe: 'status-entrada-cc',
-            icone: 'fas fa-door-open',
-            titulo: 'Entrada Paciente CC',
-            texto: 'Início'
+            classe: 'status-sem-status',
+            icone: 'fas fa-clock',
+            titulo: 'Aguardando Status',
+            texto: 'Aguardando'
         };
     }
 
-    if (eventoNormalizado === 'Inicio da Cirurgia') {
-        return {
-            classe: 'status-inicio-cirurgia',
-            icone: 'fas fa-procedures',
-            titulo: 'Início da Cirurgia',
-            texto: 'Em Cirurgia'
-        };
-    }
+    // ✅ Retorna o status baseado no código do evento
+    switch (codigo) {
+        case 12: // Entrada Paciente CC
+            return {
+                classe: 'status-entrada-cc',
+                icone: 'fas fa-door-open',
+                titulo: 'Entrada Paciente no Centro Cirúrgico',
+                texto: 'Entrada CC'
+            };
 
-    if (eventoNormalizado === 'Entrada no RPA') {
-        return {
-            classe: 'status-entrada-rpa',
-            icone: 'fas fa-bed',
-            titulo: 'Entrada no RPA',
-            texto: 'Recuperação Pós Antestesica'
-        };
-    }
+        case 13: // Início da Cirurgia
+            return {
+                classe: 'status-inicio-cirurgia',
+                icone: 'fas fa-procedures',
+                titulo: 'Cirurgia em Andamento',
+                texto: 'Em Cirurgia'
+            };
 
-    if (eventoNormalizado === 'Sáida do RPA' || eventoNormalizado === 'Saida do RPA') {
-        return {
-            classe: 'status-realizada',
-            icone: 'fas fa-check-circle',
-            titulo: 'Saída do RPA',
-            texto: 'Realizada'
-        };
-    }
+        case 14: // Entrada no RPA
+            return {
+                classe: 'status-entrada-rpa',
+                icone: 'fas fa-bed',
+                titulo: 'Paciente na Recuperação Pós-Anestésica',
+                texto: 'RPA'
+            };
 
-    if (eventoNormalizado === 'Saida do CC') {
-        return {
-            classe: 'status-realizada',
-            icone: 'fas fa-check-circle',
-            titulo: 'Saída do CC',
-            texto: 'Realizada'
-        };
-    }
+        case 15: // Saída do RPA
+            return {
+                classe: 'status-realizada',
+                icone: 'fas fa-check-circle',
+                titulo: 'Saída da Recuperação',
+                texto: 'Saída RPA'
+            };
 
-    return {
-        classe: 'status-sem-status',
-        icone: 'fas fa-clock',
-        titulo: 'Sem Status',
-        texto: 'Aguardando'
-    };
+        case 16: // Saída do CC
+            return {
+                classe: 'status-realizada',
+                icone: 'fas fa-check-circle',
+                titulo: 'Cirurgia Concluída',
+                texto: 'Concluída'
+            };
+
+        default: // Código desconhecido
+            return {
+                classe: 'status-sem-status',
+                icone: 'fas fa-question-circle',
+                titulo: `Status Desconhecido (Código: ${codigo})`,
+                texto: 'Indefinido'
+            };
+    }
 }
 
 function atualizarHoraAtualizacao() {
