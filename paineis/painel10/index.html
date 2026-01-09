@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise Pronto Socorro - Anchieta Ceilândia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel10/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+        <!-- Cabeçalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-chart-line"></i> Análise Pronto Socorro</h1>
+                </div>
+                <div class="header-right">
+                    <button id="btn-voltar" class="btn-voltar">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                    <button id="btn-auto-scroll" class="btn-auto-scroll">
+                        <i class="fas fa-play"></i> Auto Scroll
+                    </button>
+                    <button id="btn-refresh" class="btn-refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <span class="ultima-atualizacao">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Geral -->
+        <div class="dashboard-geral">
+            <div class="stat-card card-total">
+                <div class="stat-icon icon-total">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-dia">-</h3>
+                    <p>Total Atendimentos Hoje</p>
+                </div>
+            </div>
+
+            <div class="stat-card card-realizados">
+                <div class="stat-icon icon-realizados">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-realizados">-</h3>
+                    <p>Atendimentos Realizados</p>
+                </div>
+            </div>
+
+            <div class="stat-card card-aguardando">
+                <div class="stat-icon icon-aguardando">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-aguardando">-</h3>
+                    <p>Aguardando Atendimento</p>
+                </div>
+            </div>
+
+            <div class="stat-card card-alta">
+                <div class="stat-icon icon-alta">
+                    <i class="fas fa-door-open"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-alta">-</h3>
+                    <p>Pacientes de Alta</p>
+                </div>
+            </div>
+
+            <div class="stat-card card-tempo">
+                <div class="stat-icon icon-tempo">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="tempo-medio-espera">-</h3>
+                    <p>Tempo Médio Espera (min)</p>
+                </div>
+            </div>
+
+            <div class="stat-card card-permanencia">
+                <div class="stat-icon icon-permanencia">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="tempo-medio-permanencia">-</h3>
+                    <p>Tempo Médio Total (min)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div class="ps-content" id="ps-content">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/paineis/painel10/main.js"></script>
+</body>
+</html>
