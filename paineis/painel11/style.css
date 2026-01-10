@@ -1,0 +1,636 @@
+/* ========================================
+   🎨 PAINEL 11: MONITORAMENTO DE ALTA DO PS
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fa;
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* ========================================
+   📦 CONTAINER - SEM SCROLL
+   ======================================== */
+
+.painel-container {
+    background: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   🎯 CABEÇALHO ULTRA COMPACTO
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 8px 15px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-left img {
+    max-height: 30px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.painel-header h1 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.painel-header h1 i {
+    font-size: 0.9rem;
+}
+
+.header-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Filtro de Status */
+.filtro-status-select {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    max-width: 200px;
+}
+
+.filtro-status-select option {
+    color: #333;
+    background: white;
+}
+
+/* Botões do Header */
+.btn-voltar,
+.btn-refresh,
+.btn-auto-scroll {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.btn-voltar i,
+.btn-refresh i,
+.btn-auto-scroll i {
+    font-size: 0.75rem;
+}
+
+.btn-voltar:hover,
+.btn-refresh:hover,
+.btn-auto-scroll:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+}
+
+/* Botão Auto-Scroll Ativo */
+.btn-auto-scroll.active {
+    background: #28a745;
+    border-color: #28a745;
+    animation: pulse-auto-scroll 2s infinite;
+}
+
+@keyframes pulse-auto-scroll {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+}
+
+.ultima-atualizacao {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+/* ========================================
+   📊 MINI DASHBOARD - 5 CARDS
+   ======================================== */
+
+.mini-dashboard {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    padding: 6px 15px;
+    background: white;
+    border-bottom: 2px solid #e9ecef;
+    flex-shrink: 0;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 6px 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon i {
+    font-size: 1.1rem;
+    color: white;
+}
+
+/* Cores dos ícones */
+.icon-total {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.icon-aguardando {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.icon-internados {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.icon-tempo {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+}
+
+.icon-critico {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.stat-info h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+    line-height: 1;
+}
+
+.stat-info p {
+    font-size: 0.7rem;
+    color: #666;
+    margin: 2px 0 0 0;
+}
+
+/* ========================================
+   📋 CONTEÚDO - SEM SCROLL
+   ======================================== */
+
+.painel-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 10px 15px;
+}
+
+/* ========================================
+   📊 TABELA - ALINHAMENTO PERFEITO
+   ======================================== */
+
+.painel-table-wrapper {
+    height: 100%;
+    overflow: hidden;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.painel-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* THEAD: Larguras fixas */
+.painel-table thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    flex-shrink: 0;
+}
+
+.painel-table thead tr {
+    display: table-row;
+}
+
+.painel-table thead th {
+    padding: 10px 8px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Larguras das colunas */
+.painel-table thead th:nth-child(1) { width: 100px; }  /* Nr Atend PS */
+.painel-table thead th:nth-child(2) { width: 16%; }    /* Paciente */
+.painel-table thead th:nth-child(3) { width: 60px; }   /* Idade */
+.painel-table thead th:nth-child(4) { width: 10%; }    /* Convênio */
+.painel-table thead th:nth-child(5) { width: 10%; }    /* Clínica */
+.painel-table thead th:nth-child(6) { width: 110px; }  /* Dt Alta PS */
+.painel-table thead th:nth-child(7) { width: 10%; }    /* Tipo Vaga */
+.painel-table thead th:nth-child(8) { width: 110px; }  /* Status */
+.painel-table thead th:nth-child(9) { width: 90px; }   /* Tempo Espera */
+.painel-table thead th:nth-child(10) { width: 100px; } /* Nr Atend Int */
+.painel-table thead th:nth-child(11) { width: 110px; } /* Dt Internação */
+
+/* Centraliza colunas específicas */
+.painel-table thead th:nth-child(8),
+.painel-table thead th:nth-child(9) {
+    text-align: center;
+}
+
+/* TBODY: Mesmas larguras + scroll */
+.painel-table tbody {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+}
+
+.painel-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s ease;
+}
+
+.painel-table tbody tr:hover {
+    background: #f8f9ff;
+}
+
+.painel-table tbody td {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    color: #333;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Mesmas larguras do THEAD */
+.painel-table tbody td:nth-child(1) { width: 100px; }
+.painel-table tbody td:nth-child(2) { width: 16%; }
+.painel-table tbody td:nth-child(3) { width: 60px; }
+.painel-table tbody td:nth-child(4) { width: 10%; }
+.painel-table tbody td:nth-child(5) { width: 10%; }
+.painel-table tbody td:nth-child(6) { width: 110px; }
+.painel-table tbody td:nth-child(7) { width: 10%; }
+.painel-table tbody td:nth-child(8) { width: 110px; }
+.painel-table tbody td:nth-child(9) { width: 90px; }
+.painel-table tbody td:nth-child(10) { width: 100px; }
+.painel-table tbody td:nth-child(11) { width: 110px; }
+
+/* Centraliza colunas específicas */
+.painel-table tbody td:nth-child(8),
+.painel-table tbody td:nth-child(9) {
+    text-align: center;
+}
+
+/* ========================================
+   ⚠️ ALERTAS POR TEMPO DE ESPERA
+   ======================================== */
+
+/* Tempo > 2h e < 4h: Amarelo */
+.painel-table tbody tr.alerta-medio {
+    background: #fff8e1 !important;
+    border-left: 4px solid #ffc107;
+}
+
+.painel-table tbody tr.alerta-medio:hover {
+    background: #fff3cd !important;
+}
+
+/* Tempo > 4h: Vermelho crítico com animação */
+.painel-table tbody tr.alerta-critico {
+    background: #ffe5e5 !important;
+    border-left: 4px solid #dc3545;
+    animation: pulso-critico 2.5s ease-in-out infinite;
+}
+
+.painel-table tbody tr.alerta-critico:hover {
+    background: #ffcccc !important;
+}
+
+@keyframes pulso-critico {
+    0%, 100% {
+        border-left-color: #dc3545;
+        box-shadow: -2px 0 10px rgba(220, 53, 69, 0);
+    }
+    50% {
+        border-left-color: #c82333;
+        box-shadow: -2px 0 10px rgba(220, 53, 69, 0.4);
+    }
+}
+
+/* UTI aguardando: Destaque especial roxo */
+.painel-table tbody tr.vaga-uti {
+    background: #f3e5f5 !important;
+    border-left: 4px solid #9c27b0;
+}
+
+.painel-table tbody tr.vaga-uti:hover {
+    background: #e1bee7 !important;
+}
+
+/* Scrollbar customizado */
+.painel-table tbody::-webkit-scrollbar {
+    width: 6px;
+}
+
+.painel-table tbody::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.painel-table tbody::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 3px;
+}
+
+/* ========================================
+   🎯 BADGES E ÍCONES
+   ======================================== */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-aguardando {
+    background: #dc3545;
+    color: white;
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.badge-internado {
+    background: #28a745;
+    color: white;
+}
+
+.badge-tempo {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tempo-normal {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.tempo-alerta {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.tempo-critico {
+    background: #f8d7da;
+    color: #721c24;
+    animation: pulse-tempo 2s infinite;
+}
+
+@keyframes pulse-tempo {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.tipo-vaga {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.vaga-clinica {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.vaga-uti {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.vaga-cirurgica {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.texto-neutro {
+    color: #adb5bd;
+    font-size: 1rem;
+    font-weight: 300;
+}
+
+/* ========================================
+   ⏳ LOADING
+   ======================================== */
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #dc3545;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+    font-size: 1rem;
+    color: #666;
+    font-weight: 500;
+}
+
+/* ========================================
+   ❌ MENSAGEM VAZIA
+   ======================================== */
+
+.empty-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-message i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    display: block;
+    color: #ccc;
+}
+
+.empty-message h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.empty-message p {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 1400px) {
+    .mini-dashboard {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .painel-table thead th {
+        font-size: 0.7rem;
+        padding: 8px 6px;
+    }
+
+    .painel-table tbody td {
+        font-size: 0.75rem;
+        padding: 8px 6px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .mini-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 868px) {
+    .painel-header {
+        padding: 6px 12px;
+    }
+
+    .header-left img {
+        max-height: 26px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.85rem;
+    }
+
+    .mini-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        padding: 8px 12px;
+    }
+
+    .painel-table thead th {
+        font-size: 0.65rem;
+        padding: 6px 4px;
+    }
+
+    .painel-table tbody td {
+        font-size: 0.7rem;
+        padding: 6px 4px;
+    }
+}

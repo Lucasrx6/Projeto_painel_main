@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento de Alta do PS - Anchieta Ceilândia</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Customizado -->
+    <link rel="stylesheet" href="/paineis/painel11/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+        <!-- ========================================
+             CABEÇALHO COMPACTO
+             ======================================== -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-bed-pulse"></i> Monitoramento de Alta do PS</h1>
+                </div>
+                <div class="header-right">
+                    <!-- Filtro de Status -->
+                    <select id="filtro-status" class="filtro-status-select">
+                        <option value="">Todos os Pacientes</option>
+                        <option value="AGUARDANDO_VAGA" selected>🔴 Aguardando Vaga</option>
+                        <option value="INTERNADO">🟢 Já Internados</option>
+                    </select>
+
+                    <button id="btn-voltar" class="btn-voltar">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                    <button id="btn-auto-scroll" class="btn-auto-scroll">
+                        <i class="fas fa-play"></i> Auto Scroll
+                    </button>
+                    <button id="btn-refresh" class="btn-refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <span class="ultima-atualizacao">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================
+             MINI DASHBOARD - 1 LINHA
+             ======================================== -->
+        <div class="mini-dashboard">
+            <div class="stat-card">
+                <div class="stat-icon icon-total">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-altas">-</h3>
+                    <p>Total Altas Hoje</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-aguardando">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-aguardando">-</h3>
+                    <p>Aguardando Vaga</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-internados">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-internados">-</h3>
+                    <p>Já Internados</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-tempo">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="tempo-medio">-</h3>
+                    <p>Tempo Médio Espera</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-critico">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-criticos">-</h3>
+                    <p>Críticos (>4h)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================
+             CONTEÚDO PRINCIPAL - TABELA
+             ======================================== -->
+        <div class="painel-content" id="painel-content">
+            <!-- Loading inicial -->
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/paineis/painel11/main.js"></script>
+</body>
+</html>
