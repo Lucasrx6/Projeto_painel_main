@@ -216,12 +216,13 @@ function criarLinhaTabela(registro) {
     const tipoVaga = extrairTipoVaga(registro.ds_necessidade_vaga);
     const tempoEspera = calcularTempoEspera(registro.dt_alta);
     const classeLinha = determinarClasseLinha(tempoEspera, tipoVaga, registro.status_internacao);
+    const idadeFormatada = registro.qt_idade ? `${registro.qt_idade} anos` : '-';
 
     return `
         <tr class="${classeLinha}">
             <td><strong>${registro.nr_atendimento}</strong></td>
             <td>${nomeFormatado}</td>
-            <td>${registro.qt_idade || '-'}</td>
+            <td>${idadeFormatada}</td>
             <td>${convenioAbrev}</td>
             <td>${clinicaAbrev}</td>
             <td>${formatarDataHora(registro.dt_alta)}</td>
