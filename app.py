@@ -2696,6 +2696,16 @@ def api_listar_paineis():
              'ativo': True},
             {'nome': 'painel6', 'titulo': 'Priorização Clínica IA',
              'descricao': 'Análise de risco com inteligência artificial', 'ativo': True},
+            {'nome': 'painel7', 'titulo': 'Analise Risco Sepse',
+             'descricao': 'Análise de risco com inteligência artificial', 'ativo': True},
+            {'nome': 'painel8', 'titulo': 'Situação Pacientes',
+             'descricao': 'Acompanhamento de situação dos pacientes internados', 'ativo': True},
+            {'nome': 'painel9', 'titulo': 'Lab Pendentes',
+             'descricao': 'Exames de Lab pendentes', 'ativo': True},
+            {'nome': 'painel10', 'titulo': 'Painel PS',
+             'descricao': 'Acompanhamento desempenho PS', 'ativo': True},
+            {'nome': 'painel11', 'titulo': 'Painel Internação',
+             'descricao': 'Acompanhamento de pedidos de internação', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200
