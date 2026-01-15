@@ -390,11 +390,11 @@ function criarLinhaCirurgia(cirurgia) {
 }
 
 // ========================================
-// 🎨 FUNÇÃO DE STATUS - LIMPA E OTIMIZADA
+//  FUNÇÃO DE STATUS
 // ========================================
 
 function obterIconeStatus(eventoCodigo, nr_cirurgia) {
-    // ✅ Se não tem cirurgia registrada, está prevista
+    //  Se não tem cirurgia registrada, está prevista
     if (!nr_cirurgia || nr_cirurgia === null || nr_cirurgia === '' || nr_cirurgia === 'null') {
         return {
             classe: 'status-prevista',
@@ -404,10 +404,10 @@ function obterIconeStatus(eventoCodigo, nr_cirurgia) {
         };
     }
 
-    // ✅ Converte para número inteiro
+    //  Converte para número inteiro
     const codigo = parseInt(eventoCodigo);
 
-    // ✅ Se não é número válido, retorna status padrão
+    //  Se não é número válido, retorna status padrão
     if (isNaN(codigo)) {
         return {
             classe: 'status-sem-status',
@@ -417,7 +417,7 @@ function obterIconeStatus(eventoCodigo, nr_cirurgia) {
         };
     }
 
-    // ✅ Retorna o status baseado no código do evento
+    // Retorna o status baseado no código do evento
     switch (codigo) {
         case 12: // Entrada Paciente CC
             return {

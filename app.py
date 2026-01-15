@@ -423,7 +423,6 @@ def painel6_lista():
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # QUERY SIMPLIFICADA - Busca direto das tabelas
         query = """
             SELECT 
                 p.nr_atendimento,
@@ -489,10 +488,7 @@ def painel6_lista():
 
 @app.route('/api/paineis/painel6/paciente/<int:nr_atendimento>', methods=['GET'])
 def painel6_paciente_detalhe(nr_atendimento):
-    """
-    Retorna detalhes de um paciente específico
-    GET /api/paineis/painel6/paciente/12345
-    """
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -538,10 +534,7 @@ def painel6_paciente_detalhe(nr_atendimento):
 
 @app.route('/api/paineis/painel6/analisar/<int:nr_atendimento>', methods=['POST'])
 def painel6_forcar_analise(nr_atendimento):
-    """
-    Força análise IA de um paciente específico
-    POST /api/paineis/painel6/analisar/12345
-    """
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -1166,9 +1159,6 @@ def api_painel5_cirurgias():
 # PAINEL 7: DETECÇÃO DE SEPSE
 # =====================================================
 
-# =====================================================
-# PAINEL 7: DETECÇÃO DE SEPSE
-# =====================================================
 
 @app.route('/painel/painel7')
 @login_required
@@ -1188,15 +1178,11 @@ def painel7():
 @app.route('/api/paineis/painel7/dashboard', methods=['GET'])
 @login_required
 def painel7_dashboard():
-    """
-    Dashboard de sepse
-    LEFT JOIN = mostra todos pacientes, com ou sem análise IA
-    """
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # LEFT JOIN para mostrar TODOS os pacientes
         query = """
             SELECT 
                 COUNT(*) as total,
@@ -1235,10 +1221,7 @@ def painel7_dashboard():
 @app.route('/api/paineis/painel7/lista', methods=['GET'])
 @login_required
 def painel7_lista():
-    """
-    Lista de pacientes com risco de sepse
-    LEFT JOIN = mostra todos, com ou sem análise IA
-    """
+
     try:
         limit = request.args.get('limit', 400, type=int)
         offset = request.args.get('offset', 0, type=int)
@@ -1424,9 +1407,7 @@ def painel7_detalhes(nr_atendimento):
 # =========================================================
 # 🏥 PAINEL 8 - MONITORAMENTO DE ENFERMARIA
 # =========================================================
-# INSTRUÇÕES: Adicione este bloco ao arquivo app.py principal
-# Localização: Logo após o bloco do Painel 7
-# =========================================================
+
 
 @app.route('/painel/painel8')
 @login_required
@@ -1444,10 +1425,7 @@ def painel8():
 
 
 def formatar_nome_paciente_painel8(nome_completo):
-    """
-    Formata nome do paciente conforme padrão do projeto:
-    'MARIA DA SILVA SANTOS' -> 'MARIA DA S. S.'
-    """
+
     if not nome_completo or nome_completo.strip() == '':
         return ''
 
@@ -2221,9 +2199,7 @@ def api_painel10_desempenho_recepcao():
 # =========================================================
 # 🏥 PAINEL 11 - MONITORAMENTO DE ALTA DO PS
 # =========================================================
-# INSTRUÇÕES: Adicione este bloco ao arquivo app.py
-# Localização: Logo após o bloco do Painel 10
-# =========================================================
+
 
 @app.route('/painel/painel11')
 @login_required
@@ -2441,6 +2417,151 @@ def api_painel11_lista():
 # =========================================================
 # FIM DAS ROTAS DO PAINEL 11
 # =========================================================
+
+
+# =========================================================
+# 🏥 PAINEL 12 - OCUPAÇÃO E PRODUÇÃO HAC
+# =========================================================
+
+@app.route('/painel/painel12')
+@login_required
+def painel12():
+    """Página do Painel 12 - Ocupação e Produção HAC"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel12'):
+            app.logger.warning(f'Acesso negado ao painel12: {session.get("usuario")}')
+            return send_from_directory('frontend', 'acesso-negado.html')
+
+    return send_from_directory('paineis/painel12', 'index.html')
+
+
+@app.route('/api/paineis/painel12/dashboard', methods=['GET'])
+@login_required
+def api_painel12_dashboard():
+
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel12'):
+            return jsonify({
+                'success': False,
+                'error': 'Sem permissão para acessar este painel'
+            }), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            'success': False,
+            'error': 'Erro de conexão com o banco'
+        }), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Buscar dados da view agregadora
+        query = "SELECT * FROM vw_painel12_dashboard"
+        cursor.execute(query)
+        resultado = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if not resultado:
+            # Retornar valores zerados se não houver dados
+            dados = {
+                'total_leitos': 0,
+                'leitos_ocupados': 0,
+                'taxa_ocupacao': 0,
+                'ps_atendimentos_mes': 0,
+                'ps_atendimentos_hoje': 0,
+                'ps_media_dia': 0,
+                'conversoes_mes': 0,
+                'conversoes_base_total': 0,
+                'conversoes_percentual': 0,
+                'tempo_medio_internacao_h': 0,
+                'producao_mes': 0,
+                'custo_mes': 0,
+                'producao_media_dia': 0,
+                'projecao_mes': 0,
+                'dias_corridos': 0,
+                'dias_restantes': 0
+            }
+        else:
+            dados = dict(resultado)
+
+            # Formatar valores monetários
+            if dados.get('producao_mes'):
+                dados['producao_mes_formatada'] = f"R$ {dados['producao_mes']:,.2f}"
+            if dados.get('projecao_mes'):
+                dados['projecao_mes_formatada'] = f"R$ {dados['projecao_mes']:,.2f}"
+
+        return jsonify({
+            'success': True,
+            'data': dados,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar dashboard painel12: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500
+
+
+@app.route('/api/paineis/painel12/setores', methods=['GET'])
+@login_required
+def api_painel12_setores():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel12'):
+            return jsonify({'success': False, 'error': 'Sem permissão'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("SELECT * FROM vw_ocupacao_por_setor")
+
+        setores = [dict(row) for row in cursor.fetchall()]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': setores,
+            'total': len(setores),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        app.logger.error(f'Erro ao buscar setores painel12: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+
+
+# =========================================================
+# FIM DAS ROTAS DO PAINEL 12
+# =========================================================
+
+
+
+
+
+
 
 
 
@@ -2706,6 +2827,8 @@ def api_listar_paineis():
              'descricao': 'Acompanhamento desempenho PS', 'ativo': True},
             {'nome': 'painel11', 'titulo': 'Painel Internação',
              'descricao': 'Acompanhamento de pedidos de internação', 'ativo': True},
+            {'nome': 'painel12', 'titulo': 'Painel Ocupação e Produção',
+             'descricao': 'Acompanhamento informações gerenciais', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200
