@@ -124,7 +124,7 @@ body {
 
 .stats-row {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     flex-shrink: 0;
 }
@@ -188,13 +188,16 @@ body {
 .icon-ps { background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%); }
 .icon-conversao { background: linear-gradient(135deg, #6610f2 0%, #520dc2 100%); }
 .icon-producao { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+.icon-cirurgias { background: linear-gradient(135deg, #e83e8c 0%, #d63384 100%); }
+.icon-hemodinamica { background: linear-gradient(135deg, #20c997 0%, #17a689 100%); }
+.icon-projecao { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
 
 /* Destaque nos cards especiais */
-.stat-card-producao {
+.stat-card-producao, .stat-card-projecao {
     border: 2px solid #17a2b8;
 }
 
-.stat-card-producao {
+.stat-card-producao, .stat-card-projecao {
     border-color: #28a745;
 }
 
@@ -343,7 +346,7 @@ body {
 
 @media (max-width: 1400px) {
     .stats-row {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
     }
 
     .setores-grid {
@@ -353,7 +356,7 @@ body {
 
 @media (max-width: 1200px) {
     .stats-row {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
 
     .setor-card-taxa {
