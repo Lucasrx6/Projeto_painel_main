@@ -102,8 +102,32 @@ function atualizarCards(dados) {
     document.getElementById('producao-valor').textContent =
         formatarMoeda(producao);
     document.getElementById('projecao-valor').textContent =
-        `Projeção: ${formatarMoeda(projecao)}`;
+        formatarMoeda(projecao);
+
+    //  Card 7: Cirurgias (NOVO)
+    const cirurgias = parseInt(dados.cirurgias_mes) || 0;
+    const cirurgiasMedia = parseFloat(dados.cirurgias_media_dia) || 0;
+    document.getElementById('cirurgias-qtd').textContent = cirurgias.toLocaleString('pt-BR');
+    document.getElementById('cirurgias-subtitle').textContent = `Média: ${cirurgiasMedia.toFixed(1)}/dia`;
+
+    //  Card 8: Hemodinâmica (NOVO)
+    const hemodinamica = parseInt(dados.hemodinamica_mes) || 0;
+    const hemodinamicaMedia = parseFloat(dados.hemodinamica_media_dia) || 0;
+    document.getElementById('hemodinamica-qtd').textContent = hemodinamica.toLocaleString('pt-BR');
+    document.getElementById('hemodinamica-subtitle').textContent = `Média: ${hemodinamicaMedia.toFixed(1)}/dia`;
+
+
+
+
+
+
+
+
 }
+
+
+
+
 
 // ========================================
 // 🏥 ATUALIZAR CARDS DE SETORES
