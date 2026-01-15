@@ -344,7 +344,7 @@ function determinarClasseLinha(tempoMinutos, tipoVaga, status) {
 
     // Alertas por tempo
     if (tempoMinutos >= 240) return 'alerta-critico'; // > 4h
-    if (tempoMinutos >= 120) return 'alerta-medio';   // > 2h
+    if (tempoMinutos >= 60) return 'alerta-medio';   // > 1h
 
     return '';
 }
@@ -398,7 +398,7 @@ function getBadgeTempoEspera(minutos, status) {
         return `<span class="badge-tempo tempo-critico"><i class="fas fa-exclamation-triangle"></i> ${tempoFormatado}</span>`;
     }
 
-    if (minutos >= 120) {
+    if (minutos >= 60) {
         return `<span class="badge-tempo tempo-alerta"><i class="fas fa-clock"></i> ${tempoFormatado}</span>`;
     }
 
