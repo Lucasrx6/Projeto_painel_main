@@ -288,26 +288,26 @@ body {
     background: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-/* Larguras das colunas */
-.enfermaria-table thead th:nth-child(1) { width: 80px; }   /* Leito */
-.enfermaria-table thead th:nth-child(2) { width: 100px; }  /* Atendimento */
-.enfermaria-table thead th:nth-child(3) { width: 15%; }    /* Paciente */
-.enfermaria-table thead th:nth-child(4) { width: 60px; }   /* Idade */
-.enfermaria-table thead th:nth-child(5) { width: 60px; }   /* Dias */
-.enfermaria-table thead th:nth-child(6) { width: 90px; }   /* Prescrição */
-.enfermaria-table thead th:nth-child(7) { width: 90px; }   /* Lab */
-.enfermaria-table thead th:nth-child(8) { width: 90px; }   /* Imagem */
-.enfermaria-table thead th:nth-child(9) { width: 100px; }  /* Evolução */
-.enfermaria-table thead th:nth-child(10) { width: 80px; }  /* Parecer */
-.enfermaria-table thead th:nth-child(11) { width: 80px; }  /* Alergia */
-.enfermaria-table thead th:nth-child(12) { width: 70px; }  /* NEWS */
+/* Larguras das colunas - ATUALIZADO COM NOVAS COLUNAS */
+.enfermaria-table thead th:nth-child(1) { width: 120px; }  /* Alta Prevista */
+.enfermaria-table thead th:nth-child(2) { width: 70px; }   /* Leito */
+.enfermaria-table thead th:nth-child(3) { width: 90px; }   /* Atendimento */
+.enfermaria-table thead th:nth-child(4) { width: 12%; }    /* Paciente */
+.enfermaria-table thead th:nth-child(5) { width: 12%; }    /* Especialidade */
+.enfermaria-table thead th:nth-child(6) { width: 60px; }   /* Idade */
+.enfermaria-table thead th:nth-child(7) { width: 50px; }   /* Dias */
+.enfermaria-table thead th:nth-child(8) { width: 80px; }   /* Prescrição */
+.enfermaria-table thead th:nth-child(9) { width: 70px; }   /* Lab */
+.enfermaria-table thead th:nth-child(10) { width: 70px; }  /* Imagem */
+.enfermaria-table thead th:nth-child(11) { width: 80px; }  /* Evolução */
+.enfermaria-table thead th:nth-child(12) { width: 70px; }  /* Parecer */
+.enfermaria-table thead th:nth-child(13) { width: 70px; }  /* Alergia */
+.enfermaria-table thead th:nth-child(14) { width: 60px; }  /* NEWS */
 
-/* Centraliza colunas de badges */
-.enfermaria-table thead th:nth-child(n+6) {
+/* Centraliza colunas de badges (a partir da coluna 8 agora) */
+.enfermaria-table thead th:nth-child(n+8) {
     text-align: center;
 }
 
@@ -425,32 +425,45 @@ body {
     }
 }
 
+/* ========================================
+   🔧 CÉLULAS DA TABELA - COM CORREÇÃO DE TRUNCAMENTO
+   ======================================== */
+
 .enfermaria-table tbody td {
     padding: 10px 8px;
     font-size: 0.8rem;
     color: #333;
     vertical-align: middle;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-/* Mesmas larguras do THEAD */
-.enfermaria-table tbody td:nth-child(1) { width: 80px; }
-.enfermaria-table tbody td:nth-child(2) { width: 100px; }
-.enfermaria-table tbody td:nth-child(3) { width: 15%; }
-.enfermaria-table tbody td:nth-child(4) { width: 60px; }
-.enfermaria-table tbody td:nth-child(5) { width: 60px; }
-.enfermaria-table tbody td:nth-child(6) { width: 90px; }
-.enfermaria-table tbody td:nth-child(7) { width: 90px; }
-.enfermaria-table tbody td:nth-child(8) { width: 90px; }
-.enfermaria-table tbody td:nth-child(9) { width: 100px; }
-.enfermaria-table tbody td:nth-child(10) { width: 80px; }
+/* Mesmas larguras do THEAD - ATUALIZADO */
+.enfermaria-table tbody td:nth-child(1) { width: 120px; }
+.enfermaria-table tbody td:nth-child(2) { width: 70px; }
+.enfermaria-table tbody td:nth-child(3) { width: 90px; }
+.enfermaria-table tbody td:nth-child(4) { width: 12%; }
+.enfermaria-table tbody td:nth-child(5) { width: 12%; }
+.enfermaria-table tbody td:nth-child(6) { width: 60px; }
+.enfermaria-table tbody td:nth-child(7) { width: 50px; }
+.enfermaria-table tbody td:nth-child(8) { width: 80px; }
+.enfermaria-table tbody td:nth-child(9) { width: 70px; }
+.enfermaria-table tbody td:nth-child(10) { width: 70px; }
 .enfermaria-table tbody td:nth-child(11) { width: 80px; }
 .enfermaria-table tbody td:nth-child(12) { width: 70px; }
+.enfermaria-table tbody td:nth-child(13) { width: 70px; }
+.enfermaria-table tbody td:nth-child(14) { width: 60px; }
 
-/* Centraliza colunas de badges */
-.enfermaria-table tbody td:nth-child(n+6) {
+/* Centraliza colunas de badges (a partir da coluna 8 agora) */
+.enfermaria-table tbody td:nth-child(n+8) {
     text-align: center;
+}
+
+/* ✅ CORREÇÃO: Colunas Paciente e Especialidade - SEM truncamento */
+.enfermaria-table tbody td:nth-child(4),
+.enfermaria-table tbody td:nth-child(5) {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-wrap: break-word;
 }
 
 /* Scrollbar customizado */
@@ -465,6 +478,105 @@ body {
 .enfermaria-table tbody::-webkit-scrollbar-thumb {
     background: #dc3545;
     border-radius: 3px;
+}
+
+/* ========================================
+   📅 BADGES DE DATA DE ALTA
+   ======================================== */
+
+.badge-alta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+.badge-alta i {
+    font-size: 0.75rem;
+}
+
+/* Verde: Alta em 1 dia ou menos */
+.badge-verde {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border: 1px solid #b1dfbb;
+}
+
+.badge-verde:hover {
+    background: linear-gradient(135deg, #c3e6cb 0%, #b1dfbb 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+}
+
+/* Amarelo: Alta em 2-4 dias */
+.badge-amarelo {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.badge-amarelo:hover {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+}
+
+/* Vermelho: Alta em 5+ dias */
+.badge-vermelho {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.badge-vermelho:hover {
+    background: linear-gradient(135deg, #f5c6cb 0%, #f1b0b7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+}
+
+/* Alta atrasada */
+.badge-atrasado {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+    border: 1px solid #c0392b;
+    animation: pulso-atrasado 2s ease-in-out infinite;
+}
+
+@keyframes pulso-atrasado {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(220, 53, 69, 0);
+    }
+}
+
+/* Sem informação */
+.badge-sem-info {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+    font-style: italic;
+}
+
+/* ========================================
+   👨‍⚕️ ESPECIALIDADE
+   ======================================== */
+
+.especialidade {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #e3f2fd;
+    color: #1565c0;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 /* ========================================
@@ -560,7 +672,7 @@ body {
 
 @media (max-width: 1400px) {
     .mini-dashboard {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
     }
 
     .enfermaria-table thead th {

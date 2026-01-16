@@ -198,6 +198,199 @@ function atualizarDashboard(stats) {
     document.getElementById('pacientes-criticos').textContent = stats.pacientes_criticos || 0;
 }
 
+
+
+// ========================================
+// 📅 FORMATAÇÃO E CÁLCULO DE DATA DE ALTA
+// ========================================
+
+/**
+ * Converte data Oracle (24-AUG-23) OU PostgreSQL (2026-01-19 16:24:00-03) para objeto Date
+ */
+function parseOracleDate(dataString) {
+    if (!dataString || dataString.trim() === '') return null;
+
+    dataString = dataString.trim();
+
+    // ✅ Detecta formato PostgreSQL: "2026-01-19 16:24:00-03" ou "2026-01-19"
+    if (dataString.includes('-') && (dataString.includes(' ') || dataString.split('-').length === 3)) {
+        // Tenta parse direto (ISO ou similar)
+        const dataParsed = new Date(dataString);
+
+        // Verifica se é uma data válida
+        if (!isNaN(dataParsed.getTime())) {
+            return dataParsed;
+        }
+    }
+
+    // ✅ Formato Oracle: DD-MMM-YY (ex: 24-AUG-23)
+    const meses = {
+        'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+        'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
+    };
+
+    const partes = dataString.split('-');
+
+    // Verifica se é formato Oracle (DD-MMM-YY)
+    if (partes.length === 3 && partes[1].length === 3) {
+        const dia = parseInt(partes[0]);
+        const mes = meses[partes[1].toUpperCase()];
+        const ano = parseInt('20' + partes[2]); // Assume 20XX
+
+        if (!isNaN(dia) && mes !== undefined && !isNaN(ano)) {
+            return new Date(ano, mes, dia);
+        }
+    }
+
+    // Se nenhum formato funcionou
+    return null;
+}
+
+/**
+ * Formata data para DD/MM/YYYY
+ */
+function formatarData(dataString) {
+    const data = parseOracleDate(dataString);
+    if (!data) return 'Não informado';
+
+    const dia = String(data.getDate()).padStart(2, '0');
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const ano = data.getFullYear();
+
+    return `${dia}/${mes}/${ano}`;
+}
+
+/**
+ * Calcula dias restantes até a alta e retorna badge colorido
+ */
+function getBadgeDataAlta(dataString) {
+    if (!dataString || dataString.trim() === '') {
+        return '<span class="badge-alta badge-sem-info">Não informado</span>';
+    }
+
+    const dataAlta = parseOracleDate(dataString);
+    if (!dataAlta) {
+        return '<span class="badge-alta badge-sem-info">Data inválida</span>';
+    }
+
+    // Calcula diferença em dias
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    dataAlta.setHours(0, 0, 0, 0);
+
+    const diffTime = dataAlta - hoje;
+    const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const dataFormatada = formatarData(dataString);
+
+    // Verde: 1 dia ou menos
+    if (diffDias <= 1 && diffDias >= 0) {
+        return `<span class="badge-alta badge-verde" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-check"></i> ${diffDias === 0 ? 'Hoje' : 'Amanhã'}
+        </span>`;
+    }
+
+    // Amarelo: 2-4 dias
+    if (diffDias >= 2 && diffDias <= 4) {
+        return `<span class="badge-alta badge-amarelo" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-day"></i> ${diffDias} dias
+        </span>`;
+    }
+
+    // Vermelho: 5+ dias
+    if (diffDias >= 5) {
+        return `<span class="badge-alta badge-vermelho" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-alt"></i> ${diffDias} dias
+        </span>`;
+    }
+
+    // Data passada (alta atrasada)
+    if (diffDias < 0) {
+        return `<span class="badge-alta badge-atrasado" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-exclamation-triangle"></i> Atrasada (${Math.abs(diffDias)} dias)
+        </span>`;
+    }
+
+    return `<span class="badge-alta badge-sem-info">${dataFormatada}</span>`;
+}
+
+/**
+ * Formata especialidade médica
+ */
+function formatarEspecialidade(especialidade) {
+    if (!especialidade || especialidade.trim() === '') {
+        return '<span class="texto-neutro">-</span>';
+    }
+    return `<span class="especialidade">${especialidade}</span>`;
+}
+
+/**
+ * Calcula dias restantes até a alta e retorna badge colorido
+ */
+function getBadgeDataAlta(oracleDate) {
+    if (!oracleDate || oracleDate.trim() === '') {
+        return '<span class="badge-alta badge-sem-info">Não informado</span>';
+    }
+
+    const dataAlta = parseOracleDate(oracleDate);
+    if (!dataAlta) {
+        return '<span class="badge-alta badge-sem-info">Data inválida</span>';
+    }
+
+    // Calcula diferença em dias
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    dataAlta.setHours(0, 0, 0, 0);
+
+    const diffTime = dataAlta - hoje;
+    const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const dataFormatada = formatarData(oracleDate);
+
+    // Verde: 1 dia ou menos
+    if (diffDias <= 1) {
+        return `<span class="badge-alta badge-verde" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-check"></i> ${diffDias === 0 ? 'Hoje' : 'Amanhã'}
+        </span>`;
+    }
+
+    // Amarelo: 2-4 dias
+    if (diffDias >= 2 && diffDias <= 4) {
+        return `<span class="badge-alta badge-amarelo" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-day"></i> ${diffDias} dias
+        </span>`;
+    }
+
+    // Vermelho: 5+ dias
+    if (diffDias >= 5) {
+        return `<span class="badge-alta badge-vermelho" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-alt"></i> ${diffDias} dias
+        </span>`;
+    }
+
+    // Data passada (alta atrasada)
+    if (diffDias < 0) {
+        return `<span class="badge-alta badge-atrasado" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-exclamation-triangle"></i> Atrasada
+        </span>`;
+    }
+
+    return `<span class="badge-alta badge-sem-info">${dataFormatada}</span>`;
+}
+
+/**
+ * Formata especialidade médica
+ */
+function formatarEspecialidade(especialidade) {
+    if (!especialidade || especialidade.trim() === '') {
+        return '<span class="texto-neutro">-</span>';
+    }
+    return `<span class="especialidade">${especialidade}</span>`;
+}
+
+
+
+
 function renderizarTabela(dados) {
     const container = document.getElementById('enfermaria-content');
 
@@ -217,9 +410,11 @@ function renderizarTabela(dados) {
             <table class="enfermaria-table">
                 <thead>
                     <tr>
+                        <th>Alta Prevista</th>
                         <th>Leito</th>
                         <th>Atendimento</th>
                         <th>Paciente</th>
+                        <th>Especialidade</th>
                         <th>Idade</th>
                         <th>Dias</th>
                         <th>Prescrição</th>
@@ -262,9 +457,11 @@ function criarLinhaTabela(registro) {
     if (isVazio) {
         return `
             <tr class="${rowClass}">
+                <td><span class="texto-neutro">-</span></td>
                 <td><strong>${registro.leito}</strong></td>
                 <td>-</td>
                 <td>VAZIO</td>
+                <td><span class="texto-neutro">-</span></td>
                 <td>-</td>
                 <td>-</td>
                 <td><span class="texto-neutro">-</span></td>
@@ -281,9 +478,11 @@ function criarLinhaTabela(registro) {
     // Leito ocupado - mostrar dados normais
     return `
         <tr class="${rowClass}">
+            <td>${getBadgeDataAlta(registro.dt_previsto_alta)}</td>
             <td><strong>${registro.leito}</strong></td>
             <td>${registro.atendimento || '-'}</td>
             <td>${nomeFormatado}</td>
+            <td>${formatarEspecialidade(registro.especialidade)}</td>
             <td>${idadeFormatada}</td>
             <td>${registro.dias_internado || '-'}</td>
             <td>${getIconePrescricao(registro.nr_prescricao)}</td>
@@ -297,20 +496,13 @@ function criarLinhaTabela(registro) {
     `;
 }
 
-// ✅ Formatação de nome: "TALITA FERRAZ SCHUENCK DE MOURA" -> "T F S MOURA"
+// Formatação de nome"
 function formatarNome(nomeCompleto) {
-    if (!nomeCompleto || nomeCompleto.trim() === '') return 'VAZIO';
-
+    if (!nomeCompleto || nomeCompleto.trim() === '') return '-';
     const partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
-
     if (partes.length === 1) return partes[0];
-
-    // Pega iniciais de todos exceto o último
     const iniciais = partes.slice(0, -1).map(parte => parte.charAt(0)).join(' ');
-
-    // Último nome completo
     const ultimoNome = partes[partes.length - 1];
-
     return `${iniciais} ${ultimoNome}`;
 }
 
