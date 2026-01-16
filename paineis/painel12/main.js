@@ -89,11 +89,15 @@ function atualizarCards(dados) {
     document.getElementById('ps-atendimentos').textContent = psAtendimentos.toLocaleString('pt-BR');
     document.getElementById('ps-subtitle').textContent = `Média: ${psMedia}/dia`;
 
-    // Card 5: Conversão PS
-    const conversoes = parseInt(dados.conversoes_mes) || 0;
-    const percentualConversao = parseFloat(dados.conversoes_percentual) || 0;
-    document.getElementById('conversao-qtd').textContent = conversoes;
-    document.getElementById('conversao-percentual').textContent = `${percentualConversao.toFixed(1)}%`;
+// Card 5: Conversão PS
+const conversoes = parseInt(dados.conversoes_mes) || 0;
+const percentualConversao = parseFloat(dados.conversoes_percentual) || 0;
+
+const diasDecorridos = new Date().getDate();
+const mediaConversoesDia = diasDecorridos > 0 ? (conversoes / diasDecorridos) : 0;
+
+document.getElementById('conversao-qtd').textContent = `Média: ${mediaConversoesDia.toFixed(1)}/dia`;
+document.getElementById('conversao-percentual').textContent = `${percentualConversao.toFixed(1)}%`;
 
     // Card 6: Produção + Projeção
     const producao = parseFloat(dados.producao_mes) || 0;

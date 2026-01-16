@@ -1105,3 +1105,180 @@ ORDER BY nm_setor, AF.cd_unidade
 -- está calculada no campo TEM_PARAMETRO_CRITICO
 -- Use no frontend para classificação visual!
 -- ===========================================+
+
+
+
+
+
+
+
+
+-- ==========================================
+-- DROPAR E RECRIAR TODAS AS VIEWS
+-- ==========================================
+
+-- Dropar views na ordem correta (dependências)
+DROP VIEW IF EXISTS vw_ocupacao_hospitalar CASCADE;
+DROP VIEW IF EXISTS vw_ocupacao_dashboard CASCADE;
+DROP VIEW IF EXISTS vw_ocupacao_por_setor CASCADE;
+DROP VIEW IF EXISTS vw_pacientes_internados CASCADE;
+DROP VIEW IF EXISTS vw_leitos_disponiveis CASCADE;
+
+-- ==========================================
+-- RECRIAR VIEWS COM ESTRUTURA CORRETA
+-- ==========================================
+
+-- 1. View principal com nomes limpos
+CREATE VIEW vw_ocupacao_hospitalar AS
+SELECT 
+    id,
+    nr_atendimento,
+    dt_entrada_unidade,
+    dt_entrada_unid,
+    cd_unidade,
+    cd_unidade_basica AS leito,
+    nm_pessoa_fisica AS paciente,
+    cd_setor_atendimento,
+    "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS setor,
+    dt_nascimento,
+    EXTRACT(YEAR FROM AGE(CURRENT_DATE, dt_nascimento))::INTEGER AS idade,
+    ie_sexo AS sexo,
+    ds_convenio AS convenio,
+    nr_crm,
+    nm_guerra AS medico,
+    qt_dia_permanencia AS dias_internado,
+    ds_clinica AS clinica,
+    dt_alta_medico,
+    ds_tipo_acomodacao AS tipo_acomodacao,
+    classif,
+    ie_status_unidade AS status_leito,
+    CASE 
+        WHEN ie_status_unidade = 'P' THEN 'Ocupado'
+        WHEN ie_status_unidade = 'L' THEN 'Livre'
+        WHEN ie_status_unidade = 'H' THEN 'Higienização'
+        WHEN ie_status_unidade = 'I' THEN 'Interditado'
+        ELSE 'Desconhecido'
+    END AS status_leito_desc,
+    dt_carga
+FROM ocupacao_hospitalar;
+
+-- 2. View para dashboard (estatísticas gerais)
+CREATE VIEW vw_ocupacao_dashboard AS
+SELECT 
+    COUNT(*)::INTEGER AS total_leitos,
+    COUNT(CASE WHEN ie_status_unidade = 'P' THEN 1 END)::INTEGER AS leitos_ocupados,
+    COUNT(CASE WHEN ie_status_unidade = 'L' THEN 1 END)::INTEGER AS leitos_livres,
+    COUNT(CASE WHEN ie_status_unidade = 'H' THEN 1 END)::INTEGER AS leitos_higienizacao,
+    COUNT(CASE WHEN ie_status_unidade = 'I' THEN 1 END)::INTEGER AS leitos_interditados,
+    ROUND(
+        (COUNT(CASE WHEN ie_status_unidade = 'P' THEN 1 END)::NUMERIC / 
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) AS taxa_ocupacao_geral,
+    ROUND(
+        (COUNT(CASE WHEN ie_status_unidade = 'L' THEN 1 END)::NUMERIC / 
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) AS taxa_disponibilidade,
+    COUNT(DISTINCT cd_setor_atendimento)::INTEGER AS total_setores,
+    ROUND(AVG(CASE WHEN ie_status_unidade = 'P' THEN qt_dia_permanencia END), 1) AS media_permanencia_geral,
+    MAX(dt_carga) AS ultima_atualizacao
+FROM ocupacao_hospitalar;
+
+-- 3. View por setor
+CREATE VIEW vw_ocupacao_por_setor AS
+SELECT 
+    cd_setor_atendimento,
+    "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS nm_setor,
+    COUNT(*)::INTEGER AS total_leitos,
+    COUNT(CASE WHEN ie_status_unidade = 'P' THEN 1 END)::INTEGER AS leitos_ocupados,
+    COUNT(CASE WHEN ie_status_unidade = 'L' THEN 1 END)::INTEGER AS leitos_livres,
+    COUNT(CASE WHEN ie_status_unidade = 'H' THEN 1 END)::INTEGER AS leitos_higienizacao,
+    COUNT(CASE WHEN ie_status_unidade = 'I' THEN 1 END)::INTEGER AS leitos_interditados,
+    ROUND(
+        (COUNT(CASE WHEN ie_status_unidade = 'P' THEN 1 END)::NUMERIC / 
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) AS taxa_ocupacao,
+    ROUND(
+        (COUNT(CASE WHEN ie_status_unidade = 'L' THEN 1 END)::NUMERIC / 
+         NULLIF(COUNT(*), 0) * 100), 2
+    ) AS taxa_disponibilidade,
+    ROUND(AVG(CASE WHEN ie_status_unidade = 'P' THEN qt_dia_permanencia END), 1) AS media_permanencia
+FROM ocupacao_hospitalar
+GROUP BY cd_setor_atendimento, "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)"
+ORDER BY taxa_ocupacao DESC NULLS LAST;
+
+-- 4. View pacientes internados
+CREATE VIEW vw_pacientes_internados AS
+SELECT 
+    nr_atendimento,
+    cd_unidade_basica AS leito,
+    nm_pessoa_fisica AS paciente,
+    "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS setor,
+    ds_convenio AS convenio,
+    nm_guerra AS medico,
+    dt_entrada_unidade,
+    qt_dia_permanencia AS dias_internado,
+    ds_tipo_acomodacao AS tipo_acomodacao,
+    ie_sexo AS sexo,
+    EXTRACT(YEAR FROM AGE(CURRENT_DATE, dt_nascimento))::INTEGER AS idade,
+    ds_clinica AS clinica,
+    classif AS classificacao
+FROM ocupacao_hospitalar
+WHERE ie_status_unidade = 'P'
+ORDER BY "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)", cd_unidade_basica;
+
+-- 5. View leitos disponíveis
+CREATE VIEW vw_leitos_disponiveis AS
+SELECT 
+    cd_unidade_basica AS leito,
+    "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)" AS setor,
+    ds_tipo_acomodacao AS tipo_acomodacao,
+    ie_status_unidade AS status_leito,
+    CASE 
+        WHEN ie_status_unidade = 'L' THEN 'Disponível'
+        WHEN ie_status_unidade = 'H' THEN 'Em Higienização'
+        WHEN ie_status_unidade = 'I' THEN 'Interditado'
+    END AS status
+FROM ocupacao_hospitalar
+WHERE ie_status_unidade IN ('L', 'H', 'I')
+ORDER BY "OBTER_NOME_SETOR(A.CD_SETOR_ATENDIMENTO)", 
+         CASE 
+             WHEN ie_status_unidade = 'L' THEN 1
+             WHEN ie_status_unidade = 'H' THEN 2
+             WHEN ie_status_unidade = 'I' THEN 3
+         END,
+         cd_unidade_basica;
+
+-- ==========================================
+-- COMENTÁRIOS
+-- ==========================================
+
+COMMENT ON VIEW vw_ocupacao_hospitalar IS 'View principal com dados limpos de ocupação hospitalar';
+COMMENT ON VIEW vw_ocupacao_dashboard IS 'Estatísticas gerais para o dashboard';
+COMMENT ON VIEW vw_ocupacao_por_setor IS 'Estatísticas de ocupação agrupadas por setor';
+COMMENT ON VIEW vw_pacientes_internados IS 'Lista de pacientes atualmente internados';
+COMMENT ON VIEW vw_leitos_disponiveis IS 'Lista de leitos livres, em higienização ou interditados';
+
+-- ==========================================
+-- TESTES
+-- ==========================================
+
+-- Teste 1: Dashboard
+SELECT * FROM vw_ocupacao_dashboard;
+
+-- Teste 2: Setores (primeiros 5)
+SELECT * FROM vw_ocupacao_por_setor LIMIT 5;
+
+-- Teste 3: Pacientes (primeiros 5)
+SELECT * FROM vw_pacientes_internados LIMIT 5;
+
+-- Teste 4: Leitos disponíveis (primeiros 5)
+SELECT * FROM vw_leitos_disponiveis LIMIT 5;
+
+-- Teste 5: Todos os leitos
+SELECT * FROM vw_ocupacao_hospitalar LIMIT 5;
+
+-- ==========================================
+-- SUCESSO!
+-- ==========================================
+
+SELECT '✅ Todas as views foram recriadas com sucesso!' AS resultado;

@@ -182,6 +182,11 @@ body {
     font-size: 0.7rem;
 }
 
+.status-prototipo {
+    color: #FFD700 ;
+    font-size: 0.7rem;
+}
+
 .status-inactive {
     color: #ffc107;
     font-size: 0.7rem;
