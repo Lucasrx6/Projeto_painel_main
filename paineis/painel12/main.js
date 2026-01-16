@@ -96,7 +96,7 @@ const percentualConversao = parseFloat(dados.conversoes_percentual) || 0;
 const diasDecorridos = new Date().getDate();
 const mediaConversoesDia = diasDecorridos > 0 ? (conversoes / diasDecorridos) : 0;
 
-document.getElementById('conversao-qtd').textContent = `Média: ${mediaConversoesDia.toFixed(1)}/dia`;
+document.getElementById('conversao-qtd').textContent = `Conversões: ${conversoes}`;
 document.getElementById('conversao-percentual').textContent = `${percentualConversao.toFixed(1)}%`;
 
     // Card 6: Produção + Projeção
