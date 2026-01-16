@@ -1,0 +1,59 @@
+{
+  "name": "Sistema de Painéis Hospitalares - Hospital Anchieta",
+  "short_name": "Painéis HA",
+  "description": "Sistema de monitoramento em tempo real de operações hospitalares",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc3545",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/img/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/img/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": "/",
+  "categories": ["health", "medical", "productivity"],
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Abrir dashboard principal",
+      "url": "/",
+      "icons": [{ "src": "/static/img/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Evolução de Turno",
+      "short_name": "Turno",
+      "description": "Painel de evolução de turno",
+      "url": "/painel/painel2",
+      "icons": [{ "src": "/static/img/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Médicos PS",
+      "short_name": "Médicos",
+      "description": "Médicos no pronto-socorro",
+      "url": "/painel/painel3",
+      "icons": [{ "src": "/static/img/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ocupação Hospitalar",
+      "short_name": "Ocupação",
+      "description": "Status de ocupação dos leitos",
+      "url": "/painel/painel4",
+      "icons": [{ "src": "/static/img/logo.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

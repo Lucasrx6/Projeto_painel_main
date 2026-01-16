@@ -186,17 +186,17 @@ function renderizarTabela(dados) {
             <table class="painel-table">
                 <thead>
                     <tr>
-                        <th>Nr Atend PS</th>
+                        <th>Atend PS</th>
                         <th>Paciente</th>
                         <th>Idade</th>
                         <th>Convênio</th>
                         <th>Clínica</th>
-                        <th>Dt Alta PS</th>
+                        <th>Solicitação PS</th>
                         <th>Tipo Vaga</th>
                         <th>Status</th>
                         <th>Tempo Espera</th>
-                        <th>Nr Atend Int</th>
-                        <th>Dt Internação</th>
+                        <th>Atend Int</th>
+                        <th>Dt Liberação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -257,11 +257,11 @@ function abreviarConvenio(convenio) {
 
     const abreviacoes = {
         'AMIL': 'AMIL',
-        'SUL AMERICA': 'SUL AM',
+        'SUL AMERICA': 'SUL AMERICA',
         'UNIMED': 'UNIMED',
         'BRADESCO': 'BRADESCO',
         'GEAP': 'GEAP',
-        'PARTICULAR': 'PARTIC',
+        'PARTICULAR': 'PARTICULAR',
         'IPASGO': 'IPASGO'
     };
 

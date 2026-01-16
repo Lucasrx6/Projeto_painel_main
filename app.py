@@ -1424,24 +1424,6 @@ def painel8():
     return send_from_directory('paineis/painel8', 'index.html')
 
 
-def formatar_nome_paciente_painel8(nome_completo):
-
-    if not nome_completo or nome_completo.strip() == '':
-        return ''
-
-    partes = nome_completo.strip().split()
-
-    if len(partes) == 0:
-        return ''
-    elif len(partes) == 1:
-        return partes[0]
-    elif len(partes) == 2:
-        return f"{partes[0]} {partes[1][0]}."
-    else:
-        # Primeiro nome + iniciais dos demais
-        iniciais = ' '.join([p[0] + '.' for p in partes[1:]])
-        return f"{partes[0]} {iniciais}"
-
 
 @app.route('/api/paineis/painel8/enfermaria', methods=['GET'])
 @login_required
@@ -1496,7 +1478,9 @@ def api_painel8_enfermaria():
                     nm_setor,
                     cd_setor_atendimento,
                     ie_status_unidade,
-                    ds_tipo_acomodacao
+                    ds_tipo_acomodacao,
+                    dt_previsto_alta,
+                    especialidade
                 FROM painel_enfermaria
                 WHERE nm_setor = %s
                 ORDER BY cd_unidade
@@ -1524,7 +1508,9 @@ def api_painel8_enfermaria():
                     nm_setor,
                     cd_setor_atendimento,
                     ie_status_unidade,
-                    ds_tipo_acomodacao
+                    ds_tipo_acomodacao,
+                    dt_previsto_alta,
+                    especialidade
                 FROM painel_enfermaria
                 ORDER BY nm_setor, cd_unidade
             """
@@ -1532,12 +1518,8 @@ def api_painel8_enfermaria():
 
         registros = cursor.fetchall()
 
-        # Formatar nomes dos pacientes e limpar dados
+        # ✅ APENAS limpa espaços do leito (NÃO formata nome)
         for registro in registros:
-            if registro['paciente']:
-                registro['paciente'] = formatar_nome_paciente_painel8(registro['paciente'])
-
-            # Limpar espaços do leito
             if registro['leito']:
                 registro['leito'] = registro['leito'].strip()
 
@@ -2568,6 +2550,41 @@ def api_painel12_setores():
 
 
 
+
+
+
+
+
+
+
+
+
+# =========================================================
+# 📱 ROTAS PWA (Progressive Web App)
+# =========================================================
+
+@app.route('/manifest.json')
+def manifest():
+    """Serve o manifest do PWA"""
+    return send_from_directory('.', 'manifest.json', mimetype='application/manifest+json')
+
+
+@app.route('/sw.js')
+def service_worker():
+    """Serve o service worker"""
+    response = send_from_directory('.', 'sw.js', mimetype='application/javascript')
+    # Evita cache do service worker (sempre busca versão mais recente)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+
+@app.route('/offline.html')
+def offline():
+    """Página offline"""
+    return send_from_directory('frontend', 'offline.html')
+
 # =========================================================
 # 👥 ADMINISTRAÇÃO DE USUÁRIOS
 # =========================================================
@@ -2839,7 +2856,7 @@ def api_listar_paineis():
 
 
 # =========================================================
-# 🚀 INICIALIZAÇÃO
+#  INICIALIZAÇÃO
 # =========================================================
 
 if __name__ == '__main__':
@@ -2849,25 +2866,29 @@ if __name__ == '__main__':
     local_ip = socket.gethostbyname(hostname)
 
     print("\n" + "=" * 60)
-    print("🚀 SERVIDOR PRINCIPAL INICIADO")
+    print(" SERVIDOR PRINCIPAL INICIADO")
     print("=" * 60)
-    print("🔐 Sistema de autenticação ativo")
-    print("🛡️  Headers de segurança habilitados")
-    print("📝 Sistema de logging configurado")
-    print("🌐 CORS: Liberado (funciona com VPN/IPs variáveis)")
-    print("\n📊 Painéis disponíveis:")
+    print(" Sistema de autenticação ativo")
+    print("️  Headers de segurança habilitados")
+    print(" Sistema de logging configurado")
+    print(" CORS: Liberado (funciona com VPN/IPs variáveis)")
+    print("\n Painéis disponíveis:")
     print("   • Evolução de Turno:    /painel/painel2")
     print("   • Médicos PS:           /painel/painel3")
     print("   • Ocupação Hosp.:       /painel/painel4")
     print("   • Cirurgias do Dia:     /painel/painel5")
-    print("   • Priorização IA:       /painel/painel6 🤖")
-    print("\n🌐 URLs de Acesso:")
+    print("   • Priorização IA:       /painel/painel6")
+    print("   • Detecção Sepse:       /painel/painel7")
+    print("   • Situação Pacientes:   /painel/painel8")
+    print("   • Lab Pendentes:        /painel/painel9")
+    print("   • Análise PS:           /painel/painel10")
+    print("   • Internação PS:        /painel/painel11")
+    print("   • Ocupação Produção:    /painel/painel12")
+    print("\n URLs de Acesso:")
     print(f"   • Local:        http://localhost:5000")
     print(f"   • Local (IP):   http://127.0.0.1:5000")
     print(f"   • Rede Local:   http://{local_ip}:5000")
     print(f"   • VPN/Remoto:   http://<IP-VPN>:5000")
-    print("\n💡 Dica: Sistema funciona de qualquer IP/rede")
-    print("   A segurança é garantida por autenticação obrigatória")
     print("=" * 60 + "\n")
 
     app.run(

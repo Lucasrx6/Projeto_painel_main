@@ -294,14 +294,14 @@ body {
 
 /* Larguras das colunas */
 .painel-table thead th:nth-child(1) { width: 100px; }  /* Nr Atend PS */
-.painel-table thead th:nth-child(2) { width: 16%; }    /* Paciente */
+.painel-table thead th:nth-child(2) { width: 10%; }    /* Paciente */
 .painel-table thead th:nth-child(3) { width: 60px; }   /* Idade */
-.painel-table thead th:nth-child(4) { width: 10%; }    /* Convênio */
+.painel-table thead th:nth-child(4) { width: 14%; }    /* Convênio */
 .painel-table thead th:nth-child(5) { width: 10%; }    /* Clínica */
 .painel-table thead th:nth-child(6) { width: 110px; }  /* Dt Alta PS */
 .painel-table thead th:nth-child(7) { width: 10%; }    /* Tipo Vaga */
 .painel-table thead th:nth-child(8) { width: 110px; }  /* Status */
-.painel-table thead th:nth-child(9) { width: 90px; }   /* Tempo Espera */
+.painel-table thead th:nth-child(9) { width: 100px; }   /* Tempo Espera */
 .painel-table thead th:nth-child(10) { width: 100px; } /* Nr Atend Int */
 .painel-table thead th:nth-child(11) { width: 110px; } /* Dt Internação */
 
@@ -342,14 +342,14 @@ body {
 
 /* Mesmas larguras do THEAD */
 .painel-table tbody td:nth-child(1) { width: 100px; }
-.painel-table tbody td:nth-child(2) { width: 16%; }
+.painel-table tbody td:nth-child(2) { width: 10%; }
 .painel-table tbody td:nth-child(3) { width: 60px; }
-.painel-table tbody td:nth-child(4) { width: 10%; }
+.painel-table tbody td:nth-child(4) { width: 14%; }
 .painel-table tbody td:nth-child(5) { width: 10%; }
 .painel-table tbody td:nth-child(6) { width: 110px; }
 .painel-table tbody td:nth-child(7) { width: 10%; }
 .painel-table tbody td:nth-child(8) { width: 110px; }
-.painel-table tbody td:nth-child(9) { width: 90px; }
+.painel-table tbody td:nth-child(9) { width: 100px; }
 .painel-table tbody td:nth-child(10) { width: 100px; }
 .painel-table tbody td:nth-child(11) { width: 110px; }
 
@@ -585,7 +585,7 @@ body {
 
 @media (max-width: 1400px) {
     .mini-dashboard {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(5, 1fr);
     }
 
     .painel-table thead th {
@@ -601,7 +601,7 @@ body {
 
 @media (max-width: 1200px) {
     .mini-dashboard {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(5, 1fr);
     }
 }
 
