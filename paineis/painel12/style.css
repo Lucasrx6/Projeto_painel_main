@@ -346,7 +346,7 @@ body {
 
 @media (max-width: 1400px) {
     .stats-row {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
 
     .setores-grid {
