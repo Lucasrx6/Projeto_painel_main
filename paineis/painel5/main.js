@@ -152,11 +152,13 @@ function renderizarCirurgias(gruposDia) {
                         <thead>
                             <tr>
                                 <th>Status</th>
+                                <th>Previsão</th>
+                                <th>Início</th>
+                                <th>Tempo</th>
                                 <th>Sala</th>
                                 <th>Paciente</th>
                                 <th>Cirurgião</th>
                                 <th>Cirurgia</th>
-                                <th>Previsão</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -342,10 +344,56 @@ function formatarNome(nomeCompleto) {
     return `${iniciais} ${ultimoNome}`;
 }
 
+// ========================================
+// 🆕 FUNÇÕES AUXILIARES PARA NOVOS CAMPOS
+// ========================================
+
+function formatarInicioCirurgia(inicio_cirurgia) {
+    if (!inicio_cirurgia || inicio_cirurgia === 'null' || inicio_cirurgia.trim() === '') {
+        return '-';
+    }
+
+    // Formato vem como: "18/01/2026 00:49:38"
+    // Vamos exibir apenas a hora: "00:49"
+    const partes = inicio_cirurgia.split(' ');
+    if (partes.length >= 2) {
+        const hora = partes[1].substring(0, 5); // Pega apenas HH:MM
+        return hora;
+    }
+
+    return '-';
+}
+
+function formatarTempo(tempo) {
+    if (!tempo || tempo === '::' || tempo === 'null' || tempo.trim() === '') {
+        return '-';
+    }
+
+    // Formato vem como: "2:30:15" (HH:MM:SS)
+    // Vamos exibir no formato mais legível
+    const partes = tempo.split(':');
+    if (partes.length === 3) {
+        const horas = parseInt(partes[0]) || 0;
+        const minutos = parseInt(partes[1]) || 0;
+
+        if (horas > 0) {
+            return `${horas}h ${minutos}m`;
+        } else {
+            return `${minutos}m`;
+        }
+    }
+
+    return tempo;
+}
+
 function criarLinhaCirurgia(cirurgia) {
     const statusIcon = obterIconeStatus(cirurgia.evento_codigo, cirurgia.nr_cirurgia);
     const nomePacienteFormatado = formatarNome(cirurgia.nm_paciente_pf);
     const nomeMedicoFormatado = formatarNome(cirurgia.nm_medico);
+
+    // Formatar novos campos
+    const inicioFormatado = formatarInicioCirurgia(cirurgia.inicio_cirurgia);
+    const tempoFormatado = formatarTempo(cirurgia.tempo);
 
     return `
         <tr>
@@ -355,6 +403,22 @@ function criarLinhaCirurgia(cirurgia) {
                         <i class="${statusIcon.icone}"></i>
                     </div>
                     <div class="status-texto">${statusIcon.texto}</div>
+                </div>
+            </td>
+            <td>
+                <div class="previsao-hora">
+                    ${cirurgia.previsao_termino || '-'}
+                </div>
+            </td>
+            <td>
+                <div class="inicio-cirurgia" title="${cirurgia.inicio_cirurgia || 'Não iniciada'}">
+                    <i class="fas fa-play-circle"></i> ${inicioFormatado}
+                </div>
+            </td>
+            <td>
+                <div class="tempo-cirurgia ${cirurgia.cirurgia_em_andamento ? 'tempo-ativo' : ''}"
+                     title="Tempo decorrido">
+                    <i class="fas fa-hourglass-half"></i> ${tempoFormatado}
                 </div>
             </td>
             <td>
@@ -378,11 +442,6 @@ function criarLinhaCirurgia(cirurgia) {
             <td>
                 <div class="cirurgia-desc" title="${cirurgia.ds_proc_cir || '-'}">
                     ${cirurgia.ds_proc_cir || '-'}
-                </div>
-            </td>
-            <td>
-                <div class="previsao-hora">
-                    ${cirurgia.previsao_termino || '-'}
                 </div>
             </td>
         </tr>
