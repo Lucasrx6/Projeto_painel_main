@@ -1085,6 +1085,11 @@ def api_painel5_cirurgias():
                 ds_agenda,
                 cd_agenda,
                 nr_minuto_duracao,
+
+                -- NOVOS CAMPOS
+                inicio_cirurgia,
+                tempo,
+
                 nm_paciente_pf,
                 ds_convenio,
                 nm_medico,
@@ -1117,7 +1122,9 @@ def api_painel5_cirurgias():
                 ds_carater_cirurgia,
                 dt_carga,
                 timestamp_completo,
-                periodo_dia
+                periodo_dia,
+                cirurgia_finalizada,
+                cirurgia_em_andamento
             FROM vw_cirurgias_dia
             ORDER BY dt_agenda ASC, hr_inicio ASC
         """
@@ -2599,7 +2606,7 @@ def api_minhas_permissoes():
         if is_admin:
             return jsonify({
                 'success': True,
-                'permissoes': ['painel2', 'painel3', 'painel4', 'painel5', 'painel6'],
+                'permissoes': ['painel2', 'painel3', 'painel4', 'painel5', 'painel6','painel7','painel8','painel9','painel10','painel11','painel12'],
                 'is_admin': True
             })
 

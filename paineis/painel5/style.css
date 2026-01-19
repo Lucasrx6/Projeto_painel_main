@@ -307,13 +307,19 @@ body {
     text-overflow: ellipsis;
 }
 
-/* ✅ Larguras EXATAS das colunas */
-.cirurgias-table thead th:nth-child(1) { width: 60px; }   /* Status */
-.cirurgias-table thead th:nth-child(2) { width: 180px; }  /* Sala - MAIOR */
-.cirurgias-table thead th:nth-child(3) { width: 20%; }    /* Paciente */
-.cirurgias-table thead th:nth-child(4) { width: 18%; }    /* Cirurgião */
-.cirurgias-table thead th:nth-child(5) { width: calc(62% - 360px); } /* Cirurgia (resto) */
-.cirurgias-table thead th:nth-child(6) { width: 120px; }  /* Previsão */
+/* ========================================
+   🎯 LARGURAS DAS COLUNAS - DESKTOP
+   📝 MODIFICAR AQUI: Ajuste as larguras conforme necessário
+   ======================================== */
+
+.cirurgias-table thead th:nth-child(1) { width: 100px; }  /* Status */
+.cirurgias-table thead th:nth-child(2) { width: 90px; }   /* Previsão */
+.cirurgias-table thead th:nth-child(3) { width: 75px; }   /* Início */
+.cirurgias-table thead th:nth-child(4) { width: 85px; }   /* Tempo */
+.cirurgias-table thead th:nth-child(5) { width: 200px; }  /* Sala */
+.cirurgias-table thead th:nth-child(6) { width: 17%; }    /* Paciente */
+.cirurgias-table thead th:nth-child(7) { width: 14%; }    /* Cirurgião */
+.cirurgias-table thead th:nth-child(8) { width: calc(69% - 550px); } /* Cirurgia (resto) */
 
 /* Centraliza primeira coluna (Status) */
 .cirurgias-table thead th:nth-child(1) {
@@ -349,12 +355,14 @@ body {
 }
 
 /* ✅ Mesmas larguras do THEAD */
-.cirurgias-table tbody td:nth-child(1) { width: 60px; }
-.cirurgias-table tbody td:nth-child(2) { width: 180px; }  /* Sala - MAIOR */
-.cirurgias-table tbody td:nth-child(3) { width: 20%; }
-.cirurgias-table tbody td:nth-child(4) { width: 18%; }
-.cirurgias-table tbody td:nth-child(5) { width: calc(62% - 360px); }
-.cirurgias-table tbody td:nth-child(6) { width: 120px; }
+.cirurgias-table tbody td:nth-child(1) { width: 100px; }
+.cirurgias-table tbody td:nth-child(2) { width: 90px; }
+.cirurgias-table tbody td:nth-child(3) { width: 75px; }
+.cirurgias-table tbody td:nth-child(4) { width: 85px; }
+.cirurgias-table tbody td:nth-child(5) { width: 200px; }
+.cirurgias-table tbody td:nth-child(6) { width: 17%; }
+.cirurgias-table tbody td:nth-child(7) { width: 14%; }
+.cirurgias-table tbody td:nth-child(8) { width: calc(69% - 550px); }
 
 /* Centraliza primeira coluna (Status) */
 .cirurgias-table tbody td:nth-child(1) {
@@ -376,32 +384,67 @@ body {
 }
 
 /* ========================================
-   🎨 ÍCONES DE STATUS - 6 NOVOS STATUS
+   🎨 ÍCONES DE STATUS
    ======================================== */
 
+.status-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
 .status-icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
+    flex-shrink: 0;
 }
 
-/* ✅ Status 1: Entrada Paciente CC (Azul) */
+.status-texto {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.1;
+    max-width: 90px;
+}
+
+/* ✅ Status 1: Prevista (Ciano) */
+.status-prevista {
+    background: #e0f7fa;
+    color: #00838f;
+    border: 2px solid #00acc1;
+}
+
+.status-prevista + .status-texto {
+    color: #00838f;
+}
+
+/* ✅ Status 2: Entrada Paciente CC (Azul) */
 .status-entrada-cc {
     background: #cfe2ff;
     color: #084298;
     border: 2px solid #0d6efd;
 }
 
-/* ✅ Status 2: Início da Cirurgia (Verde pulsante) */
+.status-entrada-cc + .status-texto {
+    color: #084298;
+}
+
+/* ✅ Status 3: Início da Cirurgia (Verde pulsante) */
 .status-inicio-cirurgia {
     background: #d1ecf1;
     color: #0c5460;
     border: 2px solid #17a2b8;
     animation: pulse-inicio 2s infinite;
+}
+
+.status-inicio-cirurgia + .status-texto {
+    color: #0c5460;
 }
 
 @keyframes pulse-inicio {
@@ -413,72 +456,93 @@ body {
     }
 }
 
-/* ✅ Status 3: Entrada no RPA (Laranja) */
+/* ✅ Status 4: Entrada no RPA (Laranja) */
 .status-entrada-rpa {
     background: #fff3cd;
     color: #856404;
     border: 2px solid #ffc107;
 }
 
-/* ✅ Status 4: Saída do RPA (Verde claro) */
-.status-saida-rpa {
-    background: #d4edda;
-    color: #155724;
-    border: 2px solid #28a745;
+.status-entrada-rpa + .status-texto {
+    color: #856404;
 }
 
-/* ✅ Status 5: Saída do CC (Verde escuro) */
-.status-saida-cc {
-    background: #28a745;
-    color: white;
-    border: 2px solid #1e7e34;
-    font-weight: 600;
-}
-
-/* ✅ Status 6: Sem Status / Aguardando (Cinza) */
-.status-sem-status {
-    background: #e9ecef;
-    color: #6c757d;
-    border: 2px solid #adb5bd;
-}
-
-/* Mantém compatibilidade com status antigos (se existirem) */
-.status-prevista {
-    background: #e0f7fa;
-    color: #00838f;
-    border: 2px solid #00acc1;
-}
-
-.status-prevista + .status-texto {
-    color: #00838f;
-}
-
-.status-andamento {
-    background: #d1ecf1;
-    color: #0c5460;
-    border: 2px solid #17a2b8;
-    animation: pulse-andamento 2s infinite;
-}
-
-@keyframes pulse-andamento {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.7);
-    }
-    50% {
-        box-shadow: 0 0 0 8px rgba(23, 162, 184, 0);
-    }
-}
-
+/* ✅ Status 5: Realizada (Verde) */
 .status-realizada {
     background: #c8e6c9;
     color: #2e7d32;
     border: 2px solid #4caf50;
     font-weight: 600;
 }
+
 .status-realizada + .status-texto {
     color: #2e7d32;
 }
 
+/* ✅ Status 6: Sem Status (Cinza) */
+.status-sem-status {
+    background: #e9ecef;
+    color: #6c757d;
+    border: 2px solid #adb5bd;
+}
+
+.status-sem-status + .status-texto {
+    color: #6c757d;
+}
+
+/* ========================================
+   🆕 ESTILOS PARA NOVOS CAMPOS
+   ======================================== */
+
+/* Início Cirurgia */
+.inicio-cirurgia {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #17a2b8;
+    white-space: nowrap;
+}
+
+.inicio-cirurgia i {
+    font-size: 0.85rem;
+    color: #17a2b8;
+}
+
+/* Tempo Cirurgia */
+.tempo-cirurgia {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.tempo-cirurgia i {
+    font-size: 0.85rem;
+}
+
+/* Tempo Ativo (cirurgia em andamento) */
+.tempo-ativo {
+    color: #28a745;
+    animation: pulse-tempo 2s infinite;
+}
+
+.tempo-ativo i {
+    color: #28a745;
+}
+
+@keyframes pulse-tempo {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
 
 /* ========================================
    🏥 BADGES E TEXTOS
@@ -601,10 +665,13 @@ body {
 }
 
 /* ========================================
-   📱 RESPONSIVIDADE ULTRA AJUSTADA
+   📱 RESPONSIVIDADE APRIMORADA
    ======================================== */
 
-/* Telas médias (1200px - 1400px): Reduz levemente */
+/* ========================================
+   🖥️ TELAS MÉDIAS (1200px - 1400px)
+   📝 Tablets grandes e notebooks pequenos
+   ======================================== */
 @media (max-width: 1400px) {
     .cirurgias-table thead th {
         font-size: 0.7rem;
@@ -616,39 +683,23 @@ body {
         padding: 8px 6px;
     }
 
-    .paciente-nome {
-        font-size: 0.75rem;
-    }
-
-    .paciente-info {
-        font-size: 0.65rem;
-    }
-
-    .medico-nome {
-        font-size: 0.75rem;
-    }
-
-    .cirurgia-desc {
-        font-size: 0.7rem;
-    }
-
-    .previsao-hora {
-        font-size: 0.7rem;
-    }
-
-    .badge-sala {
-        font-size: 0.7rem;
-        padding: 3px 8px;
-    }
-
     .status-icon {
-        width: 34px;
-        height: 34px;
-        font-size: 1rem;
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+
+    .inicio-cirurgia,
+    .tempo-cirurgia {
+        font-size: 0.7rem;
     }
 }
 
-/* Telas pequenas (868px - 1200px): Reduz mais */
+/* ========================================
+   📱 TABLETS (868px - 1200px)
+   📝 TODAS AS COLUNAS VISÍVEIS
+   📝 MODIFICAR AQUI: Para alterar larguras no tablet
+   ======================================== */
 @media (max-width: 1200px) {
     .mini-dashboard {
         grid-template-columns: repeat(2, 1fr);
@@ -664,41 +715,48 @@ body {
         padding: 7px 5px;
     }
 
-    .paciente-nome {
-        font-size: 0.7rem;
+    .status-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 1rem;
     }
 
-    .paciente-info {
+    .status-texto {
         font-size: 0.6rem;
     }
 
-    .medico-nome {
-        font-size: 0.7rem;
-    }
-
-    .cirurgia-desc {
+    .inicio-cirurgia,
+    .tempo-cirurgia {
         font-size: 0.65rem;
     }
 
-    .previsao-hora {
-        font-size: 0.65rem;
-    }
+    /* 📝 LARGURAS DAS COLUNAS - TABLET (TODAS VISÍVEIS) */
+    .cirurgias-table thead th:nth-child(1) { width: 90px; }   /* Status */
+    .cirurgias-table thead th:nth-child(2) { width: 85px; }   /* Previsão */
+    .cirurgias-table thead th:nth-child(3) { width: 70px; }   /* Início */
+    .cirurgias-table thead th:nth-child(4) { width: 80px; }   /* Tempo */
+    .cirurgias-table thead th:nth-child(5) { width: 170px; }  /* Sala */
+    .cirurgias-table thead th:nth-child(6) { width: 19%; }    /* Paciente */
+    .cirurgias-table thead th:nth-child(7) { width: 16%; }    /* Cirurgião */
+    .cirurgias-table thead th:nth-child(8) { width: calc(65% - 495px); } /* Cirurgia */
 
-    .badge-sala {
-        font-size: 0.65rem;
-        padding: 2px 6px;
-    }
-
-    .status-icon {
-        width: 30px;
-        height: 30px;
-        font-size: 0.9rem;
-    }
+    .cirurgias-table tbody td:nth-child(1) { width: 90px; }
+    .cirurgias-table tbody td:nth-child(2) { width: 85px; }
+    .cirurgias-table tbody td:nth-child(3) { width: 70px; }
+    .cirurgias-table tbody td:nth-child(4) { width: 80px; }
+    .cirurgias-table tbody td:nth-child(5) { width: 170px; }
+    .cirurgias-table tbody td:nth-child(6) { width: 19%; }
+    .cirurgias-table tbody td:nth-child(7) { width: 16%; }
+    .cirurgias-table tbody td:nth-child(8) { width: calc(65% - 495px); }
 }
 
+/* ========================================
+   📱 TABLETS PEQUENOS (600px - 868px)
+   📝 TODAS AS COLUNAS AINDA VISÍVEIS
+   ======================================== */
 @media (max-width: 868px) {
     .painel-header {
-        padding: 6px 12px;
+        padding: 6px 10px;
     }
 
     .header-left img {
@@ -709,10 +767,17 @@ body {
         font-size: 0.85rem;
     }
 
+    .btn-voltar,
+    .btn-refresh,
+    .btn-auto-scroll {
+        padding: 3px 8px;
+        font-size: 0.7rem;
+    }
+
     .mini-dashboard {
         grid-template-columns: repeat(2, 1fr);
         gap: 6px;
-        padding: 8px 12px;
+        padding: 8px 10px;
     }
 
     .stat-card {
@@ -737,12 +802,12 @@ body {
     }
 
     .cirurgias-content {
-        padding: 8px 12px;
+        padding: 8px 10px;
     }
 
     .grupo-dia-header {
         font-size: 0.8rem;
-        padding: 6px 10px;
+        padding: 6px 8px;
     }
 
     .cirurgias-table thead th {
@@ -753,6 +818,145 @@ body {
     .cirurgias-table tbody td {
         font-size: 0.65rem;
         padding: 6px 4px;
+    }
+
+    .status-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.95rem;
+    }
+
+    .status-texto {
+        font-size: 0.55rem;
+    }
+
+    .inicio-cirurgia,
+    .tempo-cirurgia {
+        font-size: 0.6rem;
+        gap: 2px;
+    }
+
+    .inicio-cirurgia i,
+    .tempo-cirurgia i {
+        font-size: 0.75rem;
+    }
+
+    /* 📝 LARGURAS - TABLET PEQUENO (TODAS VISÍVEIS) */
+    .cirurgias-table thead th:nth-child(1) { width: 85px; }   /* Status */
+    .cirurgias-table thead th:nth-child(2) { width: 75px; }   /* Previsão */
+    .cirurgias-table thead th:nth-child(3) { width: 65px; }   /* Início */
+    .cirurgias-table thead th:nth-child(4) { width: 70px; }   /* Tempo */
+    .cirurgias-table thead th:nth-child(5) { width: 140px; }  /* Sala */
+    .cirurgias-table thead th:nth-child(6) { width: 20%; }    /* Paciente */
+    .cirurgias-table thead th:nth-child(7) { width: 17%; }    /* Cirurgião */
+    .cirurgias-table thead th:nth-child(8) { width: calc(63% - 435px); } /* Cirurgia */
+
+    .cirurgias-table tbody td:nth-child(1) { width: 85px; }
+    .cirurgias-table tbody td:nth-child(2) { width: 75px; }
+    .cirurgias-table tbody td:nth-child(3) { width: 65px; }
+    .cirurgias-table tbody td:nth-child(4) { width: 70px; }
+    .cirurgias-table tbody td:nth-child(5) { width: 140px; }
+    .cirurgias-table tbody td:nth-child(6) { width: 20%; }
+    .cirurgias-table tbody td:nth-child(7) { width: 17%; }
+    .cirurgias-table tbody td:nth-child(8) { width: calc(63% - 435px); }
+}
+
+/* ========================================
+   📱 SMARTPHONES (menor que 600px)
+   📝 COLUNAS VISÍVEIS: Status, Previsão, Início, Paciente, Cirurgia
+   📝 COLUNAS OCULTAS: Tempo, Sala, Cirurgião
+   📝 MODIFICAR AQUI: Para mostrar/ocultar colunas no smartphone
+   ======================================== */
+@media (max-width: 600px) {
+    .painel-header h1 {
+        font-size: 0.75rem;
+    }
+
+    .header-left img {
+        max-height: 22px;
+    }
+
+    .btn-voltar span,
+    .btn-auto-scroll span {
+        display: none;
+    }
+
+    .mini-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+        padding: 6px 8px;
+    }
+
+    .stat-card {
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .stat-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .stat-icon i {
+        font-size: 0.95rem;
+    }
+
+    .stat-info h3 {
+        font-size: 1.2rem;
+    }
+
+    .stat-info p {
+        font-size: 0.65rem;
+    }
+
+    .cirurgias-content {
+        padding: 6px 8px;
+    }
+
+    .grupo-dia-header {
+        font-size: 0.75rem;
+        padding: 5px 6px;
+    }
+
+    .grupo-dia-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+    }
+
+    .cirurgias-table thead th {
+        font-size: 0.55rem;
+        padding: 5px 3px;
+    }
+
+    .cirurgias-table tbody td {
+        font-size: 0.6rem;
+        padding: 5px 3px;
+    }
+
+    .status-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 0.85rem;
+    }
+
+    .status-texto {
+        font-size: 0.5rem;
+    }
+
+    .inicio-cirurgia,
+    .tempo-cirurgia {
+        font-size: 0.55rem;
+        gap: 2px;
+    }
+
+    .inicio-cirurgia i,
+    .tempo-cirurgia i {
+        font-size: 0.7rem;
+    }
+
+    .badge-sala {
+        font-size: 0.6rem;
+        padding: 2px 6px;
     }
 
     .paciente-nome {
@@ -775,39 +979,72 @@ body {
         font-size: 0.6rem;
     }
 
-    .badge-sala {
-        font-size: 0.6rem;
-        padding: 2px 5px;
+    /* ========================================
+       🚫 OCULTAR COLUNAS NO SMARTPHONE
+       📝 Para MOSTRAR uma coluna: remova o "display: none"
+       📝 Para OCULTAR uma coluna: adicione "display: none"
+       ======================================== */
+
+    /* COLUNAS OCULTAS (Tempo, Sala, Cirurgião) */
+    .cirurgias-table thead th:nth-child(4),  /* Tempo - OCULTA */
+    .cirurgias-table thead th:nth-child(5),  /* Sala - OCULTA */
+    .cirurgias-table thead th:nth-child(7) { /* Cirurgião - OCULTA */
+        display: none;
     }
 
-    .status-icon {
-        width: 28px;
-        height: 28px;
-        font-size: 0.85rem;
+    .cirurgias-table tbody td:nth-child(4),  /* Tempo - OCULTA */
+    .cirurgias-table tbody td:nth-child(5),  /* Sala - OCULTA */
+    .cirurgias-table tbody td:nth-child(7) { /* Cirurgião - OCULTA */
+        display: none;
     }
+
+    /* ========================================
+       📐 LARGURAS DAS COLUNAS VISÍVEIS
+       📝 Colunas: Status, Previsão, Início, Paciente, Cirurgia
+       ======================================== */
+    .cirurgias-table thead th:nth-child(1) { width: 75px; }   /* Status */
+    .cirurgias-table thead th:nth-child(2) { width: 65px; }   /* Previsão */
+    .cirurgias-table thead th:nth-child(3) { width: 60px; }   /* Início */
+    .cirurgias-table thead th:nth-child(6) { width: 30%; }    /* Paciente */
+    .cirurgias-table thead th:nth-child(8) { width: calc(70% - 200px); } /* Cirurgia */
+
+    .cirurgias-table tbody td:nth-child(1) { width: 75px; }
+    .cirurgias-table tbody td:nth-child(2) { width: 65px; }
+    .cirurgias-table tbody td:nth-child(3) { width: 60px; }
+    .cirurgias-table tbody td:nth-child(6) { width: 30%; }
+    .cirurgias-table tbody td:nth-child(8) { width: calc(70% - 200px); }
 }
 
-@media (max-width: 480px) {
+/* ========================================
+   📱 SMARTPHONES MUITO PEQUENOS (menor que 400px)
+   📝 Mesmas colunas do smartphone normal
+   ======================================== */
+@media (max-width: 400px) {
+    .painel-header {
+        padding: 4px 6px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.7rem;
+    }
+
     .mini-dashboard {
         grid-template-columns: 1fr;
+        padding: 4px 6px;
+    }
+
+    .cirurgias-content {
+        padding: 4px 6px;
     }
 
     .cirurgias-table thead th {
-        font-size: 0.55rem;
-        padding: 5px 3px;
+        font-size: 0.5rem;
+        padding: 4px 2px;
     }
 
     .cirurgias-table tbody td {
-        font-size: 0.6rem;
-        padding: 5px 3px;
-    }
-
-    .paciente-nome {
-        font-size: 0.6rem;
-    }
-
-    .paciente-info {
-        font-size: 0.5rem;
+        font-size: 0.55rem;
+        padding: 4px 2px;
     }
 
     .status-icon {
@@ -815,129 +1052,40 @@ body {
         height: 26px;
         font-size: 0.8rem;
     }
-}
 
-
-
-/* ✅ Larguras EXATAS das colunas - STATUS MAIOR */
-.cirurgias-table thead th:nth-child(1) { width: 100px; }  /* Status - EXPANDIDO */
-.cirurgias-table thead th:nth-child(2) { width: 180px; }  /* Sala */
-.cirurgias-table thead th:nth-child(3) { width: 18%; }    /* Paciente */
-.cirurgias-table thead th:nth-child(4) { width: 16%; }    /* Cirurgião */
-.cirurgias-table thead th:nth-child(5) { width: calc(66% - 460px); } /* Cirurgia */
-.cirurgias-table thead th:nth-child(6) { width: 120px; }  /* Previsão */
-
-/* ✅ Mesmas larguras do THEAD */
-.cirurgias-table tbody td:nth-child(1) { width: 100px; }  /* Status - EXPANDIDO */
-.cirurgias-table tbody td:nth-child(2) { width: 180px; }
-.cirurgias-table tbody td:nth-child(3) { width: 18%; }
-.cirurgias-table tbody td:nth-child(4) { width: 16%; }
-.cirurgias-table tbody td:nth-child(5) { width: calc(66% - 460px); }
-.cirurgias-table tbody td:nth-child(6) { width: 120px; }
-
-/* ========================================
-   🎨 ÍCONES DE STATUS + TEXTO
-   ======================================== */
-
-.status-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.status-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    flex-shrink: 0;
-}
-
-.status-texto {
-    font-size: 0.65rem;
-    font-weight: 600;
-    text-align: center;
-    line-height: 1.1;
-    max-width: 90px;
-}
-
-/* ✅ Status 1: Entrada Paciente CC (Azul) */
-.status-entrada-cc {
-    background: #cfe2ff;
-    color: #084298;
-    border: 2px solid #0d6efd;
-}
-
-.status-entrada-cc + .status-texto {
-    color: #084298;
-}
-
-/* ✅ Status 2: Início da Cirurgia (Verde pulsante) */
-.status-inicio-cirurgia {
-    background: #d1ecf1;
-    color: #0c5460;
-    border: 2px solid #17a2b8;
-    animation: pulse-inicio 2s infinite;
-}
-
-.status-inicio-cirurgia + .status-texto {
-    color: #0c5460;
-}
-
-@keyframes pulse-inicio {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.7);
+    .status-texto {
+        font-size: 0.45rem;
     }
-    50% {
-        box-shadow: 0 0 0 8px rgba(23, 162, 184, 0);
+
+    /* Oculta ícones nos campos Início e Tempo para economizar espaço */
+    .inicio-cirurgia i,
+    .tempo-cirurgia i {
+        display: none;
     }
-}
 
-/* ✅ Status 3: Entrada no RPA (Laranja) */
-.status-entrada-rpa {
-    background: #fff3cd;
-    color: #856404;
-    border: 2px solid #ffc107;
-}
+    /* MANTÉM as mesmas colunas ocultas */
+    .cirurgias-table thead th:nth-child(4),
+    .cirurgias-table thead th:nth-child(5),
+    .cirurgias-table thead th:nth-child(7) {
+        display: none;
+    }
 
-.status-entrada-rpa + .status-texto {
-    color: #856404;
-}
+    .cirurgias-table tbody td:nth-child(4),
+    .cirurgias-table tbody td:nth-child(5),
+    .cirurgias-table tbody td:nth-child(7) {
+        display: none;
+    }
 
-/* ✅ Status 4: Saída do RPA (Verde claro) */
-.status-saida-rpa {
-    background: #d4edda;
-    color: #155724;
-    border: 2px solid #28a745;
-}
+    /* Ajusta larguras para telas muito pequenas */
+    .cirurgias-table thead th:nth-child(1) { width: 70px; }
+    .cirurgias-table thead th:nth-child(2) { width: 60px; }
+    .cirurgias-table thead th:nth-child(3) { width: 55px; }
+    .cirurgias-table thead th:nth-child(6) { width: 32%; }
+    .cirurgias-table thead th:nth-child(8) { width: calc(68% - 185px); }
 
-.status-saida-rpa + .status-texto {
-    color: #155724;
-}
-
-/* ✅ Status 5: Saída do CC (Verde escuro) */
-.status-saida-cc {
-    background: #28a745;
-    color: white;
-    border: 2px solid #1e7e34;
-    font-weight: 600;
-}
-
-.status-saida-cc + .status-texto {
-    color: #28a745;
-}
-
-/* ✅ Status 6: Sem Status / Aguardando (Cinza) */
-.status-sem-status {
-    background: #e9ecef;
-    color: #6c757d;
-    border: 2px solid #adb5bd;
-}
-
-.status-sem-status + .status-texto {
-    color: #6c757d;
+    .cirurgias-table tbody td:nth-child(1) { width: 70px; }
+    .cirurgias-table tbody td:nth-child(2) { width: 60px; }
+    .cirurgias-table tbody td:nth-child(3) { width: 55px; }
+    .cirurgias-table tbody td:nth-child(6) { width: 32%; }
+    .cirurgias-table tbody td:nth-child(8) { width: calc(68% - 185px); }
 }
