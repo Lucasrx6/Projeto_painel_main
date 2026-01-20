@@ -1,3 +1,7 @@
+/* ========================================
+   🎨 ADMIN USUÁRIOS - RESPONSIVO
+   ======================================== */
+
 * {
     margin: 0;
     padding: 0;
@@ -11,7 +15,8 @@ body {
 }
 
 /* ========================================
-   🎨 HEADER
+   🎯 HEADER
+   📝 MODIFICAR AQUI: Ajustar padding e tamanhos
    ======================================== */
 
 .admin-header {
@@ -94,6 +99,7 @@ body {
 
 /* ========================================
    📊 ESTATÍSTICAS
+   📝 MODIFICAR AQUI: Grid de estatísticas
    ======================================== */
 
 .stats-container {
@@ -231,6 +237,7 @@ body {
 
 /* ========================================
    📋 TABELA
+   📝 Desktop: tabela normal
    ======================================== */
 
 .table-container {
@@ -662,39 +669,155 @@ input:checked + .slider:before {
 }
 
 /* ========================================
-   📱 RESPONSIVIDADE
+   📱 RESPONSIVIDADE OTIMIZADA
    ======================================== */
 
+/* ========================================
+   🖥️ TABLETS (769px - 1024px)
+   ======================================== */
+@media (max-width: 1024px) {
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .stat-card {
+        padding: 20px;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+    }
+
+    .stat-icon i {
+        font-size: 1.8rem;
+    }
+
+    .stat-info h3 {
+        font-size: 1.8rem;
+    }
+
+    .usuarios-table {
+        font-size: 0.9rem;
+    }
+
+    .usuarios-table th,
+    .usuarios-table td {
+        padding: 12px 10px;
+    }
+}
+
+/* ========================================
+   📱 TABLETS MÉDIOS (481px - 768px)
+   📝 MODIFICAR AQUI: Layout tablet
+   ======================================== */
 @media (max-width: 768px) {
+    /* Header compacto */
+    .admin-header {
+        padding: 15px;
+    }
+
     .header-content {
         flex-direction: column;
         align-items: flex-start;
+        gap: 12px;
+    }
+
+    .header-left {
+        width: 100%;
+        gap: 12px;
+    }
+
+    .logo-header {
+        max-height: 40px;
+        padding: 6px 10px;
+    }
+
+    .admin-header h1 {
+        font-size: 1.5rem;
     }
 
     .header-right {
         width: 100%;
         justify-content: space-between;
+        flex-wrap: wrap;
     }
 
+    .header-right span {
+        font-size: 0.9rem;
+    }
+
+    .btn-header {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    /* Stats: 2 colunas */
     .stats-container {
-        grid-template-columns: 1fr;
+        margin: 20px auto;
+        padding: 0 15px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
     }
 
+    .stat-card {
+        padding: 15px;
+        gap: 15px;
+    }
+
+    .stat-icon {
+        width: 55px;
+        height: 55px;
+    }
+
+    .stat-icon i {
+        font-size: 1.6rem;
+    }
+
+    .stat-info h3 {
+        font-size: 1.6rem;
+    }
+
+    .stat-info p {
+        font-size: 0.85rem;
+    }
+
+    /* Controles */
     .controls-container {
+        margin: 0 auto 20px;
+        padding: 0 15px;
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
     }
 
     .search-box {
         max-width: 100%;
     }
 
+    .search-box input {
+        padding: 10px 12px 10px 40px;
+        font-size: 0.9rem;
+    }
+
     .controls-buttons {
         width: 100%;
+        flex-wrap: wrap;
     }
 
     .controls-buttons button {
         flex: 1;
+        min-width: 140px;
+        padding: 10px 15px;
+        font-size: 0.85rem;
+    }
+
+    /* Tabela */
+    .table-container {
+        margin: 0 auto 30px;
+        padding: 0 15px;
+        border-radius: 12px;
     }
 
     .usuarios-table {
@@ -706,18 +829,125 @@ input:checked + .slider:before {
         padding: 10px 8px;
     }
 
+    .usuarios-table th {
+        font-size: 0.8rem;
+    }
+
+    .status-badge {
+        padding: 4px 10px;
+        font-size: 0.75rem;
+    }
+
+    .admin-badge {
+        font-size: 1rem;
+    }
+
+    .btn-action {
+        font-size: 1rem;
+    }
+
+    /* Modal */
+    .modal {
+        padding: 15px;
+    }
+
     .modal-content {
         max-width: 95%;
+        border-radius: 12px;
+    }
+
+    .modal-header {
+        padding: 20px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .modal-content form,
+    .modal-body {
+        padding: 20px;
+    }
+
+    /* Permissões */
+    .painel-item {
+        padding: 12px;
+    }
+
+    .painel-info h4 {
+        font-size: 0.95rem;
+    }
+
+    .painel-info p {
+        font-size: 0.8rem;
+    }
+
+    /* Histórico */
+    .historico-lista {
+        max-height: 400px;
+    }
+
+    .historico-item {
+        padding: 12px;
+    }
+
+    .historico-item .meta {
+        flex-direction: column;
+        gap: 5px;
     }
 }
 
+/* ========================================
+   📱 SMARTPHONES (menor que 480px)
+   📝 MODIFICAR AQUI: Layout mobile otimizado
+   ======================================== */
 @media (max-width: 480px) {
+    /* Header super compacto */
+    .admin-header {
+        padding: 12px;
+    }
+
+    .header-left {
+        gap: 10px;
+    }
+
+    .logo-header {
+        max-height: 35px;
+        padding: 5px 8px;
+    }
+
     .admin-header h1 {
         font-size: 1.3rem;
     }
 
+    .admin-header h1 i {
+        margin-right: 8px;
+        font-size: 1.1rem;
+    }
+
+    .header-right span {
+        font-size: 0.85rem;
+    }
+
+    .btn-header {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+
+    /* ========================================
+       📊 STATS: 1 COLUNA NO MOBILE
+       📝 Cards empilhados verticalmente
+       ======================================== */
+    .stats-container {
+        margin: 15px auto;
+        padding: 0 12px;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
     .stat-card {
-        padding: 15px;
+        padding: 12px;
+        gap: 12px;
     }
 
     .stat-icon {
@@ -731,5 +961,310 @@ input:checked + .slider:before {
 
     .stat-info h3 {
         font-size: 1.5rem;
+    }
+
+    .stat-info p {
+        font-size: 0.8rem;
+    }
+
+    /* Controles mobile */
+    .controls-container {
+        margin: 0 auto 15px;
+        padding: 0 12px;
+        gap: 10px;
+    }
+
+    .search-box input {
+        padding: 10px 12px 10px 38px;
+        font-size: 0.85rem;
+    }
+
+    .search-box i {
+        left: 12px;
+        font-size: 0.9rem;
+    }
+
+    .controls-buttons {
+        gap: 8px;
+    }
+
+    .controls-buttons button {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        min-width: auto;
+    }
+
+    .controls-buttons button i {
+        font-size: 0.9rem;
+    }
+
+    /* ========================================
+       📋 TABELA: LAYOUT RESPONSIVO MOBILE
+       📝 Scroll horizontal + fontes reduzidas
+       ======================================== */
+    .table-container {
+        margin: 0 auto 20px;
+        padding: 0 12px;
+        border-radius: 10px;
+        overflow-x: auto;
+    }
+
+    .usuarios-table {
+        font-size: 0.75rem;
+        min-width: 600px; /* Força scroll horizontal */
+    }
+
+    .usuarios-table th,
+    .usuarios-table td {
+        padding: 8px 6px;
+        white-space: nowrap;
+    }
+
+    .usuarios-table th {
+        font-size: 0.7rem;
+    }
+
+    .status-badge {
+        padding: 3px 8px;
+        font-size: 0.7rem;
+    }
+
+    .admin-badge {
+        font-size: 0.9rem;
+    }
+
+    .btn-action {
+        font-size: 0.95rem;
+        padding: 3px;
+    }
+
+    /* Modal mobile */
+    .modal {
+        padding: 10px;
+    }
+
+    .modal-content {
+        max-width: 100%;
+        max-height: 95vh;
+        border-radius: 10px;
+    }
+
+    .modal-header {
+        padding: 15px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .modal-header h2 i {
+        margin-right: 8px;
+    }
+
+    .btn-close-modal {
+        font-size: 1.8rem;
+        width: 28px;
+        height: 28px;
+    }
+
+    .modal-content form,
+    .modal-body {
+        padding: 15px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .form-control {
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    .form-group small {
+        font-size: 0.75rem;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .modal-buttons button {
+        width: 100%;
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    .alert {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+
+    /* Permissões mobile */
+    .painel-item {
+        padding: 10px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .painel-toggle {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .painel-info h4 {
+        font-size: 0.9rem;
+    }
+
+    .painel-info p {
+        font-size: 0.75rem;
+    }
+
+    .switch {
+        width: 45px;
+        height: 24px;
+    }
+
+    .slider:before {
+        height: 16px;
+        width: 16px;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(21px);
+    }
+
+    /* Histórico mobile */
+    .historico-lista {
+        max-height: 300px;
+    }
+
+    .historico-item {
+        padding: 10px;
+    }
+
+    .historico-item .acao {
+        font-size: 0.75rem;
+    }
+
+    .historico-item .detalhes {
+        font-size: 0.85rem;
+    }
+
+    .historico-item .meta {
+        font-size: 0.75rem;
+        gap: 3px;
+    }
+
+    /* Loading mobile */
+    .loading {
+        padding: 30px;
+    }
+
+    .loading-spinner {
+        width: 35px;
+        height: 35px;
+        border-width: 3px;
+    }
+}
+
+/* ========================================
+   📱 SMARTPHONES MUITO PEQUENOS (< 360px)
+   ======================================== */
+@media (max-width: 360px) {
+    .admin-header {
+        padding: 10px;
+    }
+
+    .logo-header {
+        max-height: 32px;
+        padding: 4px 6px;
+    }
+
+    .admin-header h1 {
+        font-size: 1.2rem;
+    }
+
+    .header-right span {
+        font-size: 0.8rem;
+    }
+
+    .btn-header {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+
+    .stats-container {
+        margin: 12px auto;
+        padding: 0 10px;
+        gap: 8px;
+    }
+
+    .stat-card {
+        padding: 10px;
+    }
+
+    .stat-icon {
+        width: 45px;
+        height: 45px;
+    }
+
+    .stat-icon i {
+        font-size: 1.3rem;
+    }
+
+    .stat-info h3 {
+        font-size: 1.3rem;
+    }
+
+    .controls-container {
+        padding: 0 10px;
+    }
+
+    .table-container {
+        padding: 0 10px;
+    }
+
+    .usuarios-table {
+        font-size: 0.7rem;
+    }
+}
+
+/* ========================================
+   📱 LANDSCAPE MODE (altura < 500px)
+   ======================================== */
+@media (max-height: 500px) and (orientation: landscape) {
+    .admin-header {
+        padding: 8px 15px;
+        position: relative;
+    }
+
+    .stats-container {
+        margin: 15px auto;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .stat-card {
+        padding: 12px;
+    }
+
+    .stat-icon {
+        width: 45px;
+        height: 45px;
+    }
+
+    .modal-content {
+        max-height: 95vh;
+    }
+
+    .historico-lista {
+        max-height: 250px;
     }
 }
