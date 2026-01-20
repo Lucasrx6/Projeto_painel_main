@@ -107,6 +107,7 @@ body {
 
 /* ========================================
    📊 CONTEÚDO
+   📝 MODIFICAR AQUI: Ajustar padding e gaps
    ======================================== */
 
 .dashboard-content {
@@ -119,7 +120,8 @@ body {
 }
 
 /* ========================================
-   💳 CARDS SUPERIORES (6 EM LINHA)
+   💳 CARDS SUPERIORES
+   📝 DESKTOP: 3 colunas
    ======================================== */
 
 .stats-row {
@@ -203,6 +205,7 @@ body {
 
 /* ========================================
    🏥 GRID DE SETORES
+   📝 MODIFICAR AQUI: Tamanho mínimo dos cards
    ======================================== */
 
 .setores-grid {
@@ -341,9 +344,13 @@ body {
 }
 
 /* ========================================
-   📱 RESPONSIVIDADE
+   📱 RESPONSIVIDADE OTIMIZADA
    ======================================== */
 
+/* ========================================
+   🖥️ TELAS GRANDES (1200px - 1400px)
+   📝 Notebooks pequenos
+   ======================================== */
 @media (max-width: 1400px) {
     .stats-row {
         grid-template-columns: repeat(3, 1fr);
@@ -352,11 +359,9 @@ body {
     .setores-grid {
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     }
-}
 
-@media (max-width: 1200px) {
-    .stats-row {
-        grid-template-columns: repeat(3, 1fr);
+    .stat-card h3 {
+        font-size: 1.5rem;
     }
 
     .setor-card-taxa {
@@ -364,24 +369,11 @@ body {
     }
 }
 
-@media (max-width: 868px) {
-    .painel-header {
-        padding: 6px 12px;
-    }
-
-    .header-left img {
-        max-height: 26px;
-    }
-
-    .painel-header h1 {
-        font-size: 0.85rem;
-    }
-
-    .dashboard-content {
-        padding: 10px;
-        gap: 10px;
-    }
-
+/* ========================================
+   📱 TABLETS (868px - 1200px)
+   📝 MODIFICAR AQUI: Layout para tablets
+   ======================================== */
+@media (max-width: 1200px) {
     .stats-row {
         grid-template-columns: repeat(3, 1fr);
         gap: 6px;
@@ -392,12 +384,12 @@ body {
     }
 
     .stat-icon {
-        width: 35px;
-        height: 35px;
+        width: 38px;
+        height: 38px;
     }
 
     .stat-icon i {
-        font-size: 1rem;
+        font-size: 1.1rem;
     }
 
     .stat-card h3 {
@@ -408,35 +400,402 @@ body {
         font-size: 0.7rem;
     }
 
-    .setores-grid {
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        gap: 8px;
+    .stat-subtitle {
+        font-size: 0.9rem;
     }
 
-    .setor-card {
-        min-height: 90px;
-        padding: 10px;
+    .setores-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     }
 
     .setor-card-taxa {
-        font-size: 1.6rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .stats-row {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .setores-grid {
-        grid-template-columns: repeat(2, 1fr);
+        font-size: 1.7rem;
     }
 
     .setor-card-nome {
         font-size: 0.75rem;
     }
+}
+
+/* ========================================
+   📱 TABLETS PEQUENOS (600px - 868px)
+   📝 MODIFICAR AQUI: Cards 3 colunas
+   ======================================== */
+@media (max-width: 868px) {
+    .painel-header {
+        padding: 6px 10px;
+    }
+
+    .header-left img {
+        max-height: 26px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.85rem;
+    }
+
+    .btn-voltar,
+    .btn-refresh {
+        padding: 3px 8px;
+        font-size: 0.7rem;
+    }
+
+    .ultima-atualizacao {
+        font-size: 0.65rem;
+    }
+
+    .dashboard-content {
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    /* Cards superiores: 3 colunas */
+    .stats-row {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+    }
+
+    .stat-card {
+        padding: 6px;
+    }
+
+    .stat-icon {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 4px;
+    }
+
+    .stat-icon i {
+        font-size: 0.95rem;
+    }
+
+    .stat-card h3 {
+        font-size: 1.2rem;
+        margin: 3px 0;
+    }
+
+    .stat-card p {
+        font-size: 0.65rem;
+    }
+
+    .stat-subtitle {
+        font-size: 0.8rem;
+        margin-top: 2px;
+    }
+
+    /* Grid de setores: 3 colunas */
+    .setores-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 3px;
+    }
+
+    .setor-card {
+        min-height: 85px;
+        padding: 8px;
+    }
+
+    .setor-card-nome {
+        font-size: 0.7rem;
+        margin-bottom: 6px;
+    }
 
     .setor-card-taxa {
         font-size: 1.5rem;
+    }
+
+    .setor-card-label {
+        font-size: 0.65rem;
+    }
+
+    .setor-card-info {
+        font-size: 0.6rem;
+        gap: 4px;
+        margin-top: 4px;
+    }
+}
+
+/* ========================================
+   📱 SMARTPHONES PORTRAIT (menor que 600px)
+   📝 MODIFICAR AQUI: Cards 2 colunas
+   ======================================== */
+@media (max-width: 600px) {
+    .painel-header {
+        padding: 5px 8px;
+    }
+
+    .header-left img {
+        max-height: 24px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.8rem;
+    }
+
+    .painel-header h1 i {
+        font-size: 0.75rem;
+    }
+
+    .btn-voltar,
+    .btn-refresh {
+        padding: 3px 6px;
+        font-size: 0.65rem;
+    }
+
+    .btn-voltar i,
+    .btn-refresh i {
+        font-size: 0.65rem;
+    }
+
+    /* Oculta texto dos botões, mostra só ícones */
+    .btn-voltar span,
+    .btn-refresh span {
+        display: none;
+    }
+
+    .ultima-atualizacao {
+        font-size: 0.6rem;
+    }
+
+    .dashboard-content {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+
+    /* ========================================
+       💳 CARDS SUPERIORES: 2 COLUNAS
+       📝 Cards principais em 2 colunas no mobile
+       ======================================== */
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+    }
+
+    .stat-card {
+        padding: 6px 4px;
+    }
+
+    .stat-icon {
+        width: 30px;
+        height: 30px;
+        margin-bottom: 3px;
+    }
+
+    .stat-icon i {
+        font-size: 0.85rem;
+    }
+
+    .stat-card h3 {
+        font-size: 1.1rem;
+        margin: 2px 0;
+    }
+
+    .stat-card p {
+        font-size: 0.6rem;
+        line-height: 1.1;
+    }
+
+    .stat-subtitle {
+        font-size: 0.75rem;
+        margin-top: 2px;
+    }
+
+    /* ========================================
+       🏥 GRID DE SETORES: 2 COLUNAS
+       📝 Setores em 2 colunas no mobile
+       ======================================== */
+    .setores-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+        padding: 2px;
+    }
+
+    .setor-card {
+        min-height: 80px;
+        padding: 6px;
+        border-width: 1.5px;
+    }
+
+    .setor-card-nome {
+        font-size: 0.65rem;
+        margin-bottom: 4px;
+        line-height: 1.1;
+    }
+
+    .setor-card-taxa {
+        font-size: 1.4rem;
+        margin-bottom: 2px;
+    }
+
+    .setor-card-label {
+        font-size: 0.6rem;
+    }
+
+    .setor-card-info {
+        font-size: 0.55rem;
+        gap: 3px;
+        margin-top: 3px;
+        flex-wrap: wrap;
+    }
+
+    /* Loading menor */
+    .loading {
+        padding: 30px;
+    }
+
+    .loading-spinner {
+        width: 35px;
+        height: 35px;
+        border-width: 3px;
+    }
+
+    .loading p {
+        font-size: 0.8rem;
+    }
+}
+
+/* ========================================
+   📱 SMARTPHONES PEQUENOS (menor que 400px)
+   📝 Otimizações para telas muito pequenas
+   ======================================== */
+@media (max-width: 400px) {
+    .painel-header {
+        padding: 4px 6px;
+    }
+
+    .header-left img {
+        max-height: 22px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.75rem;
+    }
+
+    .btn-voltar,
+    .btn-refresh {
+        padding: 2px 5px;
+        font-size: 0.6rem;
+    }
+
+    .ultima-atualizacao {
+        font-size: 0.55rem;
+    }
+
+    .dashboard-content {
+        padding: 5px 6px;
+        gap: 5px;
+    }
+
+    /* Cards superiores ainda mais compactos */
+    .stats-row {
+        gap: 3px;
+    }
+
+    .stat-card {
+        padding: 5px 3px;
+    }
+
+    .stat-icon {
+        width: 28px;
+        height: 28px;
+        margin-bottom: 2px;
+    }
+
+    .stat-icon i {
+        font-size: 0.8rem;
+    }
+
+    .stat-card h3 {
+        font-size: 1rem;
+    }
+
+    .stat-card p {
+        font-size: 0.55rem;
+    }
+
+    .stat-subtitle {
+        font-size: 0.7rem;
+    }
+
+    /* Setores compactos */
+    .setores-grid {
+        gap: 4px;
+    }
+
+    .setor-card {
+        min-height: 75px;
+        padding: 5px;
+    }
+
+    .setor-card-nome {
+        font-size: 0.6rem;
+        margin-bottom: 3px;
+    }
+
+    .setor-card-taxa {
+        font-size: 1.3rem;
+    }
+
+    .setor-card-label {
+        font-size: 0.55rem;
+    }
+
+    .setor-card-info {
+        font-size: 0.5rem;
+        gap: 2px;
+    }
+}
+
+/* ========================================
+   📱 SMARTPHONES LANDSCAPE (altura < 500px)
+   📝 Otimizações para modo paisagem
+   ======================================== */
+@media (max-height: 500px) {
+    .painel-header {
+        padding: 4px 8px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.75rem;
+    }
+
+    .dashboard-content {
+        padding: 4px 8px;
+        gap: 4px;
+    }
+
+    .stats-row {
+        gap: 3px;
+    }
+
+    .stat-card {
+        padding: 4px;
+    }
+
+    .stat-icon {
+        width: 26px;
+        height: 26px;
+        margin-bottom: 2px;
+    }
+
+    .stat-card h3 {
+        font-size: 0.95rem;
+    }
+
+    .stat-card p {
+        font-size: 0.55rem;
+    }
+
+    .setores-grid {
+        gap: 3px;
+    }
+
+    .setor-card {
+        min-height: 70px;
+        padding: 4px;
+    }
+
+    .setor-card-taxa {
+        font-size: 1.2rem;
     }
 }

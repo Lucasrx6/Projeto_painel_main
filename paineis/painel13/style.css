@@ -1,0 +1,655 @@
+/* ========================================
+   🎨 PAINEL 13: PRESCRIÇÕES DE NUTRIÇÃO
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fa;
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* ========================================
+   📦 CONTAINER - SEM SCROLL
+   ======================================== */
+
+.painel-container {
+    background: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   🎯 CABEÇALHO ULTRA COMPACTO
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 8px 15px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-left img {
+    max-height: 30px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.painel-header h1 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.painel-header h1 i {
+    font-size: 0.9rem;
+}
+
+.header-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Filtro de Setor */
+.filtro-setor-select {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    max-width: 200px;
+}
+
+.filtro-setor-select option {
+    color: #333;
+    background: white;
+}
+
+/* Botões do Header */
+.btn-voltar,
+.btn-refresh,
+.btn-auto-scroll {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.btn-voltar i,
+.btn-refresh i,
+.btn-auto-scroll i {
+    font-size: 0.75rem;
+}
+
+.btn-voltar:hover,
+.btn-refresh:hover,
+.btn-auto-scroll:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+}
+
+/* Botão Auto-Scroll Ativo */
+.btn-auto-scroll.active {
+    background: #28a745;
+    border-color: #28a745;
+    animation: pulse-auto-scroll 2s infinite;
+}
+
+@keyframes pulse-auto-scroll {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+}
+
+.ultima-atualizacao {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+/* ========================================
+   📊 MINI DASHBOARD COMPACTO - 1 LINHA
+   ======================================== */
+
+.mini-dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 6px 15px;
+    background: white;
+    border-bottom: 2px solid #e9ecef;
+    flex-shrink: 0;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 6px 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon i {
+    font-size: 1.1rem;
+    color: white;
+}
+
+/* Cores dos ícones */
+.icon-setor {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.icon-total {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+}
+
+.icon-com-prescricao {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.icon-sem-prescricao {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+}
+
+.stat-info h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+    line-height: 1;
+}
+
+.stat-info p {
+    font-size: 0.7rem;
+    color: #666;
+    margin: 2px 0 0 0;
+}
+
+/* ========================================
+   📋 CONTEÚDO - SEM SCROLL, DINÂMICO
+   ======================================== */
+
+.nutricao-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 10px 15px;
+}
+
+/* ========================================
+   📊 TABELA - ALINHAMENTO PERFEITO
+   ======================================== */
+
+.nutricao-table-wrapper {
+    height: 100%;
+    overflow: hidden;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.nutricao-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* THEAD: Larguras fixas */
+.nutricao-table thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    flex-shrink: 0;
+}
+
+.nutricao-table thead tr {
+    display: table-row;
+}
+
+.nutricao-table thead th {
+    padding: 10px 8px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+/* Larguras das colunas */
+.nutricao-table thead th:nth-child(1) { width: 30px; }   /* Leito */
+.nutricao-table thead th:nth-child(2) { width: 35px; }   /* Atendimento */
+.nutricao-table thead th:nth-child(3) { width: 23%; }    /* Paciente */
+.nutricao-table thead th:nth-child(4) { width: 50px; }   /* Acompanhante */
+.nutricao-table thead th:nth-child(5) { width: 16%; }    /* Prescritor */
+.nutricao-table thead th:nth-child(6) { width: 20%; }    /* Médico Responsável */
+.nutricao-table thead th:nth-child(7) { width: 40px; }   /* Alergia */
+
+/* TBODY: Mesmas larguras + scroll */
+.nutricao-table tbody {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+}
+
+/* ========================================
+   🎴 LINHA PRINCIPAL - ESTILO CARD
+   ======================================== */
+
+.nutricao-table tbody tr.linha-principal {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-bottom: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+    margin-bottom: 2px;
+}
+
+.nutricao-table tbody tr.linha-principal:hover {
+    background: #fff5f5;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.nutricao-table tbody tr.linha-principal td {
+    padding: 12px 8px;
+    font-size: 0.8rem;
+    color: #333;
+    vertical-align: middle;
+}
+
+/* Mesmas larguras do THEAD */
+.nutricao-table tbody tr.linha-principal td:nth-child(1) { width: 40px; }
+.nutricao-table tbody tr.linha-principal td:nth-child(2) { width: 40px; }
+.nutricao-table tbody tr.linha-principal td:nth-child(3) { width: 20%; }
+.nutricao-table tbody tr.linha-principal td:nth-child(4) { width: 60px; }
+.nutricao-table tbody tr.linha-principal td:nth-child(5) { width: 20%; }
+.nutricao-table tbody tr.linha-principal td:nth-child(6) { width: 14%; }
+.nutricao-table tbody tr.linha-principal td:nth-child(7) { width: 70px; }
+
+/* ✅ Sinalização vermelha discreta - Sem Prescrição */
+.nutricao-table tbody tr.linha-principal.sem-prescricao-linha {
+    border-left: 4px solid #dc3545;
+    background: #fff5f5;
+}
+
+/* ========================================
+   📝 SUB-LINHAS (PRESCRIÇÃO E OBSERVAÇÃO)
+   ======================================== */
+
+.nutricao-table tbody tr.linha-detalhes {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.nutricao-table tbody tr.linha-detalhes td {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    color: #495057;
+    line-height: 1.4;
+}
+
+/* ✅ Última linha com separação tipo card */
+.nutricao-table tbody tr.linha-detalhes.ultima-linha {
+    border-bottom: none;
+    background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 0 0 4px 4px;
+    margin-bottom: 12px;  /* ✅ Espaço entre cards de pacientes */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.nutricao-table tbody tr.linha-detalhes.ultima-linha td {
+    padding-bottom: 14px;
+}
+
+.linha-prescricao {
+    background: #e7f5ff !important;
+}
+
+.linha-observacao {
+    background: transparent !important;
+}
+
+.label-detalhes {
+    font-weight: 600;
+    color: #28a745;
+    margin-right: 8px;
+}
+
+.label-observacao {
+    font-weight: 600;
+    color: #ffc107;
+    margin-right: 8px;
+}
+
+/* ========================================
+   🏷️ BADGE DE DATA DE PRESCRIÇÃO
+   ======================================== */
+
+.badge-data-prescricao {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid #c3e6cb;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.15);
+}
+
+.badge-data-prescricao i {
+    font-size: 0.75rem;
+}
+
+/* ========================================
+   👤 FORMATAÇÃO DE PACIENTE
+   ======================================== */
+
+.paciente-nome {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.paciente-info {
+    font-size: 0.7rem;
+    color: #6c757d;
+    display: block;
+}
+
+/* ========================================
+   👨‍⚕️ PRESCRITOR COM ÍCONE
+   ======================================== */
+
+.prescritor-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.icone-nutricionista {
+    color: #28a745;
+    font-size: 1rem;
+}
+
+.icone-medico {
+    color: #17a2b8;
+    font-size: 1rem;
+}
+
+.prescritor-nome {
+    font-weight: 500;
+    color: #333;
+}
+
+/* ========================================
+   📋 SEM PRESCRIÇÃO
+   ======================================== */
+
+.sem-prescricao-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid #ffeaa7;
+}
+
+/* ========================================
+   ⚠️ ÍCONE DE ALERGIA
+   ======================================== */
+
+.icone-alergia-sim {
+    color: #ffc107;
+    font-size: 1.2rem;
+    animation: pulso-alergia 2s ease-in-out infinite;
+}
+
+@keyframes pulso-alergia {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+.icone-alergia-nao {
+    color: #adb5bd;
+    font-size: 1rem;
+}
+
+/* ========================================
+   👥 ÍCONE DE ACOMPANHANTE
+   ======================================== */
+
+.icone-acompanhante-sim {
+    color: #28a745;
+    font-size: 1.2rem;
+}
+
+.icone-acompanhante-nao {
+    color: #dc3545;
+    font-size: 1.2rem;
+}
+
+/* Scrollbar customizado - VERMELHO */
+.nutricao-table tbody::-webkit-scrollbar {
+    width: 6px;
+}
+
+.nutricao-table tbody::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.nutricao-table tbody::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 3px;
+}
+
+.nutricao-table tbody::-webkit-scrollbar-thumb:hover {
+    background: #c82333;
+}
+
+/* ========================================
+   ⏳ LOADING
+   ======================================== */
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #dc3545;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+    font-size: 1rem;
+    color: #666;
+    font-weight: 500;
+}
+
+/* ========================================
+   ❌ MENSAGEM VAZIA
+   ======================================== */
+
+.empty-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-message i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    display: block;
+    color: #ccc;
+}
+
+.empty-message h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.empty-message p {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 1400px) {
+    .mini-dashboard {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .nutricao-table thead th {
+        font-size: 0.7rem;
+        padding: 8px 6px;
+    }
+
+    .nutricao-table tbody td {
+        font-size: 0.75rem;
+        padding: 8px 6px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .mini-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 868px) {
+    .painel-header {
+        padding: 6px 12px;
+    }
+
+    .header-left img {
+        max-height: 26px;
+    }
+
+    .painel-header h1 {
+        font-size: 0.85rem;
+    }
+
+    .mini-dashboard {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        padding: 8px 12px;
+    }
+
+    .nutricao-table thead th {
+        font-size: 0.65rem;
+        padding: 6px 4px;
+    }
+
+    .nutricao-table tbody td {
+        font-size: 0.7rem;
+        padding: 6px 4px;
+    }
+}

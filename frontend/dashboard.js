@@ -70,7 +70,8 @@ function mostrarTodosPaineis() {
         { nome: 'painel9', selector: '.painel-card[onclick*="painel9"]' },
         { nome: 'painel10', selector: '.painel-card[onclick*="painel10"]' },
         { nome: 'painel11', selector: '.painel-card[onclick*="painel11"]' },
-        { nome: 'painel12', selector: '.painel-card[onclick*="painel12"]' }
+        { nome: 'painel12', selector: '.painel-card[onclick*="painel12"]' },
+        { nome: 'painel13', selector: '.painel-card[onclick*="painel13"]' }
     ];
 
     paineis.forEach(painel => {
@@ -104,7 +105,8 @@ function filtrarPaineisVisiveis() {
         { nome: 'painel9', selector: '.painel-card[onclick*="painel9"]' },
         { nome: 'painel10', selector: '.painel-card[onclick*="painel10"]' },
         { nome: 'painel11', selector: '.painel-card[onclick*="painel11"]' },
-        { nome: 'painel12', selector: '.painel-card[onclick*="painel12"]' }
+        { nome: 'painel12', selector: '.painel-card[onclick*="painel12"]' },
+        { nome: 'painel13', selector: '.painel-card[onclick*="painel13"]' }
     ];
 
     let paineisVisiveis = 0;
