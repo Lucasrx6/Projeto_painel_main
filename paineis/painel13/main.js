@@ -254,20 +254,25 @@ function criarLinhasPaciente(registro) {
     `;
 
     if (temPrescricao) {
+        // ✅ Verifica se a prescrição é do dia anterior
         const dataFormatada = formatarDataPrescricao(registro.dt_prescricao);
-        const badgeData = `<span class="badge-data-prescricao">
-            <i class="fas fa-calendar-alt"></i>
-            ${registro.nr_prescricao || '-'} - ${dataFormatada}
-        </span>`;
+        const ehDiaAnterior = verificarDiaAnterior(registro.dt_prescricao);
+        const classDesatualizado = ehDiaAnterior ? ' desatualizado' : '';
+
+        // ✅ ÍCONE DO CALENDÁRIO - sempre visível
+        const iconeCalendario = ehDiaAnterior ? 'fa-calendar-exclamation' : 'fa-calendar-alt';
 
         html += `
             <tr class="linha-detalhes linha-prescricao">
                 <td colspan="7">
-                    ${badgeData}
-                    <span class="label-detalhes" style="margin-left: 10px;">
-                        <i class="fas fa-prescription"></i> Prescrição:
+                    <span class="badge-data-prescricao${classDesatualizado}">
+                        <i class="fas ${iconeCalendario}"></i>
+                        ${dataFormatada}
                     </span>
-                    ${registro.dieta_limpa || '-'}
+                    <span class="label-detalhes" style="margin-left: 10px;">
+                        <i class="fas fa-book-medical"></i> Prescrição:
+                    </span>
+                    <strong>${registro.nr_prescricao || '-'}</strong> - ${registro.dieta_limpa || '-'}
                 </td>
             </tr>
         `;
@@ -330,6 +335,29 @@ function formatarDataPrescricao(dataISO) {
     }
 }
 
+// ✅ Verifica se a prescrição é do dia anterior
+function verificarDiaAnterior(dataISO) {
+    if (!dataISO) return false;
+
+    try {
+        const dataPrescricao = new Date(dataISO);
+        const hoje = new Date();
+
+        // Zera as horas para comparar apenas datas
+        dataPrescricao.setHours(0, 0, 0, 0);
+        hoje.setHours(0, 0, 0, 0);
+
+        // Calcula diferença em dias
+        const diferencaDias = Math.floor((hoje - dataPrescricao) / (1000 * 60 * 60 * 24));
+
+        // Retorna true se é do dia anterior (diferença = 1 dia)
+        return diferencaDias === 1;
+
+    } catch (e) {
+        return false;
+    }
+}
+
 function getPrescritorFormatado(registro) {
     if (!registro.nm_prescritor || registro.nm_prescritor.trim() === '') {
         return '<span style="color: #adb5bd;">-</span>';
@@ -352,8 +380,6 @@ function getPrescritorFormatado(registro) {
     `;
 }
 
-
-
 // Formatação do ícone de alergia
 function getIconeAlergia(alergia) {
     if (alergia === 'Sim') {
@@ -361,8 +387,6 @@ function getIconeAlergia(alergia) {
     }
     return '<span class="icone-alergia-nao" title="Sem alergia">-</span>';
 }
-
-
 
 // Formatação do ícone de acompanhante
 function getIconeAcompanhante(acompanhante) {

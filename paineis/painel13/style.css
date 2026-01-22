@@ -314,8 +314,8 @@ body {
     border-bottom: 1px solid #e9ecef;
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-    border-radius: 4px;
-    margin-bottom: 2px;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: 0;
 }
 
 .nutricao-table tbody tr.linha-principal:hover {
@@ -356,6 +356,7 @@ body {
     table-layout: fixed;
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0;
 }
 
 .nutricao-table tbody tr.linha-detalhes td {
@@ -365,12 +366,12 @@ body {
     line-height: 1.4;
 }
 
-/* ✅ Última linha com separação tipo card */
+/* ✅ Última linha com separação tipo card - ESPAÇO AUMENTADO */
 .nutricao-table tbody tr.linha-detalhes.ultima-linha {
     border-bottom: none;
     background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
     border-radius: 0 0 4px 4px;
-    margin-bottom: 12px;  /* ✅ Espaço entre cards de pacientes */
+    margin-bottom: 20px;  /* ✅ AUMENTADO de 12px para 20px */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
@@ -392,9 +393,10 @@ body {
     margin-right: 8px;
 }
 
+/* ✅ COR DA OBSERVAÇÃO ALTERADA PARA PRETO */
 .label-observacao {
     font-weight: 600;
-    color: #ffc107;
+    color: #000000;  /* ✅ Alterado de #ffc107 para preto */
     margin-right: 8px;
 }
 
@@ -418,6 +420,40 @@ body {
 
 .badge-data-prescricao i {
     font-size: 0.75rem;
+}
+
+/* ✅ Badge amarelo para prescrição do dia anterior - ÍCONE CORRIGIDO */
+.badge-data-prescricao.desatualizado {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    color: #856404;
+    border: 1px solid #ffc107;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+    animation: pulso-desatualizado 2s ease-in-out infinite;
+}
+
+@keyframes pulso-desatualizado {
+    0%, 100% {
+        box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+    }
+    50% {
+        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+    }
+}
+
+.badge-data-prescricao.desatualizado i {
+    animation: rotate-icon 2s ease-in-out infinite;
+}
+
+@keyframes rotate-icon {
+    0%, 100% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(-5deg);
+    }
+    75% {
+        transform: rotate(5deg);
+    }
 }
 
 /* ========================================
