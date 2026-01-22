@@ -57,7 +57,7 @@ async function carregarPermissoes() {
     }
 }
 
-// ✅ NOVA FUNÇÃO: Mostrar todos os painéis para admins
+// Mostrar todos os painéis para admins
 function mostrarTodosPaineis() {
     const paineis = [
         { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },

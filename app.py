@@ -2874,7 +2874,18 @@ def api_minhas_permissoes():
         if is_admin:
             return jsonify({
                 'success': True,
-                'permissoes': ['painel2', 'painel3', 'painel4', 'painel5', 'painel6','painel7','painel8','painel9','painel10','painel11','painel12','painel13'],
+                'permissoes': ['painel2',
+                               'painel3',
+                               'painel4',
+                               'painel5',
+                               'painel6',
+                               'painel7',
+                               'painel8',
+                               'painel9',
+                               'painel10',
+                               'painel11',
+                               'painel12',
+                               'painel13'],
                 'is_admin': True
             })
 
@@ -3121,6 +3132,8 @@ def api_listar_paineis():
              'descricao': 'Acompanhamento de pedidos de internação', 'ativo': True},
             {'nome': 'painel12', 'titulo': 'Painel Ocupação e Produção',
              'descricao': 'Acompanhamento informações gerenciais', 'ativo': True},
+            {'nome': 'painel13', 'titulo': 'Mapa de Nutrição',
+             'descricao': 'Acompanhamento informações de nutrição', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200
