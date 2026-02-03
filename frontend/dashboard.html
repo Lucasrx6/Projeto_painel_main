@@ -3,261 +3,364 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Sistema de Painéis</title>
+    <title>Dashboard - Sistema de Paineis</title>
 
-        <!-- ========================================
-     📱 PWA META TAGS
-     ======================================== -->
+    <!-- ============================================================
+         PWA META TAGS
+         ============================================================ -->
+    <meta name="theme-color" content="#dc3545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Paineis HAC">
+    <meta name="description" content="Sistema de Paineis - Hospital Anchieta Ceilandia">
 
-<!-- Configurações PWA -->
-<meta name="theme-color" content="#dc3545">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Painéis HA">
-
-<!-- Manifest e ícones -->
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/static/img/logo.png">
-
-<!-- Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('✅ Service Worker registrado:', registration.scope);
-      })
-      .catch(error => {
-        console.error('❌ Erro ao registrar Service Worker:', error);
-      });
-  });
-}
-</script>
-
-
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/frontend/dashboard.css">
+    <!-- Manifest e icones -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
     <link rel="icon" href="/static/img/favicon.png">
 
+    <!-- Preconnect para performance -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
-
-
-
-
-
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/frontend/dashboard.css">
 </head>
 <body>
+    <!-- Skip link para acessibilidade -->
+    <a href="#paineis-grid" class="skip-link">Ir para os paineis</a>
+
     <div class="dashboard-container">
-        <!-- Header -->
+        <!-- ============================================================
+             HEADER
+             ============================================================ -->
         <header class="dashboard-header">
             <div class="header-content">
                 <div class="header-left">
-                    <img src="../static/img/logo.png" alt="Anchieta Ceilândia" class="logo-header">
-                    <h1>Sistema de Painéis</h1>
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta Ceilandia" class="logo-header" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-th-large" aria-hidden="true"></i> Sistema de Paineis</h1>
                 </div>
                 <div class="user-info">
-                    <span id="usuario-nome">Carregando...</span>
-                    <!-- Botão de Gestão de Usuários -->
-                    <button id="btn-gestao-usuarios" class="btn-admin" style="display: none;">
-                        <i class="fas fa-users-cog"></i> Gestão de Usuários
+                    <span id="usuario-nome" aria-live="polite">Carregando...</span>
+
+                    <!-- Botao Gestao de Usuarios (apenas admin) -->
+                    <button type="button"
+                            id="btn-gestao-usuarios"
+                            class="btn-admin"
+                            style="display: none;"
+                            aria-label="Gestao de Usuarios">
+                        <i class="fas fa-users-cog" aria-hidden="true"></i>
+                        <span class="btn-text">Gestao</span>
                     </button>
-                    <button id="btn-admin" class="btn-admin" style="display: none;">
-                        <i class="fas fa-user-plus"></i> Cadastrar Usuário
+
+                    <!-- Botao Cadastrar Usuario (apenas admin) -->
+                    <button type="button"
+                            id="btn-admin"
+                            class="btn-admin"
+                            style="display: none;"
+                            aria-label="Cadastrar novo usuario">
+                        <i class="fas fa-user-plus" aria-hidden="true"></i>
+                        <span class="btn-text">Cadastrar</span>
                     </button>
-                    <button id="btn-logout" class="btn-logout">
-                        <i class="fas fa-sign-out-alt"></i> Sair
+
+                    <!-- Botao Logout -->
+                    <button type="button"
+                            id="btn-logout"
+                            class="btn-logout"
+                            aria-label="Sair do sistema">
+                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                        <span class="btn-text">Sair</span>
                     </button>
                 </div>
             </div>
         </header>
 
-        <!-- Painéis -->
-        <main class="paineis-grid">
-            <div class="painel-card" onclick="abrirPainel('painel2')">
-                <div class="painel-icon">
+        <!-- ============================================================
+             GRID DE PAINEIS
+             ============================================================ -->
+        <main id="paineis-grid" class="paineis-grid" role="main" aria-label="Paineis disponiveis">
+
+            <!-- Painel 2: Evolucao de Turno -->
+            <article class="painel-card"
+                     data-painel="painel2"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Evolucao de Turno">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-notes-medical"></i>
                 </div>
-                <h3>Evolução de Turno</h3>
-                <p>Painel de acompanhamento de evoluções médicas</p>
+                <h3>Evolucao de Turno</h3>
+                <p>Painel de acompanhamento de evolucoes medicas por turno</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-prototipo"></i> Protótipo
+                    <i class="fas fa-circle status-prototipo" aria-hidden="true"></i>
+                    <span>Prototipo</span>
                 </div>
-            </div>
+            </article>
 
-            <div class="painel-card" onclick="abrirPainel('painel3')">
-                <div class="painel-icon">
+            <!-- Painel 3: Medicos PS -->
+            <article class="painel-card"
+                     data-painel="painel3"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Medicos PS">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-user-md"></i>
                 </div>
-                <h3>Médicos PS</h3>
-                <p>Monitoramento de médicos logados nos consultórios</p>
+                <h3>Medicos PS</h3>
+                <p>Monitoramento de medicos logados nos consultorios do PS</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-active"></i> Ativo
+                    <i class="fas fa-circle status-active" aria-hidden="true"></i>
+                    <span>Ativo</span>
                 </div>
-            </div>
+            </article>
 
-            <div class="painel-card" onclick="abrirPainel('painel4')">
-                <div class="painel-icon">
+            <!-- Painel 4: Ocupacao Hospitalar -->
+            <article class="painel-card"
+                     data-painel="painel4"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Ocupacao Hospitalar">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-hospital"></i>
                 </div>
-                <h3>Ocupação Hospitalar</h3>
-                <p>Monitoramento em tempo real da ocupação de leitos por setor</p>
+                <h3>Ocupacao Hospitalar</h3>
+                <p>Monitoramento em tempo real da ocupacao de leitos por setor</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-active"></i> Ativo
+                    <i class="fas fa-circle status-active" aria-hidden="true"></i>
+                    <span>Ativo</span>
                 </div>
-            </div>
+            </article>
 
-
-            <div class="painel-card" onclick="abrirPainel('painel5')">
-                <div class="painel-icon">
-                    <i class="fa-solid fa-hospital-user"></i>
+            <!-- Painel 5: Cirurgias do Dia -->
+            <article class="painel-card"
+                     data-painel="painel5"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Cirurgias do Dia">
+                <div class="painel-icon" aria-hidden="true">
+                    <i class="fas fa-hospital-user"></i>
                 </div>
                 <h3>Cirurgias do Dia</h3>
                 <p>Acompanhamento em tempo real das cirurgias agendadas</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-active"></i> Ativo
+                    <i class="fas fa-circle status-active" aria-hidden="true"></i>
+                    <span>Ativo</span>
                 </div>
-            </div>
+            </article>
 
-            <div class="painel-card" onclick="abrirPainel('painel6')">
-                <div class="painel-icon">
+            <!-- Painel 6: Priorizacao Clinica -->
+            <article class="painel-card"
+                     data-painel="painel6"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Priorizacao Clinica">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-triangle-exclamation"></i>
                 </div>
-                <h3>Priorização Clínica</h3>
-                <p>Risco por sinais vitais + exames laboratoriais</p>
+                <h3>Priorizacao Clinica</h3>
+                <p>Analise de risco por sinais vitais e exames laboratoriais</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-prototipo"></i> Protótipo
+                    <i class="fas fa-circle status-prototipo" aria-hidden="true"></i>
+                    <span>Prototipo</span>
                 </div>
-            </div>
+            </article>
 
-            <div class="painel-card" onclick="abrirPainel('painel7')">
-                <div class="painel-icon">
+            <!-- Painel 7: Analise Risco Sepse -->
+            <article class="painel-card"
+                     data-painel="painel7"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Analise Risco Sepse">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-virus"></i>
                 </div>
                 <h3>Analise Risco Sepse</h3>
-                <p>Risco por possibilidade SEPSE</p>
+                <p>Deteccao e monitoramento de risco de sepse com IA</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-prototipo"></i> Protótipo
+                    <i class="fas fa-circle status-prototipo" aria-hidden="true"></i>
+                    <span>Prototipo</span>
                 </div>
-            </div>
+            </article>
 
-            <div class="painel-card" onclick="abrirPainel('painel8')">
-                <div class="painel-icon">
+            <!-- Painel 8: Situacao Pacientes -->
+            <article class="painel-card"
+                     data-painel="painel8"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Situacao Pacientes">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-bed"></i>
                 </div>
-                <h3>Situação Pacientes</h3>
-                <p>Painel para monitoramento clinico de pacientes</p>
+                <h3>Situacao Pacientes</h3>
+                <p>Painel para monitoramento clinico de pacientes internados</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-active"></i> Ativo
+                    <i class="fas fa-circle status-active" aria-hidden="true"></i>
+                    <span>Ativo</span>
                 </div>
-            </div>
+            </article>
 
-
-            <div class="painel-card" onclick="abrirPainel('painel9')">
-                <div class="painel-icon">
+            <!-- Painel 9: Lab Pendente -->
+            <article class="painel-card"
+                     data-painel="painel9"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Lab Pendente">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-microscope"></i>
                 </div>
                 <h3>Lab Pendente</h3>
-                <p>Painel para monitorar pendencias de laboratório</p>
+                <p>Painel para monitorar pendencias de laboratorio</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-prototipo"></i> Protótipo
+                    <i class="fas fa-circle status-prototipo" aria-hidden="true"></i>
+                    <span>Prototipo</span>
                 </div>
-            </div>
+            </article>
 
-
-
-            <div class="painel-card" onclick="abrirPainel('painel10')">
-                <div class="painel-icon">
+            <!-- Painel 10: Painel PS -->
+            <article class="painel-card"
+                     data-painel="painel10"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel PS">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-chart-line"></i>
                 </div>
                 <h3>Painel PS</h3>
-                <p>Painel para analise do desempenho do PS</p>
+                <p>Painel para analise de desempenho do Pronto Socorro</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-prototipo"></i> Protótipo
+                    <i class="fas fa-circle status-prototipo" aria-hidden="true"></i>
+                    <span>Prototipo</span>
                 </div>
-            </div>
+            </article>
 
-
-            <div class="painel-card" onclick="abrirPainel('painel11')">
-                <div class="painel-icon">
+            <!-- Painel 11: Painel Internacao -->
+            <article class="painel-card"
+                     data-painel="painel11"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Internacao">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-bed-pulse"></i>
                 </div>
-                <h3>Painel Internação</h3>
-                <p>Painel para acompanhar situação internações no PS</p>
+                <h3>Painel Internacao</h3>
+                <p>Acompanhamento da situacao de internacoes no PS</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-active"></i> Ativo
+                    <i class="fas fa-circle status-active" aria-hidden="true"></i>
+                    <span>Ativo</span>
                 </div>
-            </div>
+            </article>
 
-
-            <div class="painel-card" onclick="abrirPainel('painel12')">
-                <div class="painel-icon">
-                    <i class="fa-solid fa-bars-progress"></i>
+            <!-- Painel 12: Painel Gerencial -->
+            <article class="painel-card"
+                     data-painel="painel12"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Gerencial">
+                <div class="painel-icon" aria-hidden="true">
+                    <i class="fas fa-bars-progress"></i>
                 </div>
                 <h3>Painel Gerencial</h3>
-                <p>Painel para Informações Gerenciais</p>
+                <p>Painel com informacoes gerenciais consolidadas</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-active"></i> Ativo
+                    <i class="fas fa-circle status-active" aria-hidden="true"></i>
+                    <span>Ativo</span>
                 </div>
-            </div>
+            </article>
 
-
-
-
-            <div class="painel-card" onclick="abrirPainel('painel13')">
-                <div class="painel-icon">
+            <!-- Painel 13: Mapa Nutricao -->
+            <article class="painel-card"
+                     data-painel="painel13"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Abrir painel Mapa Nutricao">
+                <div class="painel-icon" aria-hidden="true">
                     <i class="fas fa-apple-alt"></i>
                 </div>
-                <h3>Mapa Nutrição</h3>
-                <p>Painel para Informações de Nutrição</p>
+                <h3>Mapa Nutricao</h3>
+                <p>Painel com informacoes de nutricao e dietas</p>
                 <div class="painel-status">
-                    <i class="fas fa-circle status-prototipo"></i> Protótipo
+                    <i class="fas fa-circle status-prototipo" aria-hidden="true"></i>
+                    <span>Prototipo</span>
                 </div>
-            </div>
-
+            </article>
 
         </main>
     </div>
 
-    <!-- Modal de Cadastro -->
-    <div id="modal-cadastro" class="modal" style="display: none;">
+    <!-- ============================================================
+         MODAL: CADASTRO RAPIDO
+         ============================================================ -->
+    <div id="modal-cadastro" class="modal" role="dialog" aria-labelledby="titulo-modal-cadastro" aria-modal="true">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</h2>
-                <button class="btn-close-modal" onclick="fecharModal()">&times;</button>
+                <h2 id="titulo-modal-cadastro">
+                    <i class="fas fa-user-plus" aria-hidden="true"></i>
+                    Cadastrar Novo Usuario
+                </h2>
+                <button type="button" class="btn-close-modal" id="btn-fechar-modal" aria-label="Fechar">&times;</button>
             </div>
-            <form id="form-cadastro">
+            <form id="form-cadastro" novalidate>
                 <div class="form-group">
-                    <label>Usuário</label>
-                    <input type="text" id="novo-usuario" class="form-control" required>
+                    <label for="novo-usuario">Usuario (Login) *</label>
+                    <input type="text"
+                           id="novo-usuario"
+                           class="form-control"
+                           required
+                           minlength="3"
+                           maxlength="50"
+                           autocomplete="username"
+                           pattern="[a-zA-Z0-9_.]+"
+                           title="Apenas letras, numeros, underscore e ponto">
+                    <small>Minimo 3 caracteres. Apenas letras, numeros, _ e .</small>
                 </div>
                 <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="novo-email" class="form-control" required>
+                    <label for="novo-email">Email *</label>
+                    <input type="email"
+                           id="novo-email"
+                           class="form-control"
+                           required
+                           maxlength="255"
+                           autocomplete="email">
                 </div>
                 <div class="form-group">
-                    <label>Senha</label>
-                    <input type="password" id="nova-senha" class="form-control" required>
+                    <label for="nova-senha">Senha *</label>
+                    <input type="password"
+                           id="nova-senha"
+                           class="form-control"
+                           required
+                           minlength="8"
+                           maxlength="128"
+                           autocomplete="new-password">
+                    <small>Minimo 8 caracteres com maiuscula, minuscula, numero e caractere especial</small>
                 </div>
                 <div class="form-group">
-                    <label>Confirmar Senha</label>
-                    <input type="password" id="confirma-senha" class="form-control" required>
+                    <label for="confirma-senha">Confirmar Senha *</label>
+                    <input type="password"
+                           id="confirma-senha"
+                           class="form-control"
+                           required
+                           minlength="8"
+                           maxlength="128"
+                           autocomplete="new-password">
                 </div>
                 <div class="form-group">
                     <label class="checkbox-label">
-                        <input type="checkbox" id="is-admin"> Administrador
+                        <input type="checkbox" id="is-admin">
+                        <span>Administrador</span>
                     </label>
                 </div>
-                <div id="mensagem-cadastro" class="alert" style="display: none;"></div>
+                <div id="mensagem-cadastro" class="alert" style="display: none;" role="alert"></div>
                 <div class="modal-buttons">
-                    <button type="button" class="btn-secondary" onclick="fecharModal()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Cadastrar</button>
+                    <button type="button" class="btn-secondary" id="btn-cancelar-cadastro">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="btn-enviar-cadastro">Cadastrar</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- ============================================================
+         SCRIPTS
+         ============================================================ -->
     <script src="/frontend/dashboard.js"></script>
 </body>
 </html>

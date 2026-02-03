@@ -2,101 +2,137 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistema de Painéis</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - Sistema de Paineis</title>
 
-    <!-- ========================================
-     📱 PWA META TAGS
-     ======================================== -->
+    <!-- ============================================================
+         PWA META TAGS
+         ============================================================ -->
+    <meta name="theme-color" content="#dc3545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Paineis HAC">
+    <meta name="description" content="Login - Sistema de Paineis - Hospital Anchieta Ceilandia">
 
-<!-- Configurações PWA -->
-<meta name="theme-color" content="#dc3545">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Painéis HA">
+    <!-- Seguranca -->
+    <meta name="robots" content="noindex, nofollow">
 
-<!-- Manifest e ícones -->
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/static/img/logo.png">
-
-<!-- Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('✅ Service Worker registrado:', registration.scope);
-      })
-      .catch(error => {
-        console.error('❌ Erro ao registrar Service Worker:', error);
-      });
-  });
-}
-</script>
-
-
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/frontend/login.css">
+    <!-- Manifest e icones -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
     <link rel="icon" href="/static/img/favicon.png">
 
+    <!-- Preconnect para performance -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
-
-
-
-
-
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/frontend/login.css">
 </head>
 <body>
-    <div class="login-container">
+    <main class="login-container" role="main">
         <div class="login-box">
-            <div class="login-header">
+            <!-- ============================================================
+                 HEADER
+                 ============================================================ -->
+            <header class="login-header">
                 <div class="logo-container">
-                    <img src="../static/img/logo.png" alt="Anchieta Ceilândia">
+                    <img src="/static/img/logo.png"
+                         alt="Hospital Anchieta Ceilandia"
+                         onerror="this.style.display='none'">
                 </div>
-                <h1>Sistema de Painéis</h1>
-                <p>Faça login para continuar</p>
-            </div>
+                <h1>Sistema de Paineis</h1>
+                <p>Faca login para continuar</p>
+            </header>
 
-            <form id="form-login">
+            <!-- ============================================================
+                 FORMULARIO DE LOGIN
+                 ============================================================ -->
+            <form id="form-login" novalidate autocomplete="on">
                 <div class="form-group">
                     <label for="usuario">
-                        <i class="fas fa-user"></i> Usuário
+                        <i class="fas fa-user" aria-hidden="true"></i> Usuario
                     </label>
-                    <input
-                        type="text"
-                        id="usuario"
-                        name="usuario"
-                        class="form-control"
-                        required
-                        autocomplete="username"
-                    >
+                    <input type="text"
+                           id="usuario"
+                           name="usuario"
+                           class="form-control"
+                           required
+                           minlength="3"
+                           maxlength="50"
+                           autocomplete="username"
+                           autocapitalize="none"
+                           autocorrect="off"
+                           spellcheck="false"
+                           placeholder="Digite seu usuario"
+                           aria-required="true"
+                           aria-describedby="usuario-help">
+                    <small id="usuario-help" class="visually-hidden">Digite seu nome de usuario para acessar o sistema</small>
                 </div>
 
                 <div class="form-group">
                     <label for="senha">
-                        <i class="fas fa-lock"></i> Senha
+                        <i class="fas fa-lock" aria-hidden="true"></i> Senha
                     </label>
-                    <input
-                        type="password"
-                        id="senha"
-                        name="senha"
-                        class="form-control"
-                        required
-                        autocomplete="current-password"
-                    >
+                    <input type="password"
+                           id="senha"
+                           name="senha"
+                           class="form-control"
+                           required
+                           minlength="4"
+                           maxlength="128"
+                           autocomplete="current-password"
+                           placeholder="Digite sua senha"
+                           aria-required="true"
+                           aria-describedby="senha-help">
+                    <small id="senha-help" class="visually-hidden">Digite sua senha para acessar o sistema</small>
                 </div>
 
-                <div id="mensagem-erro" class="alert alert-danger" style="display: none;"></div>
+                <!-- Mensagem de erro/sucesso -->
+                <div id="mensagem-login"
+                     class="alert"
+                     style="display: none;"
+                     role="alert"
+                     aria-live="polite">
+                </div>
 
+                <!-- Botao de login -->
                 <button type="submit" class="btn-login" id="btn-login">
-                    <i class="fas fa-sign-in-alt"></i> Entrar
+                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+                    <span id="btn-login-texto">Entrar</span>
                 </button>
             </form>
-        </div>
-    </div>
 
+            <!-- ============================================================
+                 FOOTER (OPCIONAL)
+                 ============================================================ -->
+            <footer class="login-footer">
+                <p><strong>Hospital Anchieta</strong> - Ceilandia</p>
+            </footer>
+        </div>
+    </main>
+
+    <!-- ============================================================
+         ESTILOS AUXILIARES (inline para performance)
+         ============================================================ -->
+    <style>
+        /* Classe para leitores de tela */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
+
+    <!-- ============================================================
+         SCRIPTS
+         ============================================================ -->
     <script src="/frontend/login.js"></script>
 </body>
 </html>
