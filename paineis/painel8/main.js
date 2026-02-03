@@ -1,5 +1,6 @@
 // ========================================
-// 📋 PAINEL 8 - ENFERMARIA COM AUTO-SCROLL
+// PAINEL 8 - ENFERMARIA COM AUTO-SCROLL ROBUSTO
+// Versao com Watchdog Funcional e Compatibilidade Cross-Browser
 // ========================================
 
 const BASE_URL = window.location.origin;
@@ -8,30 +9,61 @@ const CONFIG = {
     apiEnfermaria: `${BASE_URL}/api/paineis/painel8/enfermaria`,
     apiSetores: `${BASE_URL}/api/paineis/painel8/setores`,
     apiStats: `${BASE_URL}/api/paineis/painel8/stats`,
-    intervaloRefresh: 95000, // 30 segundos
-    velocidadeScroll: 0.5,
+    intervaloRefresh: 95000,
+    velocidadeScroll: 1,
     delayInicioAutoScroll: 10000,
-    pausaFinal: 10000,
-    pausaAposReset: 10000,
-    watchdogInterval: 5000 // Verifica travamento a cada 5s
+    pausaNoFinal: 8000,
+    pausaAposReset: 8000,
+    watchdogInterval: 3000,
+    watchdogTolerancia: 3,
+    scrollInterval: 30
 };
 
-let dadosEnfermaria = [];
-let setores = [];
-let autoScrollAtivo = false;
-let intervaloAutoScroll = null;
-let intervaloWatchdog = null;
-let timeoutAutoScrollInicial = null;
-let setorSelecionado = localStorage.getItem('painel8_setor') || '';
-let ultimaPosicaoScroll = 0;
-let contadorTravamento = 0;
+// ========================================
+// ESTADO GLOBAL
+// ========================================
+
+const Estado = {
+    dadosEnfermaria: [],
+    setores: [],
+    setorSelecionado: localStorage.getItem('painel8_setor') || '',
+    autoScroll: {
+        ativo: false,
+        pausadoTemporariamente: false,
+        emCicloDeReset: false,
+        ultimaPosicao: 0,
+        contadorTravamento: 0,
+        frameId: null,
+        ultimoTimestamp: 0
+    },
+    timers: {
+        watchdog: null,
+        inicioAutomatico: null,
+        resetScroll: null,
+        retomadaScroll: null
+    },
+    inicializado: false
+};
+
+// ========================================
+// INICIALIZACAO
+// ========================================
 
 function inicializar() {
-    console.log('🚀 Inicializando Painel de Enfermaria...');
+    console.log('[PAINEL8] Inicializando...');
+
     configurarBotoes();
+    configurarVisibilityAPI();
     carregarSetores();
-    setInterval(carregarDados, CONFIG.intervaloRefresh);
-    console.log('✅ Painel inicializado!');
+
+    setInterval(() => {
+        if (!Estado.autoScroll.emCicloDeReset) {
+            carregarDados();
+        }
+    }, CONFIG.intervaloRefresh);
+
+    Estado.inicializado = true;
+    console.log('[PAINEL8] Inicializacao concluida');
 }
 
 if (document.readyState === 'loading') {
@@ -39,6 +71,28 @@ if (document.readyState === 'loading') {
 } else {
     inicializar();
 }
+
+// ========================================
+// VISIBILITY API - PAUSA QUANDO ABA INATIVA
+// ========================================
+
+function configurarVisibilityAPI() {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            console.log('[VISIBILITY] Aba inativa - pausando scroll');
+            pausarScrollTemporariamente();
+        } else {
+            console.log('[VISIBILITY] Aba ativa - retomando scroll');
+            if (Estado.autoScroll.ativo && Estado.autoScroll.pausadoTemporariamente) {
+                retomarScrollTemporario();
+            }
+        }
+    });
+}
+
+// ========================================
+// CONFIGURACAO DE BOTOES
+// ========================================
 
 function configurarBotoes() {
     const btnVoltar = document.getElementById('btn-voltar');
@@ -58,17 +112,10 @@ function configurarBotoes() {
     const btnAutoScroll = document.getElementById('btn-auto-scroll');
     if (btnAutoScroll) {
         btnAutoScroll.addEventListener('click', () => {
-            autoScrollAtivo = !autoScrollAtivo;
-            if (autoScrollAtivo) {
-                btnAutoScroll.classList.add('active');
-                btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                console.log('▶️ Auto-scroll ATIVADO manualmente');
-                iniciarAutoScroll();
+            if (Estado.autoScroll.ativo) {
+                desativarAutoScroll();
             } else {
-                btnAutoScroll.classList.remove('active');
-                btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
-                pararAutoScroll();
-                console.log('⏸️ Auto-scroll PAUSADO');
+                ativarAutoScroll();
             }
         });
     }
@@ -76,12 +123,16 @@ function configurarBotoes() {
     const filtroSetor = document.getElementById('filtro-setor');
     if (filtroSetor) {
         filtroSetor.addEventListener('change', (e) => {
-            setorSelecionado = e.target.value;
-            localStorage.setItem('painel8_setor', setorSelecionado);
+            Estado.setorSelecionado = e.target.value;
+            localStorage.setItem('painel8_setor', Estado.setorSelecionado);
             carregarDados();
         });
     }
 }
+
+// ========================================
+// CARREGAMENTO DE DADOS
+// ========================================
 
 async function carregarSetores() {
     try {
@@ -89,24 +140,26 @@ async function carregarSetores() {
         const data = await res.json();
 
         if (data.success) {
-            setores = data.setores;
+            Estado.setores = data.setores;
             popularSelectSetores();
-            carregarDados(); // Carrega dados após ter setores
+            carregarDados();
         }
     } catch (erro) {
-        console.error('❌ Erro ao carregar setores:', erro);
+        console.error('[PAINEL8] Erro ao carregar setores:', erro);
     }
 }
 
 function popularSelectSetores() {
     const select = document.getElementById('filtro-setor');
+    if (!select) return;
+
     select.innerHTML = '<option value="">Todos os Setores</option>';
 
-    setores.forEach(setor => {
+    Estado.setores.forEach(setor => {
         const option = document.createElement('option');
         option.value = setor.nm_setor;
         option.textContent = setor.nm_setor;
-        if (setor.nm_setor === setorSelecionado) {
+        if (setor.nm_setor === Estado.setorSelecionado) {
             option.selected = true;
         }
         select.appendChild(option);
@@ -115,23 +168,23 @@ function popularSelectSetores() {
 
 async function carregarDados() {
     try {
-        console.log('🔄 Carregando dados...');
+        console.log('[PAINEL8] Carregando dados...');
 
-        // ✅ Pausa scroll durante atualização para evitar conflitos
-        const scrollEstaAtivo = autoScrollAtivo;
+        const scrollEstaAtivo = Estado.autoScroll.ativo;
         if (scrollEstaAtivo) {
-            console.log('⏸️ Pausando scroll durante atualização...');
-            pararAutoScroll();
+            pausarScrollTemporariamente();
         }
 
         let url = CONFIG.apiEnfermaria;
-        if (setorSelecionado) {
-            url += `?setor=${encodeURIComponent(setorSelecionado)}`;
+        if (Estado.setorSelecionado) {
+            url += `?setor=${encodeURIComponent(Estado.setorSelecionado)}`;
         }
 
         const [enfermariaRes, statsRes] = await Promise.all([
             fetch(url),
-            setorSelecionado ? fetch(`${CONFIG.apiStats}?setor=${encodeURIComponent(setorSelecionado)}`) : Promise.resolve(null)
+            Estado.setorSelecionado
+                ? fetch(`${CONFIG.apiStats}?setor=${encodeURIComponent(Estado.setorSelecionado)}`)
+                : Promise.resolve(null)
         ]);
 
         if (!enfermariaRes.ok) {
@@ -142,582 +195,345 @@ async function carregarDados() {
         const statsData = statsRes ? await statsRes.json() : null;
 
         if (enfermariaData.success) {
-            dadosEnfermaria = enfermariaData.data;
-            renderizarTabela(dadosEnfermaria);
+            Estado.dadosEnfermaria = enfermariaData.data;
+            renderizarTabela(Estado.dadosEnfermaria);
             atualizarHoraAtualizacao();
 
             if (statsData && statsData.success && statsData.stats) {
                 atualizarDashboard(statsData.stats);
             }
 
-            // ✅ Reativa scroll após atualização
             if (scrollEstaAtivo) {
                 setTimeout(() => {
-                    console.log('▶️ Retomando scroll após atualização...');
-                    autoScrollAtivo = true;
-                    const btnAutoScroll = document.getElementById('btn-auto-scroll');
-                    if (btnAutoScroll) {
-                        btnAutoScroll.classList.add('active');
-                        btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                    }
-                    iniciarAutoScroll();
+                    retomarScrollTemporario();
                 }, 500);
             }
 
-            // ✅ Ativa auto-scroll automaticamente após 10s (apenas na primeira vez)
-            if (!scrollEstaAtivo && timeoutAutoScrollInicial === null) {
-                timeoutAutoScrollInicial = setTimeout(() => {
-                    console.log('🚀 Ativando auto-scroll automaticamente após 10s...');
-                    const btnAutoScroll = document.getElementById('btn-auto-scroll');
-                    if (btnAutoScroll) {
-                        autoScrollAtivo = true;
-                        btnAutoScroll.classList.add('active');
-                        btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                        iniciarAutoScroll();
-                    }
-                }, CONFIG.delayInicioAutoScroll);
-            }
+            agendarInicioAutomaticoScroll();
 
-            console.log('✅ Dados carregados!');
+            console.log('[PAINEL8] Dados carregados com sucesso');
         } else {
-            console.error('Erro nos dados:', enfermariaData);
+            console.error('[PAINEL8] Erro nos dados:', enfermariaData);
             mostrarErro('Erro ao processar dados');
         }
     } catch (erro) {
-        console.error('❌ Erro:', erro);
-        mostrarErro('Erro de conexão');
+        console.error('[PAINEL8] Erro:', erro);
+        mostrarErro('Erro de conexao');
     }
+}
+
+function agendarInicioAutomaticoScroll() {
+    if (Estado.autoScroll.ativo || Estado.timers.inicioAutomatico !== null) {
+        return;
+    }
+
+    Estado.timers.inicioAutomatico = setTimeout(() => {
+        console.log('[AUTO-SCROLL] Ativando automaticamente apos delay inicial');
+        ativarAutoScroll();
+        Estado.timers.inicioAutomatico = null;
+    }, CONFIG.delayInicioAutoScroll);
 }
 
 function atualizarDashboard(stats) {
-    document.getElementById('nome-setor').textContent = stats.nm_setor || 'Todos';
-    document.getElementById('leitos-ocupados').textContent = stats.leitos_ocupados || 0;
-    document.getElementById('total-leitos').textContent = stats.total_leitos || 0;
-    document.getElementById('leitos-livres').textContent = stats.leitos_livres || 0;
-    document.getElementById('percentual-ocupacao').textContent = stats.percentual_ocupacao || 0;
-    document.getElementById('pacientes-criticos').textContent = stats.pacientes_criticos || 0;
-}
-
-
-
-// ========================================
-// 📅 FORMATAÇÃO E CÁLCULO DE DATA DE ALTA
-// ========================================
-
-/**
- * Converte data Oracle (24-AUG-23) OU PostgreSQL (2026-01-19 16:24:00-03) para objeto Date
- */
-function parseOracleDate(dataString) {
-    if (!dataString || dataString.trim() === '') return null;
-
-    dataString = dataString.trim();
-
-    // ✅ Detecta formato PostgreSQL: "2026-01-19 16:24:00-03" ou "2026-01-19"
-    if (dataString.includes('-') && (dataString.includes(' ') || dataString.split('-').length === 3)) {
-        // Tenta parse direto (ISO ou similar)
-        const dataParsed = new Date(dataString);
-
-        // Verifica se é uma data válida
-        if (!isNaN(dataParsed.getTime())) {
-            return dataParsed;
-        }
-    }
-
-    // ✅ Formato Oracle: DD-MMM-YY (ex: 24-AUG-23)
-    const meses = {
-        'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
-        'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
+    const elementos = {
+        'nome-setor': stats.nm_setor || 'Todos',
+        'leitos-ocupados': stats.leitos_ocupados || 0,
+        'total-leitos': stats.total_leitos || 0,
+        'leitos-livres': stats.leitos_livres || 0,
+        'percentual-ocupacao': stats.percentual_ocupacao || 0,
+        'pacientes-criticos': stats.pacientes_criticos || 0
     };
 
-    const partes = dataString.split('-');
-
-    // Verifica se é formato Oracle (DD-MMM-YY)
-    if (partes.length === 3 && partes[1].length === 3) {
-        const dia = parseInt(partes[0]);
-        const mes = meses[partes[1].toUpperCase()];
-        const ano = parseInt('20' + partes[2]); // Assume 20XX
-
-        if (!isNaN(dia) && mes !== undefined && !isNaN(ano)) {
-            return new Date(ano, mes, dia);
-        }
+    for (const [id, valor] of Object.entries(elementos)) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = valor;
     }
-
-    // Se nenhum formato funcionou
-    return null;
-}
-
-/**
- * Formata data para DD/MM/YYYY
- */
-function formatarData(dataString) {
-    const data = parseOracleDate(dataString);
-    if (!data) return 'Não informado';
-
-    const dia = String(data.getDate()).padStart(2, '0');
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const ano = data.getFullYear();
-
-    return `${dia}/${mes}/${ano}`;
-}
-
-/**
- * Calcula dias restantes até a alta e retorna badge colorido
- */
-function getBadgeDataAlta(dataString) {
-    if (!dataString || dataString.trim() === '') {
-        return '<span class="badge-alta badge-sem-info">Não informado</span>';
-    }
-
-    const dataAlta = parseOracleDate(dataString);
-    if (!dataAlta) {
-        return '<span class="badge-alta badge-sem-info">Data inválida</span>';
-    }
-
-    // Calcula diferença em dias
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    dataAlta.setHours(0, 0, 0, 0);
-
-    const diffTime = dataAlta - hoje;
-    const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    const dataFormatada = formatarData(dataString);
-
-    // Verde: 1 dia ou menos
-    if (diffDias <= 1 && diffDias >= 0) {
-        return `<span class="badge-alta badge-verde" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-check"></i> ${diffDias === 0 ? 'Hoje' : 'Amanhã'}
-        </span>`;
-    }
-
-    // Amarelo: 2-4 dias
-    if (diffDias >= 2 && diffDias <= 4) {
-        return `<span class="badge-alta badge-amarelo" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-day"></i> ${diffDias} dias
-        </span>`;
-    }
-
-    // Vermelho: 5+ dias
-    if (diffDias >= 5) {
-        return `<span class="badge-alta badge-vermelho" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-alt"></i> ${diffDias} dias
-        </span>`;
-    }
-
-    // Data passada (alta atrasada)
-    if (diffDias < 0) {
-        return `<span class="badge-alta badge-atrasado" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-exclamation-triangle"></i> Atrasada (${Math.abs(diffDias)} dias)
-        </span>`;
-    }
-
-    return `<span class="badge-alta badge-sem-info">${dataFormatada}</span>`;
-}
-
-/**
- * Formata especialidade médica
- */
-function formatarEspecialidade(especialidade) {
-    if (!especialidade || especialidade.trim() === '') {
-        return '<span class="texto-neutro">-</span>';
-    }
-    return `<span class="especialidade">${especialidade}</span>`;
-}
-
-/**
- * Calcula dias restantes até a alta e retorna badge colorido
- */
-function getBadgeDataAlta(oracleDate) {
-    if (!oracleDate || oracleDate.trim() === '') {
-        return '<span class="badge-alta badge-sem-info">Não informado</span>';
-    }
-
-    const dataAlta = parseOracleDate(oracleDate);
-    if (!dataAlta) {
-        return '<span class="badge-alta badge-sem-info">Data inválida</span>';
-    }
-
-    // Calcula diferença em dias
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    dataAlta.setHours(0, 0, 0, 0);
-
-    const diffTime = dataAlta - hoje;
-    const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    const dataFormatada = formatarData(oracleDate);
-
-    // Verde: 1 dia ou menos
-    if (diffDias <= 1) {
-        return `<span class="badge-alta badge-verde" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-check"></i> ${diffDias === 0 ? 'Hoje' : 'Amanhã'}
-        </span>`;
-    }
-
-    // Amarelo: 2-4 dias
-    if (diffDias >= 2 && diffDias <= 4) {
-        return `<span class="badge-alta badge-amarelo" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-day"></i> ${diffDias} dias
-        </span>`;
-    }
-
-    // Vermelho: 5+ dias
-    if (diffDias >= 5) {
-        return `<span class="badge-alta badge-vermelho" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-alt"></i> ${diffDias} dias
-        </span>`;
-    }
-
-    // Data passada (alta atrasada)
-    if (diffDias < 0) {
-        return `<span class="badge-alta badge-atrasado" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-exclamation-triangle"></i> Atrasada
-        </span>`;
-    }
-
-    return `<span class="badge-alta badge-sem-info">${dataFormatada}</span>`;
-}
-
-/**
- * Formata especialidade médica
- */
-function formatarEspecialidade(especialidade) {
-    if (!especialidade || especialidade.trim() === '') {
-        return '<span class="texto-neutro">-</span>';
-    }
-    return `<span class="especialidade">${especialidade}</span>`;
-}
-
-
-
-
-function renderizarTabela(dados) {
-    const container = document.getElementById('enfermaria-content');
-
-    if (!dados || dados.length === 0) {
-        container.innerHTML = `
-            <div class="empty-message">
-                <i class="fas fa-inbox"></i>
-                <h3>Nenhum registro encontrado</h3>
-                <p>Não há dados para o setor selecionado</p>
-            </div>
-        `;
-        return;
-    }
-
-    let html = `
-        <div class="enfermaria-table-wrapper">
-            <table class="enfermaria-table">
-                <thead>
-                    <tr>
-                        <th>Alta Prevista</th>
-                        <th>Leito</th>
-                        <th>Atendimento</th>
-                        <th>Paciente</th>
-                        <th>Especialidade</th>
-                        <th>Idade</th>
-                        <th>Dias</th>
-                        <th>Prescrição</th>
-                        <th>Lab</th>
-                        <th>Imagem</th>
-                        <th>Evolução</th>
-                        <th>Parecer</th>
-                        <th>Alergia</th>
-                        <th>NEWS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${dados.map(r => criarLinhaTabela(r)).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-
-    container.innerHTML = html;
-}
-
-function criarLinhaTabela(registro) {
-    const isVazio = !registro.atendimento;
-    const scoreNews = registro.score_news || 0;
-
-    // ✅ Classifica risco NEWS
-    let rowClass = '';
-    if (isVazio) {
-        rowClass = 'leito-vazio';
-    } else if (scoreNews >= 7) {
-        rowClass = 'news-alto-risco';
-    } else if (scoreNews >= 5) {
-        rowClass = 'news-medio-risco';
-    }
-
-    const nomeFormatado = formatarNome(registro.paciente);
-    const idadeFormatada = registro.idade ? `${registro.idade} anos` : '-';
-
-    // Se leito está vazio, mostrar '-' em todos os campos
-    if (isVazio) {
-        return `
-            <tr class="${rowClass}">
-                <td><span class="texto-neutro">-</span></td>
-                <td><strong>${registro.leito}</strong></td>
-                <td>-</td>
-                <td>VAZIO</td>
-                <td><span class="texto-neutro">-</span></td>
-                <td>-</td>
-                <td>-</td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-            </tr>
-        `;
-    }
-
-    // Leito ocupado - mostrar dados normais
-    return `
-        <tr class="${rowClass}">
-            <td>${getBadgeDataAlta(registro.dt_previsto_alta)}</td>
-            <td><strong>${registro.leito}</strong></td>
-            <td>${registro.atendimento || '-'}</td>
-            <td>${nomeFormatado}</td>
-            <td>${formatarEspecialidade(registro.especialidade)}</td>
-            <td>${idadeFormatada}</td>
-            <td>${registro.dias_internado || '-'}</td>
-            <td>${getIconePrescricao(registro.nr_prescricao)}</td>
-            <td>${getIconeLab(registro.prescrito_lab_dia)}</td>
-            <td>${getIconeImagem(registro.prescrito_proc_dia)}</td>
-            <td>${getIconeEvolucao(registro.evol_medico)}</td>
-            <td>${getIconeParecer(registro.parecer_pendente)}</td>
-            <td>${getIconeAlergia(registro.alergia)}</td>
-            <td>${getBadgeNEWS(scoreNews)}</td>
-        </tr>
-    `;
-}
-
-// Formatação de nome"
-function formatarNome(nomeCompleto) {
-    if (!nomeCompleto || nomeCompleto.trim() === '') return '-';
-    const partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
-    if (partes.length === 1) return partes[0];
-    const iniciais = partes.slice(0, -1).map(parte => parte.charAt(0)).join(' ');
-    const ultimoNome = partes[partes.length - 1];
-    return `${iniciais} ${ultimoNome}`;
 }
 
 // ========================================
-// 🎨 ÍCONES COLORIDOS
+// AUTO-SCROLL COM REQUEST ANIMATION FRAME
 // ========================================
 
-function getIconePrescricao(nr_prescricao) {
-    if (!nr_prescricao) {
-        return '<i class="fas fa-clipboard icone-vermelho" title="Sem prescrição"></i>';
-    }
-    return '<i class="fas fa-clipboard-check icone-verde" title="Com prescrição"></i>';
-}
+function ativarAutoScroll() {
+    console.log('[AUTO-SCROLL] Ativando...');
 
-function getIconeLab(valor) {
-    if (valor === 'Sim') {
-        return '<i class="fas fa-flask icone-verde" title="Lab prescrito"></i>';
-    }
+    Estado.autoScroll.ativo = true;
+    Estado.autoScroll.pausadoTemporariamente = false;
+    Estado.autoScroll.emCicloDeReset = false;
+    Estado.autoScroll.contadorTravamento = 0;
 
-    else if (valor === 'Não') {
-        return '<i class="fas fa-flask icone-vermelho" title="Lab prescrito"></i>';
-    }
-    return '<span class="texto-neutro">-</span>';
-}
-
-function getIconeImagem(valor) {
-    if (valor === 'Sim') {
-        return '<i class="fas fa-x-ray icone-verde" title="Imagem prescrita"></i>';
-    }
-
-    else if (valor === 'Não') {
-        return '<i class="fas fa-x-ray icone-vermelho" title="Imagem prescrita"></i>';
-    }
-    return '<span class="texto-neutro">-</span>';
-}
-
-function getIconeEvolucao(valor) {
-    if (valor === 'Feito') {
-        return '<i class="fas fa-file-medical icone-verde" title="Evolução feita"></i>';
-    }
-    return '<i class="fas fa-file-medical icone-vermelho" title="Evolução pendente"></i>';
-}
-
-function getIconeParecer(valor) {
-    if (valor === 'Sim') {
-        return '<i class="fas fa-clipboard-list icone-vermelho" title="Parecer pendente"></i>';
-    }
-    return '<span class="texto-neutro">-</span>';
-}
-
-function getIconeAlergia(valor) {
-    if (valor === 'Sim') {
-        return '<i class="fas fa-exclamation-triangle icone-amarelo" title="Paciente com alergia"></i>';
-    }
-    return '<span class="texto-neutro">-</span>';
-}
-
-function getBadgeNEWS(score) {
-    // Baixo risco ou vazio: apenas traço
-    if (!score || score < 5) {
-        return '<span class="texto-neutro">-</span>';
-    }
-
-    // Médio risco: ícone amarelo
-    if (score >= 5 && score < 7) {
-        return '<i class="fas fa-exclamation-circle news-icon-medio" title="Médio Risco (NEWS 5-6)"></i>';
-    }
-
-    // Alto risco: ícone vermelho
-    return '<i class="fas fa-exclamation-triangle news-icon-alto" title="Alto Risco (NEWS ≥7)"></i>';
-}
-
-// ========================================
-// 🎬 AUTO-SCROLL COM WATCHDOG
-// ========================================
-
-function iniciarAutoScroll() {
-    pararAutoScroll();
-
-    const tbody = document.querySelector('.enfermaria-table tbody');
-    if (!tbody) {
-        console.warn('⚠️ Tbody não encontrado para auto-scroll');
-        return;
-    }
-
-    console.log('🎬 Iniciando auto-scroll...');
-
-    // Reset contador de travamento
-    ultimaPosicaoScroll = tbody.scrollTop;
-    contadorTravamento = 0;
-
-    // ✅ Inicia watchdog para detectar travamentos
+    atualizarBotaoAutoScroll(true);
+    iniciarScrollLoop();
     iniciarWatchdog();
+}
 
-    intervaloAutoScroll = setInterval(() => {
-        if (!autoScrollAtivo) {
-            pararAutoScroll();
-            return;
-        }
+function desativarAutoScroll() {
+    console.log('[AUTO-SCROLL] Desativando...');
+
+    Estado.autoScroll.ativo = false;
+    Estado.autoScroll.pausadoTemporariamente = false;
+    Estado.autoScroll.emCicloDeReset = false;
+
+    pararScrollLoop();
+    pararWatchdog();
+    limparTimersScroll();
+    atualizarBotaoAutoScroll(false);
+}
+
+function pausarScrollTemporariamente() {
+    if (!Estado.autoScroll.ativo) return;
+
+    console.log('[AUTO-SCROLL] Pausando temporariamente...');
+    Estado.autoScroll.pausadoTemporariamente = true;
+    pararScrollLoop();
+}
+
+function retomarScrollTemporario() {
+    if (!Estado.autoScroll.ativo || !Estado.autoScroll.pausadoTemporariamente) return;
+    if (Estado.autoScroll.emCicloDeReset) return;
+
+    console.log('[AUTO-SCROLL] Retomando apos pausa temporaria...');
+    Estado.autoScroll.pausadoTemporariamente = false;
+    iniciarScrollLoop();
+}
+
+function atualizarBotaoAutoScroll(ativo) {
+    const btn = document.getElementById('btn-auto-scroll');
+    if (!btn) return;
+
+    if (ativo) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
+    }
+}
+
+function limparTimersScroll() {
+    if (Estado.timers.resetScroll) {
+        clearTimeout(Estado.timers.resetScroll);
+        Estado.timers.resetScroll = null;
+    }
+    if (Estado.timers.retomadaScroll) {
+        clearTimeout(Estado.timers.retomadaScroll);
+        Estado.timers.retomadaScroll = null;
+    }
+}
+
+// ========================================
+// SCROLL LOOP COM RAF (REQUEST ANIMATION FRAME)
+// ========================================
+
+function iniciarScrollLoop() {
+    pararScrollLoop();
+
+    const tbody = getScrollContainer();
+    if (!tbody) {
+        console.warn('[AUTO-SCROLL] Container de scroll nao encontrado');
+        return;
+    }
+
+    Estado.autoScroll.ultimaPosicao = tbody.scrollTop;
+    Estado.autoScroll.ultimoTimestamp = performance.now();
+
+    console.log('[AUTO-SCROLL] Iniciando loop de scroll');
+    executarScrollFrame();
+}
+
+function pararScrollLoop() {
+    if (Estado.autoScroll.frameId) {
+        cancelAnimationFrame(Estado.autoScroll.frameId);
+        Estado.autoScroll.frameId = null;
+    }
+}
+
+function executarScrollFrame(timestamp) {
+    if (!Estado.autoScroll.ativo || Estado.autoScroll.pausadoTemporariamente) {
+        return;
+    }
+
+    if (Estado.autoScroll.emCicloDeReset) {
+        return;
+    }
+
+    const tbody = getScrollContainer();
+    if (!tbody) {
+        Estado.autoScroll.frameId = requestAnimationFrame(executarScrollFrame);
+        return;
+    }
+
+    const scrollMax = tbody.scrollHeight - tbody.clientHeight;
+
+    if (scrollMax <= 0) {
+        Estado.autoScroll.frameId = requestAnimationFrame(executarScrollFrame);
+        return;
+    }
+
+    const deltaTime = timestamp - Estado.autoScroll.ultimoTimestamp;
+
+    if (deltaTime >= CONFIG.scrollInterval) {
+        Estado.autoScroll.ultimoTimestamp = timestamp;
 
         const scrollAtual = tbody.scrollTop;
-        const scrollMax = tbody.scrollHeight - tbody.clientHeight;
 
-        // Se não tem scroll (conteúdo cabe na tela)
-        if (scrollMax <= 0) {
-            console.log('⏭️ Conteúdo cabe na tela, sem necessidade de scroll');
+        if (scrollAtual >= scrollMax - 2) {
+            iniciarCicloDeReset(tbody);
             return;
         }
 
-        // Se chegou ao final
-        if (scrollAtual >= scrollMax - 1) {
-            console.log('🏁 Chegou ao final - iniciando ciclo de reset');
-            pararAutoScroll();
+        const novoScroll = Math.min(scrollAtual + CONFIG.velocidadeScroll, scrollMax);
+        tbody.scrollTop = novoScroll;
 
-            setTimeout(() => {
-                if (!autoScrollAtivo) {
-                    console.log('⚠️ Auto-scroll foi desativado durante pausa');
-                    return;
-                }
-
-                console.log('🔄 Voltando ao topo...');
-                tbody.scrollTop = 0;
-                ultimaPosicaoScroll = 0;
-                contadorTravamento = 0;
-
-                console.log('⏳ Aguardando 10s para recomeçar...');
-                setTimeout(() => {
-                    if (autoScrollAtivo) {
-                        console.log('▶️ Reiniciando auto-scroll!');
-                        iniciarAutoScroll();
-                    } else {
-                        console.log('⚠️ Auto-scroll foi desativado');
-                    }
-                }, CONFIG.pausaAposReset);
-
-            }, CONFIG.pausaFinal);
-            return;
+        // Fallback: tenta scrollTo se scrollTop nao funcionou
+        if (Math.abs(tbody.scrollTop - novoScroll) > 1) {
+            tbody.scrollTo({
+                top: novoScroll,
+                behavior: 'instant'
+            });
         }
+    }
 
-        // Scroll normal
-        tbody.scrollTop += CONFIG.velocidadeScroll;
-
-    }, 50);
+    Estado.autoScroll.frameId = requestAnimationFrame(executarScrollFrame);
 }
 
-function pararAutoScroll() {
-    if (intervaloAutoScroll) {
-        clearInterval(intervaloAutoScroll);
-        intervaloAutoScroll = null;
-        console.log('🛑 Auto-scroll parado');
-    }
-    pararWatchdog();
+function iniciarCicloDeReset(tbody) {
+    console.log('[AUTO-SCROLL] Chegou ao final - iniciando ciclo de reset');
+
+    Estado.autoScroll.emCicloDeReset = true;
+    pararScrollLoop();
+
+    Estado.timers.resetScroll = setTimeout(() => {
+        if (!Estado.autoScroll.ativo) {
+            Estado.autoScroll.emCicloDeReset = false;
+            return;
+        }
+
+        console.log('[AUTO-SCROLL] Voltando ao topo...');
+
+        if (tbody) {
+            tbody.scrollTop = 0;
+            tbody.scrollTo({ top: 0, behavior: 'instant' });
+        }
+
+        Estado.autoScroll.ultimaPosicao = 0;
+        Estado.autoScroll.contadorTravamento = 0;
+
+        Estado.timers.retomadaScroll = setTimeout(() => {
+            if (!Estado.autoScroll.ativo) {
+                Estado.autoScroll.emCicloDeReset = false;
+                return;
+            }
+
+            console.log('[AUTO-SCROLL] Reiniciando scroll do topo');
+            Estado.autoScroll.emCicloDeReset = false;
+            iniciarScrollLoop();
+
+        }, CONFIG.pausaAposReset);
+
+    }, CONFIG.pausaNoFinal);
 }
 
 // ========================================
-// 🐕 WATCHDOG - DETECTA E CORRIGE TRAVAMENTOS
+// WATCHDOG - DETECTA E CORRIGE TRAVAMENTOS
 // ========================================
 
 function iniciarWatchdog() {
     pararWatchdog();
 
-    console.log('🐕 Watchdog iniciado - monitorando travamentos...');
+    console.log('[WATCHDOG] Iniciando monitoramento de travamentos');
 
-    intervaloWatchdog = setInterval(() => {
-        if (!autoScrollAtivo) {
-            pararWatchdog();
-            return;
-        }
-
-        const tbody = document.querySelector('.enfermaria-table tbody');
-        if (!tbody) return;
-
-        const posicaoAtual = tbody.scrollTop;
-        const scrollMax = tbody.scrollHeight - tbody.clientHeight;
-
-        // Verifica se a posição mudou
-        if (Math.abs(posicaoAtual - ultimaPosicaoScroll) < 1 && posicaoAtual < scrollMax - 10) {
-            contadorTravamento++;
-            console.warn(`⚠️ Possível travamento detectado (${contadorTravamento}/3)`);
-
-            // Se detectou travamento 3 vezes consecutivas, reinicia o scroll
-            if (contadorTravamento >= 3) {
-                console.error('🚨 TRAVAMENTO CONFIRMADO - Reiniciando auto-scroll...');
-
-                const btnAutoScroll = document.getElementById('btn-auto-scroll');
-                if (btnAutoScroll) {
-                    autoScrollAtivo = true;
-                    btnAutoScroll.classList.add('active');
-                    btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                }
-
-                // Reinicia completamente
-                pararAutoScroll();
-                setTimeout(() => {
-                    if (autoScrollAtivo) {
-                        iniciarAutoScroll();
-                    }
-                }, 1000);
-            }
-        } else {
-            // Scroll está funcionando normalmente
-            contadorTravamento = 0;
-        }
-
-        ultimaPosicaoScroll = posicaoAtual;
-
+    Estado.timers.watchdog = setInterval(() => {
+        verificarTravamento();
     }, CONFIG.watchdogInterval);
 }
 
 function pararWatchdog() {
-    if (intervaloWatchdog) {
-        clearInterval(intervaloWatchdog);
-        intervaloWatchdog = null;
-        console.log('🐕 Watchdog parado');
+    if (Estado.timers.watchdog) {
+        clearInterval(Estado.timers.watchdog);
+        Estado.timers.watchdog = null;
     }
+}
+
+function verificarTravamento() {
+    if (!Estado.autoScroll.ativo) {
+        return;
+    }
+
+    if (Estado.autoScroll.pausadoTemporariamente || Estado.autoScroll.emCicloDeReset) {
+        Estado.autoScroll.contadorTravamento = 0;
+        return;
+    }
+
+    const tbody = getScrollContainer();
+    if (!tbody) {
+        console.warn('[WATCHDOG] Container de scroll nao encontrado');
+        return;
+    }
+
+    const posicaoAtual = tbody.scrollTop;
+    const scrollMax = tbody.scrollHeight - tbody.clientHeight;
+
+    if (scrollMax <= 0) {
+        return;
+    }
+
+    const jaNoFinal = posicaoAtual >= scrollMax - 2;
+    const posicaoMudou = Math.abs(posicaoAtual - Estado.autoScroll.ultimaPosicao) > 0.5;
+
+    if (!posicaoMudou && !jaNoFinal) {
+        Estado.autoScroll.contadorTravamento++;
+        console.warn(`[WATCHDOG] Possivel travamento detectado (${Estado.autoScroll.contadorTravamento}/${CONFIG.watchdogTolerancia})`);
+
+        if (Estado.autoScroll.contadorTravamento >= CONFIG.watchdogTolerancia) {
+            console.error('[WATCHDOG] TRAVAMENTO CONFIRMADO - Reiniciando auto-scroll');
+            recuperarDeTravamento(tbody);
+        }
+    } else {
+        if (Estado.autoScroll.contadorTravamento > 0) {
+            console.log('[WATCHDOG] Scroll voltou a funcionar normalmente');
+        }
+        Estado.autoScroll.contadorTravamento = 0;
+    }
+
+    Estado.autoScroll.ultimaPosicao = posicaoAtual;
+}
+
+function recuperarDeTravamento(tbody) {
+    console.log('[WATCHDOG] Executando recuperacao de travamento...');
+
+    pararScrollLoop();
+    limparTimersScroll();
+
+    Estado.autoScroll.contadorTravamento = 0;
+    Estado.autoScroll.emCicloDeReset = false;
+    Estado.autoScroll.pausadoTemporariamente = false;
+
+    if (tbody) {
+        const novaPos = tbody.scrollTop + 5;
+        tbody.scrollTop = novaPos;
+
+        try {
+            tbody.scrollTo({ top: novaPos, behavior: 'instant' });
+        } catch (e) {
+            // Fallback silencioso
+        }
+    }
+
+    setTimeout(() => {
+        if (Estado.autoScroll.ativo) {
+            console.log('[WATCHDOG] Reiniciando scroll apos recuperacao');
+            iniciarScrollLoop();
+        }
+    }, 500);
+}
+
+// ========================================
+// UTILITARIOS
+// ========================================
+
+function getScrollContainer() {
+    return document.querySelector('.enfermaria-table tbody');
 }
 
 function atualizarHoraAtualizacao() {
@@ -734,9 +550,11 @@ function atualizarHoraAtualizacao() {
 }
 
 function mostrarErro(mensagem) {
-    console.error('❌', mensagem);
+    console.error('[PAINEL8] Erro:', mensagem);
 
     const container = document.getElementById('enfermaria-content');
+    if (!container) return;
+
     container.innerHTML = `
         <div class="empty-message">
             <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
@@ -760,3 +578,317 @@ function mostrarErro(mensagem) {
         </div>
     `;
 }
+
+// ========================================
+// FORMATACAO DE DATAS
+// ========================================
+
+function parseOracleDate(dataString) {
+    if (!dataString || dataString.trim() === '') return null;
+
+    dataString = dataString.trim();
+
+    if (dataString.includes('-') && (dataString.includes(' ') || dataString.split('-').length === 3)) {
+        const dataParsed = new Date(dataString);
+        if (!isNaN(dataParsed.getTime())) {
+            return dataParsed;
+        }
+    }
+
+    const meses = {
+        'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+        'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
+    };
+
+    const partes = dataString.split('-');
+
+    if (partes.length === 3 && partes[1].length === 3) {
+        const dia = parseInt(partes[0]);
+        const mes = meses[partes[1].toUpperCase()];
+        const ano = parseInt('20' + partes[2]);
+
+        if (!isNaN(dia) && mes !== undefined && !isNaN(ano)) {
+            return new Date(ano, mes, dia);
+        }
+    }
+
+    return null;
+}
+
+function formatarData(dataString) {
+    const data = parseOracleDate(dataString);
+    if (!data) return 'Nao informado';
+
+    const dia = String(data.getDate()).padStart(2, '0');
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const ano = data.getFullYear();
+
+    return `${dia}/${mes}/${ano}`;
+}
+
+function getBadgeDataAlta(dataString) {
+    if (!dataString || dataString.trim() === '') {
+        return '<span class="badge-alta badge-sem-info">Nao informado</span>';
+    }
+
+    const dataAlta = parseOracleDate(dataString);
+    if (!dataAlta) {
+        return '<span class="badge-alta badge-sem-info">Data invalida</span>';
+    }
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    dataAlta.setHours(0, 0, 0, 0);
+
+    const diffTime = dataAlta - hoje;
+    const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const dataFormatada = formatarData(dataString);
+
+    if (diffDias <= 1 && diffDias >= 0) {
+        return `<span class="badge-alta badge-verde" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-check"></i> ${diffDias === 0 ? 'Hoje' : 'Amanha'}
+        </span>`;
+    }
+
+    if (diffDias >= 2 && diffDias <= 4) {
+        return `<span class="badge-alta badge-amarelo" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-day"></i> ${diffDias} dias
+        </span>`;
+    }
+
+    if (diffDias >= 5) {
+        return `<span class="badge-alta badge-vermelho" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-calendar-alt"></i> ${diffDias} dias
+        </span>`;
+    }
+
+    if (diffDias < 0) {
+        return `<span class="badge-alta badge-atrasado" title="Alta prevista: ${dataFormatada}">
+            <i class="fas fa-exclamation-triangle"></i> Atrasada (${Math.abs(diffDias)} dias)
+        </span>`;
+    }
+
+    return `<span class="badge-alta badge-sem-info">${dataFormatada}</span>`;
+}
+
+function formatarEspecialidade(especialidade) {
+    if (!especialidade || especialidade.trim() === '') {
+        return '<span class="texto-neutro">-</span>';
+    }
+    return `<span class="especialidade">${especialidade}</span>`;
+}
+
+// ========================================
+// RENDERIZACAO DA TABELA
+// ========================================
+
+function renderizarTabela(dados) {
+    const container = document.getElementById('enfermaria-content');
+    if (!container) return;
+
+    if (!dados || dados.length === 0) {
+        container.innerHTML = `
+            <div class="empty-message">
+                <i class="fas fa-inbox"></i>
+                <h3>Nenhum registro encontrado</h3>
+                <p>Nao ha dados para o setor selecionado</p>
+            </div>
+        `;
+        return;
+    }
+
+    const html = `
+        <div class="enfermaria-table-wrapper">
+            <table class="enfermaria-table">
+                <thead>
+                    <tr>
+                        <th>Alta Prevista</th>
+                        <th>Leito</th>
+                        <th>Atendimento</th>
+                        <th>Paciente</th>
+                        <th>Especialidade</th>
+                        <th>Idade</th>
+                        <th>Dias</th>
+                        <th>Prescricao</th>
+                        <th>Lab</th>
+                        <th>Imagem</th>
+                        <th>Evolucao</th>
+                        <th>Parecer</th>
+                        <th>Alergia</th>
+                        <th>NEWS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${dados.map(r => criarLinhaTabela(r)).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function criarLinhaTabela(registro) {
+    const isVazio = !registro.atendimento;
+    const scoreNews = registro.score_news || 0;
+
+    let rowClass = '';
+    if (isVazio) {
+        rowClass = 'leito-vazio';
+    } else if (scoreNews >= 7) {
+        rowClass = 'news-alto-risco';
+    } else if (scoreNews >= 5) {
+        rowClass = 'news-medio-risco';
+    }
+
+    const nomeFormatado = formatarNome(registro.paciente);
+    const idadeFormatada = registro.idade ? `${registro.idade} anos` : '-';
+
+    if (isVazio) {
+        return `
+            <tr class="${rowClass}">
+                <td><span class="texto-neutro">-</span></td>
+                <td><strong>${registro.leito}</strong></td>
+                <td>-</td>
+                <td>VAZIO</td>
+                <td><span class="texto-neutro">-</span></td>
+                <td>-</td>
+                <td>-</td>
+                <td><span class="texto-neutro">-</span></td>
+                <td><span class="texto-neutro">-</span></td>
+                <td><span class="texto-neutro">-</span></td>
+                <td><span class="texto-neutro">-</span></td>
+                <td><span class="texto-neutro">-</span></td>
+                <td><span class="texto-neutro">-</span></td>
+                <td><span class="texto-neutro">-</span></td>
+            </tr>
+        `;
+    }
+
+    return `
+        <tr class="${rowClass}">
+            <td>${getBadgeDataAlta(registro.dt_previsto_alta)}</td>
+            <td><strong>${registro.leito}</strong></td>
+            <td>${registro.atendimento || '-'}</td>
+            <td>${nomeFormatado}</td>
+            <td>${formatarEspecialidade(registro.especialidade)}</td>
+            <td>${idadeFormatada}</td>
+            <td>${registro.dias_internado || '-'}</td>
+            <td>${getIconePrescricao(registro.nr_prescricao)}</td>
+            <td>${getIconeLab(registro.prescrito_lab_dia)}</td>
+            <td>${getIconeImagem(registro.prescrito_proc_dia)}</td>
+            <td>${getIconeEvolucao(registro.evol_medico)}</td>
+            <td>${getIconeParecer(registro.parecer_pendente)}</td>
+            <td>${getIconeAlergia(registro.alergia)}</td>
+            <td>${getBadgeNEWS(scoreNews)}</td>
+        </tr>
+    `;
+}
+
+function formatarNome(nomeCompleto) {
+    if (!nomeCompleto || nomeCompleto.trim() === '') return '-';
+    const partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
+    if (partes.length === 1) return partes[0];
+    const iniciais = partes.slice(0, -1).map(parte => parte.charAt(0)).join(' ');
+    const ultimoNome = partes[partes.length - 1];
+    return `${iniciais} ${ultimoNome}`;
+}
+
+// ========================================
+// ICONES COLORIDOS
+// ========================================
+
+function getIconePrescricao(nr_prescricao) {
+    if (!nr_prescricao) {
+        return '<i class="fas fa-clipboard icone-vermelho" title="Sem prescricao"></i>';
+    }
+    return '<i class="fas fa-clipboard-check icone-verde" title="Com prescricao"></i>';
+}
+
+function getIconeLab(valor) {
+    if (valor === 'Sim') {
+        return '<i class="fas fa-flask icone-verde" title="Lab prescrito"></i>';
+    }
+    if (valor === 'Nao') {
+        return '<i class="fas fa-flask icone-vermelho" title="Lab nao prescrito"></i>';
+    }
+    return '<span class="texto-neutro">-</span>';
+}
+
+function getIconeImagem(valor) {
+    if (valor === 'Sim') {
+        return '<i class="fas fa-x-ray icone-verde" title="Imagem prescrita"></i>';
+    }
+    if (valor === 'Nao') {
+        return '<i class="fas fa-x-ray icone-vermelho" title="Imagem nao prescrita"></i>';
+    }
+    return '<span class="texto-neutro">-</span>';
+}
+
+function getIconeEvolucao(valor) {
+    if (valor === 'Feito') {
+        return '<i class="fas fa-file-medical icone-verde" title="Evolucao feita"></i>';
+    }
+    return '<i class="fas fa-file-medical icone-vermelho" title="Evolucao pendente"></i>';
+}
+
+function getIconeParecer(valor) {
+    if (valor === 'Sim') {
+        return '<i class="fas fa-clipboard-list icone-vermelho" title="Parecer pendente"></i>';
+    }
+    return '<span class="texto-neutro">-</span>';
+}
+
+function getIconeAlergia(valor) {
+    if (valor === 'Sim') {
+        return '<i class="fas fa-exclamation-triangle icone-amarelo" title="Paciente com alergia"></i>';
+    }
+    return '<span class="texto-neutro">-</span>';
+}
+
+function getBadgeNEWS(score) {
+    if (!score || score < 5) {
+        return '<span class="texto-neutro">-</span>';
+    }
+
+    if (score >= 5 && score < 7) {
+        return '<i class="fas fa-exclamation-circle news-icon-medio" title="Medio Risco (NEWS 5-6)"></i>';
+    }
+
+    return '<i class="fas fa-exclamation-triangle news-icon-alto" title="Alto Risco (NEWS >= 7)"></i>';
+}
+
+// ========================================
+// DEBUG - FUNCOES GLOBAIS PARA CONSOLE
+// ========================================
+
+window.debugAutoScroll = function() {
+    console.log('=== DEBUG AUTO-SCROLL ===');
+    console.log('Estado:', JSON.stringify(Estado.autoScroll, null, 2));
+
+    const tbody = getScrollContainer();
+    if (tbody) {
+        console.log('ScrollTop:', tbody.scrollTop);
+        console.log('ScrollHeight:', tbody.scrollHeight);
+        console.log('ClientHeight:', tbody.clientHeight);
+        console.log('ScrollMax:', tbody.scrollHeight - tbody.clientHeight);
+    } else {
+        console.log('Container de scroll nao encontrado');
+    }
+
+    console.log('Timers ativos:', {
+        watchdog: !!Estado.timers.watchdog,
+        inicioAutomatico: !!Estado.timers.inicioAutomatico,
+        resetScroll: !!Estado.timers.resetScroll,
+        retomadaScroll: !!Estado.timers.retomadaScroll
+    });
+};
+
+window.forcarReinicioScroll = function() {
+    console.log('=== FORCANDO REINICIO DO SCROLL ===');
+    desativarAutoScroll();
+    setTimeout(() => {
+        ativarAutoScroll();
+    }, 1000);
+};

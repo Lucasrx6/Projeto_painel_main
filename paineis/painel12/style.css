@@ -1,5 +1,6 @@
 /* ========================================
-   🎨 PAINEL 12 - OCUPAÇÃO E PRODUÇÃO HAC
+   PAINEL 12 - OCUPACAO E PRODUCAO HAC
+   Versao com Responsividade Mobile Corrigida
    ======================================== */
 
 * {
@@ -8,23 +9,44 @@
     box-sizing: border-box;
 }
 
+/* ========================================
+   FIX MOBILE VIEWPORT
+   Usa dvh (dynamic viewport height) com fallback
+   ======================================== */
+
+:root {
+    --vh-fallback: 100vh;
+    --header-height: 46px;
+    --header-height-mobile: 40px;
+}
+
+html {
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
     background: #f5f7fa;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%;
+    height: 100dvh;
     overflow: hidden;
-    height: 100vh;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
 }
 
 .painel-container {
     background: white;
-    height: 100vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
 /* ========================================
-   🎯 CABEÇALHO
+   CABECALHO - FIXO NO TOPO
    ======================================== */
 
 .painel-header {
@@ -33,6 +55,8 @@ body {
     padding: 8px 15px;
     flex-shrink: 0;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    min-height: var(--header-height);
 }
 
 .header-content {
@@ -40,13 +64,14 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap;
 }
 
 .header-left {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+    flex: 1;
 }
 
 .header-left img {
@@ -55,6 +80,7 @@ body {
     background: white;
     border-radius: 5px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
 }
 
 .painel-header h1 {
@@ -64,16 +90,21 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .painel-header h1 i {
     font-size: 0.9rem;
+    flex-shrink: 0;
 }
 
 .header-right {
     display: flex;
     gap: 6px;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .btn-voltar,
@@ -106,8 +137,7 @@ body {
 }
 
 /* ========================================
-   📊 CONTEÚDO
-   📝 MODIFICAR AQUI: Ajustar padding e gaps
+   CONTEUDO PRINCIPAL - SCROLL INTERNO
    ======================================== */
 
 .dashboard-content {
@@ -116,12 +146,27 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollbar customizado */
+.dashboard-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dashboard-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.dashboard-content::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 3px;
 }
 
 /* ========================================
-   💳 CARDS SUPERIORES
-   📝 DESKTOP: 3 colunas
+   CARDS SUPERIORES - GRID FLEXIVEL
    ======================================== */
 
 .stats-row {
@@ -183,7 +228,7 @@ body {
     font-weight: 600;
 }
 
-/* Cores dos ícones */
+/* Cores dos icones */
 .icon-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .icon-ocupados { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
 .icon-taxa { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
@@ -195,26 +240,19 @@ body {
 .icon-projecao { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
 
 /* Destaque nos cards especiais */
-.stat-card-producao, .stat-card-projecao {
-    border: 2px solid #17a2b8;
-}
-
-.stat-card-producao, .stat-card-projecao {
-    border-color: #28a745;
+.stat-card-producao,
+.stat-card-projecao {
+    border: 2px solid #28a745;
 }
 
 /* ========================================
-   🏥 GRID DE SETORES
-   📝 MODIFICAR AQUI: Tamanho mínimo dos cards
+   GRID DE SETORES
    ======================================== */
 
 .setores-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
     padding: 5px;
 }
 
@@ -287,7 +325,7 @@ body {
     gap: 2px;
 }
 
-/* Cores baseadas na ocupação */
+/* Cores baseadas na ocupacao */
 .setor-card.ocupacao-baixa {
     border-color: #28a745;
 }
@@ -313,7 +351,7 @@ body {
 }
 
 /* ========================================
-   ⏳ LOADING
+   LOADING
    ======================================== */
 
 .loading {
@@ -344,13 +382,9 @@ body {
 }
 
 /* ========================================
-   📱 RESPONSIVIDADE OTIMIZADA
+   RESPONSIVIDADE - DESKTOP GRANDE
    ======================================== */
 
-/* ========================================
-   🖥️ TELAS GRANDES (1200px - 1400px)
-   📝 Notebooks pequenos
-   ======================================== */
 @media (max-width: 1400px) {
     .stats-row {
         grid-template-columns: repeat(3, 1fr);
@@ -370,9 +404,9 @@ body {
 }
 
 /* ========================================
-   📱 TABLETS (868px - 1200px)
-   📝 MODIFICAR AQUI: Layout para tablets
+   RESPONSIVIDADE - TABLETS
    ======================================== */
+
 @media (max-width: 1200px) {
     .stats-row {
         grid-template-columns: repeat(3, 1fr);
@@ -418,10 +452,14 @@ body {
 }
 
 /* ========================================
-   📱 TABLETS PEQUENOS (600px - 868px)
-   📝 MODIFICAR AQUI: Cards 3 colunas
+   RESPONSIVIDADE - TABLETS PEQUENOS
    ======================================== */
+
 @media (max-width: 868px) {
+    :root {
+        --header-height: 40px;
+    }
+
     .painel-header {
         padding: 6px 10px;
     }
@@ -449,7 +487,6 @@ body {
         gap: 8px;
     }
 
-    /* Cards superiores: 3 colunas */
     .stats-row {
         grid-template-columns: repeat(3, 1fr);
         gap: 5px;
@@ -483,7 +520,6 @@ body {
         margin-top: 2px;
     }
 
-    /* Grid de setores: 3 colunas */
     .setores-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 6px;
@@ -516,30 +552,38 @@ body {
 }
 
 /* ========================================
-   📱 SMARTPHONES PORTRAIT (menor que 600px)
-   📝 MODIFICAR AQUI: Cards 2 colunas
+   RESPONSIVIDADE - SMARTPHONES
+   CORRECAO PRINCIPAL AQUI
    ======================================== */
+
 @media (max-width: 600px) {
+    :root {
+        --header-height: 36px;
+    }
+
     .painel-header {
         padding: 5px 8px;
+        min-height: var(--header-height);
     }
 
     .header-left img {
-        max-height: 24px;
+        max-height: 22px;
+        padding: 2px 4px;
     }
 
     .painel-header h1 {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
     }
 
     .painel-header h1 i {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
     }
 
     .btn-voltar,
     .btn-refresh {
         padding: 3px 6px;
         font-size: 0.65rem;
+        border-width: 1.5px;
     }
 
     .btn-voltar i,
@@ -547,62 +591,68 @@ body {
         font-size: 0.65rem;
     }
 
-    /* Oculta texto dos botões, mostra só ícones */
-    .btn-voltar span,
-    .btn-refresh span {
-        display: none;
+    /* Oculta texto do botao voltar */
+    .btn-voltar {
+        padding: 4px 6px;
     }
 
     .ultima-atualizacao {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
     }
 
     .dashboard-content {
-        padding: 6px 8px;
+        padding: 6px 6px;
         gap: 6px;
     }
 
     /* ========================================
-       💳 CARDS SUPERIORES: 2 COLUNAS
-       📝 Cards principais em 2 colunas no mobile
+       CARDS SUPERIORES MOBILE: 3 COLUNAS
+       Cards mais compactos em 3 colunas
        ======================================== */
     .stats-row {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 4px;
     }
 
     .stat-card {
-        padding: 6px 4px;
+        padding: 5px 3px;
+        border-radius: 6px;
     }
 
     .stat-icon {
-        width: 30px;
-        height: 30px;
+        width: 26px;
+        height: 26px;
         margin-bottom: 3px;
     }
 
     .stat-icon i {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
     }
 
     .stat-card h3 {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         margin: 2px 0;
     }
 
     .stat-card p {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
         line-height: 1.1;
     }
 
     .stat-subtitle {
-        font-size: 0.75rem;
-        margin-top: 2px;
+        font-size: 0.6rem;
+        margin-top: 1px;
+    }
+
+    /* Bordas mais finas nos cards especiais */
+    .stat-card-producao,
+    .stat-card-projecao {
+        border-width: 1.5px;
     }
 
     /* ========================================
-       🏥 GRID DE SETORES: 2 COLUNAS
-       📝 Setores em 2 colunas no mobile
+       GRID DE SETORES MOBILE: 2 COLUNAS
+       Setores visiveis e com scroll
        ======================================== */
     .setores-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -611,28 +661,29 @@ body {
     }
 
     .setor-card {
-        min-height: 80px;
+        min-height: 75px;
         padding: 6px;
         border-width: 1.5px;
+        border-radius: 6px;
     }
 
     .setor-card-nome {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
         margin-bottom: 4px;
         line-height: 1.1;
     }
 
     .setor-card-taxa {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         margin-bottom: 2px;
     }
 
     .setor-card-label {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
     }
 
     .setor-card-info {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         gap: 3px;
         margin-top: 3px;
         flex-wrap: wrap;
@@ -640,35 +691,35 @@ body {
 
     /* Loading menor */
     .loading {
-        padding: 30px;
+        padding: 25px;
     }
 
     .loading-spinner {
-        width: 35px;
-        height: 35px;
+        width: 30px;
+        height: 30px;
         border-width: 3px;
     }
 
     .loading p {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
     }
 }
 
 /* ========================================
-   📱 SMARTPHONES PEQUENOS (menor que 400px)
-   📝 Otimizações para telas muito pequenas
+   RESPONSIVIDADE - SMARTPHONES MUITO PEQUENOS
    ======================================== */
+
 @media (max-width: 400px) {
     .painel-header {
         padding: 4px 6px;
     }
 
     .header-left img {
-        max-height: 22px;
+        max-height: 20px;
     }
 
     .painel-header h1 {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
     }
 
     .btn-voltar,
@@ -678,124 +729,210 @@ body {
     }
 
     .ultima-atualizacao {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
     }
 
     .dashboard-content {
-        padding: 5px 6px;
+        padding: 4px 4px;
         gap: 5px;
     }
 
-    /* Cards superiores ainda mais compactos */
     .stats-row {
         gap: 3px;
     }
 
     .stat-card {
-        padding: 5px 3px;
+        padding: 4px 2px;
     }
 
     .stat-icon {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         margin-bottom: 2px;
     }
 
     .stat-icon i {
-        font-size: 0.8rem;
-    }
-
-    .stat-card h3 {
-        font-size: 1rem;
-    }
-
-    .stat-card p {
-        font-size: 0.55rem;
-    }
-
-    .stat-subtitle {
         font-size: 0.7rem;
     }
 
-    /* Setores compactos */
+    .stat-card h3 {
+        font-size: 0.85rem;
+    }
+
+    .stat-card p {
+        font-size: 0.5rem;
+    }
+
+    .stat-subtitle {
+        font-size: 0.55rem;
+    }
+
     .setores-grid {
         gap: 4px;
     }
 
     .setor-card {
-        min-height: 75px;
+        min-height: 70px;
         padding: 5px;
     }
 
     .setor-card-nome {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
         margin-bottom: 3px;
     }
 
     .setor-card-taxa {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
     }
 
     .setor-card-label {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
     }
 
     .setor-card-info {
-        font-size: 0.5rem;
+        font-size: 0.45rem;
         gap: 2px;
     }
 }
 
 /* ========================================
-   📱 SMARTPHONES LANDSCAPE (altura < 500px)
-   📝 Otimizações para modo paisagem
+   RESPONSIVIDADE - LANDSCAPE MOBILE
    ======================================== */
-@media (max-height: 500px) {
+
+@media (max-height: 500px) and (orientation: landscape) {
     .painel-header {
-        padding: 4px 8px;
+        padding: 3px 8px;
+        min-height: 32px;
+    }
+
+    .header-left img {
+        max-height: 20px;
     }
 
     .painel-header h1 {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
     }
 
     .dashboard-content {
         padding: 4px 8px;
         gap: 4px;
+        flex-direction: row;
+        flex-wrap: wrap;
     }
 
+    /* Em landscape, cards em linha horizontal */
     .stats-row {
+        flex: 0 0 100%;
+        grid-template-columns: repeat(9, 1fr);
         gap: 3px;
     }
 
     .stat-card {
-        padding: 4px;
+        padding: 4px 2px;
     }
 
     .stat-icon {
-        width: 26px;
-        height: 26px;
+        width: 22px;
+        height: 22px;
         margin-bottom: 2px;
     }
 
+    .stat-icon i {
+        font-size: 0.65rem;
+    }
+
     .stat-card h3 {
-        font-size: 0.95rem;
+        font-size: 0.8rem;
     }
 
     .stat-card p {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
+    }
+
+    .stat-subtitle {
+        font-size: 0.5rem;
     }
 
     .setores-grid {
+        flex: 1;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
         gap: 3px;
     }
 
     .setor-card {
-        min-height: 70px;
+        min-height: 60px;
         padding: 4px;
     }
 
     .setor-card-taxa {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
+    }
+
+    .setor-card-nome {
+        font-size: 0.55rem;
+    }
+}
+
+/* ========================================
+   SUPORTE A NOTCH (SAFE AREA)
+   ======================================== */
+
+@supports (padding-top: env(safe-area-inset-top)) {
+    .painel-header {
+        padding-top: max(5px, env(safe-area-inset-top));
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
+    }
+
+    .dashboard-content {
+        padding-left: max(6px, env(safe-area-inset-left));
+        padding-right: max(6px, env(safe-area-inset-right));
+        padding-bottom: max(6px, env(safe-area-inset-bottom));
+    }
+}
+
+/* ========================================
+   MODO ESCURO (OPCIONAL)
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+    /* Descomente se quiser suporte a modo escuro
+    body {
+        background: #1a1a2e;
+    }
+
+    .painel-container {
+        background: #16213e;
+    }
+
+    .stat-card,
+    .setor-card {
+        background: #1a1a2e;
+        border-color: #333;
+    }
+
+    .stat-card h3,
+    .setor-card-nome {
+        color: #eee;
+    }
+
+    .stat-card p,
+    .setor-card-label {
+        color: #aaa;
+    }
+    */
+}
+
+/* ========================================
+   ANIMACOES SUAVES
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

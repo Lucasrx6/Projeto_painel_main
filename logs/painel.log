@@ -330,3 +330,11 @@
 [2026-01-29 11:59:20] INFO [app:73] - ✅ Security headers configurados
 [2026-01-29 11:59:20] INFO [app:72] - ✅ Error handlers registrados
 [2026-01-29 11:59:20] INFO [app:105] - ✅ 16 Blueprints registrados com sucesso
+[2026-01-29 12:35:49] INFO [app:32] - Tentativa de login: postgres
+[2026-01-29 12:35:49] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-01-29 14:26:34] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-01-29 14:26:34] INFO [app:73] - ✅ Security headers configurados
+[2026-01-29 14:26:34] INFO [app:72] - ✅ Error handlers registrados
+[2026-01-29 14:26:35] INFO [app:105] -  16 Blueprints registrados com sucesso
+[2026-01-29 19:17:58] INFO [app:32] - Tentativa de login: Clodoaldo
+[2026-01-29 19:17:59] INFO [app:42] - ✅ Login bem-sucedido: Clodoaldo

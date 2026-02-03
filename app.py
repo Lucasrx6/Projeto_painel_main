@@ -36,7 +36,7 @@ from backend.routes.painel12_routes import painel12_bp
 from backend.routes.painel13_routes import painel13_bp
 
 # =========================================================
-# ⚙️ CONFIGURAÇÃO INICIAL
+# CONFIGURAÇÃO INICIAL
 # =========================================================
 
 # Carrega variáveis de ambiente
@@ -60,7 +60,7 @@ validate_production_config()
 print(config_class.info())
 
 # =========================================================
-# 🔧 MIDDLEWARE E CONFIGURAÇÕES
+# MIDDLEWARE E CONFIGURAÇÕES
 # =========================================================
 
 # Configura logging
@@ -83,7 +83,7 @@ register_error_handlers(app)
 init_db()
 
 # =========================================================
-# 📦 REGISTRO DE BLUEPRINTS
+# REGISTRO DE BLUEPRINTS
 # =========================================================
 
 # Blueprints Core
@@ -102,10 +102,10 @@ paineis = [
 for painel in paineis:
     app.register_blueprint(painel)
 
-app.logger.info(f'✅ {len(paineis) + 4} Blueprints registrados com sucesso')
+app.logger.info(f' {len(paineis) + 4} Blueprints registrados com sucesso')
 
 # =========================================================
-# 🧪 ROTAS DE DESENVOLVIMENTO (Remover em produção)
+# ROTAS DE DESENVOLVIMENTO (Remover em produção)
 # =========================================================
 
 if app.config.get('DEBUG', False):
@@ -145,7 +145,7 @@ if app.config.get('DEBUG', False):
         })
 
 # =========================================================
-# 🚀 INICIALIZAÇÃO DO SERVIDOR
+# INICIALIZAÇÃO DO SERVIDOR
 # =========================================================
 
 if __name__ == '__main__':
@@ -156,19 +156,19 @@ if __name__ == '__main__':
 
     # Banner de inicialização
     print("\n" + "=" * 60)
-    print("🏥 HOSPITAL MANAGEMENT DASHBOARD - SERVIDOR INICIADO")
+    print("HOSPITAL MANAGEMENT DASHBOARD - SERVIDOR INICIADO")
     print("=" * 60)
-    print("✅ Sistema de autenticação ativo")
-    print("🔒 Headers de segurança habilitados")
-    print("📝 Sistema de logging configurado")
-    print("🌐 CORS configurado")
+    print("Sistema de autenticação ativo")
+    print("Headers de segurança habilitados")
+    print("Sistema de logging configurado")
+    print("CORS configurado")
 
     if app.config.get('DEBUG', False):
-        print("🐛 Modo DEBUG ativo")
+        print("Modo DEBUG ativo")
         print("   • /debug/routes - Ver rotas registradas")
         print("   • /debug/check-files - Verificar arquivos")
 
-    print("\n📊 Painéis disponíveis:")
+    print("Painéis disponíveis:")
     print("   • Evolução de Turno      → /painel/painel2")
     print("   • Médicos PS             → /painel/painel3")
     print("   • Ocupação Hospitalar    → /painel/painel4")
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     print("   • Ocupação e Produção    → /painel/painel12")
     print("   • Mapa de Nutrição       → /painel/painel13")
 
-    print("\n🌍 URLs de Acesso:")
+    print(" URLs de Acesso:")
     print(f"   • Local:                 http://localhost:5000")
     print(f"   • Local (IP):            http://127.0.0.1:5000")
     print(f"   • Rede Local:            http://{local_ip}:5000")
