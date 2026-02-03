@@ -1,13 +1,24 @@
-<!-- ==================== MELHORIA 2: PÁGINA DE ACESSO NEGADO ==================== -->
-<!-- Criar arquivo: frontend/acesso-negado.html -->
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acesso Negado - Sistema de Painéis</title>
+    <title>Acesso Negado - Sistema de Paineis</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#dc3545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Paineis HAC">
+
+    <!-- Manifest e icones -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
+    <link rel="icon" href="/static/img/favicon.png">
+
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         * {
             margin: 0;
@@ -15,10 +26,15 @@
             box-sizing: border-box;
         }
 
+        html {
+            height: 100%;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            min-height: 100vh;
+            min-height: 100%;
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -31,6 +47,7 @@
             padding: 60px 40px;
             text-align: center;
             max-width: 600px;
+            width: 100%;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: slideUp 0.5s ease;
         }
@@ -55,6 +72,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
         }
 
         .icon i {
@@ -68,7 +86,7 @@
             margin-bottom: 20px;
         }
 
-        p {
+        .mensagem-principal {
             font-size: 1.2rem;
             color: #666;
             margin-bottom: 15px;
@@ -78,40 +96,135 @@
         .detalhes {
             background: #f8f9fa;
             border-left: 4px solid #dc3545;
-            padding: 15px;
+            padding: 20px;
             margin: 30px 0;
             text-align: left;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .detalhes p {
+            margin-bottom: 10px;
+            font-size: 1rem;
+            color: #555;
+        }
+
+        .detalhes p:last-child {
+            margin-bottom: 0;
         }
 
         .detalhes strong {
             color: #dc3545;
         }
 
-        .btn-voltar {
-            display: inline-block;
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            color: white;
-            padding: 15px 40px;
+        .mensagem-contato {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 25px;
+        }
+
+        .botoes-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 15px 30px;
             border-radius: 10px;
             text-decoration: none;
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 1rem;
             transition: all 0.3s ease;
-            margin-top: 20px;
+            border: none;
+            cursor: pointer;
         }
 
-        .btn-voltar:hover {
+        .btn-primary {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(220, 53, 69, 0.4);
         }
 
-        .btn-voltar i {
-            margin-right: 8px;
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #dee2e6;
         }
 
+        .btn-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-tecnica {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 0.85rem;
+            color: #999;
+        }
+
+        .info-tecnica code {
+            background: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        /* Responsividade */
         @media (max-width: 768px) {
             .container {
-                padding: 40px 20px;
+                padding: 40px 25px;
+                margin: 10px;
+            }
+
+            .icon {
+                width: 120px;
+                height: 120px;
+            }
+
+            .icon i {
+                font-size: 4rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .mensagem-principal {
+                font-size: 1.1rem;
+            }
+
+            .detalhes {
+                padding: 15px;
+            }
+
+            .detalhes p {
+                font-size: 0.95rem;
+            }
+
+            .btn {
+                padding: 12px 24px;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+
+            .container {
+                padding: 30px 20px;
             }
 
             .icon {
@@ -124,47 +237,113 @@
             }
 
             h1 {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
             }
 
-            p {
+            .mensagem-principal {
                 font-size: 1rem;
+            }
+
+            .detalhes p {
+                font-size: 0.9rem;
+            }
+
+            .botoes-container {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .info-tecnica {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Suporte a safe-area para dispositivos com notch */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            body {
+                padding-top: max(20px, env(safe-area-inset-top));
+                padding-bottom: max(20px, env(safe-area-inset-bottom));
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="icon">
+    <div class="container" role="main">
+        <div class="icon" aria-hidden="true">
             <i class="fas fa-shield-alt"></i>
         </div>
 
         <h1>Acesso Negado</h1>
 
-        <p>Você não tem permissão para acessar este painel.</p>
+        <p class="mensagem-principal">Voce nao tem permissao para acessar este recurso.</p>
 
         <div class="detalhes">
-            <p><strong>Motivo:</strong> Seu usuário não possui as permissões necessárias.</p>
-            <p><strong>Solução:</strong> Entre em contato com o administrador do sistema para solicitar acesso.</p>
+            <p><strong>Motivo:</strong> Seu usuario nao possui as permissoes necessarias para acessar esta pagina ou painel.</p>
+            <p><strong>Solucao:</strong> Entre em contato com o administrador do sistema para solicitar as permissoes adequadas.</p>
         </div>
 
-        <p>Se você acredita que isso é um erro, contate o suporte.</p>
+        <p class="mensagem-contato">Se voce acredita que isso e um erro, entre em contato com o suporte tecnico.</p>
 
-        <a href="/frontend/dashboard.html" class="btn-voltar">
-            <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
-        </a>
+        <div class="botoes-container">
+            <a href="/frontend/dashboard.html" class="btn btn-primary">
+                <i class="fas fa-home"></i> Ir para Dashboard
+            </a>
+            <a href="/login.html" class="btn btn-secondary">
+                <i class="fas fa-sign-in-alt"></i> Fazer Login
+            </a>
+        </div>
+
+        <div class="info-tecnica">
+            <p>Codigo: <code>403 - Forbidden</code></p>
+            <p id="info-url"></p>
+            <p id="info-timestamp"></p>
+        </div>
     </div>
 
     <script>
-        // Log do erro para debug
-        console.error('Acesso negado ao painel');
+        (function() {
+            'use strict';
 
-        // Armazena tentativa de acesso não autorizado
-        const tentativa = {
-            url: window.location.href,
-            timestamp: new Date().toISOString()
-        };
-        console.warn('Tentativa de acesso:', tentativa);
+            // Registra informacoes da tentativa de acesso
+            var urlAtual = window.location.href;
+            var urlReferrer = document.referrer || 'Acesso direto';
+            var timestamp = new Date().toISOString();
+
+            // Exibe informacoes tecnicas
+            var infoUrl = document.getElementById('info-url');
+            var infoTimestamp = document.getElementById('info-timestamp');
+
+            if (infoUrl) {
+                infoUrl.innerHTML = 'URL: <code>' + urlAtual + '</code>';
+            }
+
+            if (infoTimestamp) {
+                infoTimestamp.innerHTML = 'Data/Hora: <code>' + new Date().toLocaleString('pt-BR') + '</code>';
+            }
+
+            // Log para debug (pode ser enviado para servidor de logs)
+            var logData = {
+                tipo: 'acesso_negado',
+                url: urlAtual,
+                referrer: urlReferrer,
+                timestamp: timestamp,
+                userAgent: navigator.userAgent
+            };
+
+            console.warn('[SEGURANCA] Tentativa de acesso negado:', logData);
+
+            // Opcional: Envia log para o servidor
+            // fetch('/api/logs/acesso-negado', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify(logData),
+            //     credentials: 'include'
+            // }).catch(function() {});
+        })();
     </script>
 </body>
 </html>

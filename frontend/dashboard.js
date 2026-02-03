@@ -1,261 +1,545 @@
-let usuarioAtual = null;
-let permissoesUsuario = [];
+/**
+ * ==============================================================================
+ * DASHBOARD PRINCIPAL - JAVASCRIPT
+ * Sistema de Paineis - Hospital Anchieta Ceilandia
+ * Versao 2.0 - Seguranca Aprimorada
+ * ==============================================================================
+ */
 
-// Verifica autenticação ao carregar
-verificarAutenticacao();
+'use strict';
 
-async function verificarAutenticacao() {
-    try {
-        const response = await fetch('/api/verificar-sessao', {
-            credentials: 'include'
-        });
-        const data = await response.json();
+// ==============================================================================
+// CONFIGURACAO
+// ==============================================================================
 
-        if (!data.autenticado) {
-            window.location.href = '/login.html';
-            return;
-        }
+var CONFIG = {
+    apiBase: window.location.origin,
+    endpoints: {
+        verificarSessao: '/api/verificar-sessao',
+        logout: '/api/logout',
+        permissoes: '/api/minhas-permissoes',
+        cadastro: '/api/cadastro'
+    },
+    painelBase: '/painel/',
+    adminUrl: '/admin/usuarios',
+    loginUrl: '/login.html',
+    mensagens: {
+        erroConexao: 'Erro de conexao com o servidor',
+        erroAutenticacao: 'Sessao expirada. Redirecionando para login...',
+        acessoNegado: 'Voce nao tem permissao para acessar este painel.',
+        senhasNaoCoincidem: 'As senhas nao coincidem',
+        senhaFraca: 'A senha deve ter no minimo 8 caracteres com maiuscula, minuscula, numero e caractere especial',
+        usuarioCriado: 'Usuario cadastrado com sucesso!'
+    }
+};
 
-        usuarioAtual = data;
-        document.getElementById('usuario-nome').textContent = `Olá, ${data.usuario}`;
+// ==============================================================================
+// ESTADO DA APLICACAO
+// ==============================================================================
 
-        // Mostrar botões de admin
-        if (data.is_admin) {
-            document.getElementById('btn-gestao-usuarios').style.display = 'block';
-            document.getElementById('btn-admin').style.display = 'block';
-        }
+var Estado = {
+    usuarioAtual: null,
+    permissoes: [],
+    isAdmin: false,
+    paineis: [
+        'painel2', 'painel3', 'painel4', 'painel5', 'painel6', 'painel7',
+        'painel8', 'painel9', 'painel10', 'painel11', 'painel12', 'painel13'
+    ]
+};
 
-        // Carregar permissões e filtrar painéis
-        await carregarPermissoes();
+// ==============================================================================
+// INICIALIZACAO
+// ==============================================================================
 
-    } catch (erro) {
-        console.error('Erro ao verificar autenticação:', erro);
-        window.location.href = '/login.html';
+document.addEventListener('DOMContentLoaded', function() {
+    verificarAutenticacao();
+    configurarEventos();
+    registrarServiceWorker();
+});
+
+function registrarServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+                console.log('[SW] Service Worker registrado:', registration.scope);
+            })
+            .catch(function(error) {
+                console.warn('[SW] Erro ao registrar Service Worker:', error);
+            });
     }
 }
 
-async function carregarPermissoes() {
-    try {
-        const response = await fetch('/api/minhas-permissoes', {
-            credentials: 'include'
-        });
-        const data = await response.json();
+// ==============================================================================
+// AUTENTICACAO
+// ==============================================================================
 
+function verificarAutenticacao() {
+    fetch(CONFIG.endpoints.verificarSessao, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (!data.autenticado) {
+            console.warn('[AUTH] Usuario nao autenticado');
+            redirecionarLogin();
+            return;
+        }
+
+        Estado.usuarioAtual = data;
+        Estado.isAdmin = data.is_admin || false;
+        
+        atualizarNomeUsuario(data.usuario);
+        mostrarBotoesAdmin(Estado.isAdmin);
+        
+        carregarPermissoes();
+    })
+    .catch(function(erro) {
+        console.error('[AUTH] Erro ao verificar autenticacao:', erro);
+        redirecionarLogin();
+    });
+}
+
+function redirecionarLogin() {
+    window.location.href = CONFIG.loginUrl;
+}
+
+function realizarLogout() {
+    fetch(CONFIG.endpoints.logout, {
+        method: 'POST',
+        credentials: 'include'
+    })
+    .then(function() {
+        redirecionarLogin();
+    })
+    .catch(function(erro) {
+        console.error('[AUTH] Erro no logout:', erro);
+        redirecionarLogin();
+    });
+}
+
+function atualizarNomeUsuario(nome) {
+    var elemento = document.getElementById('usuario-nome');
+    if (elemento) {
+        elemento.textContent = 'Ola, ' + escapeHtml(nome);
+    }
+}
+
+function mostrarBotoesAdmin(isAdmin) {
+    var btnGestao = document.getElementById('btn-gestao-usuarios');
+    var btnAdmin = document.getElementById('btn-admin');
+    
+    if (btnGestao) {
+        btnGestao.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
+    
+    if (btnAdmin) {
+        btnAdmin.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
+}
+
+// ==============================================================================
+// PERMISSOES
+// ==============================================================================
+
+function carregarPermissoes() {
+    fetch(CONFIG.endpoints.permissoes, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
         if (data.success) {
-            permissoesUsuario = data.permissoes;
-
-            // ✅ CORREÇÃO: Se for admin, mostrar TODOS os painéis
-            if (data.is_admin) {
+            Estado.permissoes = data.permissoes || [];
+            
+            // Admin tem acesso a todos os paineis
+            if (data.is_admin || Estado.isAdmin) {
+                Estado.isAdmin = true;
                 mostrarTodosPaineis();
             } else {
                 filtrarPaineisVisiveis();
             }
+        } else {
+            console.error('[PERM] Erro ao carregar permissoes:', data.error);
+            filtrarPaineisVisiveis();
         }
-
-    } catch (erro) {
-        console.error('Erro ao carregar permissões:', erro);
-    }
+    })
+    .catch(function(erro) {
+        console.error('[PERM] Erro ao carregar permissoes:', erro);
+        filtrarPaineisVisiveis();
+    });
 }
 
-// Mostrar todos os painéis para admins
 function mostrarTodosPaineis() {
-    const paineis = [
-        { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },
-        { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' },
-        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' },
-        { nome: 'painel5', selector: '.painel-card[onclick*="painel5"]' },
-        { nome: 'painel6', selector: '.painel-card[onclick*="painel6"]' },
-        { nome: 'painel7', selector: '.painel-card[onclick*="painel7"]' },
-        { nome: 'painel8', selector: '.painel-card[onclick*="painel8"]' },
-        { nome: 'painel9', selector: '.painel-card[onclick*="painel9"]' },
-        { nome: 'painel10', selector: '.painel-card[onclick*="painel10"]' },
-        { nome: 'painel11', selector: '.painel-card[onclick*="painel11"]' },
-        { nome: 'painel12', selector: '.painel-card[onclick*="painel12"]' },
-        { nome: 'painel13', selector: '.painel-card[onclick*="painel13"]' }
-    ];
-
-    paineis.forEach(painel => {
-        const card = document.querySelector(painel.selector);
+    Estado.paineis.forEach(function(painelNome) {
+        var card = document.querySelector('[data-painel="' + painelNome + '"]');
         if (card) {
-            card.style.display = 'block';
+            card.style.display = 'flex';
             card.classList.remove('painel-disabled');
-            card.style.pointerEvents = 'auto';
-            card.style.opacity = '1';
         }
     });
-
-    // Remove mensagem de "sem painéis" se existir
-    const mensagemExistente = document.getElementById('mensagem-sem-paineis');
-    if (mensagemExistente) {
-        mensagemExistente.remove();
-    }
-
-    console.log('✅ Admin: Todos os painéis liberados');
+    
+    removerMensagemSemPaineis();
+    console.log('[PERM] Admin: Todos os paineis liberados');
 }
 
 function filtrarPaineisVisiveis() {
-    const paineis = [
-        { nome: 'painel2', selector: '.painel-card[onclick*="painel2"]' },
-        { nome: 'painel3', selector: '.painel-card[onclick*="painel3"]' },
-        { nome: 'painel4', selector: '.painel-card[onclick*="painel4"]' },
-        { nome: 'painel5', selector: '.painel-card[onclick*="painel5"]' },
-        { nome: 'painel6', selector: '.painel-card[onclick*="painel6"]' },
-        { nome: 'painel7', selector: '.painel-card[onclick*="painel7"]' },
-        { nome: 'painel8', selector: '.painel-card[onclick*="painel8"]' },
-        { nome: 'painel9', selector: '.painel-card[onclick*="painel9"]' },
-        { nome: 'painel10', selector: '.painel-card[onclick*="painel10"]' },
-        { nome: 'painel11', selector: '.painel-card[onclick*="painel11"]' },
-        { nome: 'painel12', selector: '.painel-card[onclick*="painel12"]' },
-        { nome: 'painel13', selector: '.painel-card[onclick*="painel13"]' }
-    ];
-
-    let paineisVisiveis = 0;
-
-    paineis.forEach(painel => {
-        const card = document.querySelector(painel.selector);
+    var paineisVisiveis = 0;
+    
+    Estado.paineis.forEach(function(painelNome) {
+        var card = document.querySelector('[data-painel="' + painelNome + '"]');
         if (!card) return;
-
-        const temPermissao = permissoesUsuario.includes(painel.nome);
-
+        
+        var temPermissao = Estado.permissoes.indexOf(painelNome) !== -1;
+        
         if (temPermissao) {
-            card.style.display = 'block';
+            card.style.display = 'flex';
             card.classList.remove('painel-disabled');
-            card.style.pointerEvents = 'auto';
-            card.style.opacity = '1';
             paineisVisiveis++;
         } else {
             card.style.display = 'none';
         }
     });
-
-    // Mostrar mensagem se não houver painéis
-    mostrarMensagemSemPaineis(paineisVisiveis);
+    
+    gerenciarMensagemSemPaineis(paineisVisiveis);
 }
 
-function mostrarMensagemSemPaineis(quantidade) {
-    const grid = document.querySelector('.paineis-grid');
-    let mensagemExistente = document.getElementById('mensagem-sem-paineis');
-
+function gerenciarMensagemSemPaineis(quantidade) {
+    var grid = document.querySelector('.paineis-grid');
+    var mensagemExistente = document.getElementById('mensagem-sem-paineis');
+    
     if (quantidade === 0) {
-        // Não tem painéis - mostrar mensagem
-        if (!mensagemExistente) {
-            const mensagem = document.createElement('div');
+        if (!mensagemExistente && grid) {
+            var mensagem = document.createElement('div');
             mensagem.id = 'mensagem-sem-paineis';
             mensagem.className = 'mensagem-sem-paineis';
-            mensagem.innerHTML = `
-                <div class="sem-paineis-icon">
-                    <i class="fas fa-lock"></i>
-                </div>
-                <h2>Nenhum Painel Disponível</h2>
-                <p>Você ainda não tem permissão para acessar nenhum painel.</p>
-                <p>Entre em contato com o administrador para solicitar acesso.</p>
-            `;
+            mensagem.setAttribute('role', 'status');
+            mensagem.innerHTML = 
+                '<div class="sem-paineis-icon" aria-hidden="true">' +
+                    '<i class="fas fa-lock"></i>' +
+                '</div>' +
+                '<h2>Nenhum Painel Disponivel</h2>' +
+                '<p>Voce ainda nao tem permissao para acessar nenhum painel.</p>' +
+                '<p>Entre em contato com o administrador para solicitar acesso.</p>';
             grid.appendChild(mensagem);
         }
     } else {
-        // Tem painéis - remover mensagem se existir
-        if (mensagemExistente) {
-            mensagemExistente.remove();
-        }
+        removerMensagemSemPaineis();
     }
 }
+
+function removerMensagemSemPaineis() {
+    var mensagemExistente = document.getElementById('mensagem-sem-paineis');
+    if (mensagemExistente) {
+        mensagemExistente.remove();
+    }
+}
+
+// ==============================================================================
+// NAVEGACAO DE PAINEIS
+// ==============================================================================
 
 function abrirPainel(nomePainel) {
-    // ✅ CORREÇÃO: Admin sempre pode acessar
-    if (usuarioAtual.is_admin) {
-        window.location.href = `/painel/${nomePainel}`;
+    if (!nomePainel) {
+        console.warn('[NAV] Nome do painel nao especificado');
         return;
     }
-
-    // Verifica permissão para usuários normais
-    if (!permissoesUsuario.includes(nomePainel)) {
-        alert('Você não tem permissão para acessar este painel.');
+    
+    // Valida nome do painel
+    if (Estado.paineis.indexOf(nomePainel) === -1) {
+        console.warn('[NAV] Painel invalido:', nomePainel);
         return;
     }
-
-    window.location.href = `/painel/${nomePainel}`;
+    
+    // Admin sempre pode acessar
+    if (Estado.isAdmin) {
+        navegarParaPainel(nomePainel);
+        return;
+    }
+    
+    // Verifica permissao
+    if (Estado.permissoes.indexOf(nomePainel) === -1) {
+        alert(CONFIG.mensagens.acessoNegado);
+        return;
+    }
+    
+    navegarParaPainel(nomePainel);
 }
 
-// Botão Gestão de Usuários
-document.getElementById('btn-gestao-usuarios')?.addEventListener('click', () => {
-    window.location.href = '/admin/usuarios';
-});
+function navegarParaPainel(nomePainel) {
+    window.location.href = CONFIG.painelBase + nomePainel;
+}
 
-// Botão Cadastrar Usuário (modal rápido)
-document.getElementById('btn-admin')?.addEventListener('click', () => {
-    document.getElementById('modal-cadastro').style.display = 'flex';
-});
+// ==============================================================================
+// CONFIGURACAO DE EVENTOS
+// ==============================================================================
 
-// Logout
-document.getElementById('btn-logout').addEventListener('click', async () => {
-    try {
-        await fetch('/api/logout', {
-            method: 'POST',
-            credentials: 'include'
+function configurarEventos() {
+    // Logout
+    var btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', realizarLogout);
+    }
+    
+    // Gestao de usuarios
+    var btnGestao = document.getElementById('btn-gestao-usuarios');
+    if (btnGestao) {
+        btnGestao.addEventListener('click', function() {
+            window.location.href = CONFIG.adminUrl;
         });
-        window.location.href = '/login.html';
-    } catch (erro) {
-        console.error('Erro no logout:', erro);
     }
-});
-
-// Fechar Modal
-function fecharModal() {
-    document.getElementById('modal-cadastro').style.display = 'none';
-    document.getElementById('form-cadastro').reset();
-    document.getElementById('mensagem-cadastro').style.display = 'none';
+    
+    // Abrir modal de cadastro
+    var btnAdmin = document.getElementById('btn-admin');
+    if (btnAdmin) {
+        btnAdmin.addEventListener('click', abrirModalCadastro);
+    }
+    
+    // Fechar modal
+    var btnFechar = document.getElementById('btn-fechar-modal');
+    if (btnFechar) {
+        btnFechar.addEventListener('click', fecharModalCadastro);
+    }
+    
+    var btnCancelar = document.getElementById('btn-cancelar-cadastro');
+    if (btnCancelar) {
+        btnCancelar.addEventListener('click', fecharModalCadastro);
+    }
+    
+    // Formulario de cadastro
+    var formCadastro = document.getElementById('form-cadastro');
+    if (formCadastro) {
+        formCadastro.addEventListener('submit', cadastrarUsuario);
+    }
+    
+    // Eventos dos cards de painel
+    configurarEventosPaineis();
+    
+    // Fechar modal com ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            fecharModalCadastro();
+        }
+    });
+    
+    // Fechar modal clicando fora
+    var modal = document.getElementById('modal-cadastro');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                fecharModalCadastro();
+            }
+        });
+    }
 }
 
-// Cadastrar Usuário
-document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
+function configurarEventosPaineis() {
+    var cards = document.querySelectorAll('.painel-card');
+    
+    cards.forEach(function(card) {
+        // Click
+        card.addEventListener('click', function() {
+            var painelNome = card.getAttribute('data-painel');
+            abrirPainel(painelNome);
+        });
+        
+        // Enter/Space para acessibilidade
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                var painelNome = card.getAttribute('data-painel');
+                abrirPainel(painelNome);
+            }
+        });
+    });
+}
+
+// ==============================================================================
+// MODAL DE CADASTRO
+// ==============================================================================
+
+function abrirModalCadastro() {
+    var modal = document.getElementById('modal-cadastro');
+    var form = document.getElementById('form-cadastro');
+    
+    if (form) {
+        form.reset();
+    }
+    
+    ocultarMensagem('mensagem-cadastro');
+    
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        // Focus no primeiro campo
+        var inputUsuario = document.getElementById('novo-usuario');
+        if (inputUsuario) {
+            setTimeout(function() {
+                inputUsuario.focus();
+            }, 100);
+        }
+    }
+}
+
+function fecharModalCadastro() {
+    var modal = document.getElementById('modal-cadastro');
+    
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
+
+function cadastrarUsuario(e) {
     e.preventDefault();
-
-    const usuario = document.getElementById('novo-usuario').value.trim();
-    const email = document.getElementById('novo-email').value.trim();
-    const senha = document.getElementById('nova-senha').value;
-    const confirmaSenha = document.getElementById('confirma-senha').value;
-    const isAdmin = document.getElementById('is-admin').checked;
-
+    
+    var usuario = document.getElementById('novo-usuario').value.trim();
+    var email = document.getElementById('novo-email').value.trim();
+    var senha = document.getElementById('nova-senha').value;
+    var confirmaSenha = document.getElementById('confirma-senha').value;
+    var isAdmin = document.getElementById('is-admin').checked;
+    
+    // Validacoes
+    if (!validarUsuario(usuario)) {
+        mostrarMensagemCadastro('Nome de usuario invalido. Use apenas letras, numeros, underscore e ponto.', 'danger');
+        return;
+    }
+    
+    if (!validarEmail(email)) {
+        mostrarMensagemCadastro('Email invalido.', 'danger');
+        return;
+    }
+    
     if (senha !== confirmaSenha) {
-        mostrarMensagem('As senhas não coincidem', 'danger');
+        mostrarMensagemCadastro(CONFIG.mensagens.senhasNaoCoincidem, 'danger');
         return;
     }
-
-    if (senha.length < 4) {
-        mostrarMensagem('A senha deve ter no mínimo 4 caracteres', 'danger');
+    
+    if (!validarSenhaForte(senha)) {
+        mostrarMensagemCadastro(CONFIG.mensagens.senhaFraca, 'danger');
         return;
     }
-
-    try {
-        const response = await fetch('/api/cadastro', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({ usuario, email, senha, is_admin: isAdmin })
-        });
-
-        const data = await response.json();
-
+    
+    var btnEnviar = document.getElementById('btn-enviar-cadastro');
+    if (btnEnviar) {
+        btnEnviar.disabled = true;
+    }
+    
+    var dados = {
+        usuario: usuario,
+        email: email,
+        senha: senha,
+        is_admin: isAdmin
+    };
+    
+    fetch(CONFIG.endpoints.cadastro, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(dados)
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
         if (data.success) {
-            mostrarMensagem('Usuário cadastrado com sucesso!', 'success');
-            setTimeout(() => {
-                fecharModal();
+            mostrarMensagemCadastro(CONFIG.mensagens.usuarioCriado, 'success');
+            
+            setTimeout(function() {
+                fecharModalCadastro();
+                if (btnEnviar) btnEnviar.disabled = false;
             }, 2000);
         } else {
-            mostrarMensagem(data.error || 'Erro ao cadastrar usuário', 'danger');
+            mostrarMensagemCadastro(data.error || 'Erro ao cadastrar usuario', 'danger');
+            if (btnEnviar) btnEnviar.disabled = false;
         }
-
-    } catch (erro) {
-        console.error('Erro no cadastro:', erro);
-        mostrarMensagem('Erro de conexão com o servidor', 'danger');
-    }
-});
-
-function mostrarMensagem(mensagem, tipo) {
-    const div = document.getElementById('mensagem-cadastro');
-    div.textContent = mensagem;
-    div.className = `alert alert-${tipo}`;
-    div.style.display = 'block';
+    })
+    .catch(function(erro) {
+        console.error('[CADASTRO] Erro:', erro);
+        mostrarMensagemCadastro(CONFIG.mensagens.erroConexao, 'danger');
+        if (btnEnviar) btnEnviar.disabled = false;
+    });
 }
+
+function mostrarMensagemCadastro(mensagem, tipo) {
+    var elemento = document.getElementById('mensagem-cadastro');
+    if (!elemento) return;
+    
+    var icone = '';
+    if (tipo === 'success') icone = '<i class="fas fa-check-circle" aria-hidden="true"></i>';
+    else if (tipo === 'danger') icone = '<i class="fas fa-exclamation-circle" aria-hidden="true"></i>';
+    
+    elemento.innerHTML = icone + ' ' + escapeHtml(mensagem);
+    elemento.className = 'alert alert-' + tipo;
+    elemento.style.display = 'flex';
+    
+    if (tipo === 'success') {
+        setTimeout(function() {
+            ocultarMensagem('mensagem-cadastro');
+        }, 5000);
+    }
+}
+
+function ocultarMensagem(elementId) {
+    var elemento = document.getElementById(elementId);
+    if (elemento) {
+        elemento.style.display = 'none';
+    }
+}
+
+// ==============================================================================
+// VALIDACOES
+// ==============================================================================
+
+function validarUsuario(usuario) {
+    if (!usuario || usuario.length < 3 || usuario.length > 50) {
+        return false;
+    }
+    return /^[a-zA-Z][a-zA-Z0-9_.]*$/.test(usuario);
+}
+
+function validarEmail(email) {
+    if (!email || email.length > 255) {
+        return false;
+    }
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validarSenhaForte(senha) {
+    if (!senha || senha.length < 8 || senha.length > 128) {
+        return false;
+    }
+    
+    var temMaiuscula = /[A-Z]/.test(senha);
+    var temMinuscula = /[a-z]/.test(senha);
+    var temNumero = /[0-9]/.test(senha);
+    var temEspecial = /[!@#$%^&*(),.?":{}|<>\-_=+\[\]\\;'`~]/.test(senha);
+    
+    return temMaiuscula && temMinuscula && temNumero && temEspecial;
+}
+
+// ==============================================================================
+// UTILITARIOS
+// ==============================================================================
+
+function escapeHtml(texto) {
+    if (!texto) return '';
+    
+    var div = document.createElement('div');
+    div.textContent = texto;
+    return div.innerHTML;
+}
+
+// ==============================================================================
+// FUNCOES GLOBAIS (para compatibilidade com onclick inline se necessario)
+// ==============================================================================
+
+window.abrirPainel = abrirPainel;
+window.fecharModal = fecharModalCadastro;

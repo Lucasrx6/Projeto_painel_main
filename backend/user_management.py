@@ -1,54 +1,65 @@
 """
-Módulo de Gestão de Usuários
-Funções para CRUD, permissões e histórico
-VERSÃO 2.0 - COM PROTEÇÃO CONTRA SQL INJECTION
+Modulo de Gestao de Usuarios
+Funcoes para CRUD, permissoes e historico
+
+VERSAO 3.0 - Seguranca Aprimorada
+- Context managers para conexoes
+- Validacao rigorosa de inputs
+- Logging estruturado
+- Protecao contra SQL Injection
+- Rate limiting preparado
 """
 
 import bcrypt
 import re
-from backend.database import get_db_connection
+import logging
+from contextlib import contextmanager
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Any, Union
+
+from backend.database import get_db_connection
 
 
-# ==================== VALIDAÇÃO DE SENHA ====================
+# ==============================================================================
+# CONFIGURACAO DE LOGGING
+# ==============================================================================
 
-def validar_senha_forte(senha):
-    """
-    Valida se a senha atende aos requisitos de segurança
-    Retorna (bool, str) - (válida, mensagem_erro)
-    """
-    if len(senha) < 8:
-        return False, 'A senha deve ter no mínimo 8 caracteres'
-
-    if not re.search(r'[A-Z]', senha):
-        return False, 'A senha deve conter pelo menos uma letra maiúscula'
-
-    if not re.search(r'[a-z]', senha):
-        return False, 'A senha deve conter pelo menos uma letra minúscula'
-
-    if not re.search(r'[0-9]', senha):
-        return False, 'A senha deve conter pelo menos um número'
-
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', senha):
-        return False, 'A senha deve conter pelo menos um caractere especial (!@#$%^&*...)'
-
-    return True, ''
+logger = logging.getLogger(__name__)
 
 
-# ==================== WHITELIST DE CAMPOS PERMITIDOS ====================
+# ==============================================================================
+# CONSTANTES DE SEGURANCA
+# ==============================================================================
 
-# Lista EXPLÍCITA de campos que podem ser editados
-CAMPOS_EDITAVEIS = {
+# Requisitos de senha
+SENHA_MIN_LENGTH = 8
+SENHA_MAX_LENGTH = 128
+
+# Limites de campos
+CAMPO_MAX_LENGTH = 255
+OBSERVACOES_MAX_LENGTH = 1000
+HISTORICO_LIMITE_PADRAO = 50
+HISTORICO_LIMITE_MAXIMO = 1000
+
+# Mensagens de erro padronizadas (evita information disclosure)
+ERRO_CONEXAO = 'Erro de conexao com o banco de dados'
+ERRO_DADOS_INVALIDOS = 'Dados invalidos fornecidos'
+ERRO_USUARIO_NAO_ENCONTRADO = 'Usuario nao encontrado'
+ERRO_PERMISSAO_NEGADA = 'Permissao negada'
+ERRO_CAMPOS_INVALIDOS = 'Nenhum campo valido para atualizar'
+
+# Whitelist de campos editaveis
+CAMPOS_EDITAVEIS = frozenset({
     'email',
     'nome_completo',
     'cargo',
     'is_admin',
     'observacoes',
     'ativo'
-}
+})
 
-# Lista de campos que existem na tabela usuarios (para validação)
-CAMPOS_TABELA_USUARIOS = {
+# Campos da tabela usuarios (para validacao)
+CAMPOS_TABELA_USUARIOS = frozenset({
     'id',
     'usuario',
     'senha_hash',
@@ -62,775 +73,1006 @@ CAMPOS_TABELA_USUARIOS = {
     'ultimo_acesso',
     'atualizado_em',
     'atualizado_por'
-}
+})
+
+# Acoes validas para historico
+ACOES_VALIDAS = frozenset({
+    'criacao',
+    'edicao',
+    'ativacao',
+    'desativacao',
+    'reset_senha',
+    'alteracao_senha',
+    'adicao_permissao',
+    'remocao_permissao',
+    'login',
+    'login_falha',
+    'logout'
+})
 
 
-# ==================== FUNÇÕES DE VALIDAÇÃO ====================
+# ==============================================================================
+# CONTEXT MANAGER PARA CONEXAO
+# ==============================================================================
 
-def validar_campo(campo):
+@contextmanager
+def get_db_cursor(commit: bool = False):
     """
-    Valida se o campo é permitido e está na whitelist
-    Protege contra SQL Injection via nomes de colunas
+    Context manager para gerenciar conexao e cursor do banco de dados.
+
+    Args:
+        commit: Se True, faz commit automatico ao sair do contexto
+
+    Yields:
+        tuple: (cursor, connection)
+
+    Raises:
+        ConnectionError: Se nao conseguir conectar ao banco
+    """
+    conn = get_db_connection()
+    if not conn:
+        logger.error('Falha ao obter conexao com o banco de dados')
+        raise ConnectionError(ERRO_CONEXAO)
+
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        yield cursor, conn
+        if commit:
+            conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logger.error(f'Erro na operacao do banco: {e}')
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+# ==============================================================================
+# FUNCOES DE VALIDACAO
+# ==============================================================================
+
+def validar_senha_forte(senha: str) -> Tuple[bool, str]:
+    """
+    Valida se a senha atende aos requisitos de seguranca.
+
+    Requisitos:
+        - Minimo 8 caracteres
+        - Maximo 128 caracteres
+        - Pelo menos uma letra maiuscula
+        - Pelo menos uma letra minuscula
+        - Pelo menos um numero
+        - Pelo menos um caractere especial
+
+    Args:
+        senha: Senha a ser validada
+
+    Returns:
+        tuple: (valida: bool, mensagem_erro: str)
+    """
+    if not senha or not isinstance(senha, str):
+        return False, 'Senha nao pode estar vazia'
+
+    if len(senha) < SENHA_MIN_LENGTH:
+        return False, f'A senha deve ter no minimo {SENHA_MIN_LENGTH} caracteres'
+
+    if len(senha) > SENHA_MAX_LENGTH:
+        return False, f'A senha deve ter no maximo {SENHA_MAX_LENGTH} caracteres'
+
+    if not re.search(r'[A-Z]', senha):
+        return False, 'A senha deve conter pelo menos uma letra maiuscula'
+
+    if not re.search(r'[a-z]', senha):
+        return False, 'A senha deve conter pelo menos uma letra minuscula'
+
+    if not re.search(r'[0-9]', senha):
+        return False, 'A senha deve conter pelo menos um numero'
+
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>\-_=+\[\]\\;\'`~]', senha):
+        return False, 'A senha deve conter pelo menos um caractere especial'
+
+    return True, ''
+
+
+def validar_email(email: str) -> Tuple[bool, str]:
+    """
+    Valida formato de email.
+
+    Args:
+        email: Email a ser validado
+
+    Returns:
+        tuple: (valido: bool, mensagem_erro: str)
+    """
+    if not email or not isinstance(email, str):
+        return False, 'Email nao pode estar vazio'
+
+    email = email.strip().lower()
+
+    if len(email) > CAMPO_MAX_LENGTH:
+        return False, f'Email muito longo (maximo {CAMPO_MAX_LENGTH} caracteres)'
+
+    # Regex para validacao de email
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(pattern, email):
+        return False, 'Formato de email invalido'
+
+    return True, ''
+
+
+def validar_campo_editavel(campo: str) -> bool:
+    """
+    Valida se o campo esta na whitelist de campos editaveis.
+    Protege contra SQL Injection via nomes de colunas.
+
+    Args:
+        campo: Nome do campo a ser validado
+
+    Returns:
+        bool: True se o campo e valido
     """
     if not isinstance(campo, str):
         return False
 
-    # Remove espaços
-    campo = campo.strip()
+    campo = campo.strip().lower()
 
-    # Verifica se está na whitelist
     if campo not in CAMPOS_EDITAVEIS:
         return False
 
-    # Verifica se contém apenas caracteres alfanuméricos e underscore
+    # Validacao adicional: apenas alfanumericos e underscore
     if not campo.replace('_', '').isalnum():
         return False
 
     return True
 
 
-def sanitizar_campos(dados):
+def validar_nome_painel(painel_nome: str) -> bool:
     """
-    Filtra apenas campos válidos do dicionário de dados
-    Retorna apenas campos que passaram na validação
-    """
-    campos_validos = {}
+    Valida nome do painel para prevenir SQL Injection.
+    Aceita apenas: letras, numeros e underscore.
 
-    for campo, valor in dados.items():
-        if validar_campo(campo):
-            campos_validos[campo] = valor
-        else:
-            print(f"⚠️ Campo inválido ignorado: {campo}")
+    Args:
+        painel_nome: Nome do painel a ser validado
 
-    return campos_validos
-
-
-# ==================== CRUD DE USUÁRIOS ====================
-
-def listar_usuarios(incluir_inativos=True):
-    """Lista todos os usuários"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
-
-    try:
-        cursor = conn.cursor()
-
-        # ✅ SEGURO: Query estática, sem concatenação
-        query = """
-            SELECT 
-                id, 
-                usuario, 
-                email, 
-                nome_completo,
-                cargo,
-                is_admin, 
-                ativo,
-                criado_em,
-                ultimo_acesso
-            FROM usuarios
-        """
-
-        if not incluir_inativos:
-            query += " WHERE ativo = TRUE"
-
-        query += " ORDER BY usuario ASC"
-
-        cursor.execute(query)
-
-        colunas = [desc[0] for desc in cursor.description]
-        usuarios = [dict(zip(colunas, row)) for row in cursor.fetchall()]
-
-        cursor.close()
-        conn.close()
-
-        return {
-            'success': True,
-            'usuarios': usuarios,
-            'total': len(usuarios)
-        }
-
-    except Exception as e:
-        print(f"❌ Erro ao listar usuários: {e}")
-        if conn:
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-def obter_usuario(usuario_id):
-    """Obtém detalhes de um usuário específico"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
-
-    try:
-        # ✅ Valida que usuario_id é inteiro
-        if not isinstance(usuario_id, int):
-            try:
-                usuario_id = int(usuario_id)
-            except (ValueError, TypeError):
-                return {'success': False, 'error': 'ID de usuário inválido'}
-
-        cursor = conn.cursor()
-
-        # ✅ SEGURO: Usa parâmetros
-        cursor.execute("""
-            SELECT 
-                id, 
-                usuario, 
-                email,
-                nome_completo,
-                cargo,
-                is_admin, 
-                ativo,
-                observacoes,
-                criado_em,
-                ultimo_acesso,
-                atualizado_em,
-                atualizado_por
-            FROM usuarios
-            WHERE id = %s
-        """, (usuario_id,))
-
-        resultado = cursor.fetchone()
-
-        if not resultado:
-            cursor.close()
-            conn.close()
-            return {'success': False, 'error': 'Usuário não encontrado'}
-
-        colunas = [desc[0] for desc in cursor.description]
-        usuario = dict(zip(colunas, resultado))
-
-        cursor.close()
-        conn.close()
-
-        return {
-            'success': True,
-            'usuario': usuario
-        }
-
-    except Exception as e:
-        print(f"❌ Erro ao obter usuário: {e}")
-        if conn:
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-def editar_usuario(usuario_id, dados, admin_id):
-    """
-    Edita informações de um usuário
-    VERSÃO SEGURA - Com validação de campos
-
-    dados: dict com campos a atualizar (apenas campos permitidos)
-    admin_id: ID do admin que está fazendo a alteração
-    """
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
-
-    try:
-        # ✅ Valida IDs
-        if not isinstance(usuario_id, int):
-            usuario_id = int(usuario_id)
-        if not isinstance(admin_id, int):
-            admin_id = int(admin_id)
-
-        cursor = conn.cursor()
-
-        # ✅ PROTEÇÃO: Sanitiza campos usando whitelist
-        dados_validos = sanitizar_campos(dados)
-
-        if not dados_validos:
-            return {'success': False, 'error': 'Nenhum campo válido para atualizar'}
-
-        # ✅ SEGURO: Monta query apenas com campos validados
-        campos_update = []
-        valores = []
-
-        for campo in dados_validos.keys():
-            # Validação dupla (já foi validado em sanitizar_campos)
-            if campo in CAMPOS_EDITAVEIS:
-                campos_update.append(f"{campo} = %s")
-                valores.append(dados_validos[campo])
-
-        if not campos_update:
-            return {'success': False, 'error': 'Nenhum campo válido para atualizar'}
-
-        # Adiciona campos de auditoria
-        campos_update.append("atualizado_em = %s")
-        campos_update.append("atualizado_por = %s")
-        valores.extend([datetime.now(), admin_id])
-
-        # Adiciona ID do usuário
-        valores.append(usuario_id)
-
-        # ✅ SEGURO: Campos já foram validados, valores são parametrizados
-        query = f"""
-            UPDATE usuarios 
-            SET {', '.join(campos_update)}
-            WHERE id = %s
-        """
-
-        cursor.execute(query, valores)
-        conn.commit()
-
-        # Registra no histórico
-        registrar_historico(
-            usuario_id=usuario_id,
-            acao='edicao',
-            detalhes=f"Campos alterados: {', '.join(dados_validos.keys())}",
-            realizado_por=admin_id,
-            conn=conn
-        )
-
-        cursor.close()
-        conn.close()
-
-        return {'success': True, 'message': 'Usuário atualizado com sucesso'}
-
-    except ValueError as e:
-        print(f"❌ Erro de validação: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': 'Dados inválidos fornecidos'}
-
-    except Exception as e:
-        print(f"❌ Erro ao editar usuário: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-def alterar_status_usuario(usuario_id, ativo, admin_id):
-    """Ativa ou desativa um usuário"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
-
-    try:
-        # ✅ Valida IDs
-        usuario_id = int(usuario_id)
-        admin_id = int(admin_id)
-
-        # ✅ Valida boolean
-        if not isinstance(ativo, bool):
-            if str(ativo).lower() in ['true', '1', 'yes']:
-                ativo = True
-            elif str(ativo).lower() in ['false', '0', 'no']:
-                ativo = False
-            else:
-                return {'success': False, 'error': 'Valor de status inválido'}
-
-        cursor = conn.cursor()
-
-        # ✅ SEGURO: Query estática com parâmetros
-        cursor.execute("""
-            UPDATE usuarios 
-            SET ativo = %s,
-                atualizado_em = %s,
-                atualizado_por = %s
-            WHERE id = %s
-        """, (ativo, datetime.now(), admin_id, usuario_id))
-
-        conn.commit()
-
-        # Registra no histórico
-        acao = 'ativacao' if ativo else 'desativacao'
-        registrar_historico(
-            usuario_id=usuario_id,
-            acao=acao,
-            detalhes=f"Usuário {'ativado' if ativo else 'desativado'}",
-            realizado_por=admin_id,
-            conn=conn
-        )
-
-        cursor.close()
-        conn.close()
-
-        return {
-            'success': True,
-            'message': f"Usuário {'ativado' if ativo else 'desativado'} com sucesso"
-        }
-
-    except ValueError as e:
-        print(f"❌ Erro de validação: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': 'Dados inválidos'}
-
-    except Exception as e:
-        print(f"❌ Erro ao alterar status: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-def resetar_senha(usuario_id, nova_senha, admin_id):
-    """Reseta a senha de um usuário com validação forte"""
-
-    # ✅ Valida senha forte
-    senha_valida, mensagem_erro = validar_senha_forte(nova_senha)
-    if not senha_valida:
-        return {'success': False, 'error': mensagem_erro}
-
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
-
-    try:
-        # ✅ Valida IDs
-        usuario_id = int(usuario_id)
-        admin_id = int(admin_id)
-
-        cursor = conn.cursor()
-
-        # Hash da nova senha
-        senha_hash = bcrypt.hashpw(nova_senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-        # ✅ SEGURO: Query estática com parâmetros
-        cursor.execute("""
-            UPDATE usuarios 
-            SET senha_hash = %s,
-                atualizado_em = %s,
-                atualizado_por = %s
-            WHERE id = %s
-        """, (senha_hash, datetime.now(), admin_id, usuario_id))
-
-        conn.commit()
-
-        # Registra no histórico
-        registrar_historico(
-            usuario_id=usuario_id,
-            acao='reset_senha',
-            detalhes='Senha resetada pelo administrador',
-            realizado_por=admin_id,
-            conn=conn
-        )
-
-        cursor.close()
-        conn.close()
-
-        return {'success': True, 'message': 'Senha resetada com sucesso'}
-
-    except ValueError as e:
-        print(f"❌ Erro de validação: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': 'Dados inválidos'}
-
-    except Exception as e:
-        print(f"❌ Erro ao resetar senha: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-# ==================== PERMISSÕES ====================
-
-def obter_permissoes(usuario_id):
-    """Obtém todas as permissões de um usuário"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
-
-    try:
-        # ✅ Valida ID
-        usuario_id = int(usuario_id)
-
-        cursor = conn.cursor()
-
-        # ✅ SEGURO: Query estática com parâmetros
-        cursor.execute("""
-            SELECT painel_nome, criado_em
-            FROM permissoes_paineis
-            WHERE usuario_id = %s
-            ORDER BY painel_nome ASC
-        """, (usuario_id,))
-
-        permissoes = [{'painel': row[0], 'criado_em': row[1]} for row in cursor.fetchall()]
-
-        cursor.close()
-        conn.close()
-
-        return {
-            'success': True,
-            'permissoes': permissoes
-        }
-
-    except ValueError as e:
-        print(f"❌ Erro de validação: {e}")
-        if conn:
-            conn.close()
-        return {'success': False, 'error': 'ID inválido'}
-
-    except Exception as e:
-        print(f"❌ Erro ao obter permissões: {e}")
-        if conn:
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-def validar_nome_painel(painel_nome):
-    """
-    Valida nome do painel para prevenir SQL Injection
-    Aceita apenas: letras, números e underscore
+    Returns:
+        bool: True se o nome e valido
     """
     if not isinstance(painel_nome, str):
         return False
 
     painel_nome = painel_nome.strip()
 
-    # Comprimento razoável
     if len(painel_nome) < 1 or len(painel_nome) > 50:
         return False
 
-    # Apenas alfanuméricos e underscore
     if not painel_nome.replace('_', '').isalnum():
         return False
 
     return True
 
 
-def adicionar_permissao(usuario_id, painel_nome, admin_id):
-    """Adiciona permissão de acesso a um painel"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
+def validar_id(valor: Any) -> Optional[int]:
+    """
+    Valida e converte um valor para ID inteiro.
+
+    Args:
+        valor: Valor a ser validado e convertido
+
+    Returns:
+        int ou None: ID validado ou None se invalido
+    """
+    if valor is None:
+        return None
 
     try:
-        # ✅ Valida IDs
-        usuario_id = int(usuario_id)
-        admin_id = int(admin_id)
-
-        # ✅ Valida nome do painel
-        if not validar_nome_painel(painel_nome):
-            return {'success': False, 'error': 'Nome de painel inválido'}
-
-        cursor = conn.cursor()
-
-        # Verifica se já existe
-        cursor.execute("""
-            SELECT id FROM permissoes_paineis
-            WHERE usuario_id = %s AND painel_nome = %s
-        """, (usuario_id, painel_nome))
-
-        if cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return {'success': False, 'error': 'Permissão já existe'}
-
-        # Adiciona permissão
-        cursor.execute("""
-            INSERT INTO permissoes_paineis (usuario_id, painel_nome)
-            VALUES (%s, %s)
-        """, (usuario_id, painel_nome))
-
-        conn.commit()
-
-        # Registra no histórico
-        registrar_historico(
-            usuario_id=usuario_id,
-            acao='adicao_permissao',
-            detalhes=f"Permissão adicionada para painel: {painel_nome}",
-            realizado_por=admin_id,
-            conn=conn
-        )
-
-        cursor.close()
-        conn.close()
-
-        return {'success': True, 'message': 'Permissão adicionada com sucesso'}
-
-    except ValueError as e:
-        print(f"❌ Erro de validação: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': 'Dados inválidos'}
-
-    except Exception as e:
-        print(f"❌ Erro ao adicionar permissão: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-def remover_permissao(usuario_id, painel_nome, admin_id):
-    """Remove permissão de acesso a um painel"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
-
-    try:
-        # ✅ Valida IDs
-        usuario_id = int(usuario_id)
-        admin_id = int(admin_id)
-
-        # ✅ Valida nome do painel
-        if not validar_nome_painel(painel_nome):
-            return {'success': False, 'error': 'Nome de painel inválido'}
-
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            DELETE FROM permissoes_paineis
-            WHERE usuario_id = %s AND painel_nome = %s
-        """, (usuario_id, painel_nome))
-
-        if cursor.rowcount == 0:
-            cursor.close()
-            conn.close()
-            return {'success': False, 'error': 'Permissão não encontrada'}
-
-        conn.commit()
-
-        # Registra no histórico
-        registrar_historico(
-            usuario_id=usuario_id,
-            acao='remocao_permissao',
-            detalhes=f"Permissão removida para painel: {painel_nome}",
-            realizado_por=admin_id,
-            conn=conn
-        )
-
-        cursor.close()
-        conn.close()
-
-        return {'success': True, 'message': 'Permissão removida com sucesso'}
-
-    except ValueError as e:
-        print(f"❌ Erro de validação: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': 'Dados inválidos'}
-
-    except Exception as e:
-        print(f"❌ Erro ao remover permissão: {e}")
-        if conn:
-            conn.rollback()
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-def verificar_permissao_painel(usuario_id, painel_nome):
-    """Verifica se usuário tem permissão para acessar um painel"""
-    conn = get_db_connection()
-    if not conn:
-        return False
-
-    try:
-        # ✅ Valida ID
-        usuario_id = int(usuario_id)
-
-        # ✅ Valida nome do painel
-        if not validar_nome_painel(painel_nome):
-            return False
-
-        cursor = conn.cursor()
-
-        # Admin tem acesso a tudo
-        cursor.execute("SELECT is_admin FROM usuarios WHERE id = %s", (usuario_id,))
-        resultado = cursor.fetchone()
-
-        if resultado and resultado[0]:  # is_admin = True
-            cursor.close()
-            conn.close()
-            return True
-
-        # Verifica permissão específica
-        cursor.execute("""
-            SELECT id FROM permissoes_paineis
-            WHERE usuario_id = %s AND painel_nome = %s
-        """, (usuario_id, painel_nome))
-
-        tem_permissao = cursor.fetchone() is not None
-
-        cursor.close()
-        conn.close()
-
-        return tem_permissao
-
+        id_int = int(valor)
+        if id_int <= 0:
+            return None
+        return id_int
     except (ValueError, TypeError):
-        if conn:
-            conn.close()
-        return False
+        return None
 
+
+def sanitizar_campos(dados: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Filtra apenas campos validos do dicionario de dados.
+
+    Args:
+        dados: Dicionario com campos a serem filtrados
+
+    Returns:
+        dict: Apenas campos que passaram na validacao
+    """
+    if not isinstance(dados, dict):
+        return {}
+
+    campos_validos = {}
+
+    for campo, valor in dados.items():
+        if validar_campo_editavel(campo):
+            # Sanitiza strings
+            if isinstance(valor, str):
+                valor = valor.strip()
+                if campo == 'observacoes':
+                    valor = valor[:OBSERVACOES_MAX_LENGTH]
+                else:
+                    valor = valor[:CAMPO_MAX_LENGTH]
+            campos_validos[campo] = valor
+        else:
+            logger.warning(f'Campo invalido ignorado: {campo}')
+
+    return campos_validos
+
+
+def sanitizar_string(valor: str, max_length: int = CAMPO_MAX_LENGTH) -> str:
+    """
+    Sanitiza uma string removendo espacos extras e limitando tamanho.
+
+    Args:
+        valor: String a ser sanitizada
+        max_length: Tamanho maximo permitido
+
+    Returns:
+        str: String sanitizada
+    """
+    if not isinstance(valor, str):
+        return ''
+    return valor.strip()[:max_length]
+
+
+# ==============================================================================
+# CRUD DE USUARIOS
+# ==============================================================================
+
+def listar_usuarios(incluir_inativos: bool = True) -> Dict[str, Any]:
+    """
+    Lista todos os usuarios do sistema.
+
+    Args:
+        incluir_inativos: Se True, inclui usuarios inativos na listagem
+
+    Returns:
+        dict: {
+            'success': bool,
+            'usuarios': list (se sucesso),
+            'total': int (se sucesso),
+            'error': str (se erro)
+        }
+    """
+    try:
+        with get_db_cursor() as (cursor, conn):
+            query = """
+                SELECT 
+                    id, 
+                    usuario, 
+                    email, 
+                    nome_completo,
+                    cargo,
+                    is_admin, 
+                    ativo,
+                    criado_em,
+                    ultimo_acesso
+                FROM usuarios
+            """
+
+            if not incluir_inativos:
+                query += " WHERE ativo = TRUE"
+
+            query += " ORDER BY usuario ASC"
+
+            cursor.execute(query)
+
+            colunas = [desc[0] for desc in cursor.description]
+            usuarios = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+
+            logger.info(f'Listagem de usuarios: {len(usuarios)} registros')
+
+            return {
+                'success': True,
+                'usuarios': usuarios,
+                'total': len(usuarios)
+            }
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
     except Exception as e:
-        print(f"❌ Erro ao verificar permissão: {e}")
-        if conn:
-            conn.close()
-        return False
+        logger.error(f'Erro ao listar usuarios: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
 
 
-# ==================== HISTÓRICO ====================
+def obter_usuario(usuario_id: Union[int, str]) -> Dict[str, Any]:
+    """
+    Obtem detalhes de um usuario especifico.
 
-def registrar_historico(usuario_id, acao, detalhes, realizado_por, conn=None):
-    """Registra ação no histórico"""
-    fechar_conn = False
+    Args:
+        usuario_id: ID do usuario
 
-    if not conn:
-        conn = get_db_connection()
-        fechar_conn = True
-
-    if not conn:
-        return False
+    Returns:
+        dict: {
+            'success': bool,
+            'usuario': dict (se sucesso),
+            'error': str (se erro)
+        }
+    """
+    usuario_id = validar_id(usuario_id)
+    if not usuario_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
 
     try:
-        # ✅ Valida IDs
-        usuario_id = int(usuario_id)
-        realizado_por = int(realizado_por)
+        with get_db_cursor() as (cursor, conn):
+            cursor.execute("""
+                SELECT 
+                    id, 
+                    usuario, 
+                    email,
+                    nome_completo,
+                    cargo,
+                    is_admin, 
+                    ativo,
+                    observacoes,
+                    criado_em,
+                    ultimo_acesso,
+                    atualizado_em,
+                    atualizado_por
+                FROM usuarios
+                WHERE id = %s
+            """, (usuario_id,))
 
-        # ✅ Valida strings
-        if not isinstance(acao, str) or not isinstance(detalhes, str):
-            return False
+            resultado = cursor.fetchone()
 
-        # Limita tamanho
-        acao = acao[:50]
-        detalhes = detalhes[:500]
+            if not resultado:
+                return {'success': False, 'error': ERRO_USUARIO_NAO_ENCONTRADO}
 
-        cursor = conn.cursor()
+            colunas = [desc[0] for desc in cursor.description]
+            usuario = dict(zip(colunas, resultado))
+
+            return {
+                'success': True,
+                'usuario': usuario
+            }
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao obter usuario {usuario_id}: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def editar_usuario(
+    usuario_id: Union[int, str],
+    dados: Dict[str, Any],
+    admin_id: Union[int, str]
+) -> Dict[str, Any]:
+    """
+    Edita informacoes de um usuario.
+
+    Args:
+        usuario_id: ID do usuario a ser editado
+        dados: Dicionario com campos a atualizar (apenas campos permitidos)
+        admin_id: ID do administrador que esta fazendo a alteracao
+
+    Returns:
+        dict: {'success': bool, 'message': str ou 'error': str}
+    """
+    usuario_id = validar_id(usuario_id)
+    admin_id = validar_id(admin_id)
+
+    if not usuario_id or not admin_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
+
+    # Sanitiza campos usando whitelist
+    dados_validos = sanitizar_campos(dados)
+
+    if not dados_validos:
+        return {'success': False, 'error': ERRO_CAMPOS_INVALIDOS}
+
+    # Validacao especifica para email
+    if 'email' in dados_validos:
+        email_valido, erro_email = validar_email(dados_validos['email'])
+        if not email_valido:
+            return {'success': False, 'error': erro_email}
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            # Verifica se usuario existe
+            cursor.execute("SELECT id FROM usuarios WHERE id = %s", (usuario_id,))
+            if not cursor.fetchone():
+                return {'success': False, 'error': ERRO_USUARIO_NAO_ENCONTRADO}
+
+            # Monta query apenas com campos validados
+            campos_update = []
+            valores = []
+
+            for campo in dados_validos.keys():
+                if campo in CAMPOS_EDITAVEIS:
+                    campos_update.append(f"{campo} = %s")
+                    valores.append(dados_validos[campo])
+
+            # Adiciona campos de auditoria
+            campos_update.append("atualizado_em = %s")
+            campos_update.append("atualizado_por = %s")
+            valores.extend([datetime.now(), admin_id])
+
+            # Adiciona ID do usuario
+            valores.append(usuario_id)
+
+            query = f"""
+                UPDATE usuarios 
+                SET {', '.join(campos_update)}
+                WHERE id = %s
+            """
+
+            cursor.execute(query, valores)
+
+            # Registra no historico
+            _registrar_historico_interno(
+                cursor=cursor,
+                usuario_id=usuario_id,
+                acao='edicao',
+                detalhes=f"Campos alterados: {', '.join(dados_validos.keys())}",
+                realizado_por=admin_id
+            )
+
+            logger.info(f'Usuario {usuario_id} editado por admin {admin_id}')
+
+            return {'success': True, 'message': 'Usuario atualizado com sucesso'}
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao editar usuario {usuario_id}: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def alterar_status_usuario(
+    usuario_id: Union[int, str],
+    ativo: Union[bool, str],
+    admin_id: Union[int, str]
+) -> Dict[str, Any]:
+    """
+    Ativa ou desativa um usuario.
+
+    Args:
+        usuario_id: ID do usuario
+        ativo: Novo status (True/False)
+        admin_id: ID do administrador
+
+    Returns:
+        dict: {'success': bool, 'message': str ou 'error': str}
+    """
+    usuario_id = validar_id(usuario_id)
+    admin_id = validar_id(admin_id)
+
+    if not usuario_id or not admin_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
+
+    # Converte para boolean
+    if isinstance(ativo, bool):
+        pass
+    elif isinstance(ativo, str):
+        ativo = ativo.lower() in ('true', '1', 'yes', 'sim')
+    else:
+        return {'success': False, 'error': 'Valor de status invalido'}
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            cursor.execute("""
+                UPDATE usuarios 
+                SET ativo = %s,
+                    atualizado_em = %s,
+                    atualizado_por = %s
+                WHERE id = %s
+            """, (ativo, datetime.now(), admin_id, usuario_id))
+
+            if cursor.rowcount == 0:
+                return {'success': False, 'error': ERRO_USUARIO_NAO_ENCONTRADO}
+
+            acao = 'ativacao' if ativo else 'desativacao'
+            _registrar_historico_interno(
+                cursor=cursor,
+                usuario_id=usuario_id,
+                acao=acao,
+                detalhes=f"Usuario {'ativado' if ativo else 'desativado'}",
+                realizado_por=admin_id
+            )
+
+            status_texto = 'ativado' if ativo else 'desativado'
+            logger.info(f'Usuario {usuario_id} {status_texto} por admin {admin_id}')
+
+            return {
+                'success': True,
+                'message': f"Usuario {status_texto} com sucesso"
+            }
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao alterar status do usuario {usuario_id}: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def resetar_senha(
+    usuario_id: Union[int, str],
+    nova_senha: str,
+    admin_id: Union[int, str]
+) -> Dict[str, Any]:
+    """
+    Reseta a senha de um usuario com validacao forte.
+
+    Args:
+        usuario_id: ID do usuario
+        nova_senha: Nova senha
+        admin_id: ID do administrador
+
+    Returns:
+        dict: {'success': bool, 'message': str ou 'error': str}
+    """
+    # Valida senha forte
+    senha_valida, mensagem_erro = validar_senha_forte(nova_senha)
+    if not senha_valida:
+        return {'success': False, 'error': mensagem_erro}
+
+    usuario_id = validar_id(usuario_id)
+    admin_id = validar_id(admin_id)
+
+    if not usuario_id or not admin_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            # Hash da nova senha
+            senha_hash = bcrypt.hashpw(
+                nova_senha.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+
+            cursor.execute("""
+                UPDATE usuarios 
+                SET senha_hash = %s,
+                    atualizado_em = %s,
+                    atualizado_por = %s
+                WHERE id = %s
+            """, (senha_hash, datetime.now(), admin_id, usuario_id))
+
+            if cursor.rowcount == 0:
+                return {'success': False, 'error': ERRO_USUARIO_NAO_ENCONTRADO}
+
+            _registrar_historico_interno(
+                cursor=cursor,
+                usuario_id=usuario_id,
+                acao='reset_senha',
+                detalhes='Senha resetada pelo administrador',
+                realizado_por=admin_id
+            )
+
+            logger.info(f'Senha do usuario {usuario_id} resetada por admin {admin_id}')
+
+            return {'success': True, 'message': 'Senha resetada com sucesso'}
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao resetar senha do usuario {usuario_id}: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+# ==============================================================================
+# PERMISSOES
+# ==============================================================================
+
+def obter_permissoes(usuario_id: Union[int, str]) -> Dict[str, Any]:
+    """
+    Obtem todas as permissoes de um usuario.
+
+    Args:
+        usuario_id: ID do usuario
+
+    Returns:
+        dict: {'success': bool, 'permissoes': list ou 'error': str}
+    """
+    usuario_id = validar_id(usuario_id)
+    if not usuario_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
+
+    try:
+        with get_db_cursor() as (cursor, conn):
+            cursor.execute("""
+                SELECT painel_nome, criado_em
+                FROM permissoes_paineis
+                WHERE usuario_id = %s
+                ORDER BY painel_nome ASC
+            """, (usuario_id,))
+
+            permissoes = [
+                {'painel': row[0], 'criado_em': row[1]}
+                for row in cursor.fetchall()
+            ]
+
+            return {
+                'success': True,
+                'permissoes': permissoes
+            }
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao obter permissoes do usuario {usuario_id}: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def adicionar_permissao(
+    usuario_id: Union[int, str],
+    painel_nome: str,
+    admin_id: Union[int, str]
+) -> Dict[str, Any]:
+    """
+    Adiciona permissao de acesso a um painel.
+
+    Args:
+        usuario_id: ID do usuario
+        painel_nome: Nome do painel
+        admin_id: ID do administrador
+
+    Returns:
+        dict: {'success': bool, 'message': str ou 'error': str}
+    """
+    usuario_id = validar_id(usuario_id)
+    admin_id = validar_id(admin_id)
+
+    if not usuario_id or not admin_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
+
+    if not validar_nome_painel(painel_nome):
+        return {'success': False, 'error': 'Nome de painel invalido'}
+
+    painel_nome = painel_nome.strip()
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            # Verifica se ja existe
+            cursor.execute("""
+                SELECT id FROM permissoes_paineis
+                WHERE usuario_id = %s AND painel_nome = %s
+            """, (usuario_id, painel_nome))
+
+            if cursor.fetchone():
+                return {'success': False, 'error': 'Permissao ja existe'}
+
+            cursor.execute("""
+                INSERT INTO permissoes_paineis (usuario_id, painel_nome)
+                VALUES (%s, %s)
+            """, (usuario_id, painel_nome))
+
+            _registrar_historico_interno(
+                cursor=cursor,
+                usuario_id=usuario_id,
+                acao='adicao_permissao',
+                detalhes=f"Permissao adicionada: {painel_nome}",
+                realizado_por=admin_id
+            )
+
+            logger.info(
+                f'Permissao {painel_nome} adicionada ao usuario {usuario_id} '
+                f'por admin {admin_id}'
+            )
+
+            return {'success': True, 'message': 'Permissao adicionada com sucesso'}
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao adicionar permissao: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def remover_permissao(
+    usuario_id: Union[int, str],
+    painel_nome: str,
+    admin_id: Union[int, str]
+) -> Dict[str, Any]:
+    """
+    Remove permissao de acesso a um painel.
+
+    Args:
+        usuario_id: ID do usuario
+        painel_nome: Nome do painel
+        admin_id: ID do administrador
+
+    Returns:
+        dict: {'success': bool, 'message': str ou 'error': str}
+    """
+    usuario_id = validar_id(usuario_id)
+    admin_id = validar_id(admin_id)
+
+    if not usuario_id or not admin_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
+
+    if not validar_nome_painel(painel_nome):
+        return {'success': False, 'error': 'Nome de painel invalido'}
+
+    painel_nome = painel_nome.strip()
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            cursor.execute("""
+                DELETE FROM permissoes_paineis
+                WHERE usuario_id = %s AND painel_nome = %s
+            """, (usuario_id, painel_nome))
+
+            if cursor.rowcount == 0:
+                return {'success': False, 'error': 'Permissao nao encontrada'}
+
+            _registrar_historico_interno(
+                cursor=cursor,
+                usuario_id=usuario_id,
+                acao='remocao_permissao',
+                detalhes=f"Permissao removida: {painel_nome}",
+                realizado_por=admin_id
+            )
+
+            logger.info(
+                f'Permissao {painel_nome} removida do usuario {usuario_id} '
+                f'por admin {admin_id}'
+            )
+
+            return {'success': True, 'message': 'Permissao removida com sucesso'}
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao remover permissao: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def verificar_permissao_painel(
+    usuario_id: Union[int, str],
+    painel_nome: str
+) -> bool:
+    """
+    Verifica se usuario tem permissao para acessar um painel.
+
+    Args:
+        usuario_id: ID do usuario
+        painel_nome: Nome do painel
+
+    Returns:
+        bool: True se tem permissao
+    """
+    usuario_id = validar_id(usuario_id)
+    if not usuario_id:
+        return False
+
+    if not validar_nome_painel(painel_nome):
+        return False
+
+    painel_nome = painel_nome.strip()
+
+    try:
+        with get_db_cursor() as (cursor, conn):
+            # Admin tem acesso a tudo
+            cursor.execute(
+                "SELECT is_admin FROM usuarios WHERE id = %s AND ativo = TRUE",
+                (usuario_id,)
+            )
+            resultado = cursor.fetchone()
+
+            if not resultado:
+                return False
+
+            if resultado[0]:  # is_admin = True
+                return True
+
+            # Verifica permissao especifica
+            cursor.execute("""
+                SELECT id FROM permissoes_paineis
+                WHERE usuario_id = %s AND painel_nome = %s
+            """, (usuario_id, painel_nome))
+
+            return cursor.fetchone() is not None
+
+    except Exception as e:
+        logger.error(f'Erro ao verificar permissao: {e}')
+        return False
+
+
+# ==============================================================================
+# HISTORICO
+# ==============================================================================
+
+def _registrar_historico_interno(
+    cursor,
+    usuario_id: int,
+    acao: str,
+    detalhes: str,
+    realizado_por: int
+) -> bool:
+    """
+    Registra acao no historico (uso interno com cursor existente).
+
+    Args:
+        cursor: Cursor do banco de dados
+        usuario_id: ID do usuario afetado
+        acao: Tipo de acao realizada
+        detalhes: Descricao detalhada
+        realizado_por: ID de quem realizou a acao
+
+    Returns:
+        bool: True se registrou com sucesso
+    """
+    try:
+        # Sanitiza strings
+        acao = sanitizar_string(acao, 50)
+        detalhes = sanitizar_string(detalhes, 500)
 
         cursor.execute("""
             INSERT INTO historico_usuarios (usuario_id, acao, detalhes, realizado_por)
             VALUES (%s, %s, %s, %s)
         """, (usuario_id, acao, detalhes, realizado_por))
 
-        conn.commit()
-        cursor.close()
-
-        if fechar_conn:
-            conn.close()
-
         return True
 
-    except (ValueError, TypeError) as e:
-        print(f"❌ Erro de validação no histórico: {e}")
-        if conn:
-            conn.rollback()
-            if fechar_conn:
-                conn.close()
-        return False
-
     except Exception as e:
-        print(f"❌ Erro ao registrar histórico: {e}")
-        if conn:
-            conn.rollback()
-            if fechar_conn:
-                conn.close()
+        logger.error(f'Erro ao registrar historico: {e}')
         return False
 
 
-def obter_historico(usuario_id, limite=50):
-    """Obtém histórico de ações de um usuário"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
+def registrar_historico(
+    usuario_id: Union[int, str],
+    acao: str,
+    detalhes: str,
+    realizado_por: Union[int, str]
+) -> bool:
+    """
+    Registra acao no historico (uso externo com nova conexao).
+
+    Args:
+        usuario_id: ID do usuario afetado
+        acao: Tipo de acao realizada
+        detalhes: Descricao detalhada
+        realizado_por: ID de quem realizou a acao
+
+    Returns:
+        bool: True se registrou com sucesso
+    """
+    usuario_id = validar_id(usuario_id)
+    realizado_por = validar_id(realizado_por)
+
+    if not usuario_id or not realizado_por:
+        return False
+
+    if not isinstance(acao, str) or not isinstance(detalhes, str):
+        return False
 
     try:
-        # ✅ Valida ID
-        usuario_id = int(usuario_id)
+        with get_db_cursor(commit=True) as (cursor, conn):
+            return _registrar_historico_interno(
+                cursor=cursor,
+                usuario_id=usuario_id,
+                acao=acao,
+                detalhes=detalhes,
+                realizado_por=realizado_por
+            )
+    except Exception as e:
+        logger.error(f'Erro ao registrar historico: {e}')
+        return False
 
-        # ✅ Valida limite
+
+def obter_historico(
+    usuario_id: Union[int, str],
+    limite: int = HISTORICO_LIMITE_PADRAO
+) -> Dict[str, Any]:
+    """
+    Obtem historico de acoes de um usuario.
+
+    Args:
+        usuario_id: ID do usuario
+        limite: Numero maximo de registros (padrao: 50, maximo: 1000)
+
+    Returns:
+        dict: {'success': bool, 'historico': list ou 'error': str}
+    """
+    usuario_id = validar_id(usuario_id)
+    if not usuario_id:
+        return {'success': False, 'error': ERRO_DADOS_INVALIDOS}
+
+    # Valida limite
+    try:
         limite = int(limite)
-        if limite < 1 or limite > 1000:
-            limite = 50
-
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT 
-                h.acao,
-                h.detalhes,
-                h.data_hora,
-                u.usuario as realizado_por_usuario
-            FROM historico_usuarios h
-            LEFT JOIN usuarios u ON h.realizado_por = u.id
-            WHERE h.usuario_id = %s
-            ORDER BY h.data_hora DESC
-            LIMIT %s
-        """, (usuario_id, limite))
-
-        colunas = [desc[0] for desc in cursor.description]
-        historico = [dict(zip(colunas, row)) for row in cursor.fetchall()]
-
-        cursor.close()
-        conn.close()
-
-        return {
-            'success': True,
-            'historico': historico
-        }
-
-    except ValueError as e:
-        print(f"❌ Erro de validação: {e}")
-        if conn:
-            conn.close()
-        return {'success': False, 'error': 'Dados inválidos'}
-
-    except Exception as e:
-        print(f"❌ Erro ao obter histórico: {e}")
-        if conn:
-            conn.close()
-        return {'success': False, 'error': str(e)}
-
-
-# ==================== ESTATÍSTICAS ====================
-
-def obter_estatisticas():
-    """Obtém estatísticas gerais dos usuários"""
-    conn = get_db_connection()
-    if not conn:
-        return {'success': False, 'error': 'Erro de conexão com o banco'}
+        limite = max(1, min(limite, HISTORICO_LIMITE_MAXIMO))
+    except (ValueError, TypeError):
+        limite = HISTORICO_LIMITE_PADRAO
 
     try:
-        cursor = conn.cursor()
+        with get_db_cursor() as (cursor, conn):
+            cursor.execute("""
+                SELECT 
+                    h.acao,
+                    h.detalhes,
+                    h.data_hora,
+                    u.usuario as realizado_por_usuario
+                FROM historico_usuarios h
+                LEFT JOIN usuarios u ON h.realizado_por = u.id
+                WHERE h.usuario_id = %s
+                ORDER BY h.data_hora DESC
+                LIMIT %s
+            """, (usuario_id, limite))
 
-        # ✅ SEGURO: Todas as queries são estáticas
+            colunas = [desc[0] for desc in cursor.description]
+            historico = [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
-        # Total de usuários
-        cursor.execute("SELECT COUNT(*) FROM usuarios")
-        total = cursor.fetchone()[0]
-
-        # Usuários ativos
-        cursor.execute("SELECT COUNT(*) FROM usuarios WHERE ativo = TRUE")
-        ativos = cursor.fetchone()[0]
-
-        # Administradores
-        cursor.execute("SELECT COUNT(*) FROM usuarios WHERE is_admin = TRUE")
-        admins = cursor.fetchone()[0]
-
-        # Usuários criados nos últimos 30 dias
-        cursor.execute("""
-            SELECT COUNT(*) FROM usuarios 
-            WHERE criado_em >= NOW() - INTERVAL '30 days'
-        """)
-        novos = cursor.fetchone()[0]
-
-        cursor.close()
-        conn.close()
-
-        return {
-            'success': True,
-            'estatisticas': {
-                'total': total,
-                'ativos': ativos,
-                'inativos': total - ativos,
-                'admins': admins,
-                'novos_30dias': novos
+            return {
+                'success': True,
+                'historico': historico
             }
-        }
 
-    except Exception as e:
-        print(f"❌ Erro ao obter estatísticas: {e}")
-        if conn:
-            conn.close()
+    except ConnectionError as e:
         return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao obter historico do usuario {usuario_id}: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+# ==============================================================================
+# ESTATISTICAS
+# ==============================================================================
+
+def obter_estatisticas() -> Dict[str, Any]:
+    """
+    Obtem estatisticas gerais dos usuarios.
+
+    Returns:
+        dict: {
+            'success': bool,
+            'estatisticas': dict (se sucesso),
+            'error': str (se erro)
+        }
+    """
+    try:
+        with get_db_cursor() as (cursor, conn):
+            # Total de usuarios
+            cursor.execute("SELECT COUNT(*) FROM usuarios")
+            total = cursor.fetchone()[0]
+
+            # Usuarios ativos
+            cursor.execute("SELECT COUNT(*) FROM usuarios WHERE ativo = TRUE")
+            ativos = cursor.fetchone()[0]
+
+            # Administradores
+            cursor.execute("SELECT COUNT(*) FROM usuarios WHERE is_admin = TRUE")
+            admins = cursor.fetchone()[0]
+
+            # Usuarios criados nos ultimos 30 dias
+            cursor.execute("""
+                SELECT COUNT(*) FROM usuarios 
+                WHERE criado_em >= NOW() - INTERVAL '30 days'
+            """)
+            novos = cursor.fetchone()[0]
+
+            # Usuarios com acesso recente (ultimos 7 dias)
+            cursor.execute("""
+                SELECT COUNT(*) FROM usuarios 
+                WHERE ultimo_acesso >= NOW() - INTERVAL '7 days'
+            """)
+            acesso_recente = cursor.fetchone()[0]
+
+            return {
+                'success': True,
+                'estatisticas': {
+                    'total': total,
+                    'ativos': ativos,
+                    'inativos': total - ativos,
+                    'admins': admins,
+                    'novos_30dias': novos,
+                    'acesso_recente_7dias': acesso_recente
+                }
+            }
+
+    except ConnectionError as e:
+        return {'success': False, 'error': str(e)}
+    except Exception as e:
+        logger.error(f'Erro ao obter estatisticas: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}

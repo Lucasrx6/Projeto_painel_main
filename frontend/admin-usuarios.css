@@ -1,6 +1,12 @@
-/* ========================================
-   🎨 ADMIN USUÁRIOS - RESPONSIVO
-   ======================================== */
+/* ==============================================================================
+   ADMIN USUARIOS - ESTILOS
+   Sistema de Gestao de Usuarios - Hospital Anchieta Ceilandia
+   Versao 2.0 - Responsivo e Otimizado
+   ============================================================================== */
+
+/* ==============================================================================
+   RESET E BASE
+   ============================================================================== */
 
 * {
     margin: 0;
@@ -8,16 +14,22 @@
     box-sizing: border-box;
 }
 
+html {
+    height: 100%;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: #f5f7fa;
-    min-height: 100vh;
+    min-height: 100%;
+    min-height: 100dvh;
+    color: #333;
+    line-height: 1.5;
 }
 
-/* ========================================
-   🎯 HEADER
-   📝 MODIFICAR AQUI: Ajustar padding e tamanhos
-   ======================================== */
+/* ==============================================================================
+   HEADER
+   ============================================================================== */
 
 .admin-header {
     background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
@@ -43,6 +55,7 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
+    min-width: 0;
 }
 
 .logo-header {
@@ -52,12 +65,16 @@ body {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
 }
 
 .admin-header h1 {
     font-size: 1.8rem;
     font-weight: 600;
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .admin-header h1 i {
@@ -68,11 +85,13 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-shrink: 0;
 }
 
 .header-right span {
     font-size: 1rem;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .btn-header {
@@ -83,31 +102,40 @@ body {
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
+    font-size: 0.9rem;
     transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
 .btn-header:hover {
     background: white;
     color: #dc3545;
+    transform: translateY(-2px);
+}
+
+.btn-header:active {
+    transform: translateY(0);
 }
 
 .btn-logout:hover {
-    background: #dc3545;
-    border-color: #dc3545;
+    background: #a71d2a;
+    border-color: #a71d2a;
     color: white;
 }
 
-/* ========================================
-   📊 ESTATÍSTICAS
-   📝 MODIFICAR AQUI: Grid de estatísticas
-   ======================================== */
+/* ==============================================================================
+   ESTATISTICAS
+   ============================================================================== */
 
 .stats-container {
     max-width: 1400px;
     margin: 30px auto;
     padding: 0 20px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
 }
 
@@ -119,7 +147,7 @@ body {
     align-items: center;
     gap: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .stat-card:hover {
@@ -142,11 +170,16 @@ body {
     color: white;
 }
 
+.stat-info {
+    min-width: 0;
+}
+
 .stat-info h3 {
     font-size: 2rem;
     font-weight: 700;
     color: #333;
     margin: 0;
+    line-height: 1.2;
 }
 
 .stat-info p {
@@ -155,9 +188,9 @@ body {
     margin: 5px 0 0 0;
 }
 
-/* ========================================
-   🔍 CONTROLES
-   ======================================== */
+/* ==============================================================================
+   CONTROLES (BUSCA E BOTOES)
+   ============================================================================== */
 
 .controls-container {
     max-width: 1400px;
@@ -182,6 +215,7 @@ body {
     top: 50%;
     transform: translateY(-50%);
     color: #999;
+    pointer-events: none;
 }
 
 .search-box input {
@@ -190,17 +224,23 @@ body {
     border: 2px solid #e0e0e0;
     border-radius: 10px;
     font-size: 1rem;
-    transition: border-color 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .search-box input:focus {
     outline: none;
     border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.search-box input::placeholder {
+    color: #aaa;
 }
 
 .controls-buttons {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .btn-primary,
@@ -209,11 +249,13 @@ body {
     border: none;
     border-radius: 10px;
     font-weight: 600;
+    font-size: 0.95rem;
     cursor: pointer;
     transition: all 0.3s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
+    white-space: nowrap;
 }
 
 .btn-primary {
@@ -226,6 +268,16 @@ body {
     box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
 }
 
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .btn-secondary {
     background: #e0e0e0;
     color: #333;
@@ -233,17 +285,24 @@ body {
 
 .btn-secondary:hover {
     background: #d0d0d0;
+    transform: translateY(-2px);
 }
 
-/* ========================================
-   📋 TABELA
-   📝 Desktop: tabela normal
-   ======================================== */
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+/* ==============================================================================
+   TABELA DE USUARIOS
+   ============================================================================== */
 
 .table-container {
     max-width: 1400px;
     margin: 0 auto 40px;
     padding: 0 20px;
+}
+
+.table-wrapper {
     background: white;
     border-radius: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
@@ -261,12 +320,13 @@ body {
 }
 
 .usuarios-table th {
-    padding: 15px;
+    padding: 15px 12px;
     text-align: left;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 .usuarios-table tbody tr {
@@ -274,21 +334,33 @@ body {
     transition: background 0.2s ease;
 }
 
+.usuarios-table tbody tr:last-child {
+    border-bottom: none;
+}
+
 .usuarios-table tbody tr:hover {
     background: #fff5f5;
 }
 
 .usuarios-table td {
-    padding: 15px;
+    padding: 15px 12px;
     font-size: 0.95rem;
+    vertical-align: middle;
 }
 
+.usuarios-table td strong {
+    color: #333;
+}
+
+/* Status Badge */
 .status-badge {
     padding: 5px 12px;
     border-radius: 20px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .status-ativo {
@@ -301,9 +373,17 @@ body {
     color: #721c24;
 }
 
+/* Admin Badge */
 .admin-badge {
     color: #ffc107;
     font-size: 1.2rem;
+}
+
+/* Botoes de Acao */
+.acoes-container {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .btn-action {
@@ -311,31 +391,60 @@ body {
     border: none;
     color: #666;
     cursor: pointer;
-    padding: 5px;
-    transition: color 0.3s ease;
-    font-size: 1.1rem;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
 }
 
 .btn-action:hover {
+    background: #f0f0f0;
     color: #dc3545;
+}
+
+.btn-action.btn-editar:hover {
+    color: #0d6efd;
+    background: #e7f1ff;
+}
+
+.btn-action.btn-senha:hover {
+    color: #fd7e14;
+    background: #fff3e0;
+}
+
+.btn-action.btn-permissoes:hover {
+    color: #6f42c1;
+    background: #f3e5f5;
+}
+
+.btn-action.btn-historico:hover {
+    color: #17a2b8;
+    background: #e0f7fa;
 }
 
 .btn-action.btn-danger:hover {
     color: #dc3545;
+    background: #ffebee;
 }
 
 .btn-action.btn-success:hover {
     color: #28a745;
+    background: #e8f5e9;
 }
 
-/* ========================================
-   ⏳ LOADING
-   ======================================== */
+/* ==============================================================================
+   LOADING E ESTADOS VAZIOS
+   ============================================================================== */
 
 .loading {
     text-align: center;
-    padding: 40px;
-    color: #dc3545;
+    padding: 60px 20px;
+    color: #666;
 }
 
 .loading-spinner {
@@ -353,9 +462,38 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* ========================================
-   🔔 MODAIS
-   ======================================== */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.empty-state p {
+    font-size: 1.1rem;
+}
+
+.error-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #dc3545;
+}
+
+.error-state i {
+    font-size: 4rem;
+    margin-bottom: 15px;
+    display: block;
+}
+
+/* ==============================================================================
+   MODAIS
+   ============================================================================== */
 
 .modal {
     position: fixed;
@@ -370,6 +508,7 @@ body {
     z-index: 1000;
     padding: 20px;
     overflow-y: auto;
+    backdrop-filter: blur(2px);
 }
 
 .modal.show {
@@ -383,7 +522,8 @@ body {
     max-width: 600px;
     max-height: 90vh;
     overflow-y: auto;
-    animation: slideUp 0.3s ease;
+    animation: modalSlideUp 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .modal-small {
@@ -394,14 +534,14 @@ body {
     max-width: 800px;
 }
 
-@keyframes slideUp {
+@keyframes modalSlideUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(30px) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
@@ -411,33 +551,46 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: sticky;
+    top: 0;
+    background: white;
+    border-radius: 15px 15px 0 0;
+    z-index: 1;
 }
 
 .modal-header h2 {
     font-size: 1.4rem;
     color: #333;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .modal-header h2 i {
-    margin-right: 10px;
     color: #dc3545;
 }
 
 .btn-close-modal {
     background: none;
     border: none;
-    font-size: 2rem;
+    font-size: 1.8rem;
     cursor: pointer;
     color: #999;
     line-height: 1;
-    padding: 0;
-    width: 30px;
-    height: 30px;
+    padding: 5px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-close-modal:hover {
     color: #333;
+    background: #f0f0f0;
 }
 
 .modal-content form,
@@ -445,6 +598,7 @@ body {
     padding: 25px;
 }
 
+/* Formularios */
 .form-group {
     margin-bottom: 20px;
 }
@@ -454,6 +608,7 @@ body {
     margin-bottom: 8px;
     color: #333;
     font-weight: 500;
+    font-size: 0.95rem;
 }
 
 .form-control {
@@ -462,17 +617,24 @@ body {
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 1rem;
-    transition: border-color 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    font-family: inherit;
 }
 
 .form-control:focus {
     outline: none;
     border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
 }
 
 .form-control:disabled {
     background: #f5f5f5;
     cursor: not-allowed;
+    color: #666;
+}
+
+.form-control.error {
+    border-color: #dc3545;
 }
 
 textarea.form-control {
@@ -482,67 +644,100 @@ textarea.form-control {
 
 .form-group small {
     display: block;
-    margin-top: 5px;
+    margin-top: 6px;
     color: #666;
     font-size: 0.85rem;
 }
 
+.form-group small.error-text {
+    color: #dc3545;
+}
+
+/* Checkbox customizado */
 .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     cursor: pointer;
+    user-select: none;
 }
 
-.checkbox-label input {
-    width: 18px;
-    height: 18px;
+.checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
     cursor: pointer;
+    accent-color: #dc3545;
 }
 
+/* Botoes do Modal */
 .modal-buttons {
     display: flex;
     gap: 10px;
-    margin-top: 20px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
 }
 
 .modal-buttons button {
     flex: 1;
+    padding: 12px 20px;
 }
 
+/* Alertas */
 .alert {
-    padding: 12px;
+    padding: 12px 15px;
     border-radius: 8px;
     margin-bottom: 15px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert i {
+    font-size: 1.1rem;
+    flex-shrink: 0;
 }
 
 .alert.alert-danger {
-    background: #fee;
-    border: 1px solid #fcc;
-    color: #c33;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
 }
 
 .alert.alert-success {
-    background: #efe;
-    border: 1px solid #cfc;
-    color: #3c3;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
 }
 
 .alert.alert-info {
-    background: #e7f3ff;
-    border: 1px solid #b3d9ff;
-    color: #004085;
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
 }
 
-/* ========================================
-   🔐 PERMISSÕES
-   ======================================== */
+.alert.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+}
+
+/* ==============================================================================
+   PERMISSOES
+   ============================================================================== */
 
 .paineis-lista {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-top: 15px;
+    margin-top: 20px;
+}
+
+.paineis-lista h3 {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 5px;
 }
 
 .painel-item {
@@ -558,6 +753,7 @@ textarea.form-control {
 
 .painel-item:hover {
     border-color: #dc3545;
+    background: #fff;
 }
 
 .painel-item.ativo {
@@ -567,6 +763,7 @@ textarea.form-control {
 
 .painel-info {
     flex: 1;
+    min-width: 0;
 }
 
 .painel-info h4 {
@@ -585,8 +782,10 @@ textarea.form-control {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
 }
 
+/* Switch Toggle */
 .switch {
     position: relative;
     width: 50px;
@@ -621,60 +820,101 @@ textarea.form-control {
     background-color: white;
     transition: 0.4s;
     border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 input:checked + .slider {
     background-color: #28a745;
 }
 
+input:focus + .slider {
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+}
+
 input:checked + .slider:before {
     transform: translateX(24px);
 }
 
-/* ========================================
-   📜 HISTÓRICO
-   ======================================== */
+/* ==============================================================================
+   HISTORICO
+   ============================================================================== */
 
 .historico-lista {
     max-height: 500px;
     overflow-y: auto;
+    padding-right: 5px;
+}
+
+.historico-lista::-webkit-scrollbar {
+    width: 6px;
+}
+
+.historico-lista::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.historico-lista::-webkit-scrollbar-thumb {
+    background: #dc3545;
+    border-radius: 3px;
 }
 
 .historico-item {
     padding: 15px;
-    border-left: 3px solid #dc3545;
+    border-left: 4px solid #dc3545;
     background: #f8f9fa;
     margin-bottom: 10px;
-    border-radius: 5px;
+    border-radius: 0 8px 8px 0;
+    transition: background 0.2s ease;
+}
+
+.historico-item:hover {
+    background: #f0f0f0;
+}
+
+.historico-item:last-child {
+    margin-bottom: 0;
 }
 
 .historico-item .acao {
     font-weight: 600;
     color: #dc3545;
     text-transform: uppercase;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
 }
 
 .historico-item .detalhes {
-    margin: 5px 0;
+    margin: 8px 0;
     color: #333;
+    font-size: 0.95rem;
+    line-height: 1.4;
 }
 
 .historico-item .meta {
     display: flex;
-    gap: 15px;
+    gap: 20px;
     font-size: 0.85rem;
     color: #666;
-    margin-top: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
 }
 
-/* ========================================
-   📱 RESPONSIVIDADE OTIMIZADA
-   ======================================== */
+.historico-item .meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
 
-/* ========================================
-   🖥️ TABLETS (769px - 1024px)
-   ======================================== */
+.historico-item .meta i {
+    color: #999;
+}
+
+/* ==============================================================================
+   RESPONSIVIDADE - TABLETS (769px - 1024px)
+   ============================================================================== */
+
 @media (max-width: 1024px) {
     .stats-container {
         grid-template-columns: repeat(2, 1fr);
@@ -698,22 +938,19 @@ input:checked + .slider:before {
         font-size: 1.8rem;
     }
 
-    .usuarios-table {
-        font-size: 0.9rem;
-    }
-
     .usuarios-table th,
     .usuarios-table td {
         padding: 12px 10px;
+        font-size: 0.9rem;
     }
 }
 
-/* ========================================
-   📱 TABLETS MÉDIOS (481px - 768px)
-   📝 MODIFICAR AQUI: Layout tablet
-   ======================================== */
+/* ==============================================================================
+   RESPONSIVIDADE - TABLETS MEDIOS (481px - 768px)
+   ============================================================================== */
+
 @media (max-width: 768px) {
-    /* Header compacto */
+    /* Header */
     .admin-header {
         padding: 15px;
     }
@@ -735,13 +972,14 @@ input:checked + .slider:before {
     }
 
     .admin-header h1 {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
     }
 
     .header-right {
         width: 100%;
         justify-content: space-between;
         flex-wrap: wrap;
+        gap: 10px;
     }
 
     .header-right span {
@@ -753,7 +991,7 @@ input:checked + .slider:before {
         font-size: 0.85rem;
     }
 
-    /* Stats: 2 colunas */
+    /* Stats */
     .stats-container {
         margin: 20px auto;
         padding: 0 15px;
@@ -796,54 +1034,33 @@ input:checked + .slider:before {
         max-width: 100%;
     }
 
-    .search-box input {
-        padding: 10px 12px 10px 40px;
-        font-size: 0.9rem;
-    }
-
     .controls-buttons {
         width: 100%;
-        flex-wrap: wrap;
     }
 
     .controls-buttons button {
         flex: 1;
-        min-width: 140px;
-        padding: 10px 15px;
-        font-size: 0.85rem;
     }
 
     /* Tabela */
     .table-container {
-        margin: 0 auto 30px;
         padding: 0 15px;
-        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .usuarios-table {
-        font-size: 0.85rem;
+        min-width: 800px;
     }
 
     .usuarios-table th,
     .usuarios-table td {
         padding: 10px 8px;
-    }
-
-    .usuarios-table th {
-        font-size: 0.8rem;
-    }
-
-    .status-badge {
-        padding: 4px 10px;
-        font-size: 0.75rem;
-    }
-
-    .admin-badge {
-        font-size: 1rem;
-    }
-
-    .btn-action {
-        font-size: 1rem;
+        font-size: 0.85rem;
     }
 
     /* Modal */
@@ -869,7 +1086,7 @@ input:checked + .slider:before {
         padding: 20px;
     }
 
-    /* Permissões */
+    /* Permissoes */
     .painel-item {
         padding: 12px;
     }
@@ -882,7 +1099,7 @@ input:checked + .slider:before {
         font-size: 0.8rem;
     }
 
-    /* Histórico */
+    /* Historico */
     .historico-lista {
         max-height: 400px;
     }
@@ -897,12 +1114,12 @@ input:checked + .slider:before {
     }
 }
 
-/* ========================================
-   📱 SMARTPHONES (menor que 480px)
-   📝 MODIFICAR AQUI: Layout mobile otimizado
-   ======================================== */
+/* ==============================================================================
+   RESPONSIVIDADE - SMARTPHONES (menor que 480px)
+   ============================================================================== */
+
 @media (max-width: 480px) {
-    /* Header super compacto */
+    /* Header */
     .admin-header {
         padding: 12px;
     }
@@ -917,27 +1134,29 @@ input:checked + .slider:before {
     }
 
     .admin-header h1 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
     }
 
     .admin-header h1 i {
         margin-right: 8px;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .header-right span {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+        width: 100%;
+        text-align: center;
+        order: -1;
     }
 
     .btn-header {
-        padding: 5px 10px;
+        padding: 6px 10px;
         font-size: 0.8rem;
+        flex: 1;
+        justify-content: center;
     }
 
-    /* ========================================
-       📊 STATS: 1 COLUNA NO MOBILE
-       📝 Cards empilhados verticalmente
-       ======================================== */
+    /* Stats - 1 coluna */
     .stats-container {
         margin: 15px auto;
         padding: 0 12px;
@@ -967,7 +1186,7 @@ input:checked + .slider:before {
         font-size: 0.8rem;
     }
 
-    /* Controles mobile */
+    /* Controles */
     .controls-container {
         margin: 0 auto 15px;
         padding: 0 12px;
@@ -976,11 +1195,6 @@ input:checked + .slider:before {
 
     .search-box input {
         padding: 10px 12px 10px 38px;
-        font-size: 0.85rem;
-    }
-
-    .search-box i {
-        left: 12px;
         font-size: 0.9rem;
     }
 
@@ -990,34 +1204,23 @@ input:checked + .slider:before {
 
     .controls-buttons button {
         padding: 10px 12px;
-        font-size: 0.8rem;
-        min-width: auto;
+        font-size: 0.85rem;
     }
 
-    .controls-buttons button i {
-        font-size: 0.9rem;
-    }
-
-    /* ========================================
-       📋 TABELA: LAYOUT RESPONSIVO MOBILE
-       📝 Scroll horizontal + fontes reduzidas
-       ======================================== */
+    /* Tabela */
     .table-container {
-        margin: 0 auto 20px;
         padding: 0 12px;
-        border-radius: 10px;
-        overflow-x: auto;
+        margin-bottom: 20px;
     }
 
     .usuarios-table {
-        font-size: 0.75rem;
-        min-width: 600px; /* Força scroll horizontal */
+        min-width: 700px;
+        font-size: 0.8rem;
     }
 
     .usuarios-table th,
     .usuarios-table td {
         padding: 8px 6px;
-        white-space: nowrap;
     }
 
     .usuarios-table th {
@@ -1029,16 +1232,13 @@ input:checked + .slider:before {
         font-size: 0.7rem;
     }
 
-    .admin-badge {
+    .btn-action {
+        width: 28px;
+        height: 28px;
         font-size: 0.9rem;
     }
 
-    .btn-action {
-        font-size: 0.95rem;
-        padding: 3px;
-    }
-
-    /* Modal mobile */
+    /* Modal */
     .modal {
         padding: 10px;
     }
@@ -1054,17 +1254,13 @@ input:checked + .slider:before {
     }
 
     .modal-header h2 {
-        font-size: 1.2rem;
-    }
-
-    .modal-header h2 i {
-        margin-right: 8px;
+        font-size: 1.15rem;
     }
 
     .btn-close-modal {
-        font-size: 1.8rem;
-        width: 28px;
-        height: 28px;
+        font-size: 1.6rem;
+        width: 32px;
+        height: 32px;
     }
 
     .modal-content form,
@@ -1083,11 +1279,11 @@ input:checked + .slider:before {
 
     .form-control {
         padding: 10px;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
     }
 
     .form-group small {
-        font-size: 0.75rem;
+        font-size: 0.8rem;
     }
 
     .modal-buttons {
@@ -1097,21 +1293,20 @@ input:checked + .slider:before {
 
     .modal-buttons button {
         width: 100%;
-        padding: 10px;
-        font-size: 0.9rem;
+        padding: 12px;
     }
 
     .alert {
-        padding: 10px;
-        font-size: 0.85rem;
+        padding: 10px 12px;
+        font-size: 0.9rem;
     }
 
-    /* Permissões mobile */
+    /* Permissoes */
     .painel-item {
         padding: 10px;
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 12px;
     }
 
     .painel-toggle {
@@ -1128,7 +1323,7 @@ input:checked + .slider:before {
     }
 
     .switch {
-        width: 45px;
+        width: 46px;
         height: 24px;
     }
 
@@ -1138,10 +1333,10 @@ input:checked + .slider:before {
     }
 
     input:checked + .slider:before {
-        transform: translateX(21px);
+        transform: translateX(22px);
     }
 
-    /* Histórico mobile */
+    /* Historico */
     .historico-lista {
         max-height: 300px;
     }
@@ -1155,17 +1350,17 @@ input:checked + .slider:before {
     }
 
     .historico-item .detalhes {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
     }
 
     .historico-item .meta {
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         gap: 3px;
     }
 
-    /* Loading mobile */
+    /* Loading */
     .loading {
-        padding: 30px;
+        padding: 40px 15px;
     }
 
     .loading-spinner {
@@ -1175,9 +1370,10 @@ input:checked + .slider:before {
     }
 }
 
-/* ========================================
-   📱 SMARTPHONES MUITO PEQUENOS (< 360px)
-   ======================================== */
+/* ==============================================================================
+   RESPONSIVIDADE - SMARTPHONES MUITO PEQUENOS (menor que 360px)
+   ============================================================================== */
+
 @media (max-width: 360px) {
     .admin-header {
         padding: 10px;
@@ -1189,15 +1385,11 @@ input:checked + .slider:before {
     }
 
     .admin-header h1 {
-        font-size: 1.2rem;
-    }
-
-    .header-right span {
-        font-size: 0.8rem;
+        font-size: 1.1rem;
     }
 
     .btn-header {
-        padding: 4px 8px;
+        padding: 5px 8px;
         font-size: 0.75rem;
     }
 
@@ -1233,13 +1425,14 @@ input:checked + .slider:before {
     }
 
     .usuarios-table {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
     }
 }
 
-/* ========================================
-   📱 LANDSCAPE MODE (altura < 500px)
-   ======================================== */
+/* ==============================================================================
+   RESPONSIVIDADE - LANDSCAPE MODE (altura menor que 500px)
+   ============================================================================== */
+
 @media (max-height: 500px) and (orientation: landscape) {
     .admin-header {
         padding: 8px 15px;
@@ -1248,16 +1441,20 @@ input:checked + .slider:before {
 
     .stats-container {
         margin: 15px auto;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(4, 1fr);
     }
 
     .stat-card {
-        padding: 12px;
+        padding: 10px;
     }
 
     .stat-icon {
-        width: 45px;
-        height: 45px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .stat-info h3 {
+        font-size: 1.2rem;
     }
 
     .modal-content {
@@ -1265,6 +1462,50 @@ input:checked + .slider:before {
     }
 
     .historico-lista {
-        max-height: 250px;
+        max-height: 200px;
     }
+}
+
+/* ==============================================================================
+   SAFE AREA (NOTCH)
+   ============================================================================== */
+
+@supports (padding-top: env(safe-area-inset-top)) {
+    .admin-header {
+        padding-top: max(20px, env(safe-area-inset-top));
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+
+    .stats-container,
+    .controls-container,
+    .table-container {
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+}
+
+/* ==============================================================================
+   ACESSIBILIDADE
+   ============================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus visible para navegacao por teclado */
+.btn-header:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-action:focus-visible,
+.form-control:focus-visible,
+.btn-close-modal:focus-visible {
+    outline: 3px solid #dc3545;
+    outline-offset: 2px;
 }
