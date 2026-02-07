@@ -35,6 +35,7 @@ from backend.routes.painel11_routes import painel11_bp
 from backend.routes.painel12_routes import painel12_bp
 from backend.routes.painel13_routes import painel13_bp
 
+
 # =========================================================
 # CONFIGURAÇÃO INICIAL
 # =========================================================

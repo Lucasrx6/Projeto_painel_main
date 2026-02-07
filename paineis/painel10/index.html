@@ -3,107 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análise Pronto Socorro - Anchieta Ceilândia</title>
+    <meta name="description" content="Analise de Atendimentos do Pronto Socorro - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
+    <title>Analise Pronto Socorro - Anchieta Ceilandia</title>
+
+    <!-- Fontes e Icones -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Estilos -->
     <link rel="stylesheet" href="/paineis/painel10/style.css">
     <link rel="icon" href="/static/img/favicon.png">
 </head>
 <body>
     <div class="painel-container">
-        <!-- Cabeçalho -->
-        <div class="painel-header">
+
+        <!-- Cabecalho -->
+        <header class="painel-header" role="banner">
             <div class="header-content">
                 <div class="header-left">
-                    <img src="/static/img/logo.png" alt="Anchieta" onerror="this.style.display='none'">
-                    <h1><i class="fas fa-chart-line"></i> Análise Pronto Socorro</h1>
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1>
+                            <i class="fas fa-chart-line" aria-hidden="true"></i>
+                            Analise Pronto Socorro
+                        </h1>
+                        <span class="header-subtitle">Monitoramento em Tempo Real</span>
+                    </div>
                 </div>
                 <div class="header-right">
-                    <button id="btn-voltar" class="btn-voltar">
-                        <i class="fas fa-arrow-left"></i> Voltar
-                    </button>
-                    <button id="btn-auto-scroll" class="btn-auto-scroll">
-                        <i class="fas fa-play"></i> Auto Scroll
-                    </button>
-                    <button id="btn-refresh" class="btn-refresh">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <span class="ultima-atualizacao">-</span>
+                    <div class="header-status">
+                        <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Ativar rolagem automatica" aria-label="Ativar rolagem automatica">
+                            <i class="fas fa-play" aria-hidden="true"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar ao Dashboard" aria-label="Voltar ao Dashboard">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <!-- Dashboard Geral -->
-        <div class="dashboard-geral">
-            <div class="stat-card card-total">
-                <div class="stat-icon icon-total">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-dia">-</h3>
-                    <p>Total Atendimentos Hoje</p>
-                </div>
+        <!-- Dashboard Resumo -->
+        <section class="dashboard-resumo" aria-label="Resumo do Pronto Socorro">
+            <div class="resumo-grid">
+
+                <!-- Total Atendimentos -->
+                <article class="resumo-card card-total">
+                    <div class="card-icon">
+                        <i class="fas fa-users" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-dia">-</span>
+                        <span class="card-label">Total Hoje</span>
+                    </div>
+                </article>
+
+                <!-- Realizados -->
+                <article class="resumo-card card-realizados">
+                    <div class="card-icon">
+                        <i class="fas fa-user-check" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-realizados">-</span>
+                        <span class="card-label">Realizados</span>
+                    </div>
+                </article>
+
+                <!-- Aguardando -->
+                <article class="resumo-card card-aguardando">
+                    <div class="card-icon">
+                        <i class="fas fa-clock" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-aguardando">-</span>
+                        <span class="card-label">Aguardando</span>
+                    </div>
+                </article>
+
+                <!-- Alta -->
+                <article class="resumo-card card-alta">
+                    <div class="card-icon">
+                        <i class="fas fa-door-open" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-alta">-</span>
+                        <span class="card-label">De Alta</span>
+                    </div>
+                </article>
+
+                <!-- Tempo Espera -->
+                <article class="resumo-card card-tempo-espera">
+                    <div class="card-icon">
+                        <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="tempo-medio-espera">-</span>
+                        <span class="card-label">Espera (min)</span>
+                    </div>
+                </article>
+
+                <!-- Tempo Permanencia -->
+                <article class="resumo-card card-permanencia">
+                    <div class="card-icon">
+                        <i class="fas fa-history" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="tempo-medio-permanencia">-</span>
+                        <span class="card-label">Permanencia (min)</span>
+                    </div>
+                </article>
+
             </div>
+        </section>
 
-            <div class="stat-card card-realizados">
-                <div class="stat-icon icon-realizados">
-                    <i class="fas fa-user-check"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-realizados">-</h3>
-                    <p>Atendimentos Realizados</p>
-                </div>
-            </div>
-
-            <div class="stat-card card-aguardando">
-                <div class="stat-icon icon-aguardando">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-aguardando">-</h3>
-                    <p>Aguardando Atendimento</p>
-                </div>
-            </div>
-
-            <div class="stat-card card-alta">
-                <div class="stat-icon icon-alta">
-                    <i class="fas fa-door-open"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-alta">-</h3>
-                    <p>Pacientes de Alta</p>
-                </div>
-            </div>
-
-            <div class="stat-card card-tempo">
-                <div class="stat-icon icon-tempo">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="tempo-medio-espera">-</h3>
-                    <p>Tempo Médio Espera (min)</p>
-                </div>
-            </div>
-
-            <div class="stat-card card-permanencia">
-                <div class="stat-icon icon-permanencia">
-                    <i class="fas fa-history"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="tempo-medio-permanencia">-</h3>
-                    <p>Tempo Médio Total (min)</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Conteúdo Principal -->
-        <div class="ps-content" id="ps-content">
-            <div class="loading-container">
+        <!-- Conteudo Principal -->
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
                 <div class="loading-spinner"></div>
                 <p>Carregando dados...</p>
             </div>
-        </div>
+        </main>
+
     </div>
 
+    <!-- Scripts -->
     <script src="/paineis/painel10/main.js"></script>
 </body>
 </html>
