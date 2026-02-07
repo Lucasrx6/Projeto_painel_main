@@ -3,92 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prescrições de Nutrição - Anchieta Ceilândia</title>
-    <!-- Font Awesome -->
+    <meta name="description" content="Prescricoes de Nutricao - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
+    <title>Prescricoes de Nutricao - Anchieta Ceilandia</title>
+
+    <!-- Fontes e Icones -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- CSS Customizado -->
+
+    <!-- Estilos -->
     <link rel="stylesheet" href="/paineis/painel13/style.css">
     <link rel="icon" href="/static/img/favicon.png">
 </head>
 <body>
     <div class="painel-container">
-        <!-- Cabeçalho Compacto -->
-        <div class="painel-header">
+
+        <!-- Cabecalho -->
+        <header class="painel-header" role="banner">
             <div class="header-content">
                 <div class="header-left">
-                    <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
-                    <h1><i class="fas fa-apple-alt"></i> Prescrições de Nutrição</h1>
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1>
+                            <i class="fas fa-utensils" aria-hidden="true"></i>
+                            Prescricoes de Nutricao
+                        </h1>
+                        <span class="header-subtitle">Controle de Dietas e Prescricoes</span>
+                    </div>
                 </div>
                 <div class="header-right">
-                    <!-- Filtro de Setor -->
-                    <select id="filtro-setor" class="filtro-setor-select">
-                        <option value="">Carregando setores...</option>
-                    </select>
-                    <button id="btn-voltar" class="btn-voltar">
-                        <i class="fas fa-arrow-left"></i> Voltar
-                    </button>
-                    <button id="btn-auto-scroll" class="btn-auto-scroll">
-                        <i class="fas fa-play"></i> Auto Scroll
-                    </button>
-                    <button id="btn-refresh" class="btn-refresh">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <span class="ultima-atualizacao">-</span>
-                </div>
-            </div>
-        </div>
+                    <div class="header-controls">
+                        <!-- Filtro de Setor -->
+                        <div class="filtro-container">
+                            <label for="filtro-setor" class="sr-only">Filtrar por setor</label>
+                            <select id="filtro-setor" class="filtro-setor-select" aria-label="Filtrar por setor">
+                                <option value="">Todos os Setores</option>
+                            </select>
+                        </div>
 
-        <!-- Mini Dashboard Compacto -->
-        <div class="mini-dashboard">
-            <div class="stat-card">
-                <div class="stat-icon icon-setor">
-                    <i class="fas fa-hospital"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="nome-setor">Todos</h3>
-                    <p>Setor</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon icon-total">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-pacientes">-</h3>
-                    <p>Total Pacientes</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon icon-com-prescricao">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="com-prescricao">-</h3>
-                    <p>Com Prescrição</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon icon-sem-prescricao">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="sem-prescricao">-</h3>
-                    <p>Sem Prescrição</p>
-                </div>
-            </div>
-        </div>
+                        <!-- Status e Hora -->
+                        <div class="header-status">
+                            <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
+                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                        </div>
+                    </div>
 
-        <!-- Conteúdo Principal -->
-        <div class="nutricao-content" id="nutricao-content">
-            <!-- Loading inicial -->
-            <div class="loading-container">
+                    <div class="header-actions">
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Ativar rolagem automatica" aria-label="Ativar rolagem automatica">
+                            <i class="fas fa-play" aria-hidden="true"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar ao Dashboard" aria-label="Voltar ao Dashboard">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Resumo -->
+        <section class="dashboard-resumo" aria-label="Resumo de Nutricao">
+            <div class="resumo-grid">
+
+                <!-- Setor -->
+                <article class="resumo-card card-setor">
+                    <div class="card-icon">
+                        <i class="fas fa-hospital" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="nome-setor">Todos</span>
+                        <span class="card-label">Setor</span>
+                    </div>
+                </article>
+
+                <!-- Total Pacientes -->
+                <article class="resumo-card card-total">
+                    <div class="card-icon">
+                        <i class="fas fa-users" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-pacientes">-</span>
+                        <span class="card-label">Total Pacientes</span>
+                    </div>
+                </article>
+
+                <!-- Com Prescricao -->
+                <article class="resumo-card card-com-prescricao">
+                    <div class="card-icon">
+                        <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="com-prescricao">-</span>
+                        <span class="card-label">Com Prescricao</span>
+                    </div>
+                </article>
+
+                <!-- Sem Prescricao -->
+                <article class="resumo-card card-sem-prescricao">
+                    <div class="card-icon">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="sem-prescricao">-</span>
+                        <span class="card-label">Sem Prescricao</span>
+                    </div>
+                </article>
+
+                <!-- Desatualizadas -->
+                <article class="resumo-card card-desatualizado">
+                    <div class="card-icon">
+                        <i class="fas fa-calendar-times" aria-hidden="true"></i>
+                    </div>
+                    <div class="card-content">
+                        <span class="card-value" id="desatualizadas">-</span>
+                        <span class="card-label">Desatualizadas</span>
+                    </div>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- Conteudo Principal -->
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
                 <div class="loading-spinner"></div>
                 <p>Carregando dados...</p>
             </div>
-        </div>
+        </main>
+
     </div>
 
-    <!-- JavaScript -->
+    <!-- Scripts -->
     <script src="/paineis/painel13/main.js"></script>
 </body>
 </html>
