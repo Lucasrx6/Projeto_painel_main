@@ -1,0 +1,56 @@
+
+==============================================================
+           MODO DESENVOLVIMENTO ATIVO [LOCAL]
+==============================================================
+  NAO USE EM PRODUCAO!
+
+  Caracteristicas:
+  - Debug habilitado
+  - Stack traces visiveis
+  - Auto-reload ativo
+  - Cookies sem flag Secure (HTTP permitido)
+  - Logs detalhados (DEBUG)
+  - CORS liberado (*)
+  - Rate limiting desabilitado
+  - Cache desabilitado
+
+  Banco de Dados:
+  - Host: localhost
+  - Database: postgres
+  - User: postgres
+  - Port: 5432
+==============================================================
+        
+
+============================================================
+HOSPITAL MANAGEMENT DASHBOARD - SERVIDOR INICIADO
+============================================================
+Sistema de autenticação ativo
+Headers de segurança habilitados
+Sistema de logging configurado
+CORS configurado
+Modo DEBUG ativo
+   • /debug/routes - Ver rotas registradas
+   • /debug/check-files - Verificar arquivos
+Painéis disponíveis:
+   • Evolução de Turno      → /painel/painel2
+   • Médicos PS             → /painel/painel3
+   • Ocupação Hospitalar    → /painel/painel4
+   • Cirurgias do Dia       → /painel/painel5
+   • Priorização IA         → /painel/painel6
+   • Detecção Sepse         → /painel/painel7
+   • Situação Pacientes     → /painel/painel8
+   • Lab Pendentes          → /painel/painel9
+   • Análise PS             → /painel/painel10
+   • Internação PS          → /painel/painel11
+   • Ocupação e Produção    → /painel/painel12
+   • Mapa de Nutrição       → /painel/painel13
+ URLs de Acesso:
+   • Local:                 http://localhost:5000
+   • Local (IP):            http://127.0.0.1:5000
+   • Rede Local:            http://172.16.1.75:5000
+   • VPN/Remoto:            http://<IP-VPN>:5000
+============================================================
+
+ * Serving Flask app 'app'
+ * Debug mode: on

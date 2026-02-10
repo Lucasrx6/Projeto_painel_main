@@ -1,6 +1,7 @@
 // ========================================
 // PAINEL 8 - ENFERMARIA COM AUTO-SCROLL ROBUSTO
 // Versao com Watchdog Funcional e Compatibilidade Cross-Browser
+// Correcao: Acentuacao nos icones Lab/Imagem (3 estados)
 // ========================================
 
 const BASE_URL = window.location.origin;
@@ -56,7 +57,7 @@ function inicializar() {
     configurarVisibilityAPI();
     carregarSetores();
 
-    setInterval(() => {
+    setInterval(function() {
         if (!Estado.autoScroll.emCicloDeReset) {
             carregarDados();
         }
@@ -77,7 +78,7 @@ if (document.readyState === 'loading') {
 // ========================================
 
 function configurarVisibilityAPI() {
-    document.addEventListener('visibilitychange', () => {
+    document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
             console.log('[VISIBILITY] Aba inativa - pausando scroll');
             pausarScrollTemporariamente();
@@ -95,23 +96,23 @@ function configurarVisibilityAPI() {
 // ========================================
 
 function configurarBotoes() {
-    const btnVoltar = document.getElementById('btn-voltar');
+    var btnVoltar = document.getElementById('btn-voltar');
     if (btnVoltar) {
-        btnVoltar.addEventListener('click', () => {
+        btnVoltar.addEventListener('click', function() {
             window.location.href = '/frontend/dashboard.html';
         });
     }
 
-    const btnRefresh = document.getElementById('btn-refresh');
+    var btnRefresh = document.getElementById('btn-refresh');
     if (btnRefresh) {
-        btnRefresh.addEventListener('click', () => {
+        btnRefresh.addEventListener('click', function() {
             carregarDados();
         });
     }
 
-    const btnAutoScroll = document.getElementById('btn-auto-scroll');
+    var btnAutoScroll = document.getElementById('btn-auto-scroll');
     if (btnAutoScroll) {
-        btnAutoScroll.addEventListener('click', () => {
+        btnAutoScroll.addEventListener('click', function() {
             if (Estado.autoScroll.ativo) {
                 desativarAutoScroll();
             } else {
@@ -120,9 +121,9 @@ function configurarBotoes() {
         });
     }
 
-    const filtroSetor = document.getElementById('filtro-setor');
+    var filtroSetor = document.getElementById('filtro-setor');
     if (filtroSetor) {
-        filtroSetor.addEventListener('change', (e) => {
+        filtroSetor.addEventListener('change', function(e) {
             Estado.setorSelecionado = e.target.value;
             localStorage.setItem('painel8_setor', Estado.setorSelecionado);
             carregarDados();
@@ -134,29 +135,29 @@ function configurarBotoes() {
 // CARREGAMENTO DE DADOS
 // ========================================
 
-async function carregarSetores() {
-    try {
-        const res = await fetch(CONFIG.apiSetores);
-        const data = await res.json();
-
-        if (data.success) {
-            Estado.setores = data.setores;
-            popularSelectSetores();
-            carregarDados();
-        }
-    } catch (erro) {
-        console.error('[PAINEL8] Erro ao carregar setores:', erro);
-    }
+function carregarSetores() {
+    fetch(CONFIG.apiSetores)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                Estado.setores = data.setores;
+                popularSelectSetores();
+                carregarDados();
+            }
+        })
+        .catch(function(erro) {
+            console.error('[PAINEL8] Erro ao carregar setores:', erro);
+        });
 }
 
 function popularSelectSetores() {
-    const select = document.getElementById('filtro-setor');
+    var select = document.getElementById('filtro-setor');
     if (!select) return;
 
     select.innerHTML = '<option value="">Todos os Setores</option>';
 
-    Estado.setores.forEach(setor => {
-        const option = document.createElement('option');
+    Estado.setores.forEach(function(setor) {
+        var option = document.createElement('option');
         option.value = setor.nm_setor;
         option.textContent = setor.nm_setor;
         if (setor.nm_setor === Estado.setorSelecionado) {
@@ -166,60 +167,63 @@ function popularSelectSetores() {
     });
 }
 
-async function carregarDados() {
-    try {
-        console.log('[PAINEL8] Carregando dados...');
+function carregarDados() {
+    console.log('[PAINEL8] Carregando dados...');
 
-        const scrollEstaAtivo = Estado.autoScroll.ativo;
-        if (scrollEstaAtivo) {
-            pausarScrollTemporariamente();
-        }
-
-        let url = CONFIG.apiEnfermaria;
-        if (Estado.setorSelecionado) {
-            url += `?setor=${encodeURIComponent(Estado.setorSelecionado)}`;
-        }
-
-        const [enfermariaRes, statsRes] = await Promise.all([
-            fetch(url),
-            Estado.setorSelecionado
-                ? fetch(`${CONFIG.apiStats}?setor=${encodeURIComponent(Estado.setorSelecionado)}`)
-                : Promise.resolve(null)
-        ]);
-
-        if (!enfermariaRes.ok) {
-            throw new Error('Erro ao carregar dados');
-        }
-
-        const enfermariaData = await enfermariaRes.json();
-        const statsData = statsRes ? await statsRes.json() : null;
-
-        if (enfermariaData.success) {
-            Estado.dadosEnfermaria = enfermariaData.data;
-            renderizarTabela(Estado.dadosEnfermaria);
-            atualizarHoraAtualizacao();
-
-            if (statsData && statsData.success && statsData.stats) {
-                atualizarDashboard(statsData.stats);
-            }
-
-            if (scrollEstaAtivo) {
-                setTimeout(() => {
-                    retomarScrollTemporario();
-                }, 500);
-            }
-
-            agendarInicioAutomaticoScroll();
-
-            console.log('[PAINEL8] Dados carregados com sucesso');
-        } else {
-            console.error('[PAINEL8] Erro nos dados:', enfermariaData);
-            mostrarErro('Erro ao processar dados');
-        }
-    } catch (erro) {
-        console.error('[PAINEL8] Erro:', erro);
-        mostrarErro('Erro de conexao');
+    var scrollEstaAtivo = Estado.autoScroll.ativo;
+    if (scrollEstaAtivo) {
+        pausarScrollTemporariamente();
     }
+
+    var url = CONFIG.apiEnfermaria;
+    if (Estado.setorSelecionado) {
+        url += '?setor=' + encodeURIComponent(Estado.setorSelecionado);
+    }
+
+    var statsUrl = Estado.setorSelecionado
+        ? CONFIG.apiStats + '?setor=' + encodeURIComponent(Estado.setorSelecionado)
+        : null;
+
+    var enfermariaPromise = fetch(url).then(function(res) {
+        if (!res.ok) throw new Error('Erro ao carregar dados');
+        return res.json();
+    });
+
+    var statsPromise = statsUrl
+        ? fetch(statsUrl).then(function(res) { return res.json(); })
+        : Promise.resolve(null);
+
+    Promise.all([enfermariaPromise, statsPromise])
+        .then(function(results) {
+            var enfermariaData = results[0];
+            var statsData = results[1];
+
+            if (enfermariaData.success) {
+                Estado.dadosEnfermaria = enfermariaData.data;
+                renderizarTabela(Estado.dadosEnfermaria);
+                atualizarHoraAtualizacao();
+
+                if (statsData && statsData.success && statsData.stats) {
+                    atualizarDashboard(statsData.stats);
+                }
+
+                if (scrollEstaAtivo) {
+                    setTimeout(function() {
+                        retomarScrollTemporario();
+                    }, 500);
+                }
+
+                agendarInicioAutomaticoScroll();
+                console.log('[PAINEL8] Dados carregados com sucesso');
+            } else {
+                console.error('[PAINEL8] Erro nos dados:', enfermariaData);
+                mostrarErro('Erro ao processar dados');
+            }
+        })
+        .catch(function(erro) {
+            console.error('[PAINEL8] Erro:', erro);
+            mostrarErro('Erro de conexao');
+        });
 }
 
 function agendarInicioAutomaticoScroll() {
@@ -227,7 +231,7 @@ function agendarInicioAutomaticoScroll() {
         return;
     }
 
-    Estado.timers.inicioAutomatico = setTimeout(() => {
+    Estado.timers.inicioAutomatico = setTimeout(function() {
         console.log('[AUTO-SCROLL] Ativando automaticamente apos delay inicial');
         ativarAutoScroll();
         Estado.timers.inicioAutomatico = null;
@@ -235,7 +239,7 @@ function agendarInicioAutomaticoScroll() {
 }
 
 function atualizarDashboard(stats) {
-    const elementos = {
+    var elementos = {
         'nome-setor': stats.nm_setor || 'Todos',
         'leitos-ocupados': stats.leitos_ocupados || 0,
         'total-leitos': stats.total_leitos || 0,
@@ -244,9 +248,10 @@ function atualizarDashboard(stats) {
         'pacientes-criticos': stats.pacientes_criticos || 0
     };
 
-    for (const [id, valor] of Object.entries(elementos)) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = valor;
+    var ids = Object.keys(elementos);
+    for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) el.textContent = elementos[ids[i]];
     }
 }
 
@@ -298,7 +303,7 @@ function retomarScrollTemporario() {
 }
 
 function atualizarBotaoAutoScroll(ativo) {
-    const btn = document.getElementById('btn-auto-scroll');
+    var btn = document.getElementById('btn-auto-scroll');
     if (!btn) return;
 
     if (ativo) {
@@ -328,7 +333,7 @@ function limparTimersScroll() {
 function iniciarScrollLoop() {
     pararScrollLoop();
 
-    const tbody = getScrollContainer();
+    var tbody = getScrollContainer();
     if (!tbody) {
         console.warn('[AUTO-SCROLL] Container de scroll nao encontrado');
         return;
@@ -357,40 +362,41 @@ function executarScrollFrame(timestamp) {
         return;
     }
 
-    const tbody = getScrollContainer();
+    var tbody = getScrollContainer();
     if (!tbody) {
         Estado.autoScroll.frameId = requestAnimationFrame(executarScrollFrame);
         return;
     }
 
-    const scrollMax = tbody.scrollHeight - tbody.clientHeight;
+    var scrollMax = tbody.scrollHeight - tbody.clientHeight;
 
     if (scrollMax <= 0) {
         Estado.autoScroll.frameId = requestAnimationFrame(executarScrollFrame);
         return;
     }
 
-    const deltaTime = timestamp - Estado.autoScroll.ultimoTimestamp;
+    var deltaTime = timestamp - Estado.autoScroll.ultimoTimestamp;
 
     if (deltaTime >= CONFIG.scrollInterval) {
         Estado.autoScroll.ultimoTimestamp = timestamp;
 
-        const scrollAtual = tbody.scrollTop;
+        var scrollAtual = tbody.scrollTop;
 
         if (scrollAtual >= scrollMax - 2) {
             iniciarCicloDeReset(tbody);
             return;
         }
 
-        const novoScroll = Math.min(scrollAtual + CONFIG.velocidadeScroll, scrollMax);
+        var novoScroll = Math.min(scrollAtual + CONFIG.velocidadeScroll, scrollMax);
         tbody.scrollTop = novoScroll;
 
         // Fallback: tenta scrollTo se scrollTop nao funcionou
         if (Math.abs(tbody.scrollTop - novoScroll) > 1) {
-            tbody.scrollTo({
-                top: novoScroll,
-                behavior: 'instant'
-            });
+            try {
+                tbody.scrollTo({ top: novoScroll, behavior: 'instant' });
+            } catch (e) {
+                tbody.scrollTop = novoScroll;
+            }
         }
     }
 
@@ -403,7 +409,7 @@ function iniciarCicloDeReset(tbody) {
     Estado.autoScroll.emCicloDeReset = true;
     pararScrollLoop();
 
-    Estado.timers.resetScroll = setTimeout(() => {
+    Estado.timers.resetScroll = setTimeout(function() {
         if (!Estado.autoScroll.ativo) {
             Estado.autoScroll.emCicloDeReset = false;
             return;
@@ -413,13 +419,17 @@ function iniciarCicloDeReset(tbody) {
 
         if (tbody) {
             tbody.scrollTop = 0;
-            tbody.scrollTo({ top: 0, behavior: 'instant' });
+            try {
+                tbody.scrollTo({ top: 0, behavior: 'instant' });
+            } catch (e) {
+                tbody.scrollTop = 0;
+            }
         }
 
         Estado.autoScroll.ultimaPosicao = 0;
         Estado.autoScroll.contadorTravamento = 0;
 
-        Estado.timers.retomadaScroll = setTimeout(() => {
+        Estado.timers.retomadaScroll = setTimeout(function() {
             if (!Estado.autoScroll.ativo) {
                 Estado.autoScroll.emCicloDeReset = false;
                 return;
@@ -443,7 +453,7 @@ function iniciarWatchdog() {
 
     console.log('[WATCHDOG] Iniciando monitoramento de travamentos');
 
-    Estado.timers.watchdog = setInterval(() => {
+    Estado.timers.watchdog = setInterval(function() {
         verificarTravamento();
     }, CONFIG.watchdogInterval);
 }
@@ -465,25 +475,25 @@ function verificarTravamento() {
         return;
     }
 
-    const tbody = getScrollContainer();
+    var tbody = getScrollContainer();
     if (!tbody) {
         console.warn('[WATCHDOG] Container de scroll nao encontrado');
         return;
     }
 
-    const posicaoAtual = tbody.scrollTop;
-    const scrollMax = tbody.scrollHeight - tbody.clientHeight;
+    var posicaoAtual = tbody.scrollTop;
+    var scrollMax = tbody.scrollHeight - tbody.clientHeight;
 
     if (scrollMax <= 0) {
         return;
     }
 
-    const jaNoFinal = posicaoAtual >= scrollMax - 2;
-    const posicaoMudou = Math.abs(posicaoAtual - Estado.autoScroll.ultimaPosicao) > 0.5;
+    var jaNoFinal = posicaoAtual >= scrollMax - 2;
+    var posicaoMudou = Math.abs(posicaoAtual - Estado.autoScroll.ultimaPosicao) > 0.5;
 
     if (!posicaoMudou && !jaNoFinal) {
         Estado.autoScroll.contadorTravamento++;
-        console.warn(`[WATCHDOG] Possivel travamento detectado (${Estado.autoScroll.contadorTravamento}/${CONFIG.watchdogTolerancia})`);
+        console.warn('[WATCHDOG] Possivel travamento detectado (' + Estado.autoScroll.contadorTravamento + '/' + CONFIG.watchdogTolerancia + ')');
 
         if (Estado.autoScroll.contadorTravamento >= CONFIG.watchdogTolerancia) {
             console.error('[WATCHDOG] TRAVAMENTO CONFIRMADO - Reiniciando auto-scroll');
@@ -510,7 +520,7 @@ function recuperarDeTravamento(tbody) {
     Estado.autoScroll.pausadoTemporariamente = false;
 
     if (tbody) {
-        const novaPos = tbody.scrollTop + 5;
+        var novaPos = tbody.scrollTop + 5;
         tbody.scrollTop = novaPos;
 
         try {
@@ -520,7 +530,7 @@ function recuperarDeTravamento(tbody) {
         }
     }
 
-    setTimeout(() => {
+    setTimeout(function() {
         if (Estado.autoScroll.ativo) {
             console.log('[WATCHDOG] Reiniciando scroll apos recuperacao');
             iniciarScrollLoop();
@@ -537,13 +547,13 @@ function getScrollContainer() {
 }
 
 function atualizarHoraAtualizacao() {
-    const agora = new Date();
-    const hora = agora.toLocaleTimeString('pt-BR', {
+    var agora = new Date();
+    var hora = agora.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
         minute: '2-digit'
     });
 
-    const elemento = document.querySelector('.ultima-atualizacao');
+    var elemento = document.querySelector('.ultima-atualizacao');
     if (elemento) {
         elemento.textContent = hora;
     }
@@ -552,31 +562,30 @@ function atualizarHoraAtualizacao() {
 function mostrarErro(mensagem) {
     console.error('[PAINEL8] Erro:', mensagem);
 
-    const container = document.getElementById('enfermaria-content');
+    var container = document.getElementById('enfermaria-content');
     if (!container) return;
 
-    container.innerHTML = `
-        <div class="empty-message">
-            <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
-            <h3>Erro ao Carregar Dados</h3>
-            <p>${mensagem}</p>
-            <button onclick="carregarDados()" style="
-                margin-top: 15px;
-                padding: 10px 20px;
-                background: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 0.9rem;
-                font-weight: 600;
-                transition: all 0.3s ease;
-            " onmouseover="this.style.transform='translateY(-2px)'"
-               onmouseout="this.style.transform='translateY(0)'">
-                <i class="fas fa-sync-alt"></i> Tentar Novamente
-            </button>
-        </div>
-    `;
+    container.innerHTML =
+        '<div class="empty-message">' +
+            '<i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>' +
+            '<h3>Erro ao Carregar Dados</h3>' +
+            '<p>' + mensagem + '</p>' +
+            '<button onclick="carregarDados()" style="' +
+                'margin-top: 15px;' +
+                'padding: 10px 20px;' +
+                'background: #dc3545;' +
+                'color: white;' +
+                'border: none;' +
+                'border-radius: 8px;' +
+                'cursor: pointer;' +
+                'font-size: 0.9rem;' +
+                'font-weight: 600;' +
+                'transition: all 0.3s ease;' +
+            '" onmouseover="this.style.transform=\'translateY(-2px)\'"' +
+               ' onmouseout="this.style.transform=\'translateY(0)\'">' +
+                '<i class="fas fa-sync-alt"></i> Tentar Novamente' +
+            '</button>' +
+        '</div>';
 }
 
 // ========================================
@@ -589,23 +598,23 @@ function parseOracleDate(dataString) {
     dataString = dataString.trim();
 
     if (dataString.includes('-') && (dataString.includes(' ') || dataString.split('-').length === 3)) {
-        const dataParsed = new Date(dataString);
+        var dataParsed = new Date(dataString);
         if (!isNaN(dataParsed.getTime())) {
             return dataParsed;
         }
     }
 
-    const meses = {
+    var meses = {
         'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
         'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
     };
 
-    const partes = dataString.split('-');
+    var partes = dataString.split('-');
 
     if (partes.length === 3 && partes[1].length === 3) {
-        const dia = parseInt(partes[0]);
-        const mes = meses[partes[1].toUpperCase()];
-        const ano = parseInt('20' + partes[2]);
+        var dia = parseInt(partes[0]);
+        var mes = meses[partes[1].toUpperCase()];
+        var ano = parseInt('20' + partes[2]);
 
         if (!isNaN(dia) && mes !== undefined && !isNaN(ano)) {
             return new Date(ano, mes, dia);
@@ -616,14 +625,14 @@ function parseOracleDate(dataString) {
 }
 
 function formatarData(dataString) {
-    const data = parseOracleDate(dataString);
+    var data = parseOracleDate(dataString);
     if (!data) return 'Nao informado';
 
-    const dia = String(data.getDate()).padStart(2, '0');
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const ano = data.getFullYear();
+    var dia = String(data.getDate()).padStart(2, '0');
+    var mes = String(data.getMonth() + 1).padStart(2, '0');
+    var ano = data.getFullYear();
 
-    return `${dia}/${mes}/${ano}`;
+    return dia + '/' + mes + '/' + ano;
 }
 
 function getBadgeDataAlta(dataString) {
@@ -631,52 +640,52 @@ function getBadgeDataAlta(dataString) {
         return '<span class="badge-alta badge-sem-info">Nao informado</span>';
     }
 
-    const dataAlta = parseOracleDate(dataString);
+    var dataAlta = parseOracleDate(dataString);
     if (!dataAlta) {
         return '<span class="badge-alta badge-sem-info">Data invalida</span>';
     }
 
-    const hoje = new Date();
+    var hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     dataAlta.setHours(0, 0, 0, 0);
 
-    const diffTime = dataAlta - hoje;
-    const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    var diffTime = dataAlta - hoje;
+    var diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    const dataFormatada = formatarData(dataString);
+    var dataFormatada = formatarData(dataString);
 
     if (diffDias <= 1 && diffDias >= 0) {
-        return `<span class="badge-alta badge-verde" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-check"></i> ${diffDias === 0 ? 'Hoje' : 'Amanha'}
-        </span>`;
+        return '<span class="badge-alta badge-verde" title="Alta prevista: ' + dataFormatada + '">' +
+            '<i class="fas fa-calendar-check"></i> ' + (diffDias === 0 ? 'Hoje' : 'Amanha') +
+        '</span>';
     }
 
     if (diffDias >= 2 && diffDias <= 4) {
-        return `<span class="badge-alta badge-amarelo" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-day"></i> ${diffDias} dias
-        </span>`;
+        return '<span class="badge-alta badge-amarelo" title="Alta prevista: ' + dataFormatada + '">' +
+            '<i class="fas fa-calendar-day"></i> ' + diffDias + ' dias' +
+        '</span>';
     }
 
     if (diffDias >= 5) {
-        return `<span class="badge-alta badge-vermelho" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-calendar-alt"></i> ${diffDias} dias
-        </span>`;
+        return '<span class="badge-alta badge-vermelho" title="Alta prevista: ' + dataFormatada + '">' +
+            '<i class="fas fa-calendar-alt"></i> ' + diffDias + ' dias' +
+        '</span>';
     }
 
     if (diffDias < 0) {
-        return `<span class="badge-alta badge-atrasado" title="Alta prevista: ${dataFormatada}">
-            <i class="fas fa-exclamation-triangle"></i> Atrasada (${Math.abs(diffDias)} dias)
-        </span>`;
+        return '<span class="badge-alta badge-atrasado" title="Alta prevista: ' + dataFormatada + '">' +
+            '<i class="fas fa-exclamation-triangle"></i> Atrasada (' + Math.abs(diffDias) + ' dias)' +
+        '</span>';
     }
 
-    return `<span class="badge-alta badge-sem-info">${dataFormatada}</span>`;
+    return '<span class="badge-alta badge-sem-info">' + dataFormatada + '</span>';
 }
 
 function formatarEspecialidade(especialidade) {
     if (!especialidade || especialidade.trim() === '') {
         return '<span class="texto-neutro">-</span>';
     }
-    return `<span class="especialidade">${especialidade}</span>`;
+    return '<span class="especialidade">' + especialidade + '</span>';
 }
 
 // ========================================
@@ -684,56 +693,59 @@ function formatarEspecialidade(especialidade) {
 // ========================================
 
 function renderizarTabela(dados) {
-    const container = document.getElementById('enfermaria-content');
+    var container = document.getElementById('enfermaria-content');
     if (!container) return;
 
     if (!dados || dados.length === 0) {
-        container.innerHTML = `
-            <div class="empty-message">
-                <i class="fas fa-inbox"></i>
-                <h3>Nenhum registro encontrado</h3>
-                <p>Nao ha dados para o setor selecionado</p>
-            </div>
-        `;
+        container.innerHTML =
+            '<div class="empty-message">' +
+                '<i class="fas fa-inbox"></i>' +
+                '<h3>Nenhum registro encontrado</h3>' +
+                '<p>Nao ha dados para o setor selecionado</p>' +
+            '</div>';
         return;
     }
 
-    const html = `
-        <div class="enfermaria-table-wrapper">
-            <table class="enfermaria-table">
-                <thead>
-                    <tr>
-                        <th>Alta Prevista</th>
-                        <th>Leito</th>
-                        <th>Atendimento</th>
-                        <th>Paciente</th>
-                        <th>Especialidade</th>
-                        <th>Idade</th>
-                        <th>Dias</th>
-                        <th>Prescricao</th>
-                        <th>Lab</th>
-                        <th>Imagem</th>
-                        <th>Evolucao</th>
-                        <th>Parecer</th>
-                        <th>Alergia</th>
-                        <th>NEWS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${dados.map(r => criarLinhaTabela(r)).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    var linhas = '';
+    for (var i = 0; i < dados.length; i++) {
+        linhas += criarLinhaTabela(dados[i]);
+    }
+
+    var html =
+        '<div class="enfermaria-table-wrapper">' +
+            '<table class="enfermaria-table">' +
+                '<thead>' +
+                    '<tr>' +
+                        '<th>Alta Prevista</th>' +
+                        '<th>Leito</th>' +
+                        '<th>Atendimento</th>' +
+                        '<th>Paciente</th>' +
+                        '<th>Especialidade</th>' +
+                        '<th>Idade</th>' +
+                        '<th>Dias</th>' +
+                        '<th>Prescricao</th>' +
+                        '<th>Lab</th>' +
+                        '<th>Imagem</th>' +
+                        '<th>Evolucao</th>' +
+                        '<th>Parecer</th>' +
+                        '<th>Alergia</th>' +
+                        '<th>NEWS</th>' +
+                    '</tr>' +
+                '</thead>' +
+                '<tbody>' +
+                    linhas +
+                '</tbody>' +
+            '</table>' +
+        '</div>';
 
     container.innerHTML = html;
 }
 
 function criarLinhaTabela(registro) {
-    const isVazio = !registro.atendimento;
-    const scoreNews = registro.score_news || 0;
+    var isVazio = !registro.atendimento;
+    var scoreNews = registro.score_news || 0;
 
-    let rowClass = '';
+    var rowClass = '';
     if (isVazio) {
         rowClass = 'leito-vazio';
     } else if (scoreNews >= 7) {
@@ -742,61 +754,61 @@ function criarLinhaTabela(registro) {
         rowClass = 'news-medio-risco';
     }
 
-    const nomeFormatado = formatarNome(registro.paciente);
-    const idadeFormatada = registro.idade ? `${registro.idade} anos` : '-';
+    var nomeFormatado = formatarNome(registro.paciente);
+    var idadeFormatada = registro.idade ? registro.idade + ' anos' : '-';
 
     if (isVazio) {
-        return `
-            <tr class="${rowClass}">
-                <td><span class="texto-neutro">-</span></td>
-                <td><strong>${registro.leito}</strong></td>
-                <td>-</td>
-                <td>VAZIO</td>
-                <td><span class="texto-neutro">-</span></td>
-                <td>-</td>
-                <td>-</td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-                <td><span class="texto-neutro">-</span></td>
-            </tr>
-        `;
+        return '<tr class="' + rowClass + '">' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td><strong>' + registro.leito + '</strong></td>' +
+            '<td>-</td>' +
+            '<td>VAZIO</td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td>-</td>' +
+            '<td>-</td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+            '<td><span class="texto-neutro">-</span></td>' +
+        '</tr>';
     }
 
-    return `
-        <tr class="${rowClass}">
-            <td>${getBadgeDataAlta(registro.dt_previsto_alta)}</td>
-            <td><strong>${registro.leito}</strong></td>
-            <td>${registro.atendimento || '-'}</td>
-            <td>${nomeFormatado}</td>
-            <td>${formatarEspecialidade(registro.especialidade)}</td>
-            <td>${idadeFormatada}</td>
-            <td>${registro.dias_internado || '-'}</td>
-            <td>${getIconePrescricao(registro.nr_prescricao)}</td>
-            <td>${getIconeLab(registro.prescrito_lab_dia)}</td>
-            <td>${getIconeImagem(registro.prescrito_proc_dia)}</td>
-            <td>${getIconeEvolucao(registro.evol_medico)}</td>
-            <td>${getIconeParecer(registro.parecer_pendente)}</td>
-            <td>${getIconeAlergia(registro.alergia)}</td>
-            <td>${getBadgeNEWS(scoreNews)}</td>
-        </tr>
-    `;
+    return '<tr class="' + rowClass + '">' +
+        '<td>' + getBadgeDataAlta(registro.dt_previsto_alta) + '</td>' +
+        '<td><strong>' + registro.leito + '</strong></td>' +
+        '<td>' + (registro.atendimento || '-') + '</td>' +
+        '<td>' + nomeFormatado + '</td>' +
+        '<td>' + formatarEspecialidade(registro.especialidade) + '</td>' +
+        '<td>' + idadeFormatada + '</td>' +
+        '<td>' + (registro.dias_internado || '-') + '</td>' +
+        '<td>' + getIconePrescricao(registro.nr_prescricao) + '</td>' +
+        '<td>' + getIconeLab(registro.prescrito_lab_dia) + '</td>' +
+        '<td>' + getIconeImagem(registro.prescrito_proc_dia) + '</td>' +
+        '<td>' + getIconeEvolucao(registro.evol_medico) + '</td>' +
+        '<td>' + getIconeParecer(registro.parecer_pendente) + '</td>' +
+        '<td>' + getIconeAlergia(registro.alergia) + '</td>' +
+        '<td>' + getBadgeNEWS(scoreNews) + '</td>' +
+    '</tr>';
 }
 
 function formatarNome(nomeCompleto) {
     if (!nomeCompleto || nomeCompleto.trim() === '') return '-';
-    const partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
+    var partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
     if (partes.length === 1) return partes[0];
-    const iniciais = partes.slice(0, -1).map(parte => parte.charAt(0)).join(' ');
-    const ultimoNome = partes[partes.length - 1];
-    return `${iniciais} ${ultimoNome}`;
+    var iniciais = partes.slice(0, -1).map(function(parte) { return parte.charAt(0); }).join(' ');
+    var ultimoNome = partes[partes.length - 1];
+    return iniciais + ' ' + ultimoNome;
 }
 
 // ========================================
-// ICONES COLORIDOS
+// ICONES COLORIDOS - 3 ESTADOS
+// ========================================
+// NULL  -> Sem prescricao     -> traço neutro (-)
+// "Não" -> Prescrito/Pendente -> icone vermelho (aguardando resultado)
+// "Sim" -> Resultado liberado -> icone verde (concluido)
 // ========================================
 
 function getIconePrescricao(nr_prescricao) {
@@ -806,22 +818,42 @@ function getIconePrescricao(nr_prescricao) {
     return '<i class="fas fa-clipboard-check icone-verde" title="Com prescricao"></i>';
 }
 
+/**
+ * Icone de Laboratorio - 3 estados
+ * NULL -> sem exame prescrito -> traço neutro
+ * "Não" -> exame prescrito, resultado pendente -> icone vermelho
+ * "Sim" -> exame prescrito, resultado liberado -> icone verde
+ */
 function getIconeLab(valor) {
-    if (valor === 'Sim') {
-        return '<i class="fas fa-flask icone-verde" title="Lab prescrito"></i>';
+    if (!valor || valor === '' || valor === null || valor === undefined) {
+        return '<span class="texto-neutro">-</span>';
     }
-    if (valor === 'Nao') {
-        return '<i class="fas fa-flask icone-vermelho" title="Lab nao prescrito"></i>';
+    if (valor === 'Sim') {
+        return '<i class="fas fa-flask icone-verde" title="Resultado liberado"></i>';
+    }
+    // "Não" (com ou sem acento)
+    if (valor === 'Não' || valor === 'Nao' || valor === 'N\u00e3o') {
+        return '<i class="fas fa-flask icone-vermelho" title="Resultado pendente"></i>';
     }
     return '<span class="texto-neutro">-</span>';
 }
 
+/**
+ * Icone de Imagem - 3 estados
+ * NULL -> sem exame prescrito -> traço neutro
+ * "Não" -> exame prescrito, laudo pendente -> icone vermelho
+ * "Sim" -> exame prescrito, laudo liberado -> icone verde
+ */
 function getIconeImagem(valor) {
-    if (valor === 'Sim') {
-        return '<i class="fas fa-x-ray icone-verde" title="Imagem prescrita"></i>';
+    if (!valor || valor === '' || valor === null || valor === undefined) {
+        return '<span class="texto-neutro">-</span>';
     }
-    if (valor === 'Nao') {
-        return '<i class="fas fa-x-ray icone-vermelho" title="Imagem nao prescrita"></i>';
+    if (valor === 'Sim') {
+        return '<i class="fas fa-x-ray icone-verde" title="Laudo liberado"></i>';
+    }
+    // "Não" (com ou sem acento)
+    if (valor === 'Não' || valor === 'Nao' || valor === 'N\u00e3o') {
+        return '<i class="fas fa-x-ray icone-vermelho" title="Laudo pendente"></i>';
     }
     return '<span class="texto-neutro">-</span>';
 }
@@ -867,7 +899,7 @@ window.debugAutoScroll = function() {
     console.log('=== DEBUG AUTO-SCROLL ===');
     console.log('Estado:', JSON.stringify(Estado.autoScroll, null, 2));
 
-    const tbody = getScrollContainer();
+    var tbody = getScrollContainer();
     if (tbody) {
         console.log('ScrollTop:', tbody.scrollTop);
         console.log('ScrollHeight:', tbody.scrollHeight);
@@ -888,7 +920,7 @@ window.debugAutoScroll = function() {
 window.forcarReinicioScroll = function() {
     console.log('=== FORCANDO REINICIO DO SCROLL ===');
     desativarAutoScroll();
-    setTimeout(() => {
+    setTimeout(function() {
         ativarAutoScroll();
     }, 1000);
 };

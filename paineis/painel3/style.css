@@ -1,409 +1,710 @@
-/* ========================================
-   🎨 ESTILOS GERAIS - PAINEL 3 (SEM FILTROS)
-   ======================================== */
+/**
+ * PAINEL 3 - Medicos PS - Consultorios
+ * Sistema de Paineis Hospitalares - Hospital Anchieta
+ *
+ * Estrutura:
+ * 1. Variaveis CSS
+ * 2. Reset e Base
+ * 3. Layout Principal
+ * 4. Cabecalho
+ * 5. Tabela de Medicos
+ * 6. Badges e Status
+ * 7. Estados e Feedback
+ * 8. Animacoes
+ * 9. Responsividade
+ */
 
-* {
+/* =========================================================
+   1. VARIAVEIS CSS
+   ========================================================= */
+
+:root {
+    /* Cores Principais - Vermelho Hospital Anchieta */
+    --cor-primaria: #dc3545;
+    --cor-primaria-hover: #c82333;
+    --cor-primaria-light: #f8d7da;
+    --cor-primaria-dark: #bd2130;
+
+    /* Cores de Status */
+    --cor-sucesso: #28a745;
+    --cor-sucesso-light: #d4edda;
+    --cor-alerta: #ffc107;
+    --cor-alerta-light: #fff3cd;
+    --cor-perigo: #dc3545;
+    --cor-perigo-light: #f8d7da;
+    --cor-info: #17a2b8;
+    --cor-info-light: #d1ecf1;
+
+    /* Cores Neutras */
+    --cor-texto: #333333;
+    --cor-texto-secundario: #666666;
+    --cor-texto-muted: #999999;
+    --cor-fundo: #f5f7fa;
+    --cor-fundo-card: #ffffff;
+    --cor-borda: #e9ecef;
+    --cor-borda-light: #f0f0f0;
+
+    /* Gradientes dos Cards */
+    --grad-total: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --grad-logados: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    --grad-deslogados: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    --grad-consultorios: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+
+    /* Sombras */
+    --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --sombra-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --sombra-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --sombra-card-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    /* Espacamentos */
+    --espacamento-xs: 4px;
+    --espacamento-sm: 8px;
+    --espacamento-md: 16px;
+    --espacamento-lg: 24px;
+    --espacamento-xl: 32px;
+
+    /* Bordas */
+    --raio-sm: 4px;
+    --raio-md: 8px;
+    --raio-lg: 12px;
+    --raio-full: 50%;
+
+    /* Tipografia */
+    --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /* Transicoes */
+    --transicao-rapida: 150ms ease;
+    --transicao-normal: 250ms ease;
+
+    /* Z-Index */
+    --z-header: 100;
+    --z-thead: 50;
+}
+
+/* =========================================================
+   2. RESET E BASE
+   ========================================================= */
+
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
 body {
-    background: #f5f7fa;
-    padding: 0;
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--fonte-principal);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
     overflow: hidden;
     height: 100vh;
 }
 
-/* ========================================
-   📦 CONTAINER DO PAINEL
-   ======================================== */
+/* =========================================================
+   3. LAYOUT PRINCIPAL
+   ========================================================= */
 
 .painel-container {
-    background: white;
-    overflow: hidden;
-    max-width: 100%;
-    height: 100vh;
     display: flex;
     flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--cor-fundo);
 }
 
-/* ========================================
-   🎯 CABEÇALHO COMPACTO
-   ======================================== */
+/* =========================================================
+   4. CABECALHO
+   ========================================================= */
 
 .painel-header {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
     color: white;
-    padding: 12px 20px;
+    padding: var(--espacamento-sm) var(--espacamento-md);
     flex-shrink: 0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--sombra-md);
+    z-index: var(--z-header);
 }
 
-.header-top {
+.header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    gap: 15px;
-    flex-wrap: wrap;
+    gap: var(--espacamento-md);
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: var(--espacamento-sm);
 }
 
-/* Logo compacta no header */
-.header-left img {
-    max-height: 35px;
-    height: auto;
-    padding: 5px 8px;
+.header-logo {
+    height: 32px;
+    padding: 4px 6px;
     background: white;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: var(--raio-sm);
+    box-shadow: var(--sombra-sm);
 }
 
-.painel-header h1 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.painel-header h1 i {
+.header-title h1 {
     font-size: 1rem;
-}
-
-/* ========================================
-   🔘 BOTÕES COMPACTOS DO HEADER
-   ======================================== */
-
-.btn-voltar,
-.btn-auto-scroll {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.8rem;
     font-weight: 600;
-    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     gap: 6px;
-    white-space: nowrap;
+    margin: 0;
 }
 
-.btn-voltar i,
-.btn-auto-scroll i {
-    font-size: 0.8rem;
+.header-title h1 i {
+    font-size: 0.9rem;
 }
 
-.btn-voltar:hover,
-.btn-auto-scroll:hover {
-    background: white;
-    color: #dc3545;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.header-subtitle {
+    font-size: 0.7rem;
+    opacity: 0.85;
+    display: block;
+    margin-top: 2px;
 }
 
-.btn-auto-scroll.active {
-    background: #28a745;
-    border-color: #28a745;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
-    }
-    50% {
-        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
-    }
-}
-
-/* ========================================
-   📊 ESTATÍSTICAS COMPACTAS
-   ======================================== */
-
-.stats {
-    display: flex;
-    gap: 15px;
-    margin-top: 6px;
-    font-size: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.stat-item {
+.header-right {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--espacamento-md);
 }
 
-.auto-refresh {
-    margin-left: auto;
-    font-size: 0.7rem;
-    opacity: 0.9;
+.header-actions {
+    display: flex;
+    gap: var(--espacamento-xs);
 }
 
-/* ========================================
-   📊 TABELA
-   ======================================== */
+.btn-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--raio-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
 
-.table-container {
+.btn-header:hover {
+    background: white;
+    color: var(--cor-primaria);
+    transform: translateY(-1px);
+}
+
+.btn-header:active {
+    transform: translateY(0);
+}
+
+.btn-auto-scroll.ativo {
+    background: var(--cor-sucesso);
+    border-color: var(--cor-sucesso);
+    animation: pulsar-borda 2s ease-in-out infinite;
+}
+
+.btn-refresh.girando i {
+    animation: girar 0.5s linear;
+}
+
+/* =========================================================
+   5. TABELA DE MEDICOS
+   ========================================================= */
+
+.painel-main {
     flex: 1;
-    overflow-y: auto;
-    overflow-x: auto;
-    padding: 0;
+    overflow: hidden;
+    padding: var(--espacamento-sm) var(--espacamento-md);
 }
 
-/* Scrollbar customizado */
-.table-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+.tabela-container {
+    height: 100%;
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.table-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.table-container::-webkit-scrollbar-thumb {
-    background: #dc3545;
-    border-radius: 4px;
-}
-
-.table-container::-webkit-scrollbar-thumb:hover {
-    background: #c82333;
-}
-
-/* Tabela */
-table {
-    margin: 0;
+.tabela-medicos {
     width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
-/* Cabeçalho fixo */
-thead {
+/* THEAD */
+.tabela-medicos thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    flex-shrink: 0;
     position: sticky;
     top: 0;
-    z-index: 10;
-    background: #dc3545;
+    z-index: var(--z-thead);
 }
 
-thead th {
-    background: #dc3545;
-    color: white;
+.tabela-medicos thead tr {
+    display: table-row;
+}
+
+.tabela-medicos thead th {
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    text-align: center;
+    font-size: 0.7rem;
     font-weight: 600;
-    font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 12px 10px;
-    border: none;
+    color: white;
+    background: var(--cor-primaria);
+    border-bottom: 2px solid var(--cor-primaria-dark);
     white-space: nowrap;
     user-select: none;
-    text-align: center; /* ✅ ALINHAMENTO CENTRALIZADO */
+}
+
+.tabela-medicos thead th:first-child {
+    border-radius: var(--raio-md) 0 0 0;
+}
+
+.tabela-medicos thead th:last-child {
+    border-radius: 0 var(--raio-md) 0 0;
 }
 
 /* Colunas ordenáveis */
-thead th.ordenavel {
+.tabela-medicos thead th.ordenavel {
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background var(--transicao-rapida);
 }
 
-thead th.ordenavel:hover {
-    background: #c82333;
+.tabela-medicos thead th.ordenavel:hover {
+    background: var(--cor-primaria-hover);
 }
 
-thead th.ordenavel span {
-    margin-right: 5px;
+.tabela-medicos thead th.ordenavel.ativa {
+    background: var(--cor-primaria-dark);
 }
 
-.sort-icon {
-    opacity: 0.5;
-    font-size: 0.75rem;
+.tabela-medicos thead th .icone-sort {
     margin-left: 5px;
-    transition: opacity 0.2s ease;
+    font-size: 0.65rem;
+    opacity: 0.5;
+    transition: opacity var(--transicao-rapida);
 }
 
-.sort-icon.active {
+.tabela-medicos thead th.ativa .icone-sort {
     opacity: 1;
 }
 
-thead th.ordenavel:hover .sort-icon {
+.tabela-medicos thead th.ordenavel:hover .icone-sort {
     opacity: 0.8;
 }
 
+/* Larguras das colunas */
+.col-consultorio { width: 12%; }
+.col-medico { width: 28%; }
+.col-especialidade { width: 25%; }
+.col-status { width: 15%; }
+.col-login { width: 10%; }
+
+/* TBODY com scroll */
+.tabela-medicos tbody {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    scroll-behavior: smooth;
+}
+
+/* Scrollbar customizada */
+.tabela-medicos tbody::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tabela-medicos tbody::-webkit-scrollbar-track {
+    background: var(--cor-borda);
+    border-radius: var(--raio-sm);
+}
+
+.tabela-medicos tbody::-webkit-scrollbar-thumb {
+    background: var(--cor-primaria);
+    border-radius: var(--raio-sm);
+}
+
+.tabela-medicos tbody::-webkit-scrollbar-thumb:hover {
+    background: var(--cor-primaria-hover);
+}
+
 /* Linhas */
-tbody tr {
-    transition: all 0.2s ease;
+.tabela-medicos tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    transition: var(--transicao-rapida);
 }
 
-tbody tr:hover {
-    background: #fff5f5;
-    transform: scale(1.005);
-    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.1);
+.tabela-medicos tbody tr:hover {
+    background: rgba(220, 53, 69, 0.05);
+    transform: scale(1.002);
 }
 
-tbody td {
-    padding: 10px;
-    font-size: 0.85rem;
-    border-bottom: 1px solid #f0f0f0;
-    white-space: nowrap;
+.tabela-medicos tbody td {
+    padding: var(--espacamento-sm) var(--espacamento-md);
     text-align: center;
+    font-size: 0.85rem;
+    color: var(--cor-texto);
+    vertical-align: middle;
+    border-bottom: 1px solid var(--cor-borda-light);
 }
 
-/* ========================================
-   🎨 BADGES DE STATUS
-   ======================================== */
+/* Linha logado - destaque sutil verde */
+.tabela-medicos tbody tr.linha-logado {
+    background: linear-gradient(90deg, rgba(40, 167, 69, 0.05) 0%, transparent 100%);
+    border-left: 3px solid var(--cor-sucesso);
+}
 
-.badge-status {
+/* Linha deslogado - destaque sutil amarelo */
+.tabela-medicos tbody tr.linha-deslogado {
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.05) 0%, transparent 100%);
+    border-left: 3px solid var(--cor-alerta);
+}
+
+/* =========================================================
+   6. BADGES E STATUS
+   ========================================================= */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     padding: 5px 12px;
     border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 600;
-    display: inline-block;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
-.status-logado {
-    background: #d4edda;
+.badge i {
+    font-size: 0.5rem;
+}
+
+/* Badge Logado */
+.badge-logado {
+    background: var(--cor-sucesso-light);
     color: #155724;
     border: 1px solid #c3e6cb;
 }
 
-.status-deslogado {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+.badge-logado i {
+    color: var(--cor-sucesso);
+    animation: pulsar-suave 2s ease-in-out infinite;
 }
 
-/* ========================================
-   ⏳ LOADING
-   ======================================== */
+/* Badge Deslogado */
+.badge-deslogado {
+    background: var(--cor-alerta-light);
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
 
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: #dc3545;
+.badge-deslogado i {
+    color: var(--cor-alerta);
+}
+
+/* Badge Especialidade */
+.badge-especialidade {
+    background: var(--cor-info-light);
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+    text-transform: none;
+    font-weight: 500;
+}
+
+/* Texto auxiliar */
+.texto-muted {
+    color: var(--cor-texto-muted);
+}
+
+/* =========================================================
+   7. ESTADOS E FEEDBACK
+   ========================================================= */
+
+/* Loading */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: var(--espacamento-md);
 }
 
 .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #dc3545;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria);
+    border-radius: var(--raio-full);
+    animation: girar 0.8s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.loading-container p {
+    color: var(--cor-texto-secundario);
+    font-size: 0.9rem;
 }
 
-/* ========================================
-   ❌ MENSAGENS DE ERRO
-   ======================================== */
-
-.error {
-    background: #f8d7da;
-    color: #721c24;
-    padding: 20px;
-    margin: 20px;
-    border-radius: 8px;
-    border: 1px solid #f5c6cb;
-}
-
-.text-center {
+/* Mensagens */
+.mensagem-vazia,
+.mensagem-erro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: var(--espacamento-xl);
     text-align: center;
 }
 
-.text-muted {
-    color: #6c757d;
+.mensagem-vazia i,
+.mensagem-erro i {
+    font-size: 3rem;
+    margin-bottom: var(--espacamento-md);
 }
 
-/* ========================================
-   📱 RESPONSIVIDADE
-   ======================================== */
+.mensagem-vazia i {
+    color: var(--cor-texto-muted);
+}
 
-@media (max-width: 868px) {
-    .painel-header {
-        padding: 10px 15px;
+.mensagem-erro i {
+    color: var(--cor-perigo);
+}
+
+.mensagem-vazia h3,
+.mensagem-erro h3 {
+    font-size: 1.1rem;
+    color: var(--cor-texto);
+    margin-bottom: var(--espacamento-sm);
+}
+
+.mensagem-vazia p,
+.mensagem-erro p {
+    color: var(--cor-texto-secundario);
+    font-size: 0.9rem;
+}
+
+.btn-tentar-novamente {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    margin-top: var(--espacamento-md);
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: var(--cor-primaria);
+    color: white;
+    border: none;
+    border-radius: var(--raio-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
+
+.btn-tentar-novamente:hover {
+    background: var(--cor-primaria-hover);
+    transform: translateY(-1px);
+}
+
+/* =========================================================
+   8. ANIMACOES
+   ========================================================= */
+
+@keyframes girar {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulsar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes pulsar-suave {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+@keyframes pulsar-borda {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(40, 167, 69, 0); }
+}
+
+@keyframes piscar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; background: var(--cor-primaria-light); }
+}
+
+/* =========================================================
+   9. RESPONSIVIDADE
+   ========================================================= */
+
+@media (max-width: 1200px) {
+    .resumo-grid {
+        grid-template-columns: repeat(4, 1fr);
     }
 
-    .header-top {
-        flex-direction: column;
-        align-items: flex-start;
-        margin-bottom: 8px;
+    .card-value {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .header-content {
+        flex-wrap: wrap;
     }
 
-    .header-left {
-        width: 100%;
-        gap: 8px;
+    .btn-text {
+        display: none;
     }
 
-    .header-left img {
-        max-height: 30px;
-        padding: 4px 6px;
+    .resumo-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 
-    .painel-header h1 {
-        font-size: 1rem;
+    /* Esconde colunas menos importantes */
+    .col-especialidade {
+        display: none;
     }
 
-    .btn-voltar,
-    .btn-auto-scroll {
-        width: 100%;
-        justify-content: center;
-        padding: 8px;
-        font-size: 0.85rem;
-    }
-
-    .stats {
-        font-size: 0.7rem;
-        gap: 10px;
-    }
-
-    .auto-refresh {
-        margin-left: 0;
-    }
-
-    thead th {
-        font-size: 0.75rem;
-        padding: 10px 8px;
-    }
-
-    tbody td {
+    .tabela-medicos thead th,
+    .tabela-medicos tbody td {
+        padding: var(--espacamento-xs) var(--espacamento-sm);
         font-size: 0.8rem;
-        padding: 8px;
-    }
-
-    .sort-icon {
-        font-size: 0.7rem;
-    }
-
-    .badge-status {
-        font-size: 0.7rem;
-        padding: 4px 10px;
     }
 }
 
-@media (max-width: 480px) {
-    .header-left img {
-        max-height: 28px;
+@media (max-width: 768px) {
+    :root {
+        --espacamento-md: 12px;
     }
 
-    .painel-header h1 {
+    .painel-header {
+        padding: var(--espacamento-sm);
+    }
+
+    .header-title h1 {
         font-size: 0.9rem;
+    }
+
+    .header-subtitle {
+        display: none;
+    }
+
+    .resumo-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--espacamento-xs);
+    }
+
+    .card-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .card-value {
+        font-size: 1.1rem;
+    }
+
+    .tabela-medicos thead th {
+        font-size: 0.65rem;
+    }
+
+    .tabela-medicos tbody td {
+        font-size: 0.75rem;
+    }
+
+    .badge {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+    }
+
+    /* Esconde mais colunas */
+    .col-login {
+        display: none;
+    }
+}
+
+@media (max-width: 576px) {
+    .header-right {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .resumo-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Telas grandes (TV/Monitor) */
+@media (min-width: 1600px) {
+    :root {
+        --espacamento-md: 20px;
+    }
+
+    .card-value {
+        font-size: 1.6rem;
+    }
+
+    .tabela-medicos thead th {
+        font-size: 0.8rem;
+        padding: var(--espacamento-md);
+    }
+
+    .tabela-medicos tbody td {
+        font-size: 0.9rem;
+        padding: var(--espacamento-md);
+    }
+
+    .badge {
+        font-size: 0.8rem;
+        padding: 6px 14px;
+    }
+}
+
+/* Print */
+@media print {
+    .painel-header,
+    .btn-header,
+    .header-actions {
+        display: none;
+    }
+
+    .painel-container {
+        height: auto;
+        overflow: visible;
+    }
+
+    .painel-main {
+        overflow: visible;
+    }
+
+    .tabela-medicos tbody {
+        overflow: visible;
+        height: auto;
     }
 }

@@ -1,386 +1,741 @@
-// ========================================
-// 📋 CONFIGURAÇÃO DO PAINEL 3 (SEM FILTROS)
-// ========================================
+/**
+ * PAINEL 3 - Medicos PS - Consultorios
+ * Sistema de Paineis Hospitalares - Hospital Anchieta
+ *
+ * Funcionalidades:
+ * - Listagem de medicos do Pronto Socorro
+ * - Status de login (logado/deslogado)
+ * - Consultorio atual
+ * - Ordenacao por colunas
+ * - Auto-scroll com watchdog robusto
+ */
 
-// NOTA: Adapte as COLUNAS_CONFIG de acordo com seu painel
-const COLUNAS_CONFIG = [
-    // Exemplo - ajuste conforme sua necessidade
-    { campo: 'consultorio', titulo: 'Consultório', tipo: 'texto', ordenavel: true },
-    { campo: 'ds_usuario', titulo: 'Médico', tipo: 'texto', ordenavel: true },
-    { campo: 'especialidade', titulo: 'Especialidade', tipo: 'badge', ordenavel: true },
-    { campo: 'tempo_conectado', titulo: 'Login', tipo: 'hora', ordenavel: true }
-];
+(function() {
+    'use strict';
 
-const BASE_URL = window.location.origin;
+    // =========================================================
+    // CONFIGURACAO
+    // =========================================================
 
-const CONFIG = {
-    apiUrl: `${BASE_URL}/api/paineis/painel3/medicos`, // Ajuste sua URL
-    intervaloRefresh: 30000,
-    velocidadeScroll: 0.5,
-    limiteLinhas: 30,
-    pausaNaLinha100: 2000
-};
+    const CONFIG = {
+        // URL da API
+        apiUrl: '/api/paineis/painel3/medicos',
 
-let estadoOrdenacao = {
-    campo: null,
-    direcao: 'asc'
-};
+        // Intervalos (ms)
+        intervaloRefresh: 30000,       // 30 segundos
+        velocidadeScroll: 0.5,         // pixels por tick
+        intervaloScroll: 50,           // ms entre ticks
+        pausaNoFinal: 5000,            // pausa ao chegar no fim
+        pausaAposReset: 5000,          // pausa apos voltar ao topo
+        delayAutoScrollInicial: 5000,  // delay para iniciar auto-scroll
+        watchdogInterval: 3000,        // verificacao de travamento
+        watchdogMaxTravamentos: 3,     // tentativas antes de reiniciar
 
-let dadosAtuais = [];
-let autoScrollAtivo = false;
-let intervaloAutoScroll = null;
+        // Limites
+        maxTentativasConexao: 3,
+        timeoutRequisicao: 30000
+    };
 
-// ========================================
-// 🎨 FORMATAÇÃO DE DADOS
-// ========================================
+    // Configuracao das colunas da tabela
+    const COLUNAS = [
+        { campo: 'consultorio', titulo: 'Consultorio', tipo: 'texto', ordenavel: true, classe: 'col-consultorio' },
+        { campo: 'ds_usuario', titulo: 'Medico', tipo: 'texto', ordenavel: true, classe: 'col-medico' },
+        { campo: 'especialidade', titulo: 'Especialidade', tipo: 'badge-especialidade', ordenavel: true, classe: 'col-especialidade' },
+        { campo: 'status', titulo: 'Status', tipo: 'badge-status', ordenavel: true, classe: 'col-status' },
+        { campo: 'tempo_conectado', titulo: 'Login', tipo: 'hora', ordenavel: true, classe: 'col-login' }
+    ];
 
-function formatarHora(hora) {
-    if (!hora) return '-';
-    try {
-        const d = new Date(hora);
-        if (isNaN(d.getTime())) return hora;
-        return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    } catch (erro) {
-        console.error('Erro ao formatar hora:', erro);
-        return hora;
-    }
-}
+    // =========================================================
+    // ESTADO DA APLICACAO
+    // =========================================================
 
-function formatarBadge(valor) {
-    if (!valor) return '-';
+    const Estado = {
+        // Dados
+        dadosMedicos: [],
 
-    const valorUpper = String(valor).toUpperCase();
+        // Ordenacao
+        ordenacao: {
+            campo: 'consultorio',
+            direcao: 'asc'
+        },
 
-    if (valorUpper === 'LOGADO') {
-        return '<span class="badge-status status-logado">Logado</span>';
-    } else if (valorUpper === 'DESLOGADO') {
-        return '<span class="badge-status status-deslogado">Deslogado</span>';
-    }
+        // Controle
+        carregando: false,
+        ultimaAtualizacao: null,
+        errosConsecutivos: 0,
+        autoScrollAtivo: false,
+        autoScrollIniciado: false,
 
-    return '<span class="badge-status">' + valor + '</span>';
-}
+        // Intervalos e Timeouts
+        intervalos: {
+            refresh: null,
+            scroll: null,
+            watchdog: null
+        },
+        timeouts: {
+            autoScrollInicial: null
+        },
 
-function formatarCampo(valor, tipo) {
-    if (valor === null || valor === undefined) return '-';
-
-    switch (tipo) {
-        case 'hora':
-            return formatarHora(valor);
-        case 'badge':
-            return formatarBadge(valor);
-        case 'numero':
-            return valor || '0';
-        default:
-            return valor || '-';
-    }
-}
-
-// ========================================
-// 📊 TABELA
-// ========================================
-
-function criarCabecalho() {
-    const thead = document.getElementById('tabela-head');
-    const tr = document.createElement('tr');
-
-    COLUNAS_CONFIG.forEach(coluna => {
-        const th = document.createElement('th');
-
-        if (coluna.ordenavel) {
-            th.classList.add('ordenavel');
-            th.style.cursor = 'pointer';
-            th.onclick = () => ordenarPorColuna(coluna.campo, coluna.tipo);
-
-            const span = document.createElement('span');
-            span.textContent = coluna.titulo;
-            th.appendChild(span);
-
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-sort sort-icon';
-            icon.id = `sort-${coluna.campo}`;
-            th.appendChild(icon);
-        } else {
-            th.textContent = coluna.titulo;
+        // Watchdog do Scroll
+        watchdog: {
+            ultimaPosicao: 0,
+            contadorTravamento: 0
         }
+    };
 
-        tr.appendChild(th);
-    });
+    // =========================================================
+    // ELEMENTOS DOM (Cache)
+    // =========================================================
 
-    thead.appendChild(tr);
-}
+    const DOM = {};
 
-function atualizarIconesOrdenacao() {
-    document.querySelectorAll('.sort-icon').forEach(icon => {
-        icon.className = 'fas fa-sort sort-icon';
-    });
+    function cachearElementos() {
+        DOM.painelMain = document.getElementById('painel-main');
+        DOM.loadingContainer = document.getElementById('loading-container');
 
-    if (estadoOrdenacao.campo) {
-        const icon = document.getElementById(`sort-${estadoOrdenacao.campo}`);
-        if (icon) {
-            icon.className = estadoOrdenacao.direcao === 'asc'
-                ? 'fas fa-sort-up sort-icon active'
-                : 'fas fa-sort-down sort-icon active';
-        }
-    }
-}
-
-function ordenarPorColuna(campo, tipo) {
-    if (estadoOrdenacao.campo === campo) {
-        estadoOrdenacao.direcao = estadoOrdenacao.direcao === 'asc' ? 'desc' : 'asc';
-    } else {
-        estadoOrdenacao.campo = campo;
-        estadoOrdenacao.direcao = 'asc';
+        // Botoes
+        DOM.btnVoltar = document.getElementById('btn-voltar');
+        DOM.btnRefresh = document.getElementById('btn-refresh');
+        DOM.btnAutoScroll = document.getElementById('btn-auto-scroll');
     }
 
-    dadosAtuais.sort((a, b) => {
-        let valorA = a[campo];
-        let valorB = b[campo];
+    // =========================================================
+    // UTILITARIOS
+    // =========================================================
 
-        if (valorA === null || valorA === undefined) valorA = '';
-        if (valorB === null || valorB === undefined) valorB = '';
-
-        if (tipo === 'numero') {
-            valorA = parseFloat(valorA) || 0;
-            valorB = parseFloat(valorB) || 0;
-        } else if (tipo === 'hora') {
-            valorA = new Date(valorA).getTime();
-            valorB = new Date(valorB).getTime();
-        } else {
-            valorA = String(valorA).toLowerCase();
-            valorB = String(valorB).toLowerCase();
+    /**
+     * Formata numero com separador de milhar
+     */
+    function formatarNumero(valor) {
+        if (valor === null || valor === undefined || isNaN(valor)) {
+            return '-';
         }
-
-        let resultado = 0;
-        if (valorA < valorB) resultado = -1;
-        if (valorA > valorB) resultado = 1;
-
-        return estadoOrdenacao.direcao === 'asc' ? resultado : -resultado;
-    });
-
-    atualizarTabela(dadosAtuais);
-    atualizarIconesOrdenacao();
-}
-
-function criarLinha(registro) {
-    const tr = document.createElement('tr');
-
-    COLUNAS_CONFIG.forEach(coluna => {
-        const td = document.createElement('td');
-        td.innerHTML = formatarCampo(registro[coluna.campo], coluna.tipo);
-        tr.appendChild(td);
-    });
-
-    return tr;
-}
-
-function atualizarTabela(dados) {
-    const tbody = document.getElementById('tabela-body');
-    tbody.innerHTML = '';
-
-    if (!dados || dados.length === 0) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = COLUNAS_CONFIG.length;
-        td.className = 'text-center text-muted';
-        td.style.padding = '60px';
-        td.textContent = 'Nenhum registro encontrado';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-        return;
+        return new Intl.NumberFormat('pt-BR').format(valor);
     }
 
-    dados.forEach(registro => {
-        tbody.appendChild(criarLinha(registro));
-    });
-}
+    /**
+     * Formata hora para exibicao
+     */
+    function formatarHora(hora) {
+        if (!hora) return '-';
 
-function atualizarEstatisticas(total, logados) {
-    document.getElementById('total-registros').textContent = total;
-    document.getElementById('total-logados').textContent = logados;
-    document.getElementById('ultima-atualizacao').textContent =
-        new Date().toLocaleTimeString('pt-BR');
-}
+        try {
+            const d = new Date(hora);
+            if (isNaN(d.getTime())) return hora;
 
-function mostrarErro(mensagem) {
-    const tbody = document.getElementById('tabela-body');
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="${COLUNAS_CONFIG.length}">
-                <div class="error">
-                    <strong>❌ Erro ao carregar dados:</strong><br>
-                    ${mensagem}
-                </div>
-            </td>
-        </tr>
-    `;
-}
-
-// ========================================
-// 📊 CARREGAMENTO DE DADOS (SEM FILTROS)
-// ========================================
-
-async function carregarDados() {
-    try {
-        const response = await fetch(CONFIG.apiUrl);
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            return d.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (erro) {
+            return hora;
         }
+    }
 
-        const resultado = await response.json();
+    /**
+     * Escapa HTML para prevenir XSS
+     */
+    function escapeHtml(texto) {
+        if (!texto) return '-';
+        const div = document.createElement('div');
+        div.textContent = texto;
+        return div.innerHTML;
+    }
 
-        if (resultado.success) {
-            dadosAtuais = resultado.data;
+    /**
+     * Faz requisicao com timeout e retry
+     */
+    async function fetchComRetry(url, tentativas = CONFIG.maxTentativasConexao) {
+        let ultimoErro;
 
-            // Contar logados
-            const totalLogados = dadosAtuais.filter(r =>
-                String(r.status).toUpperCase() === 'LOGADO'
-            ).length;
+        for (let i = 0; i < tentativas; i++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), CONFIG.timeoutRequisicao);
 
-            // Reaplicar ordenação se houver
-            if (estadoOrdenacao.campo) {
-                const coluna = COLUNAS_CONFIG.find(c => c.campo === estadoOrdenacao.campo);
-                if (coluna) {
-                    ordenarPorColuna(estadoOrdenacao.campo, coluna.tipo);
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
-            } else {
-                atualizarTabela(dadosAtuais);
-            }
 
-            atualizarEstatisticas(dadosAtuais.length, totalLogados);
+                return await response.json();
 
-        } else {
-            mostrarErro(resultado.error || 'Erro desconhecido');
-        }
+            } catch (erro) {
+                ultimoErro = erro;
+                console.warn(`[Painel3] Tentativa ${i + 1}/${tentativas} falhou:`, erro.message);
 
-    } catch (erro) {
-        console.error('Erro ao carregar dados:', erro);
-        mostrarErro(erro.message);
-    }
-}
-
-// ========================================
-// 🎬 AUTO SCROLL
-// ========================================
-
-function configurarAutoScroll() {
-    const btnAutoScroll = document.getElementById('btn-auto-scroll');
-    if (!btnAutoScroll) return;
-
-    const container = document.querySelector('.table-container');
-    if (!container) return;
-
-    btnAutoScroll.addEventListener('click', () => {
-        autoScrollAtivo = !autoScrollAtivo;
-
-        if (autoScrollAtivo) {
-            btnAutoScroll.classList.add('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-            iniciarAutoScroll(container);
-        } else {
-            btnAutoScroll.classList.remove('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
-            pararAutoScroll();
-        }
-    });
-
-    // Ativar auto-scroll automaticamente após 5 segundos
-    setTimeout(() => {
-        if (!autoScrollAtivo) {
-            console.log('🚀 Ativando auto-scroll automaticamente...');
-            autoScrollAtivo = true;
-            btnAutoScroll.classList.add('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-            iniciarAutoScroll(container);
-            console.log('▶️ Auto-scroll iniciado automaticamente!');
-        }
-    }, 5000);
-}
-
-function iniciarAutoScroll(container) {
-    pararAutoScroll();
-    let emPausa = false;
-
-    intervaloAutoScroll = setInterval(() => {
-        if (!autoScrollAtivo || emPausa) return;
-
-        const tbody = document.getElementById('tabela-body');
-        const linhas = tbody.getElementsByTagName('tr');
-        if (linhas.length === 0) return;
-
-        const scrollAtual = container.scrollTop;
-        let scrollMax;
-
-        if (linhas.length <= CONFIG.limiteLinhas) {
-            scrollMax = container.scrollHeight - container.clientHeight;
-        } else {
-            const linha100 = linhas[CONFIG.limiteLinhas - 1];
-            if (!linha100) {
-                scrollMax = container.scrollHeight - container.clientHeight;
-            } else {
-                const posicaoLinha100 = linha100.offsetTop + linha100.offsetHeight;
-                scrollMax = posicaoLinha100 - container.clientHeight + 50;
+                if (i < tentativas - 1) {
+                    await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+                }
             }
         }
 
-        if (scrollAtual >= scrollMax - 10) {
-            emPausa = true;
-            setTimeout(() => {
-                if (autoScrollAtivo) {
-                    container.scrollTop = 0;
+        throw ultimoErro;
+    }
 
-                    // Aguardar 5 segundos antes de recomeçar
-                    setTimeout(() => {
-                        emPausa = false;
-                        console.log('▶️ Reiniciando auto-scroll...');
-                    }, 5000);
-                }
-            }, CONFIG.pausaNaLinha100);
+    // =========================================================
+    // CARREGAMENTO DE DADOS
+    // =========================================================
+
+    /**
+     * Carrega dados dos medicos
+     */
+    async function carregarDados() {
+        if (Estado.carregando) {
+            console.log('[Painel3] Carregamento ja em andamento, ignorando...');
             return;
         }
 
-        container.scrollTop += CONFIG.velocidadeScroll;
-    }, 50);
-}
+        Estado.carregando = true;
 
-function pararAutoScroll() {
-    if (intervaloAutoScroll) {
-        clearInterval(intervaloAutoScroll);
-        intervaloAutoScroll = null;
+        // Salva estado do scroll
+        const scrollEstaAtivo = Estado.autoScrollAtivo;
+        if (scrollEstaAtivo) {
+            pararAutoScroll();
+        }
+
+        try {
+            console.log('[Painel3] Carregando dados...');
+
+            const response = await fetchComRetry(CONFIG.apiUrl);
+
+            if (response.success) {
+                Estado.dadosMedicos = response.data || [];
+
+                // Aplica ordenacao atual
+                ordenarDados();
+
+                // Renderiza tabela
+                renderizarTabela();
+
+                Estado.errosConsecutivos = 0;
+
+                console.log(`[Painel3] ${Estado.dadosMedicos.length} medicos carregados`);
+            } else {
+                throw new Error(response.error || 'Erro ao carregar dados');
+            }
+
+            // Restaura scroll se estava ativo
+            if (scrollEstaAtivo) {
+                setTimeout(() => {
+                    Estado.autoScrollAtivo = true;
+                    atualizarBotaoScroll();
+                    iniciarAutoScroll();
+                }, 500);
+            }
+
+            // Inicia auto-scroll automatico na primeira carga
+            if (!Estado.autoScrollIniciado && !scrollEstaAtivo) {
+                agendarAutoScrollInicial();
+            }
+
+        } catch (erro) {
+            console.error('[Painel3] Erro ao carregar dados:', erro);
+            Estado.errosConsecutivos++;
+
+            if (Estado.errosConsecutivos >= 3) {
+                mostrarErro('Falha na conexao com o servidor. Verifique sua rede.');
+            }
+        } finally {
+            Estado.carregando = false;
+        }
     }
-}
 
-// ========================================
-// 🚀 INICIALIZAÇÃO
-// ========================================
+    /**
+     * Agenda inicio automatico do auto-scroll
+     */
+    function agendarAutoScrollInicial() {
+        if (Estado.timeouts.autoScrollInicial) {
+            clearTimeout(Estado.timeouts.autoScrollInicial);
+        }
 
-function configurarBotaoVoltar() {
-    const btnVoltar = document.getElementById('btn-voltar');
-    if (btnVoltar) {
-        btnVoltar.addEventListener('click', () => {
-            window.location.href = '/frontend/dashboard.html';
+        Estado.timeouts.autoScrollInicial = setTimeout(() => {
+            if (!Estado.autoScrollAtivo && Estado.dadosMedicos.length > 0) {
+                console.log('[Painel3] Iniciando auto-scroll automaticamente');
+                Estado.autoScrollAtivo = true;
+                Estado.autoScrollIniciado = true;
+                atualizarBotaoScroll();
+                iniciarAutoScroll();
+            }
+        }, CONFIG.delayAutoScrollInicial);
+    }
+
+    // =========================================================
+    // ORDENACAO
+    // =========================================================
+
+    /**
+     * Ordena dados pelo campo atual
+     */
+    function ordenarDados() {
+        const { campo, direcao } = Estado.ordenacao;
+        const coluna = COLUNAS.find(c => c.campo === campo);
+
+        if (!coluna) return;
+
+        Estado.dadosMedicos.sort((a, b) => {
+            let valorA = a[campo];
+            let valorB = b[campo];
+
+            if (valorA === null || valorA === undefined) valorA = '';
+            if (valorB === null || valorB === undefined) valorB = '';
+
+            // Tratamento por tipo
+            if (coluna.tipo === 'hora') {
+                valorA = new Date(valorA).getTime() || 0;
+                valorB = new Date(valorB).getTime() || 0;
+            } else {
+                valorA = String(valorA).toLowerCase();
+                valorB = String(valorB).toLowerCase();
+            }
+
+            let resultado = 0;
+            if (valorA < valorB) resultado = -1;
+            if (valorA > valorB) resultado = 1;
+
+            return direcao === 'asc' ? resultado : -resultado;
         });
     }
-}
 
-function inicializar() {
-    console.log('🚀 Inicializando Painel 3 (sem filtros)...');
-    criarCabecalho();
-    configurarBotaoVoltar();
-    carregarDados();
+    /**
+     * Altera ordenacao por coluna
+     */
+    function alterarOrdenacao(campo) {
+        if (Estado.ordenacao.campo === campo) {
+            Estado.ordenacao.direcao = Estado.ordenacao.direcao === 'asc' ? 'desc' : 'asc';
+        } else {
+            Estado.ordenacao.campo = campo;
+            Estado.ordenacao.direcao = 'asc';
+        }
 
-    setTimeout(() => {
-        configurarAutoScroll();
-    }, 500);
+        ordenarDados();
+        renderizarTabela();
+    }
 
-    // Auto-refresh a cada 30s
-    setInterval(carregarDados, CONFIG.intervaloRefresh);
-    console.log('✅ Painel 3 inicializado com sucesso!');
-    console.log('🔄 Auto-refresh: 30s');
-}
+    // =========================================================
+    // RENDERIZACAO DA TABELA
+    // =========================================================
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializar);
-} else {
-    inicializar();
-}
+    /**
+     * Renderiza a tabela de medicos
+     */
+    function renderizarTabela() {
+        if (!DOM.painelMain) return;
+
+        if (!Estado.dadosMedicos || Estado.dadosMedicos.length === 0) {
+            DOM.painelMain.innerHTML = `
+                <div class="mensagem-vazia">
+                    <i class="fas fa-user-md"></i>
+                    <h3>Nenhum medico encontrado</h3>
+                    <p>Nao ha medicos registrados no momento</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Gera cabecalho
+        const cabecalhoHtml = COLUNAS.map(coluna => {
+            const isAtiva = Estado.ordenacao.campo === coluna.campo;
+            const iconeSort = isAtiva
+                ? (Estado.ordenacao.direcao === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                : 'fa-sort';
+            const classeAtiva = isAtiva ? 'ativa' : '';
+
+            if (coluna.ordenavel) {
+                return `
+                    <th class="${coluna.classe} ordenavel ${classeAtiva}" data-campo="${coluna.campo}">
+                        <span>${coluna.titulo}</span>
+                        <i class="fas ${iconeSort} icone-sort"></i>
+                    </th>
+                `;
+            }
+            return `<th class="${coluna.classe}">${coluna.titulo}</th>`;
+        }).join('');
+
+        // Gera linhas
+        const linhasHtml = Estado.dadosMedicos.map(medico => criarLinhaMedico(medico)).join('');
+
+        const html = `
+            <div class="tabela-container">
+                <table class="tabela-medicos">
+                    <thead>
+                        <tr>${cabecalhoHtml}</tr>
+                    </thead>
+                    <tbody id="tabela-body">
+                        ${linhasHtml}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        DOM.painelMain.innerHTML = html;
+
+        // Adiciona eventos de ordenacao
+        document.querySelectorAll('th.ordenavel').forEach(th => {
+            th.addEventListener('click', () => {
+                alterarOrdenacao(th.dataset.campo);
+            });
+        });
+    }
+
+    /**
+     * Cria linha HTML para um medico
+     */
+    function criarLinhaMedico(medico) {
+        const status = String(medico.status || '').toUpperCase();
+        const isLogado = status === 'LOGADO';
+        const classeStatus = isLogado ? 'linha-logado' : 'linha-deslogado';
+
+        const celulas = COLUNAS.map(coluna => {
+            const valor = medico[coluna.campo];
+            const conteudo = formatarCelula(valor, coluna.tipo);
+            return `<td class="${coluna.classe}">${conteudo}</td>`;
+        }).join('');
+
+        return `<tr class="${classeStatus}">${celulas}</tr>`;
+    }
+
+    /**
+     * Formata conteudo da celula
+     */
+    function formatarCelula(valor, tipo) {
+        if (valor === null || valor === undefined || valor === '') {
+            return '<span class="texto-muted">-</span>';
+        }
+
+        switch (tipo) {
+            case 'hora':
+                return formatarHora(valor);
+
+            case 'badge-status':
+                const statusUpper = String(valor).toUpperCase();
+                if (statusUpper === 'LOGADO') {
+                    return '<span class="badge badge-logado"><i class="fas fa-circle"></i> Logado</span>';
+                } else {
+                    return '<span class="badge badge-deslogado"><i class="fas fa-circle"></i> Deslogado</span>';
+                }
+
+            case 'badge-especialidade':
+                return `<span class="badge badge-especialidade">${escapeHtml(valor)}</span>`;
+
+            default:
+                return escapeHtml(valor);
+        }
+    }
+
+    /**
+     * Mostra mensagem de erro
+     */
+    function mostrarErro(mensagem) {
+        if (!DOM.painelMain) return;
+
+        DOM.painelMain.innerHTML = `
+            <div class="mensagem-erro">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Erro ao Carregar Dados</h3>
+                <p>${escapeHtml(mensagem)}</p>
+                <button class="btn-tentar-novamente" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> Tentar Novamente
+                </button>
+            </div>
+        `;
+    }
+
+    // =========================================================
+    // AUTO-SCROLL COM WATCHDOG ROBUSTO
+    // =========================================================
+
+    /**
+     * Obtem o elemento de scroll (tbody da tabela)
+     */
+    function getElementoScroll() {
+        return document.getElementById('tabela-body');
+    }
+
+    /**
+     * Inicia o auto-scroll
+     */
+    function iniciarAutoScroll() {
+        pararAutoScroll();
+
+        const elemento = getElementoScroll();
+        if (!elemento) {
+            console.warn('[Painel3] Elemento de scroll nao encontrado');
+            return;
+        }
+
+        const scrollMax = elemento.scrollHeight - elemento.clientHeight;
+        if (scrollMax <= 5) {
+            console.log('[Painel3] Conteudo cabe na tela, scroll nao necessario');
+            return;
+        }
+
+        console.log('[Painel3] Iniciando auto-scroll');
+
+        // Reseta watchdog
+        Estado.watchdog = {
+            ultimaPosicao: elemento.scrollTop,
+            contadorTravamento: 0
+        };
+
+        // Inicia watchdog
+        iniciarWatchdog();
+
+        // Inicia scroll
+        Estado.intervalos.scroll = setInterval(() => {
+            if (!Estado.autoScrollAtivo) {
+                pararAutoScroll();
+                return;
+            }
+
+            const elem = getElementoScroll();
+            if (!elem) {
+                pararAutoScroll();
+                return;
+            }
+
+            const scrollAtual = elem.scrollTop;
+            const scrollMax = elem.scrollHeight - elem.clientHeight;
+
+            // Chegou ao final
+            if (scrollAtual >= scrollMax - 2) {
+                console.log('[Painel3] Chegou ao final do scroll');
+
+                clearInterval(Estado.intervalos.scroll);
+                Estado.intervalos.scroll = null;
+
+                setTimeout(() => {
+                    if (!Estado.autoScrollAtivo) return;
+
+                    console.log('[Painel3] Voltando ao topo');
+                    elem.scrollTop = 0;
+
+                    Estado.watchdog.ultimaPosicao = 0;
+                    Estado.watchdog.contadorTravamento = 0;
+
+                    setTimeout(() => {
+                        if (Estado.autoScrollAtivo) {
+                            console.log('[Painel3] Reiniciando ciclo de scroll');
+                            iniciarAutoScroll();
+                        }
+                    }, CONFIG.pausaAposReset);
+
+                }, CONFIG.pausaNoFinal);
+
+                return;
+            }
+
+            elem.scrollTop += CONFIG.velocidadeScroll;
+
+        }, CONFIG.intervaloScroll);
+    }
+
+    /**
+     * Para o auto-scroll
+     */
+    function pararAutoScroll() {
+        if (Estado.intervalos.scroll) {
+            clearInterval(Estado.intervalos.scroll);
+            Estado.intervalos.scroll = null;
+        }
+        pararWatchdog();
+        console.log('[Painel3] Auto-scroll parado');
+    }
+
+    /**
+     * Inicia watchdog para detectar travamentos
+     */
+    function iniciarWatchdog() {
+        pararWatchdog();
+
+        console.log('[Painel3] Watchdog iniciado');
+
+        Estado.intervalos.watchdog = setInterval(() => {
+            if (!Estado.autoScrollAtivo) {
+                pararWatchdog();
+                return;
+            }
+
+            const elemento = getElementoScroll();
+            if (!elemento) return;
+
+            const posicaoAtual = elemento.scrollTop;
+            const scrollMax = elemento.scrollHeight - elemento.clientHeight;
+
+            const estaNoMeio = posicaoAtual > 5 && posicaoAtual < scrollMax - 5;
+            const naoMoveu = Math.abs(posicaoAtual - Estado.watchdog.ultimaPosicao) < 1;
+            const intervaloOk = Estado.intervalos.scroll !== null;
+
+            if (estaNoMeio && naoMoveu && intervaloOk) {
+                Estado.watchdog.contadorTravamento++;
+                console.warn(`[Painel3] Watchdog: possivel travamento (${Estado.watchdog.contadorTravamento}/${CONFIG.watchdogMaxTravamentos})`);
+
+                if (Estado.watchdog.contadorTravamento >= CONFIG.watchdogMaxTravamentos) {
+                    console.error('[Painel3] Watchdog: TRAVAMENTO CONFIRMADO - Reiniciando scroll');
+
+                    pararAutoScroll();
+
+                    setTimeout(() => {
+                        if (Estado.autoScrollAtivo) {
+                            Estado.watchdog.contadorTravamento = 0;
+                            iniciarAutoScroll();
+                        }
+                    }, 1000);
+
+                    return;
+                }
+            } else {
+                Estado.watchdog.contadorTravamento = 0;
+            }
+
+            Estado.watchdog.ultimaPosicao = posicaoAtual;
+
+        }, CONFIG.watchdogInterval);
+    }
+
+    /**
+     * Para watchdog
+     */
+    function pararWatchdog() {
+        if (Estado.intervalos.watchdog) {
+            clearInterval(Estado.intervalos.watchdog);
+            Estado.intervalos.watchdog = null;
+        }
+    }
+
+    /**
+     * Atualiza estado visual do botao de scroll
+     */
+    function atualizarBotaoScroll() {
+        if (!DOM.btnAutoScroll) return;
+
+        if (Estado.autoScrollAtivo) {
+            DOM.btnAutoScroll.classList.add('ativo');
+            DOM.btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i><span class="btn-text">Pausar</span>';
+            DOM.btnAutoScroll.title = 'Pausar rolagem automatica';
+        } else {
+            DOM.btnAutoScroll.classList.remove('ativo');
+            DOM.btnAutoScroll.innerHTML = '<i class="fas fa-play"></i><span class="btn-text">Auto Scroll</span>';
+            DOM.btnAutoScroll.title = 'Ativar rolagem automatica';
+        }
+    }
+
+    // =========================================================
+    // EVENT HANDLERS
+    // =========================================================
+
+    /**
+     * Configura todos os event listeners
+     */
+    function configurarEventos() {
+        // Botao voltar
+        if (DOM.btnVoltar) {
+            DOM.btnVoltar.addEventListener('click', () => {
+                window.location.href = '/frontend/dashboard.html';
+            });
+        }
+
+        // Botao refresh
+        if (DOM.btnRefresh) {
+            DOM.btnRefresh.addEventListener('click', () => {
+                DOM.btnRefresh.classList.add('girando');
+                carregarDados().finally(() => {
+                    setTimeout(() => {
+                        DOM.btnRefresh.classList.remove('girando');
+                    }, 500);
+                });
+            });
+        }
+
+        // Botao auto scroll
+        if (DOM.btnAutoScroll) {
+            DOM.btnAutoScroll.addEventListener('click', () => {
+                Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
+                Estado.autoScrollIniciado = true;
+                atualizarBotaoScroll();
+
+                if (Estado.autoScrollAtivo) {
+                    iniciarAutoScroll();
+                } else {
+                    pararAutoScroll();
+                }
+            });
+        }
+
+        // Teclas de atalho
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && Estado.autoScrollAtivo) {
+                Estado.autoScrollAtivo = false;
+                atualizarBotaoScroll();
+                pararAutoScroll();
+            }
+
+            if (e.key === 'F5') {
+                e.preventDefault();
+                carregarDados();
+            }
+
+            if (e.key === ' ' && e.target === document.body) {
+                e.preventDefault();
+                Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
+                Estado.autoScrollIniciado = true;
+                atualizarBotaoScroll();
+                if (Estado.autoScrollAtivo) {
+                    iniciarAutoScroll();
+                } else {
+                    pararAutoScroll();
+                }
+            }
+        });
+
+        // Visibilidade da pagina
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (Estado.autoScrollAtivo && Estado.intervalos.scroll) {
+                    pararAutoScroll();
+                    Estado.autoScrollAtivo = true;
+                }
+            } else {
+                if (Estado.autoScrollAtivo && !Estado.intervalos.scroll) {
+                    iniciarAutoScroll();
+                }
+                carregarDados();
+            }
+        });
+    }
+
+    // =========================================================
+    // INICIALIZACAO
+    // =========================================================
+
+    /**
+     * Inicializa o painel
+     */
+    async function inicializar() {
+        console.log('[Painel3] Inicializando...');
+
+        // Cache elementos DOM
+        cachearElementos();
+
+        // Configura eventos
+        configurarEventos();
+
+        // Carrega dados
+        await carregarDados();
+
+        // Configura refresh automatico
+        Estado.intervalos.refresh = setInterval(carregarDados, CONFIG.intervaloRefresh);
+
+        console.log('[Painel3] Inicializado com sucesso');
+    }
+
+    // Aguarda DOM estar pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+        inicializar();
+    }
+
+})();

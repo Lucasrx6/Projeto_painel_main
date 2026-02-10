@@ -1,122 +1,28 @@
-[2026-02-05 09:30:19] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 09:30:19] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 09:30:19] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 09:30:20] INFO [app:105] -  16 Blueprints registrados com sucesso
-[2026-02-05 09:30:21] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 09:30:21] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 09:30:21] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 09:30:22] INFO [app:105] -  16 Blueprints registrados com sucesso
-[2026-02-05 09:30:22] WARNING [app:18] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel13
-[2026-02-05 10:54:54] INFO [app:95] - ✅ Usuário criado: Luciana (admin=False)
-[2026-02-05 10:55:49] INFO [app:66] - 👋 Logout: postgres
-[2026-02-05 10:55:56] INFO [app:32] - Tentativa de login: Luciana
-[2026-02-05 10:55:57] INFO [app:42] - ✅ Login bem-sucedido: Luciana
-[2026-02-05 10:59:55] INFO [app:66] - 👋 Logout: luciana
-[2026-02-05 10:59:58] INFO [app:32] - Tentativa de login: postgres
-[2026-02-05 10:59:58] INFO [app:42] - ✅ Login bem-sucedido: postgres
-[2026-02-05 15:10:05] INFO [app:32] - Tentativa de login: postgres
-[2026-02-05 15:10:06] INFO [app:42] - ✅ Login bem-sucedido: postgres
-[2026-02-05 15:14:44] INFO [app:70] - [PAINEL7] Dashboard: {'total': 15, 'critico': 0, 'alto': 7, 'moderado': 8, 'baixo': 0}
-[2026-02-05 15:14:44] INFO [app:157] - [PAINEL7] Query executada: 15 resultados
-[2026-02-05 15:14:44] INFO [app:192] - [PAINEL7] Retornando 15 pacientes processados
-[2026-02-05 15:21:50] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 15:21:50] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 15:21:50] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 15:21:51] INFO [app:106] -  16 Blueprints registrados com sucesso
-[2026-02-05 15:57:14] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 15:57:14] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 15:57:14] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 15:57:14] INFO [app:106] -  16 Blueprints registrados com sucesso
-[2026-02-05 15:57:15] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 15:57:15] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 15:57:15] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 15:57:16] INFO [app:106] -  16 Blueprints registrados com sucesso
-[2026-02-05 15:57:45] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 15:57:45] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 15:57:45] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 15:57:45] INFO [app:106] -  16 Blueprints registrados com sucesso
-[2026-02-05 16:00:49] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 16:00:49] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 16:00:49] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 16:00:49] INFO [app:106] -  16 Blueprints registrados com sucesso
-[2026-02-05 16:01:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 15, 'critico': 0, 'alto': 9, 'moderado': 6, 'baixo': 0}
-[2026-02-05 16:01:12] INFO [app:157] - [PAINEL7] Query executada: 15 resultados
-[2026-02-05 16:01:12] INFO [app:192] - [PAINEL7] Retornando 15 pacientes processados
-[2026-02-05 16:01:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 15, 'critico': 0, 'alto': 9, 'moderado': 6, 'baixo': 0}
-[2026-02-05 16:01:42] INFO [app:157] - [PAINEL7] Query executada: 15 resultados
-[2026-02-05 16:01:42] INFO [app:192] - [PAINEL7] Retornando 15 pacientes processados
-[2026-02-05 16:01:54] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 16:01:54] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 16:01:54] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 16:01:54] INFO [app:106] -  16 Blueprints registrados com sucesso
-[2026-02-05 16:02:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 15, 'critico': 0, 'alto': 9, 'moderado': 6, 'baixo': 0}
-[2026-02-05 16:02:12] INFO [app:157] - [PAINEL7] Query executada: 15 resultados
-[2026-02-05 16:02:12] INFO [app:192] - [PAINEL7] Retornando 15 pacientes processados
-[2026-02-05 16:02:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 15, 'critico': 0, 'alto': 9, 'moderado': 6, 'baixo': 0}
-[2026-02-05 16:02:42] INFO [app:157] - [PAINEL7] Query executada: 15 resultados
-[2026-02-05 16:02:42] INFO [app:192] - [PAINEL7] Retornando 15 pacientes processados
-[2026-02-05 16:03:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 15, 'critico': 0, 'alto': 9, 'moderado': 6, 'baixo': 0}
-[2026-02-05 16:03:12] INFO [app:157] - [PAINEL7] Query executada: 15 resultados
-[2026-02-05 16:03:12] INFO [app:192] - [PAINEL7] Retornando 15 pacientes processados
-[2026-02-05 16:03:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 15, 'critico': 0, 'alto': 9, 'moderado': 6, 'baixo': 0}
-[2026-02-05 16:03:42] INFO [app:157] - [PAINEL7] Query executada: 15 resultados
-[2026-02-05 16:03:42] INFO [app:192] - [PAINEL7] Retornando 15 pacientes processados
-[2026-02-05 16:04:03] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-05 16:04:03] INFO [app:73] - ✅ Security headers configurados
-[2026-02-05 16:04:03] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-05 16:04:03] INFO [app:106] -  16 Blueprints registrados com sucesso
-[2026-02-05 16:04:12] INFO [app:157] - [PAINEL7] Query executada: 0 resultados
-[2026-02-05 16:04:12] INFO [app:192] - [PAINEL7] Retornando 0 pacientes processados
-[2026-02-05 16:04:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 0, 'critico': 0, 'alto': 0, 'moderado': 0, 'baixo': 0}
-[2026-02-05 16:04:42] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:04:42] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:04:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:05:12] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:05:12] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:05:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:05:42] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:05:42] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:05:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:06:12] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:06:12] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:06:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:06:42] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:06:42] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:06:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:07:12] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:07:12] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:07:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:07:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:07:42] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:07:42] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:08:12] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:08:12] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:08:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:08:42] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:08:42] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:08:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:09:12] INFO [app:157] - [PAINEL7] Query executada: 16 resultados
-[2026-02-05 16:09:12] INFO [app:192] - [PAINEL7] Retornando 16 pacientes processados
-[2026-02-05 16:09:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 16, 'critico': 0, 'alto': 9, 'moderado': 7, 'baixo': 0}
-[2026-02-05 16:09:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 17, 'critico': 0, 'alto': 9, 'moderado': 8, 'baixo': 0}
-[2026-02-05 16:09:42] INFO [app:157] - [PAINEL7] Query executada: 17 resultados
-[2026-02-05 16:09:42] INFO [app:192] - [PAINEL7] Retornando 17 pacientes processados
-[2026-02-05 16:10:12] INFO [app:157] - [PAINEL7] Query executada: 17 resultados
-[2026-02-05 16:10:12] INFO [app:192] - [PAINEL7] Retornando 17 pacientes processados
-[2026-02-05 16:10:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 17, 'critico': 0, 'alto': 9, 'moderado': 8, 'baixo': 0}
-[2026-02-05 16:10:42] INFO [app:157] - [PAINEL7] Query executada: 17 resultados
-[2026-02-05 16:10:42] INFO [app:192] - [PAINEL7] Retornando 17 pacientes processados
-[2026-02-05 16:10:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 17, 'critico': 0, 'alto': 9, 'moderado': 8, 'baixo': 0}
-[2026-02-05 16:11:12] INFO [app:157] - [PAINEL7] Query executada: 17 resultados
-[2026-02-05 16:11:12] INFO [app:192] - [PAINEL7] Retornando 17 pacientes processados
-[2026-02-05 16:11:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 17, 'critico': 0, 'alto': 9, 'moderado': 8, 'baixo': 0}
-[2026-02-05 16:11:42] INFO [app:157] - [PAINEL7] Query executada: 17 resultados
-[2026-02-05 16:11:42] INFO [app:192] - [PAINEL7] Retornando 17 pacientes processados
-[2026-02-05 16:11:42] INFO [app:70] - [PAINEL7] Dashboard: {'total': 17, 'critico': 0, 'alto': 9, 'moderado': 8, 'baixo': 0}
-[2026-02-05 16:12:12] INFO [app:70] - [PAINEL7] Dashboard: {'total': 17, 'critico': 0, 'alto': 9, 'moderado': 8, 'baixo': 0}
-[2026-02-05 16:12:12] INFO [app:157] - [PAINEL7] Query executada: 17 resultados
-[2026-02-05 16:12:12] INFO [app:192] - [PAINEL7] Retornando 17 pacientes processados
-[2026-02-05 16:14:07] INFO [app:70] - [PAINEL7] Dashboard: {'total': 17, 'critico': 0, 'alto': 9, 'moderado': 8, 'baixo': 0}
-[2026-02-05 16:14:07] INFO [app:157] - [PAINEL7] Query executada: 17 resultados
-[2026-02-05 16:14:07] INFO [app:192] - [PAINEL7] Retornando 17 pacientes processados
-[2026-02-05 16:16:05] INFO [app:66] - 👋 Logout: postgres
+[2026-02-06 22:25:43] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 22:25:43] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 22:25:43] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 22:25:44] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 22:25:45] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 22:25:45] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 22:25:45] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 22:25:45] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 22:25:51] INFO [app:32] - Tentativa de login: postgres
+[2026-02-06 22:25:52] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-06 22:46:30] INFO [app:32] - Tentativa de login: postgres
+[2026-02-06 22:46:31] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-06 23:02:56] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:02:56] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:02:56] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:02:57] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 23:02:58] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:02:58] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:02:58] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:02:58] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 23:14:11] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:14:11] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:14:11] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:14:11] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 23:14:13] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:14:13] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:14:13] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:14:13] INFO [app:106] -  16 Blueprints registrados com sucesso

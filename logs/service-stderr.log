@@ -1,0 +1,21 @@
+O sistema n�o pode encontrar o caminho especificado.
+[2026-02-06 23:14:11] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:14:11] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:14:11] INFO [app:72] - ✅ Error handlers registrados
+Erro ao inicializar banco de dados: column "criado_em" does not exist
+
+[2026-02-06 23:14:11] INFO [app:106] -  16 Blueprints registrados com sucesso
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.16.1.75:5000
+Press CTRL+C to quit
+ * Restarting with stat
+[2026-02-06 23:14:13] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:14:13] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:14:13] INFO [app:72] - ✅ Error handlers registrados
+Erro ao inicializar banco de dados: column "criado_em" does not exist
+
+[2026-02-06 23:14:13] INFO [app:106] -  16 Blueprints registrados com sucesso
+ * Debugger is active!
+ * Debugger PIN: 429-135-896
