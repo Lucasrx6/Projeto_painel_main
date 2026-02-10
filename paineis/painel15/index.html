@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chamado TI - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel15/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#dc3545">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho compacto -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-headset"></i> Chamado TI</h1>
+                </div>
+                <div class="header-right">
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteudo principal -->
+        <div class="main-content">
+
+            <!-- TELA 1: Botao de Chamada Emergencial -->
+            <div class="tela" id="tela-principal">
+                <div class="botao-emergencia-wrapper">
+                    <button class="botao-emergencia" id="btn-emergencia">
+                        <div class="botao-emergencia-pulso"></div>
+                        <div class="botao-emergencia-conteudo">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span class="botao-emergencia-texto">CHAMADA<br>EMERGENCIAL</span>
+                            <small class="botao-emergencia-sub">Toque para abrir chamado</small>
+                        </div>
+                    </button>
+                </div>
+                <button class="btn-acompanhar" id="btn-acompanhar">
+                    <i class="fas fa-clipboard-list"></i>
+                    Acompanhar Chamados
+                    <span class="badge-acompanhar" id="badge-ativos">0</span>
+                </button>
+            </div>
+
+            <!-- TELA 2: Formulario de Abertura -->
+            <div class="tela" id="tela-formulario" style="display:none;">
+                <div class="formulario-header">
+                    <button class="btn-voltar-form" id="btn-voltar-form">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-file-alt"></i> Registrar Chamado Emergencial</h2>
+                </div>
+
+                <form class="formulario" id="form-chamado" autocomplete="off">
+                    <div class="form-aviso-emergencial">
+                        <i class="fas fa-bolt"></i>
+                        Este chamado sera registrado como <strong>PRIORIDADE CRITICA</strong>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-nome">
+                            <i class="fas fa-user"></i> Seu Nome *
+                        </label>
+                        <input type="text" id="input-nome" placeholder="Nome completo" maxlength="150" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-local">
+                            <i class="fas fa-map-marker-alt"></i> Local do Problema *
+                        </label>
+                        <input type="text" id="input-local" placeholder="Ex: Recepcao, UTI, Farmacia..." maxlength="200" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-kora">
+                            <i class="fas fa-ticket-alt"></i> Numero Chamado Kora * <small>(6 ou 7 digitos)</small>
+                        </label>
+                        <input type="tel" id="input-kora" placeholder="Ex: 123456" maxlength="7" pattern="[0-9]{6,7}" inputmode="numeric" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-obs">
+                            <i class="fas fa-comment"></i> Observacao <small>(opcional)</small>
+                        </label>
+                        <textarea id="input-obs" placeholder="Descreva brevemente o problema, se desejar..." rows="3" maxlength="500"></textarea>
+                        <span class="char-count"><span id="count-obs">0</span>/500</span>
+                    </div>
+
+                    <button type="submit" class="btn-enviar" id="btn-enviar">
+                        <i class="fas fa-paper-plane"></i> Enviar Chamado Emergencial
+                    </button>
+                </form>
+            </div>
+
+            <!-- TELA 3: Confirmacao de Envio -->
+            <div class="tela" id="tela-confirmacao" style="display:none;">
+                <div class="confirmacao-container">
+                    <div class="confirmacao-icone confirmacao-sucesso">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 class="confirmacao-titulo">Chamado Registrado!</h2>
+                    <p class="confirmacao-mensagem">Seu chamado emergencial foi enviado com sucesso.</p>
+                    <div class="confirmacao-detalhes" id="confirmacao-detalhes"></div>
+                    <div class="confirmacao-acoes">
+                        <button class="btn-confirmacao btn-novo-chamado" id="btn-novo-chamado">
+                            <i class="fas fa-plus"></i> Novo Chamado
+                        </button>
+                        <button class="btn-confirmacao btn-ver-chamados" id="btn-ver-chamados">
+                            <i class="fas fa-clipboard-list"></i> Ver Chamados
+                        </button>
+                        <button class="btn-confirmacao btn-voltar-inicio" id="btn-voltar-inicio">
+                            <i class="fas fa-home"></i> Inicio
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA 4: Acompanhamento de Chamados -->
+            <div class="tela" id="tela-acompanhamento" style="display:none;">
+                <div class="formulario-header">
+                    <button class="btn-voltar-form" id="btn-voltar-acompanhamento">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-clipboard-list"></i> Meus Chamados</h2>
+                    <button class="btn-refresh-acomp" id="btn-refresh-acomp">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="acompanhamento-lista" id="lista-acompanhamento">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Carregando chamados...</p>
+                    </div>
+                </div>
+                <div class="acompanhamento-vazio" id="vazio-acompanhamento" style="display:none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhum chamado nas ultimas 24h</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Toast de Notificacao -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel15/main.js"></script>
+</body>
+</html>

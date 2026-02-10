@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Chamados TI - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel14/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-headset"></i> Central de Chamados TI</h1>
+                </div>
+                <div class="header-right">
+                    <!-- Controle de Volume -->
+                    <div class="volume-control" id="volume-control">
+                        <button id="btn-som" class="btn-header btn-som-ativo" title="Som">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <div class="volume-slider-wrapper" id="volume-slider-wrapper">
+                            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="70" title="Volume">
+                            <span class="volume-valor" id="volume-valor">70%</span>
+                        </div>
+                    </div>
+                    <button id="btn-historico" class="btn-header" title="Historico">
+                        <i class="fas fa-history"></i> <span class="btn-text">Historico</span>
+                    </button>
+                    <button id="btn-refresh" class="btn-header" title="Atualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i> <span class="btn-text">Voltar</span>
+                    </button>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicador de Alerta Global -->
+        <div class="alerta-global" id="alerta-global">
+            <div class="alerta-global-content">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="alerta-global-texto">NOVO CHAMADO RECEBIDO!</span>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+
+            <!-- Cards de Estatisticas -->
+            <div class="stats-row">
+                <div class="stat-card stat-card-alerta" id="card-abertos">
+                    <div class="stat-icon icon-abertos"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3 id="stat-abertos">0</h3>
+                    <p>Abertos</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-atendimento"><i class="fas fa-wrench"></i></div>
+                    <h3 id="stat-em-atendimento">0</h3>
+                    <p>Em Atendimento</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-nao-vistos"><i class="fas fa-eye-slash"></i></div>
+                    <h3 id="stat-nao-visualizados">0</h3>
+                    <p>Nao Visualizados</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-fechados-hoje"><i class="fas fa-check-circle"></i></div>
+                    <h3 id="stat-fechados-hoje">0</h3>
+                    <p>Fechados Hoje</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-abertos-hoje"><i class="fas fa-folder-open"></i></div>
+                    <h3 id="stat-abertos-hoje">0</h3>
+                    <p>Abertos Hoje</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-tempo-medio"><i class="fas fa-clock"></i></div>
+                    <h3 id="stat-tempo-medio">0 min</h3>
+                    <p>Tempo Medio</p>
+                </div>
+            </div>
+
+            <!-- Abas -->
+            <div class="tabs-container">
+                <button class="tab-btn tab-ativa" id="tab-ativos" data-tab="ativos">
+                    <i class="fas fa-bell"></i> Chamados Ativos
+                    <span class="tab-badge" id="badge-ativos">0</span>
+                </button>
+                <button class="tab-btn" id="tab-historico" data-tab="historico">
+                    <i class="fas fa-history"></i> Historico
+                    <span class="tab-badge tab-badge-secondary" id="badge-historico">0</span>
+                </button>
+            </div>
+
+            <!-- Lista de Chamados Ativos -->
+            <div class="chamados-container" id="container-ativos">
+                <div class="loading" id="loading-chamados">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando chamados...</p>
+                </div>
+                <div class="chamados-lista" id="lista-chamados"></div>
+                <div class="chamados-vazio" id="vazio-chamados" style="display:none;">
+                    <i class="fas fa-check-double"></i>
+                    <p>Nenhum chamado ativo no momento</p>
+                    <small>Os chamados aparecerao aqui automaticamente</small>
+                </div>
+            </div>
+
+            <!-- Lista de Historico -->
+            <div class="chamados-container" id="container-historico" style="display:none;">
+                <div class="historico-filtros">
+                    <label>Periodo:</label>
+                    <select id="filtro-dias">
+                        <option value="1">Hoje</option>
+                        <option value="7" selected>Ultimos 7 dias</option>
+                        <option value="30">Ultimos 30 dias</option>
+                        <option value="90">Ultimos 90 dias</option>
+                    </select>
+                    <div class="pesquisa-wrapper">
+                        <i class="fas fa-search pesquisa-icone"></i>
+                        <input type="text" id="pesquisa-historico" class="pesquisa-input" placeholder="Pesquisar nome, local, numero...">
+                        <button class="pesquisa-limpar" id="pesquisa-limpar" title="Limpar" style="display:none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="chamados-lista" id="lista-historico"></div>
+                <div class="chamados-vazio" id="vazio-historico" style="display:none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhum registro encontrado</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL: NOVO CHAMADO RECEBIDO (impactante) -->
+    <div class="modal-overlay" id="modal-novo-chamado">
+        <div class="modal modal-novo-chamado-visual">
+            <div class="modal-novo-header">
+                <div class="modal-novo-pulso"></div>
+                <div class="modal-novo-icone">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <h2>NOVO CHAMADO!</h2>
+            </div>
+            <div class="modal-novo-body" id="modal-novo-body">
+                <!-- Preenchido via JS -->
+            </div>
+            <div class="modal-novo-footer">
+                <button class="btn btn-confirmar btn-novo-entendido" id="btn-novo-entendido">
+                    <i class="fas fa-check"></i> Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Iniciar Atendimento -->
+    <div class="modal-overlay" id="modal-atender">
+        <div class="modal">
+            <div class="modal-header modal-header-atender">
+                <h2><i class="fas fa-wrench"></i> Iniciar Atendimento</h2>
+                <button class="modal-fechar" onclick="fecharModal('modal-atender')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-atender-info"></div>
+                <div class="form-group">
+                    <label for="input-tecnico-atender">Nome do Tecnico *</label>
+                    <input type="text" id="input-tecnico-atender" placeholder="Digite seu nome completo" maxlength="150">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancelar" onclick="fecharModal('modal-atender')">Cancelar</button>
+                <button class="btn btn-confirmar" id="btn-confirmar-atender"><i class="fas fa-play"></i> Iniciar Atendimento</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Fechar Chamado -->
+    <div class="modal-overlay" id="modal-fechar">
+        <div class="modal">
+            <div class="modal-header modal-header-fechar">
+                <h2><i class="fas fa-check-circle"></i> Fechar Chamado</h2>
+                <button class="modal-fechar" onclick="fecharModal('modal-fechar')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-fechar-info"></div>
+                <div class="form-group">
+                    <label for="input-tecnico-fechar">Nome do Tecnico *</label>
+                    <input type="text" id="input-tecnico-fechar" placeholder="Digite seu nome completo" maxlength="150">
+                </div>
+                <div class="form-group">
+                    <label for="input-obs-fechar">Observacao do Atendimento * <small>(min. 10 caracteres)</small></label>
+                    <textarea id="input-obs-fechar" placeholder="Descreva o que foi feito..." rows="4" maxlength="1000"></textarea>
+                    <span class="char-count"><span id="count-obs-fechar">0</span>/1000</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancelar" onclick="fecharModal('modal-fechar')">Cancelar</button>
+                <button class="btn btn-confirmar btn-fechar-chamado" id="btn-confirmar-fechar"><i class="fas fa-check"></i> Fechar Chamado</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Inativar Chamado -->
+    <div class="modal-overlay" id="modal-inativar">
+        <div class="modal">
+            <div class="modal-header modal-header-inativar">
+                <h2><i class="fas fa-ban"></i> Inativar Chamado</h2>
+                <button class="modal-fechar" onclick="fecharModal('modal-inativar')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-inativar-info"></div>
+                <div class="form-group">
+                    <label for="input-motivo-inativar">Motivo da Inativacao *</label>
+                    <textarea id="input-motivo-inativar" placeholder="Informe o motivo..." rows="3" maxlength="500"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancelar" onclick="fecharModal('modal-inativar')">Cancelar</button>
+                <button class="btn btn-confirmar btn-inativar" id="btn-confirmar-inativar"><i class="fas fa-ban"></i> Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Adicionar Observacao -->
+    <div class="modal-overlay" id="modal-observacao">
+        <div class="modal">
+            <div class="modal-header modal-header-obs">
+                <h2><i class="fas fa-comment-dots"></i> Adicionar Observacao</h2>
+                <button class="modal-fechar" onclick="fecharModal('modal-observacao')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-obs-info"></div>
+                <div class="form-group">
+                    <label for="input-observacao">Observacao *</label>
+                    <textarea id="input-observacao" placeholder="Digite sua observacao..." rows="4" maxlength="1000"></textarea>
+                    <span class="char-count"><span id="count-obs">0</span>/1000</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancelar" onclick="fecharModal('modal-observacao')">Cancelar</button>
+                <button class="btn btn-confirmar" id="btn-confirmar-obs"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Historico do Chamado -->
+    <div class="modal-overlay" id="modal-historico-chamado">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-list-ul"></i> Historico do Chamado</h2>
+                <button class="modal-fechar" onclick="fecharModal('modal-historico-chamado')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-hist-info"></div>
+                <div class="timeline" id="timeline-historico"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancelar" onclick="fecharModal('modal-historico-chamado')">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Audio de alerta (MP3 configuravel) -->
+    <audio id="audio-alerta" preload="auto">
+        <source src="/static/audio/chamado.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="/paineis/painel14/main.js"></script>
+</body>
+</html>
