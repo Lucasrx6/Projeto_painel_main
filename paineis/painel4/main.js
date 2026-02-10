@@ -1,21 +1,22 @@
 // ========================================
-// 📊 CONFIGURAÇÃO DO DASHBOARD COMPACTO
+// PAINEL 4 - OCUPACAO HOSPITALAR
+// Dashboard Principal - JavaScript
 // ========================================
 
-const BASE_URL = window.location.origin;
+var BASE_URL = window.location.origin;
 
-const CONFIG = {
-    apiDashboard: `${BASE_URL}/api/paineis/painel4/dashboard`,
-    apiSetores: `${BASE_URL}/api/paineis/painel4/setores`,
+var CONFIG = {
+    apiDashboard: BASE_URL + '/api/paineis/painel4/dashboard',
+    apiSetores: BASE_URL + '/api/paineis/painel4/setores',
     intervaloRefresh: 30000
 };
 
 // ========================================
-// 🚀 INICIALIZAÇÃO
+// INICIALIZACAO
 // ========================================
 
 function inicializar() {
-    console.log('🚀 Inicializando dashboard compacto...');
+    console.log('Inicializando dashboard...');
 
     configurarBotoes();
     carregarDados();
@@ -23,54 +24,60 @@ function inicializar() {
     // Auto-refresh
     setInterval(carregarDados, CONFIG.intervaloRefresh);
 
-    console.log('✅ Dashboard inicializado!');
+    console.log('Dashboard inicializado!');
 }
 
 function configurarBotoes() {
-    document.getElementById('btn-voltar')?.addEventListener('click', () => {
-        window.location.href = '/frontend/dashboard.html';
-    });
+    var btnVoltar = document.getElementById('btn-voltar');
+    if (btnVoltar) {
+        btnVoltar.addEventListener('click', function () {
+            window.location.href = '/frontend/dashboard.html';
+        });
+    }
 
-    document.getElementById('btn-detalhes')?.addEventListener('click', () => {
-        window.location.href = '/painel/painel4/detalhes';
-    });
+    var btnDetalhes = document.getElementById('btn-detalhes');
+    if (btnDetalhes) {
+        btnDetalhes.addEventListener('click', function () {
+            window.location.href = '/painel/painel4/detalhes';
+        });
+    }
 
-    document.getElementById('btn-refresh')?.addEventListener('click', carregarDados);
-}
-
-// ========================================
-// 📊 CARREGAMENTO DE DADOS
-// ========================================
-
-async function carregarDados() {
-    try {
-        const [dashboardRes, setoresRes] = await Promise.all([
-            fetch(CONFIG.apiDashboard),
-            fetch(CONFIG.apiSetores)
-        ]);
-
-        if (!dashboardRes.ok || !setoresRes.ok) {
-            throw new Error('Erro ao carregar dados');
-        }
-
-        const dashboardData = await dashboardRes.json();
-        const setoresData = await setoresRes.json();
-
-        if (dashboardData.success && setoresData.success) {
-            atualizarCards(dashboardData.data);
-            atualizarListaSetores(setoresData.data);
-            atualizarHoraAtualizacao();
-        } else {
-            console.error('Erro nos dados:', dashboardData, setoresData);
-        }
-
-    } catch (erro) {
-        console.error('Erro ao carregar dados:', erro);
+    var btnRefresh = document.getElementById('btn-refresh');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', carregarDados);
     }
 }
 
 // ========================================
-// 💳 ATUALIZAR CARDS SUPERIORES (6 CARDS)
+// CARREGAMENTO DE DADOS
+// ========================================
+
+function carregarDados() {
+    Promise.all([
+        fetch(CONFIG.apiDashboard).then(function (r) { return r.json(); }),
+        fetch(CONFIG.apiSetores).then(function (r) { return r.json(); })
+    ])
+    .then(function (resultados) {
+        var dashboardData = resultados[0];
+        var setoresData = resultados[1];
+
+        if (dashboardData.success) {
+            atualizarCards(dashboardData.data);
+        }
+
+        if (setoresData.success) {
+            atualizarListaSetores(setoresData.data);
+        }
+
+        atualizarHoraAtualizacao();
+    })
+    .catch(function (erro) {
+        console.error('Erro ao carregar dados:', erro);
+    });
+}
+
+// ========================================
+// ATUALIZAR CARDS SUPERIORES
 // ========================================
 
 function atualizarCards(dados) {
@@ -89,48 +96,47 @@ function atualizarCards(dados) {
     document.getElementById('leitos-interditados').textContent =
         parseInt(dados.leitos_interditados) || 0;
 
-    // Taxa de ocupação
-    const taxaOcupacao = parseFloat(dados.taxa_ocupacao_geral) || 0;
+    // Taxa de ocupacao
+    var taxaOcupacao = parseFloat(dados.taxa_ocupacao_geral) || 0;
     document.getElementById('taxa-valor').textContent =
         taxaOcupacao.toFixed(0) + '%';
 }
 
 // ========================================
-// 🏥 ATUALIZAR CARDS DE SETORES (COMPACTO)
+// ATUALIZAR CARDS DE SETORES
 // ========================================
 
 function atualizarListaSetores(setores) {
-    const container = document.getElementById('lista-setores');
+    var container = document.getElementById('lista-setores');
 
     if (!container) {
-        console.warn('Container lista-setores não encontrado');
+        console.warn('Container lista-setores nao encontrado');
         return;
     }
 
     if (!setores || setores.length === 0) {
-        container.innerHTML = `
-            <div class="loading">
-                <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 10px; display: block;"></i>
-                <p>Nenhum setor encontrado</p>
-            </div>
-        `;
+        container.innerHTML =
+            '<div class="loading">' +
+                '<i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 10px; display: block;"></i>' +
+                '<p>Nenhum setor encontrado</p>' +
+            '</div>';
         return;
     }
 
-    // Ordena setores por taxa de ocupação (decrescente)
-    const setoresOrdenados = [...setores].sort((a, b) =>
-        (parseFloat(b.taxa_ocupacao) || 0) - (parseFloat(a.taxa_ocupacao) || 0)
-    );
+    // Ordena setores por taxa de ocupacao (decrescente)
+    var setoresOrdenados = setores.slice().sort(function (a, b) {
+        return (parseFloat(b.taxa_ocupacao) || 0) - (parseFloat(a.taxa_ocupacao) || 0);
+    });
 
-    container.innerHTML = setoresOrdenados.map(setor => {
-        const taxaOcupacao = parseFloat(setor.taxa_ocupacao) || 0;
-        const totalLeitos = parseInt(setor.total_leitos) || 0;
-        const ocupados = parseInt(setor.leitos_ocupados) || 0;
-        const livres = parseInt(setor.leitos_livres) || 0;
-        const nomeSetor = setor.nm_setor || 'Setor Desconhecido';
+    container.innerHTML = setoresOrdenados.map(function (setor) {
+        var taxaOcupacao = parseFloat(setor.taxa_ocupacao) || 0;
+        var totalLeitos = parseInt(setor.total_leitos) || 0;
+        var ocupados = parseInt(setor.leitos_ocupados) || 0;
+        var livres = parseInt(setor.leitos_livres) || 0;
+        var nomeSetor = setor.nm_setor || 'Setor Desconhecido';
 
-        // Define classe baseada na taxa de ocupação
-        let classeOcupacao = '';
+        // Define classe baseada na taxa de ocupacao
+        var classeOcupacao = '';
         if (taxaOcupacao < 50) {
             classeOcupacao = 'ocupacao-baixa';
         } else if (taxaOcupacao < 80) {
@@ -139,52 +145,49 @@ function atualizarListaSetores(setores) {
             classeOcupacao = 'ocupacao-alta';
         }
 
-        return `
-            <div class="setor-card ${classeOcupacao}" onclick="abrirDetalhesSetor('${nomeSetor}')" style="cursor: pointer;">
-                <div class="setor-card-nome">${nomeSetor}</div>
-                <div class="setor-card-taxa">${taxaOcupacao.toFixed(0)}%</div>
-                <div class="setor-card-label">Ocupação</div>
-                <div class="setor-card-info">
-                    <span><i class="fas fa-bed"></i> ${totalLeitos}</span>
-                    <span style="color: #dc3545;"><i class="fas fa-user"></i> ${ocupados}</span>
-                    <span style="color: #28a745;"><i class="fas fa-check"></i> ${livres}</span>
-                </div>
-            </div>
-        `;
+        return (
+            '<div class="setor-card ' + classeOcupacao + '" onclick="abrirDetalhesSetor(\'' + nomeSetor.replace(/'/g, "\\'") + '\')" style="cursor: pointer;">' +
+                '<div class="setor-card-nome">' + nomeSetor + '</div>' +
+                '<div class="setor-card-taxa">' + taxaOcupacao.toFixed(0) + '%</div>' +
+                '<div class="setor-card-label">Ocupacao</div>' +
+                '<div class="setor-card-info">' +
+                    '<span><i class="fas fa-bed"></i> ' + totalLeitos + '</span>' +
+                    '<span style="color: #dc3545;"><i class="fas fa-user"></i> ' + ocupados + '</span>' +
+                    '<span style="color: #28a745;"><i class="fas fa-check"></i> ' + livres + '</span>' +
+                '</div>' +
+            '</div>'
+        );
     }).join('');
 }
 
 // ========================================
-// 🔗 NOVA FUNÇÃO: ABRIR DETALHES COM FILTRO
+// ABRIR DETALHES COM FILTRO
 // ========================================
 
 function abrirDetalhesSetor(nomeSetor) {
-    // Codifica o nome do setor para URL
-    const setorCodificado = encodeURIComponent(nomeSetor);
-
-    // Redireciona para detalhes com parâmetro de setor
-    window.location.href = `/painel/painel4/detalhes?setor=${setorCodificado}`;
+    var setorCodificado = encodeURIComponent(nomeSetor);
+    window.location.href = '/painel/painel4/detalhes?setor=' + setorCodificado;
 }
 
 // ========================================
-// 🕒 ATUALIZAR HORA
+// ATUALIZAR HORA
 // ========================================
 
 function atualizarHoraAtualizacao() {
-    const agora = new Date();
-    const hora = agora.toLocaleTimeString('pt-BR', {
+    var agora = new Date();
+    var hora = agora.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
         minute: '2-digit'
     });
 
-    const elemento = document.querySelector('.ultima-atualizacao');
+    var elemento = document.querySelector('.ultima-atualizacao');
     if (elemento) {
         elemento.textContent = hora;
     }
 }
 
 // ========================================
-// 🚀 START
+// START
 // ========================================
 
 if (document.readyState === 'loading') {

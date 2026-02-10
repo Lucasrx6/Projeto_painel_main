@@ -1,28 +1,78 @@
 /* ========================================
-   🎨 ESTILOS - PÁGINA DE DETALHES (ULTRA COMPACTO)
+   PAINEL 4 - OCUPACAO HOSPITALAR
+   Pagina de Detalhes - Estilos
    ======================================== */
 
-* {
+/* -- Reset & Base -- */
+
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
-    background: #f5f7fa;
-    padding: 0;
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    overflow: hidden;
-    height: 100vh;
+:root {
+    /* Brand */
+    --cor-primaria: #c0392b;
+    --cor-primaria-escura: #a93226;
+    --cor-primaria-clara: #e74c3c;
+
+    /* Status */
+    --cor-ocupado: #c0392b;
+    --cor-livre: #27ae60;
+    --cor-higienizacao: #f39c12;
+    --cor-interditado: #7f8c8d;
+
+    /* Gender */
+    --cor-masculino-bg: #e8f0fe;
+    --cor-masculino-hover: #d2e3fc;
+    --cor-feminino-bg: #fce8f0;
+    --cor-feminino-hover: #f8d0e0;
+
+    /* Neutrals */
+    --cor-fundo: #f0f2f5;
+    --cor-superficie: #ffffff;
+    --cor-borda: #e4e7ec;
+    --cor-texto: #1a1d23;
+    --cor-texto-secundario: #5f6b7a;
+    --cor-texto-terciario: #9aa5b4;
+
+    /* Spacing */
+    --espacamento-xs: 4px;
+    --espacamento-sm: 8px;
+    --espacamento-md: 12px;
+    --espacamento-lg: 16px;
+
+    /* Shadows */
+    --sombra-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --sombra-md: 0 4px 12px rgba(0,0,0,0.07);
+
+    /* Radius */
+    --raio-sm: 6px;
+    --raio-md: 10px;
+
+    /* Transitions */
+    --transicao: 0.2s ease;
 }
 
-/* ========================================
-   📦 CONTAINER (SEM PADDING INFERIOR)
-   ======================================== */
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    background: var(--cor-fundo);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--cor-texto);
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* -- Layout -- */
 
 .painel-container {
-    background: white;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -30,701 +80,652 @@ body {
 }
 
 /* ========================================
-   🎯 CABEÇALHO ULTRA COMPACTO
+   HEADER
    ======================================== */
 
 .painel-header {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-    color: white;
-    padding: 8px 15px;
+    background: var(--cor-primaria);
+    color: #fff;
+    padding: 0 var(--espacamento-lg);
     flex-shrink: 0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 12px rgba(192,57,43,0.25);
+    position: relative;
+    z-index: 20;
 }
 
-.header-top {
+.header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
-    gap: 10px;
-    flex-wrap: wrap;
+    height: 46px;
+    gap: var(--espacamento-md);
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: var(--espacamento-sm);
+}
+
+.header-logo {
+    height: 26px;
+    width: auto;
+    padding: 3px 5px;
+    background: #fff;
+    border-radius: var(--raio-sm);
+}
+
+.header-title h1 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+}
+
+.header-title h1 i {
+    font-size: 0.8rem;
+    opacity: 0.85;
 }
 
 .header-right {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--espacamento-md);
 }
 
-/* Logo compacta */
-.header-left img {
-    max-height: 30px;
-    height: auto;
-    padding: 4px 6px;
-    background: white;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.header-clock {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    opacity: 0.85;
+    font-variant-numeric: tabular-nums;
 }
 
-.painel-header h1 {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
+.header-clock i {
+    font-size: 0.68rem;
+}
+
+.header-actions {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.painel-header h1 i {
-    font-size: 0.9rem;
-}
+/* -- Header Buttons -- */
 
-/* Botões do Header */
-.btn-voltar,
-.btn-refresh,
-.btn-auto-scroll {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
-    padding: 4px 10px;
-    border-radius: 5px;
+.btn-header {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 5px 10px;
+    border-radius: var(--raio-sm);
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    transition: all 0.3s ease;
+    transition: var(--transicao);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     white-space: nowrap;
+    line-height: 1;
 }
 
-.btn-voltar i,
-.btn-refresh i,
-.btn-auto-scroll i {
-    font-size: 0.75rem;
+.btn-header:hover {
+    background: rgba(255,255,255,0.95);
+    color: var(--cor-primaria);
+    border-color: transparent;
 }
 
-.btn-voltar:hover,
-.btn-refresh:hover,
-.btn-auto-scroll:hover {
-    background: white;
-    color: #dc3545;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.btn-header:active {
+    transform: scale(0.96);
 }
 
-.btn-auto-scroll.active {
-    background: #28a745;
-    border-color: #28a745;
-    animation: pulse 2s infinite;
+.btn-header.scroll-active {
+    background: var(--cor-livre);
+    border-color: var(--cor-livre);
+    animation: scroll-pulse 2s ease infinite;
 }
 
-@keyframes pulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
-    }
-    50% {
-        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
-    }
+.btn-header.refreshing i {
+    animation: spin 0.8s linear;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes scroll-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(39,174,96,0.5); }
+    50% { box-shadow: 0 0 0 6px rgba(39,174,96,0); }
 }
 
 /* ========================================
-   🔍 FILTROS ULTRA COMPACTOS
+   FILTERS BAR
    ======================================== */
 
-.filtros-container {
+.filtros-bar {
     display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-    flex-wrap: wrap;
     align-items: flex-end;
+    gap: var(--espacamento-sm);
+    padding: var(--espacamento-sm) 0 var(--espacamento-sm) 0;
+    flex-wrap: wrap;
 }
 
 .filtro-group {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    flex: 1;
-    min-width: 150px;
+    min-width: 0;
 }
 
 .filtro-group label {
-    font-size: 0.7rem;
+    font-size: 0.62rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.8;
     display: flex;
     align-items: center;
     gap: 3px;
 }
 
 .filtro-group label i {
-    font-size: 0.7rem;
+    font-size: 0.58rem;
 }
 
-.filtro-select,
-.filtro-input {
-    background: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: #333;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    transition: all 0.3s ease;
+.filtro-control {
+    background: rgba(255,255,255,0.95);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: var(--cor-texto);
+    padding: 5px 8px;
+    border-radius: var(--raio-sm);
+    font-size: 0.78rem;
+    font-family: inherit;
+    transition: var(--transicao);
+    min-width: 140px;
 }
 
-.filtro-select:focus,
-.filtro-input:focus {
+.filtro-control:focus {
     outline: none;
-    border-color: white;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+}
+
+.filtro-busca-group {
+    flex: 1;
+    min-width: 160px;
 }
 
 .btn-limpar {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
-    padding: 4px 10px;
-    border-radius: 4px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.25);
+    width: 30px;
+    height: 30px;
+    border-radius: var(--raio-sm);
     cursor: pointer;
-    font-size: 0.75rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
+    font-size: 0.8rem;
+    transition: var(--transicao);
     display: flex;
     align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-}
-
-.btn-limpar i {
-    font-size: 0.75rem;
-}
-
-.btn-limpar:hover {
-    background: white;
-    color: #dc3545;
-    transform: translateY(-2px);
-}
-
-/* ========================================
-   📊 ESTATÍSTICAS DO FILTRO ULTRA COMPACTAS
-   ======================================== */
-
-.stats-filtro {
-    display: flex;
-    gap: 10px;
-    font-size: 0.7rem;
-    flex-wrap: wrap;
-    background: rgba(255, 255, 255, 0.15);
-    padding: 5px 10px;
-    border-radius: 5px;
-}
-
-.stats-filtro .stat-item {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-}
-
-.stats-filtro strong {
-    font-weight: 600;
-}
-
-/* ========================================
-   📑 ABAS COMPACTAS
-   ======================================== */
-
-.tabs-container {
-    display: flex;
-    background: white;
-    border-bottom: 2px solid #e9ecef;
-    padding: 0 15px;
-    gap: 3px;
-    flex-wrap: wrap;
+    justify-content: center;
     flex-shrink: 0;
 }
 
-.tab-button {
+.btn-limpar:hover {
+    background: rgba(255,255,255,0.9);
+    color: var(--cor-primaria);
+}
+
+.filtro-stats {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.stat-chip {
+    font-size: 0.72rem;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-chip strong {
+    font-weight: 700;
+}
+
+/* ========================================
+   TABS NAVIGATION
+   ======================================== */
+
+.tabs-nav {
+    display: flex;
+    background: var(--cor-superficie);
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 0 var(--espacamento-lg);
+    gap: 2px;
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.tab-btn {
     background: transparent;
     border: none;
-    padding: 10px 15px;
+    padding: 10px 14px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
-    color: #666;
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s ease;
+    color: var(--cor-texto-terciario);
+    border-bottom: 2px solid transparent;
+    transition: var(--transicao);
     display: flex;
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+    font-family: inherit;
 }
 
-.tab-button:hover {
-    color: #dc3545;
-    background: #f8f9fa;
+.tab-btn:hover {
+    color: var(--cor-texto-secundario);
+    background: var(--cor-fundo);
 }
 
-.tab-button.active {
-    color: #dc3545;
-    border-bottom-color: #dc3545;
+.tab-btn.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
 }
 
-.tab-button i {
-    font-size: 0.9rem;
+.tab-btn i {
+    font-size: 0.78rem;
 }
 
-.badge {
-    background: #dc3545;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.7rem;
+.tab-badge {
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.65rem;
     font-weight: 700;
+    line-height: 1.4;
 }
 
-.badge-success {
-    background: #28a745;
+.tab-badge-danger {
+    background: rgba(192,57,43,0.1);
+    color: var(--cor-ocupado);
 }
 
-.badge-secondary {
-    background: #6c757d;
+.tab-badge-success {
+    background: rgba(39,174,96,0.1);
+    color: var(--cor-livre);
+}
+
+.tab-badge-neutral {
+    background: var(--cor-fundo);
+    color: var(--cor-texto-secundario);
+}
+
+.tab-btn.active .tab-badge-danger {
+    background: var(--cor-ocupado);
+    color: #fff;
+}
+
+.tab-btn.active .tab-badge-success {
+    background: var(--cor-livre);
+    color: #fff;
+}
+
+.tab-btn.active .tab-badge-neutral {
+    background: var(--cor-texto-secundario);
+    color: #fff;
 }
 
 /* ========================================
-   📋 CONTEÚDO DAS ABAS (SEM MARGIN/PADDING)
+   TAB CONTENT & TABLES
    ======================================== */
 
 .tabs-content {
     flex: 1;
     overflow: hidden;
-    margin: 0;
-    padding: 0;
 }
 
-.tab-pane {
+.tab-panel {
     display: none;
     height: 100%;
-    margin: 0;
-    padding: 0;
 }
 
-.tab-pane.active {
+.tab-panel.active {
     display: block;
 }
 
-/* ========================================
-   📊 TABELA OCUPANDO TODA A TELA
-   ======================================== */
-
-.table-container {
-    overflow-x: auto;
+.table-wrap {
+    height: 100%;
     overflow-y: auto;
-    height: calc(100vh - 200px);
-    padding-bottom: 0;
+    overflow-x: auto;
 }
 
-/* Scrollbar customizado */
-.table-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+/* Scrollbar */
+.table-wrap::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
 
-.table-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
+.table-wrap::-webkit-scrollbar-track {
+    background: var(--cor-fundo);
 }
 
-.table-container::-webkit-scrollbar-thumb {
-    background: #dc3545;
-    border-radius: 4px;
+.table-wrap::-webkit-scrollbar-thumb {
+    background: var(--cor-texto-terciario);
+    border-radius: 10px;
 }
 
-.table-container::-webkit-scrollbar-thumb:hover {
-    background: #c82333;
+.table-wrap::-webkit-scrollbar-thumb:hover {
+    background: var(--cor-texto-secundario);
 }
 
+/* Table */
 table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
-    margin: 0;
+    background: var(--cor-superficie);
 }
 
 thead {
     position: sticky;
     top: 0;
     z-index: 10;
-    background: #dc3545;
 }
 
 thead th {
-    background: #dc3545;
-    color: white;
+    background: #2c3e50;
+    color: #fff;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.73rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 12px 10px;
+    letter-spacing: 0.04em;
+    padding: 10px 12px;
     border: none;
     white-space: nowrap;
     user-select: none;
+    text-align: left;
 }
 
-/* Colunas ordenáveis */
-thead th.ordenavel {
+/* Sortable columns */
+th.col-sortable {
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.15s ease;
 }
 
-thead th.ordenavel:hover {
-    background: #c82333;
-}
-
-thead th.ordenavel span {
-    margin-right: 5px;
+th.col-sortable:hover {
+    background: #34495e;
 }
 
 .sort-icon {
-    opacity: 0.5;
-    font-size: 0.75rem;
-    margin-left: 5px;
-    transition: opacity 0.2s ease;
+    opacity: 0.35;
+    font-size: 0.65rem;
+    margin-left: 4px;
+    transition: opacity 0.15s ease;
 }
 
 .sort-icon.active {
     opacity: 1;
 }
 
-thead th.ordenavel:hover .sort-icon {
-    opacity: 0.8;
+th.col-sortable:hover .sort-icon {
+    opacity: 0.7;
 }
 
-/* Linhas */
+/* Table rows */
 tbody tr {
-    transition: all 0.2s ease;
-    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid var(--cor-borda);
 }
 
 tbody tr:hover {
-    background: #fff5f5;
-    transform: scale(1.002);
+    background: var(--cor-fundo) !important;
 }
 
 tbody td {
-    padding: 10px;
-    font-size: 0.85rem;
-    color: #333;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+    color: var(--cor-texto);
     white-space: nowrap;
-    text-align: center;
+}
+
+tbody td:first-child {
+    font-weight: 700;
+    color: var(--cor-texto);
+}
+
+/* Alternating row colors (subtle) */
+tbody tr:nth-child(even) {
+    background: #fafbfc;
 }
 
 /* ========================================
-   🎨 BADGES E STATUS
+   GENDER ROW COLORS
    ======================================== */
 
-.status-badge {
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
+tbody tr.genero-masculino {
+    background: var(--cor-masculino-bg) !important;
+}
+
+tbody tr.genero-feminino {
+    background: var(--cor-feminino-bg) !important;
+}
+
+tbody tr.genero-masculino:hover {
+    background: var(--cor-masculino-hover) !important;
+}
+
+tbody tr.genero-feminino:hover {
+    background: var(--cor-feminino-hover) !important;
+}
+
+/* ========================================
+   STATUS BADGES
+   ======================================== */
+
+.badge-status {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
     font-weight: 600;
     display: inline-block;
     white-space: nowrap;
+    letter-spacing: 0.01em;
 }
 
-.status-ocupado {
-    background: #ffe5e5;
-    color: #dc3545;
+.badge-ocupado {
+    background: rgba(192,57,43,0.1);
+    color: var(--cor-ocupado);
 }
 
-.status-livre {
-    background: #d4edda;
-    color: #28a745;
+.badge-livre {
+    background: rgba(39,174,96,0.1);
+    color: var(--cor-livre);
 }
 
-.status-higienizacao {
-    background: #fff3cd;
-    color: #856404;
+.badge-higienizacao {
+    background: rgba(243,156,18,0.1);
+    color: var(--cor-higienizacao);
 }
 
-.status-interditado {
-    background: #e2e3e5;
-    color: #383d41;
+.badge-interditado {
+    background: rgba(127,140,141,0.12);
+    color: var(--cor-interditado);
 }
 
 /* ========================================
-   ⏳ LOADING
+   LOADING & EMPTY STATES
    ======================================== */
 
-.loading {
+.td-loading {
     text-align: center;
-    padding: 40px;
-    color: #dc3545;
+    padding: 40px !important;
+    color: var(--cor-texto-terciario);
+    font-size: 0.85rem;
+}
+
+.td-loading .loading-spinner {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
 }
 
 .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #dc3545;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
+    animation: spin 0.7s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* ========================================
-   ❌ MENSAGEM VAZIA
-   ======================================== */
-
-.empty-message {
+.td-empty {
     text-align: center;
-    padding: 60px 20px;
-    color: #666;
+    padding: 50px 20px !important;
+    color: var(--cor-texto-terciario);
 }
 
-.empty-message i {
-    font-size: 4rem;
-    margin-bottom: 20px;
+.td-empty i {
+    font-size: 2.2rem;
     display: block;
-    color: #ccc;
+    margin-bottom: var(--espacamento-md);
+    opacity: 0.3;
 }
 
-.empty-message h3 {
-    font-size: 1.3rem;
-    margin-bottom: 10px;
-    color: #333;
+.td-empty strong {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 4px;
 }
 
-.empty-message p {
-    font-size: 1rem;
-    color: #666;
+.td-empty span {
+    font-size: 0.8rem;
 }
 
 /* ========================================
-   📱 RESPONSIVIDADE
+   RESPONSIVENESS
    ======================================== */
 
-@media (max-width: 1200px) {
-    .filtros-container {
-        flex-direction: column;
-        align-items: stretch;
+@media (max-width: 1024px) {
+    .filtros-bar {
+        flex-wrap: wrap;
+    }
+
+    .filtro-control {
+        min-width: 120px;
+    }
+}
+
+@media (max-width: 768px) {
+    .painel-header {
+        padding: 0 var(--espacamento-md);
+    }
+
+    .header-content {
+        height: 42px;
+    }
+
+    .header-title h1 {
+        font-size: 0.8rem;
+    }
+
+    .btn-header .btn-text {
+        display: none;
+    }
+
+    .filtros-bar {
+        gap: 6px;
+        padding: 6px 0;
+    }
+
+    .filtro-group {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .filtro-control {
+        min-width: 0;
+        font-size: 0.75rem;
+        padding: 4px 6px;
+    }
+
+    .filtro-group label {
+        font-size: 0.58rem;
+    }
+
+    .tabs-nav {
+        padding: 0 var(--espacamento-md);
+    }
+
+    .tab-btn {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+    }
+
+    thead th {
+        font-size: 0.68rem;
+        padding: 8px 8px;
+    }
+
+    tbody td {
+        font-size: 0.78rem;
+        padding: 7px 8px;
+    }
+
+    .badge-status {
+        font-size: 0.65rem;
+        padding: 2px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-content {
+        height: 40px;
+    }
+
+    .header-logo {
+        height: 22px;
+    }
+
+    .header-clock {
+        display: none;
     }
 
     .filtro-group {
         min-width: 100%;
     }
 
-    .btn-limpar {
+    .filtro-busca-group {
+        min-width: 100%;
+    }
+
+    .filtro-stats {
+        margin-left: 0;
         width: 100%;
-        justify-content: center;
+        text-align: center;
     }
 
-    .table-container {
-        height: calc(100vh - 280px);
-    }
-}
-
-@media (max-width: 868px) {
-    .painel-header {
-        padding: 6px 12px;
+    .tab-btn {
+        padding: 7px 8px;
+        font-size: 0.72rem;
     }
 
-    .header-top {
-        flex-direction: column;
-        align-items: flex-start;
-        margin-bottom: 5px;
-    }
-
-    .header-left {
-        width: 100%;
-        gap: 6px;
-    }
-
-    .header-left img {
-        max-height: 26px;
-        padding: 3px 5px;
-    }
-
-    .painel-header h1 {
-        font-size: 0.85rem;
-    }
-
-    .header-right {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .btn-voltar,
-    .btn-refresh,
-    .btn-auto-scroll {
-        flex: 1;
-        justify-content: center;
-        font-size: 0.7rem;
-        padding: 3px 8px;
-    }
-
-    .filtros-container {
-        gap: 5px;
-        margin-bottom: 5px;
-    }
-
-    .filtro-group label {
-        font-size: 0.65rem;
-    }
-
-    .filtro-select,
-    .filtro-input {
-        padding: 3px 6px;
-        font-size: 0.75rem;
-    }
-
-    .stats-filtro {
-        font-size: 0.65rem;
-        padding: 4px 8px;
-        gap: 8px;
-    }
-
-    .tabs-container {
-        padding: 0 10px;
-        overflow-x: auto;
-    }
-
-    .tab-button {
-        padding: 8px 12px;
-        font-size: 0.8rem;
-    }
-
-    .badge {
-        font-size: 0.65rem;
-        padding: 1px 6px;
-    }
-
-    .table-container {
-        height: calc(100vh - 280px);
+    .tab-badge {
+        font-size: 0.6rem;
+        padding: 1px 5px;
     }
 
     thead th {
-        font-size: 0.75rem;
-        padding: 10px 8px;
-    }
-
-    tbody td {
-        font-size: 0.8rem;
-        padding: 8px;
-    }
-
-    .status-badge {
-        font-size: 0.7rem;
-        padding: 3px 8px;
-    }
-}
-
-@media (max-width: 480px) {
-    .painel-header {
-        padding: 5px 10px;
-    }
-
-    .header-left img {
-        max-height: 24px;
-        padding: 2px 4px;
-    }
-
-    .painel-header h1 {
-        font-size: 0.8rem;
-    }
-
-    .btn-voltar,
-    .btn-refresh,
-    .btn-auto-scroll {
         font-size: 0.65rem;
-        padding: 3px 6px;
-    }
-
-    .filtro-group label {
-        font-size: 0.6rem;
-    }
-
-    .filtro-select,
-    .filtro-input {
-        font-size: 0.7rem;
-    }
-
-    .stats-filtro {
-        flex-direction: column;
-        gap: 6px;
-        font-size: 0.6rem;
-    }
-
-    .tab-button {
-        padding: 6px 10px;
-        font-size: 0.75rem;
-    }
-
-    .table-container {
-        height: calc(100vh - 300px);
-    }
-
-    thead th {
-        font-size: 0.7rem;
-        padding: 8px 6px;
+        padding: 7px 6px;
     }
 
     tbody td {
-        font-size: 0.75rem;
+        font-size: 0.73rem;
         padding: 6px;
     }
-}
-
-/* ========================================
-   🎯 UTILIDADES
-   ======================================== */
-
-.text-center {
-    text-align: center;
-}
-
-.text-muted {
-    color: #6c757d;
-}
-
-.fw-bold {
-    font-weight: 700;
-}
-
-
-/* ========================================
-   🎨 CORES POR GÊNERO (MAIS VISÍVEIS E DISCRETAS)
-   ======================================== */
-
-tbody tr.genero-masculino {
-    background-color: #cfe2f3 !important; /* Azul mais visível */
-}
-
-tbody tr.genero-feminino {
-    background-color: #f4c7d7 !important; /* Rosa mais visível */
-}
-
-tbody tr.genero-masculino:hover {
-    background-color: #9fc5e8 !important; /* Azul mais forte no hover */
-    transform: scale(1.002);
-}
-
-tbody tr.genero-feminino:hover {
-    background-color: #ea9ab2 !important; /* Rosa mais forte no hover */
-    transform: scale(1.002);
-}
-
-/* Mantém o texto legível */
-tbody tr.genero-masculino td,
-tbody tr.genero-feminino td {
-    color: #333 !important;
 }

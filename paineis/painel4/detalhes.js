@@ -1,749 +1,694 @@
 // ========================================
-// 📋 CONFIGURAÇÃO - PÁGINA DE DETALHES
+// Painel 4 - Ocupacao Hospitalar
+// Pagina de Detalhes - JavaScript
 // ========================================
 
-const BASE_URL = window.location.origin;
+(function () {
+    'use strict';
 
-const CONFIG = {
-    apiUrlOcupados: `${BASE_URL}/api/paineis/painel4/leitos-ocupados`,
-    apiUrlDisponiveis: `${BASE_URL}/api/paineis/painel4/leitos-disponiveis`,
-    apiUrlTodos: `${BASE_URL}/api/paineis/painel4/todos-leitos`,
-    apiUrlSetores: `${BASE_URL}/api/paineis/painel4/setores`,
-    intervaloRefresh: 30000, // 30 segundos
-    velocidadeScroll: 0.5,
-    limiteLinhas: 30,
-    pausaNaLinha100: 2000
-};
+    // -- Configuracao --
 
-let dadosOcupados = [];
-let dadosDisponiveis = [];
-let dadosTodos = [];
-let dadosOcupadosFiltrados = [];
-let dadosDisponiveisFiltrados = [];
-let dadosTodosFiltrados = [];
+    var BASE_URL = window.location.origin;
 
-let estadoOrdenacao = {
-    campo: null,
-    direcao: 'asc'
-};
-
-// Estado dos filtros (PERSISTENTE)
-let filtrosAtivos = {
-    setor: '',
-    status: '',
-    busca: ''
-};
-
-let autoScrollAtivo = false;
-let intervaloAutoScroll = null;
-
-// ========================================
-// 🚀 INICIALIZAÇÃO
-// ========================================
-
-function inicializar() {
-    console.log('🚀 Inicializando Página de Detalhes...');
-
-    // Detecta parâmetro de setor na URL
-    detectarSetorURL();
-
-    configurarBotoes();
-    configurarAbas();
-    configurarFiltros();
-    configurarOrdenacao();
-    carregarDados();
-
-    // Auto-refresh mantendo filtros
-    setInterval(carregarDados, CONFIG.intervaloRefresh);
-
-    // Configura auto-scroll após 1 segundo (aguarda elementos renderizarem)
-    setTimeout(() => {
-        configurarAutoScroll();
-    }, 1000);
-
-    console.log('✅ Página inicializada com sucesso!');
-    console.log('🔄 Auto-refresh: 30s (filtros mantidos)');
-}
-
-// ========================================
-// 🆕 DETECTAR SETOR NA URL
-// ========================================
-
-function detectarSetorURL() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const setorParam = urlParams.get('setor');
-
-    if (setorParam) {
-        const setorDecodificado = decodeURIComponent(setorParam);
-        filtrosAtivos.setor = setorDecodificado.toLowerCase();
-        console.log(`🎯 Setor detectado na URL: ${setorDecodificado}`);
-
-        // Ativa a aba "Todos os Leitos" após um delay
-        setTimeout(() => {
-            ativarAbaTodosLeitos();
-        }, 100);
-    }
-}
-
-// ========================================
-// 🆕 ATIVAR ABA "TODOS OS LEITOS"
-// ========================================
-
-function ativarAbaTodosLeitos() {
-    const botaoTodos = document.querySelector('[data-tab="todos-leitos"]');
-
-    if (botaoTodos) {
-        // Remove active de todas
-        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-
-        // Ativa "Todos os Leitos"
-        botaoTodos.classList.add('active');
-        document.getElementById('tab-todos-leitos').classList.add('active');
-
-        console.log('✅ Aba "Todos os Leitos" ativada automaticamente');
-    }
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializar);
-} else {
-    inicializar();
-}
-
-// ========================================
-// 🔘 CONFIGURAÇÃO DE BOTÕES
-// ========================================
-
-function configurarBotoes() {
-    const btnVoltar = document.getElementById('btn-voltar-dashboard');
-    if (btnVoltar) {
-        btnVoltar.addEventListener('click', () => {
-            window.location.href = '/painel/painel4';
-        });
-    }
-
-    const btnRefresh = document.getElementById('btn-refresh');
-    if (btnRefresh) {
-        btnRefresh.addEventListener('click', () => {
-            carregarDados();
-        });
-    }
-
-    const btnLimpar = document.getElementById('btn-limpar-filtros');
-    if (btnLimpar) {
-        btnLimpar.addEventListener('click', () => {
-            limparFiltros();
-        });
-    }
-}
-
-// ========================================
-// 📑 CONFIGURAÇÃO DE ABAS
-// ========================================
-
-function configurarAbas() {
-    const botoes = document.querySelectorAll('.tab-button');
-
-    botoes.forEach(botao => {
-        botao.addEventListener('click', () => {
-            const tabId = botao.getAttribute('data-tab');
-
-            // Remove active de todas
-            botoes.forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-
-            // Ativa a selecionada
-            botao.classList.add('active');
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-
-            // Atualiza estatísticas
-            atualizarEstatisticasFiltro();
-        });
-    });
-}
-
-// ========================================
-// 🔍 CONFIGURAÇÃO DE FILTROS (PERSISTENTES)
-// ========================================
-
-function configurarFiltros() {
-    document.getElementById('filtro-setor').addEventListener('change', aplicarFiltros);
-    document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
-    document.getElementById('filtro-busca').addEventListener('input', aplicarFiltros);
-}
-
-function limparFiltros() {
-    document.getElementById('filtro-setor').value = '';
-    document.getElementById('filtro-status').value = '';
-    document.getElementById('filtro-busca').value = '';
-
-    filtrosAtivos = {
-        setor: '',
-        status: '',
-        busca: ''
+    var CONFIG = {
+        apiUrlOcupados: BASE_URL + '/api/paineis/painel4/leitos-ocupados',
+        apiUrlDisponiveis: BASE_URL + '/api/paineis/painel4/leitos-disponiveis',
+        apiUrlTodos: BASE_URL + '/api/paineis/painel4/todos-leitos',
+        apiUrlSetores: BASE_URL + '/api/paineis/painel4/setores',
+        intervaloRefresh: 30000,
+        velocidadeScroll: 0.5,
+        limiteLinhas: 30,
+        pausaNoFinal: 2000,
+        pausaReinicio: 5000,
+        autoScrollDelay: 5000
     };
 
-    aplicarFiltros();
-}
+    // -- Estado Global --
 
-function aplicarFiltros() {
-    // Salva o estado dos filtros
-    filtrosAtivos.setor = document.getElementById('filtro-setor').value.toLowerCase();
-    filtrosAtivos.status = document.getElementById('filtro-status').value;
-    filtrosAtivos.busca = document.getElementById('filtro-busca').value.toLowerCase();
+    var estado = {
+        dados: {
+            ocupados: [],
+            disponiveis: [],
+            todos: []
+        },
+        filtrados: {
+            ocupados: [],
+            disponiveis: [],
+            todos: []
+        },
+        filtros: {
+            setor: '',
+            status: '',
+            busca: ''
+        },
+        ordenacao: {
+            campo: null,
+            direcao: 'asc'
+        },
+        autoScroll: {
+            ativo: false,
+            intervalo: null,
+            emPausa: false,
+            aguardando: false
+        }
+    };
 
-    // Filtra Ocupados
-    dadosOcupadosFiltrados = dadosOcupados.filter(item => {
-        let passa = true;
+    var timerRefresh = null;
 
-        if (filtrosAtivos.setor && !item.setor.toLowerCase().includes(filtrosAtivos.setor)) {
-            passa = false;
+    // ========================================
+    // INICIALIZACAO
+    // ========================================
+
+    function inicializar() {
+        detectarSetorURL();
+        configurarEventos();
+        carregarDados();
+
+        timerRefresh = setInterval(carregarDados, CONFIG.intervaloRefresh);
+
+        // Auto-scroll apos delay
+        setTimeout(function () {
+            if (!estado.autoScroll.ativo) {
+                ativarAutoScroll();
+            }
+        }, CONFIG.autoScrollDelay);
+    }
+
+    function detectarSetorURL() {
+        var urlParams = new URLSearchParams(window.location.search);
+        var setorParam = urlParams.get('setor');
+
+        if (setorParam) {
+            estado.filtros.setor = decodeURIComponent(setorParam).toLowerCase();
+
+            // Ativar aba "Todos" quando vem de um setor especifico
+            setTimeout(function () {
+                ativarAba('todos-leitos');
+            }, 100);
+        }
+    }
+
+    // ========================================
+    // EVENTOS
+    // ========================================
+
+    function configurarEventos() {
+        // Botao voltar
+        var btnVoltar = document.getElementById('btn-voltar-dashboard');
+        if (btnVoltar) {
+            btnVoltar.addEventListener('click', function () {
+                window.location.href = '/painel/painel4';
+            });
         }
 
-        if (filtrosAtivos.busca) {
-            const textoCompleto = `
-                ${item.paciente || ''}
-                ${item.leito || ''}
-                ${item.medico || ''}
-                ${item.convenio || ''}
-                ${item.clinica || ''}
-            `.toLowerCase();
+        // Botao refresh
+        var btnRefresh = document.getElementById('btn-refresh');
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', function () {
+                btnRefresh.classList.add('refreshing');
+                carregarDados().finally(function () {
+                    setTimeout(function () {
+                        btnRefresh.classList.remove('refreshing');
+                    }, 600);
+                });
+            });
+        }
 
-            if (!textoCompleto.includes(filtrosAtivos.busca)) {
-                passa = false;
+        // Botao limpar
+        var btnLimpar = document.getElementById('btn-limpar-filtros');
+        if (btnLimpar) {
+            btnLimpar.addEventListener('click', limparFiltros);
+        }
+
+        // Botao auto-scroll
+        var btnScroll = document.getElementById('btn-auto-scroll');
+        if (btnScroll) {
+            btnScroll.addEventListener('click', toggleAutoScroll);
+        }
+
+        // Filtros
+        document.getElementById('filtro-setor').addEventListener('change', aplicarFiltros);
+        document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
+        document.getElementById('filtro-busca').addEventListener('input', aplicarFiltros);
+
+        // Abas
+        var tabBtns = document.querySelectorAll('.tab-btn');
+        for (var i = 0; i < tabBtns.length; i++) {
+            tabBtns[i].addEventListener('click', function () {
+                ativarAba(this.getAttribute('data-tab'));
+            });
+        }
+
+        // Ordenacao
+        var cols = document.querySelectorAll('th.col-sortable');
+        for (var j = 0; j < cols.length; j++) {
+            cols[j].addEventListener('click', function () {
+                ordenarPorCampo(this.getAttribute('data-campo'));
+            });
+        }
+    }
+
+    // ========================================
+    // ABAS
+    // ========================================
+
+    function ativarAba(tabId) {
+        var btns = document.querySelectorAll('.tab-btn');
+        var panels = document.querySelectorAll('.tab-panel');
+
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.remove('active');
+            btns[i].setAttribute('aria-selected', 'false');
+        }
+
+        for (var j = 0; j < panels.length; j++) {
+            panels[j].classList.remove('active');
+        }
+
+        var btnAlvo = document.querySelector('[data-tab="' + tabId + '"]');
+        var panelAlvo = document.getElementById('tab-' + tabId);
+
+        if (btnAlvo) {
+            btnAlvo.classList.add('active');
+            btnAlvo.setAttribute('aria-selected', 'true');
+        }
+
+        if (panelAlvo) {
+            panelAlvo.classList.add('active');
+        }
+
+        atualizarEstatisticas();
+    }
+
+    function obterAbaAtiva() {
+        var btn = document.querySelector('.tab-btn.active');
+        return btn ? btn.getAttribute('data-tab') : 'leitos-ocupados';
+    }
+
+    // ========================================
+    // FILTROS
+    // ========================================
+
+    function limparFiltros() {
+        document.getElementById('filtro-setor').value = '';
+        document.getElementById('filtro-status').value = '';
+        document.getElementById('filtro-busca').value = '';
+
+        estado.filtros = { setor: '', status: '', busca: '' };
+        aplicarFiltros();
+    }
+
+    function aplicarFiltros() {
+        // Capturar valores
+        estado.filtros.setor = document.getElementById('filtro-setor').value.toLowerCase();
+        estado.filtros.status = document.getElementById('filtro-status').value;
+        estado.filtros.busca = document.getElementById('filtro-busca').value.toLowerCase();
+
+        // Filtrar cada dataset
+        estado.filtrados.ocupados = filtrarArray(estado.dados.ocupados, true);
+        estado.filtrados.disponiveis = filtrarArray(estado.dados.disponiveis, false);
+        estado.filtrados.todos = filtrarArray(estado.dados.todos, false);
+
+        // Reaplicar ordenacao se houver
+        if (estado.ordenacao.campo) {
+            var aba = obterAbaAtiva();
+            if (aba === 'leitos-ocupados') {
+                ordenarArray(estado.filtrados.ocupados, estado.ordenacao.campo);
+            } else if (aba === 'leitos-disponiveis') {
+                ordenarArray(estado.filtrados.disponiveis, estado.ordenacao.campo);
+            } else {
+                ordenarArray(estado.filtrados.todos, estado.ordenacao.campo);
             }
         }
 
-        return passa;
-    });
-
-    // Filtra Disponíveis
-    dadosDisponiveisFiltrados = dadosDisponiveis.filter(item => {
-        let passa = true;
-
-        if (filtrosAtivos.setor && !item.setor.toLowerCase().includes(filtrosAtivos.setor)) {
-            passa = false;
-        }
-
-        if (filtrosAtivos.status && item.status_leito !== filtrosAtivos.status) {
-            passa = false;
-        }
-
-        if (filtrosAtivos.busca && !item.leito.toLowerCase().includes(filtrosAtivos.busca)) {
-            passa = false;
-        }
-
-        return passa;
-    });
-
-    // Filtra Todos
-    dadosTodosFiltrados = dadosTodos.filter(item => {
-        let passa = true;
-
-        if (filtrosAtivos.setor && !item.setor.toLowerCase().includes(filtrosAtivos.setor)) {
-            passa = false;
-        }
-
-        if (filtrosAtivos.status && item.status_leito !== filtrosAtivos.status) {
-            passa = false;
-        }
-
-        if (filtrosAtivos.busca) {
-            const textoCompleto = `
-                ${item.paciente || ''}
-                ${item.leito || ''}
-                ${item.medico || ''}
-                ${item.convenio || ''}
-            `.toLowerCase();
-
-            if (!textoCompleto.includes(filtrosAtivos.busca)) {
-                passa = false;
-            }
-        }
-
-        return passa;
-    });
-
-    // Reaplicar ordenação se houver
-    if (estadoOrdenacao.campo) {
-        const abaAtiva = document.querySelector('.tab-button.active')?.getAttribute('data-tab');
-        if (abaAtiva === 'leitos-ocupados') {
-            ordenarArray(dadosOcupadosFiltrados, estadoOrdenacao.campo);
-        } else if (abaAtiva === 'leitos-disponiveis') {
-            ordenarArray(dadosDisponiveisFiltrados, estadoOrdenacao.campo);
-        } else {
-            ordenarArray(dadosTodosFiltrados, estadoOrdenacao.campo);
-        }
-    }
-
-    // Atualiza as tabelas
-    renderizarTabelaOcupados();
-    renderizarTabelaDisponiveis();
-    renderizarTabelaTodos();
-    atualizarEstatisticasFiltro();
-}
-
-// ========================================
-// 📊 CARREGAMENTO DE DADOS (MANTÉM FILTROS)
-// ========================================
-
-async function carregarDados() {
-    try {
-        console.log('🔄 Carregando dados...');
-
-        const [ocupados, disponiveis, todos, setores] = await Promise.all([
-            fetch(CONFIG.apiUrlOcupados).then(r => r.json()),
-            fetch(CONFIG.apiUrlDisponiveis).then(r => r.json()),
-            fetch(CONFIG.apiUrlTodos).then(r => r.json()),
-            fetch(CONFIG.apiUrlSetores).then(r => r.json())
-        ]);
-
-        if (ocupados.success && disponiveis.success && todos.success && setores.success) {
-            dadosOcupados = ocupados.data;
-            dadosDisponiveis = disponiveis.data;
-            dadosTodos = todos.data;
-
-            // Popula filtro de setores mantendo seleção
-            popularFiltroSetores(setores.data);
-
-            // Aplica filtros (mantém os anteriores)
-            aplicarFiltros();
-
-            // Atualiza badges das abas
-            atualizarBadgesAbas();
-
-            console.log('✅ Dados carregados! Filtros mantidos.');
-
-        } else {
-            mostrarErro('Erro ao carregar dados');
-        }
-
-    } catch (erro) {
-        console.error('❌ Erro ao carregar dados:', erro);
-        mostrarErro('Erro de conexão com o servidor');
-    }
-}
-
-function popularFiltroSetores(setores) {
-    const select = document.getElementById('filtro-setor');
-    const valorAtual = select.value;
-
-    // Limpa e repopula
-    select.innerHTML = '<option value="">Todos os Setores</option>';
-
-    setores
-        .sort((a, b) => (a.nm_setor || '').localeCompare(b.nm_setor || ''))
-        .forEach(setor => {
-            const option = document.createElement('option');
-            option.value = setor.nm_setor;
-            option.textContent = setor.nm_setor;
-            select.appendChild(option);
-        });
-
-    // Restaura valor da URL ou valor anterior
-    if (filtrosAtivos.setor) {
-        const opcaoCorrespondente = Array.from(select.options).find(
-            opt => opt.value.toLowerCase() === filtrosAtivos.setor.toLowerCase()
-        );
-
-        if (opcaoCorrespondente) {
-            select.value = opcaoCorrespondente.value;
-        }
-    } else if (valorAtual) {
-        select.value = valorAtual;
-    }
-}
-
-function atualizarBadgesAbas() {
-    document.getElementById('badge-ocupados').textContent = dadosOcupados.length;
-    document.getElementById('badge-disponiveis').textContent = dadosDisponiveis.length;
-    document.getElementById('badge-todos').textContent = dadosTodos.length;
-}
-
-function atualizarEstatisticasFiltro() {
-    const abaAtiva = document.querySelector('.tab-button.active')?.getAttribute('data-tab');
-
-    let totalOriginal = 0;
-    let totalFiltrado = 0;
-
-    if (abaAtiva === 'leitos-ocupados') {
-        totalOriginal = dadosOcupados.length;
-        totalFiltrado = dadosOcupadosFiltrados.length;
-    } else if (abaAtiva === 'leitos-disponiveis') {
-        totalOriginal = dadosDisponiveis.length;
-        totalFiltrado = dadosDisponiveisFiltrados.length;
-    } else {
-        totalOriginal = dadosTodos.length;
-        totalFiltrado = dadosTodosFiltrados.length;
-    }
-
-    document.getElementById('total-registros').textContent = totalOriginal;
-    document.getElementById('total-filtrados').textContent = totalFiltrado;
-    document.getElementById('ultima-atualizacao').textContent = new Date().toLocaleTimeString('pt-BR');
-}
-
-// ========================================
-// 📋 RENDERIZAÇÃO DAS TABELAS (COM CORES POR GÊNERO)
-// ========================================
-
-function renderizarTabelaOcupados() {
-    const tbody = document.getElementById('tbody-ocupados');
-
-    if (dadosOcupadosFiltrados.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" class="empty-message">
-                    <i class="fas fa-inbox"></i>
-                    <h3>Nenhum leito ocupado encontrado</h3>
-                    <p>Tente ajustar os filtros ou limpar a busca</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = dadosOcupadosFiltrados.map(item => {
-        // Define classe de gênero
-        let classeGenero = '';
-        if (item.sexo === 'M') {
-            classeGenero = 'genero-masculino';
-        } else if (item.sexo === 'F') {
-            classeGenero = 'genero-feminino';
-        }
-
-        return `
-            <tr class="${classeGenero}">
-                <td><strong>${item.leito || '-'}</strong></td>
-                <td>${item.paciente || '-'}</td>
-                <td>${item.idade || '-'}</td>
-                <td>${formatarSexo(item.sexo)}</td>
-                <td>${item.convenio || '-'}</td>
-                <td>${item.medico || '-'}</td>
-                <td><strong>${item.dias_internado || 0}</strong></td>
-                <td>${item.clinica || '-'}</td>
-                <td>${item.tipo_acomodacao || '-'}</td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function renderizarTabelaDisponiveis() {
-    const tbody = document.getElementById('tbody-disponiveis');
-
-    if (dadosDisponiveisFiltrados.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" class="empty-message">
-                    <i class="fas fa-inbox"></i>
-                    <h3>Nenhum leito disponível encontrado</h3>
-                    <p>Tente ajustar os filtros</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = dadosDisponiveisFiltrados.map(item => `
-        <tr>
-            <td><strong>${item.leito || '-'}</strong></td>
-            <td>${item.setor || '-'}</td>
-            <td>${item.tipo_acomodacao || '-'}</td>
-            <td>${formatarStatusLeito(item.status_leito, item.status)}</td>
-        </tr>
-    `).join('');
-}
-
-function renderizarTabelaTodos() {
-    const tbody = document.getElementById('tbody-todos');
-
-    if (dadosTodosFiltrados.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" class="empty-message">
-                    <i class="fas fa-inbox"></i>
-                    <h3>Nenhum registro encontrado</h3>
-                    <p>Tente ajustar os filtros</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = dadosTodosFiltrados.map(item => {
-        // Define classe de gênero (apenas para leitos ocupados)
-        let classeGenero = '';
-        if (item.paciente) { // Se tem paciente, está ocupado
-            if (item.sexo === 'M') {
-                classeGenero = 'genero-masculino';
-            } else if (item.sexo === 'F') {
-                classeGenero = 'genero-feminino';
-            }
-        }
-
-        return `
-            <tr class="${classeGenero}">
-                <td><strong>${item.leito || '-'}</strong></td>
-                <td>${item.setor || '-'}</td>
-                <td>${formatarStatusLeito(item.status_leito, item.status_leito_desc)}</td>
-                <td>${item.paciente || '-'}</td>
-                <td>${item.idade || '-'}</td>
-                <td>${item.convenio || '-'}</td>
-                <td>${item.medico || '-'}</td>
-                <td>${item.dias_internado || '-'}</td>
-                <td>${item.tipo_acomodacao || '-'}</td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// ========================================
-// 🎨 FORMATAÇÃO
-// ========================================
-
-function formatarSexo(sexo) {
-    if (!sexo) return '-';
-    return sexo === 'M' ? 'Masculino' : sexo === 'F' ? 'Feminino' : sexo;
-}
-
-function formatarStatusLeito(status, descricao) {
-    const classes = {
-        'P': 'status-ocupado',
-        'L': 'status-livre',
-        'H': 'status-higienizacao',
-        'I': 'status-interditado'
-    };
-
-    const textos = {
-        'P': 'Ocupado',
-        'L': 'Livre',
-        'H': 'Higienização',
-        'I': 'Interditado'
-    };
-
-    const classe = classes[status] || '';
-    const texto = descricao || textos[status] || status || 'Desconhecido';
-
-    return `<span class="status-badge ${classe}">${texto}</span>`;
-}
-
-// ========================================
-// 🔃 ORDENAÇÃO
-// ========================================
-
-function configurarOrdenacao() {
-    document.querySelectorAll('th.ordenavel').forEach(th => {
-        th.addEventListener('click', () => {
-            const campo = th.getAttribute('data-campo');
-            ordenarPorCampo(campo);
-        });
-    });
-}
-
-function ordenarPorCampo(campo) {
-    // Alterna direção
-    if (estadoOrdenacao.campo === campo) {
-        estadoOrdenacao.direcao = estadoOrdenacao.direcao === 'asc' ? 'desc' : 'asc';
-    } else {
-        estadoOrdenacao.campo = campo;
-        estadoOrdenacao.direcao = 'asc';
-    }
-
-    // Ordena os dados filtrados
-    const abaAtiva = document.querySelector('.tab-button.active')?.getAttribute('data-tab');
-
-    if (abaAtiva === 'leitos-ocupados') {
-        ordenarArray(dadosOcupadosFiltrados, campo);
+        // Renderizar
         renderizarTabelaOcupados();
-    } else if (abaAtiva === 'leitos-disponiveis') {
-        ordenarArray(dadosDisponiveisFiltrados, campo);
         renderizarTabelaDisponiveis();
-    } else {
-        ordenarArray(dadosTodosFiltrados, campo);
         renderizarTabelaTodos();
+        atualizarEstatisticas();
     }
 
-    atualizarIconesOrdenacao(campo);
-}
+    function filtrarArray(array, apenasOcupados) {
+        return array.filter(function (item) {
+            // Filtro de setor
+            if (estado.filtros.setor && item.setor) {
+                if (!item.setor.toLowerCase().includes(estado.filtros.setor)) {
+                    return false;
+                }
+            }
 
-function ordenarArray(array, campo) {
-    array.sort((a, b) => {
-        let valorA = a[campo];
-        let valorB = b[campo];
+            // Filtro de status (nao se aplica a ocupados-only)
+            if (!apenasOcupados && estado.filtros.status && item.status_leito) {
+                if (item.status_leito !== estado.filtros.status) {
+                    return false;
+                }
+            }
 
-        if (valorA === null || valorA === undefined) valorA = '';
-        if (valorB === null || valorB === undefined) valorB = '';
+            // Filtro de busca
+            if (estado.filtros.busca) {
+                var texto = [
+                    item.paciente || '',
+                    item.leito || '',
+                    item.medico || '',
+                    item.convenio || '',
+                    item.clinica || ''
+                ].join(' ').toLowerCase();
 
-        if (typeof valorA === 'string') valorA = valorA.toLowerCase();
-        if (typeof valorB === 'string') valorB = valorB.toLowerCase();
+                if (!texto.includes(estado.filtros.busca)) {
+                    return false;
+                }
+            }
 
-        let resultado = 0;
-        if (valorA < valorB) resultado = -1;
-        if (valorA > valorB) resultado = 1;
+            return true;
+        });
+    }
 
-        return estadoOrdenacao.direcao === 'asc' ? resultado : -resultado;
-    });
-}
+    // ========================================
+    // CARREGAMENTO DE DADOS
+    // ========================================
 
-function atualizarIconesOrdenacao(campoAtivo) {
-    document.querySelectorAll('.sort-icon').forEach(icon => {
-        icon.className = 'fas fa-sort sort-icon';
-    });
+    function carregarDados() {
+        return Promise.all([
+            fetch(CONFIG.apiUrlOcupados).then(function (r) { return r.json(); }),
+            fetch(CONFIG.apiUrlDisponiveis).then(function (r) { return r.json(); }),
+            fetch(CONFIG.apiUrlTodos).then(function (r) { return r.json(); }),
+            fetch(CONFIG.apiUrlSetores).then(function (r) { return r.json(); })
+        ])
+        .then(function (resultados) {
+            var ocupados = resultados[0];
+            var disponiveis = resultados[1];
+            var todos = resultados[2];
+            var setores = resultados[3];
 
-    const th = document.querySelector(`th[data-campo="${campoAtivo}"]`);
-    if (th) {
-        const icon = th.querySelector('.sort-icon');
-        if (icon) {
-            icon.className = estadoOrdenacao.direcao === 'asc'
-                ? 'fas fa-sort-up sort-icon active'
-                : 'fas fa-sort-down sort-icon active';
+            if (ocupados.success) estado.dados.ocupados = ocupados.data;
+            if (disponiveis.success) estado.dados.disponiveis = disponiveis.data;
+            if (todos.success) estado.dados.todos = todos.data;
+            if (setores.success) popularFiltroSetores(setores.data);
+
+            aplicarFiltros();
+            atualizarBadges();
+            atualizarRelogio();
+        })
+        .catch(function (erro) {
+            console.error('Erro ao carregar dados:', erro);
+        });
+    }
+
+    function popularFiltroSetores(setores) {
+        var select = document.getElementById('filtro-setor');
+        var valorAtual = select.value;
+
+        select.innerHTML = '<option value="">Todos os Setores</option>';
+
+        setores
+            .sort(function (a, b) {
+                return (a.nm_setor || '').localeCompare(b.nm_setor || '');
+            })
+            .forEach(function (setor) {
+                var option = document.createElement('option');
+                option.value = setor.nm_setor;
+                option.textContent = setor.nm_setor;
+                select.appendChild(option);
+            });
+
+        // Restaurar selecao (URL ou anterior)
+        if (estado.filtros.setor) {
+            var opcoes = select.options;
+            for (var i = 0; i < opcoes.length; i++) {
+                if (opcoes[i].value.toLowerCase() === estado.filtros.setor.toLowerCase()) {
+                    select.value = opcoes[i].value;
+                    break;
+                }
+            }
+        } else if (valorAtual) {
+            select.value = valorAtual;
         }
     }
-}
 
-// ========================================
-// 🎬 AUTO SCROLL - VERSÃO DEFINITIVA
-// ========================================
+    // ========================================
+    // BADGES E ESTATISTICAS
+    // ========================================
 
-function configurarAutoScroll() {
-    const btnAutoScroll = document.getElementById('btn-auto-scroll');
-    const container = document.querySelector('.table-container');
-
-    if (!btnAutoScroll || !container) {
-        console.warn('⚠️ Elementos de auto-scroll não encontrados');
-        return;
+    function atualizarBadges() {
+        setText('badge-ocupados', estado.dados.ocupados.length);
+        setText('badge-disponiveis', estado.dados.disponiveis.length);
+        setText('badge-todos', estado.dados.todos.length);
     }
 
-    console.log('✅ Configurando auto-scroll...');
+    function atualizarEstatisticas() {
+        var aba = obterAbaAtiva();
+        var total = 0;
+        var filtrado = 0;
 
-    // Botão manual de controle
-    btnAutoScroll.addEventListener('click', () => {
-        autoScrollAtivo = !autoScrollAtivo;
-
-        if (autoScrollAtivo) {
-            btnAutoScroll.classList.add('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-            iniciarAutoScroll(container);
-            console.log('▶️ Auto-scroll ativado manualmente');
+        if (aba === 'leitos-ocupados') {
+            total = estado.dados.ocupados.length;
+            filtrado = estado.filtrados.ocupados.length;
+        } else if (aba === 'leitos-disponiveis') {
+            total = estado.dados.disponiveis.length;
+            filtrado = estado.filtrados.disponiveis.length;
         } else {
-            btnAutoScroll.classList.remove('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
-            pararAutoScroll();
-            console.log('⏸️ Auto-scroll pausado');
-        }
-    });
-
-    // Ativa automaticamente após 5 segundos
-    setTimeout(() => {
-        if (!autoScrollAtivo) {
-            console.log('🚀 Ativando auto-scroll automaticamente...');
-            autoScrollAtivo = true;
-            btnAutoScroll.classList.add('active');
-            btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-            iniciarAutoScroll(container);
-            console.log('▶️ Auto-scroll INICIADO automaticamente!');
-        }
-    }, 5000);
-}
-
-function iniciarAutoScroll(container) {
-    pararAutoScroll(); // Limpa qualquer interval anterior
-
-    let emPausa = false;
-    let aguardandoReinicio = false;
-
-    console.log('🎬 Iniciando ciclo de auto-scroll...');
-
-    intervaloAutoScroll = setInterval(() => {
-        // Se não está ativo ou em pausa, não faz nada
-        if (!autoScrollAtivo || emPausa || aguardandoReinicio) return;
-
-        // Identifica aba ativa DINAMICAMENTE
-        const abaAtiva = document.querySelector('.tab-button.active')?.getAttribute('data-tab');
-        let tbody;
-
-        if (abaAtiva === 'leitos-ocupados') {
-            tbody = document.getElementById('tbody-ocupados');
-        } else if (abaAtiva === 'leitos-disponiveis') {
-            tbody = document.getElementById('tbody-disponiveis');
-        } else if (abaAtiva === 'todos-leitos') {
-            tbody = document.getElementById('tbody-todos');
+            total = estado.dados.todos.length;
+            filtrado = estado.filtrados.todos.length;
         }
 
-        // Valida se tbody existe e está visível
-        if (!tbody || tbody.offsetParent === null) {
+        setText('total-registros', total);
+        setText('total-filtrados', filtrado);
+    }
+
+    function atualizarRelogio() {
+        var el = document.getElementById('ultima-atualizacao');
+        if (el) {
+            el.textContent = new Date().toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+    }
+
+    // ========================================
+    // RENDERIZACAO DAS TABELAS
+    // ========================================
+
+    function renderizarTabelaOcupados() {
+        var tbody = document.getElementById('tbody-ocupados');
+        var dados = estado.filtrados.ocupados;
+
+        if (dados.length === 0) {
+            tbody.innerHTML = criarEstadoVazio(9, 'Nenhum leito ocupado encontrado', 'Ajuste os filtros ou limpe a busca');
             return;
         }
 
-        const linhas = tbody.getElementsByTagName('tr');
+        tbody.innerHTML = dados.map(function (item) {
+            var classeGenero = obterClasseGenero(item.sexo);
 
-        // Valida se tem linhas válidas
-        if (!linhas || linhas.length === 0 || linhas[0].querySelector('.empty-message, .loading')) {
+            return (
+                '<tr class="' + classeGenero + '">' +
+                    '<td>' + (item.leito || '-') + '</td>' +
+                    '<td>' + (item.paciente || '-') + '</td>' +
+                    '<td style="text-align:center">' + (item.idade || '-') + '</td>' +
+                    '<td style="text-align:center">' + formatarSexo(item.sexo) + '</td>' +
+                    '<td>' + (item.convenio || '-') + '</td>' +
+                    '<td>' + (item.medico || '-') + '</td>' +
+                    '<td style="text-align:center;font-weight:700">' + (item.dias_internado || 0) + '</td>' +
+                    '<td>' + (item.clinica || '-') + '</td>' +
+                    '<td>' + (item.tipo_acomodacao || '-') + '</td>' +
+                '</tr>'
+            );
+        }).join('');
+    }
+
+    function renderizarTabelaDisponiveis() {
+        var tbody = document.getElementById('tbody-disponiveis');
+        var dados = estado.filtrados.disponiveis;
+
+        if (dados.length === 0) {
+            tbody.innerHTML = criarEstadoVazio(4, 'Nenhum leito disponivel encontrado', 'Ajuste os filtros');
             return;
         }
 
-        const scrollAtual = container.scrollTop;
-        let scrollMax;
+        tbody.innerHTML = dados.map(function (item) {
+            return (
+                '<tr>' +
+                    '<td>' + (item.leito || '-') + '</td>' +
+                    '<td>' + (item.setor || '-') + '</td>' +
+                    '<td>' + (item.tipo_acomodacao || '-') + '</td>' +
+                    '<td>' + formatarStatusLeito(item.status_leito, item.status) + '</td>' +
+                '</tr>'
+            );
+        }).join('');
+    }
 
-        // Calcula até onde scrollar
-        if (linhas.length <= CONFIG.limiteLinhas) {
-            scrollMax = container.scrollHeight - container.clientHeight;
+    function renderizarTabelaTodos() {
+        var tbody = document.getElementById('tbody-todos');
+        var dados = estado.filtrados.todos;
+
+        if (dados.length === 0) {
+            tbody.innerHTML = criarEstadoVazio(9, 'Nenhum registro encontrado', 'Ajuste os filtros');
+            return;
+        }
+
+        tbody.innerHTML = dados.map(function (item) {
+            var classeGenero = item.paciente ? obterClasseGenero(item.sexo) : '';
+
+            return (
+                '<tr class="' + classeGenero + '">' +
+                    '<td>' + (item.leito || '-') + '</td>' +
+                    '<td>' + (item.setor || '-') + '</td>' +
+                    '<td>' + formatarStatusLeito(item.status_leito, item.status_leito_desc) + '</td>' +
+                    '<td>' + (item.paciente || '-') + '</td>' +
+                    '<td style="text-align:center">' + (item.idade || '-') + '</td>' +
+                    '<td>' + (item.convenio || '-') + '</td>' +
+                    '<td>' + (item.medico || '-') + '</td>' +
+                    '<td style="text-align:center">' + (item.dias_internado || '-') + '</td>' +
+                    '<td>' + (item.tipo_acomodacao || '-') + '</td>' +
+                '</tr>'
+            );
+        }).join('');
+    }
+
+    // ========================================
+    // FORMATACAO
+    // ========================================
+
+    function formatarSexo(sexo) {
+        if (!sexo) return '-';
+        if (sexo === 'M') return 'Masc';
+        if (sexo === 'F') return 'Fem';
+        return sexo;
+    }
+
+    function formatarStatusLeito(status, descricao) {
+        var mapa = {
+            'P': { classe: 'badge-ocupado', texto: 'Ocupado' },
+            'L': { classe: 'badge-livre', texto: 'Livre' },
+            'H': { classe: 'badge-higienizacao', texto: 'Higienizacao' },
+            'I': { classe: 'badge-interditado', texto: 'Interditado' }
+        };
+
+        var info = mapa[status] || { classe: '', texto: '' };
+        var texto = descricao || info.texto || status || 'Desconhecido';
+
+        return '<span class="badge-status ' + info.classe + '">' + texto + '</span>';
+    }
+
+    function obterClasseGenero(sexo) {
+        if (sexo === 'M') return 'genero-masculino';
+        if (sexo === 'F') return 'genero-feminino';
+        return '';
+    }
+
+    function criarEstadoVazio(colunas, titulo, subtitulo) {
+        return (
+            '<tr><td colspan="' + colunas + '" class="td-empty">' +
+                '<i class="fas fa-inbox"></i>' +
+                '<strong>' + titulo + '</strong>' +
+                '<span>' + subtitulo + '</span>' +
+            '</td></tr>'
+        );
+    }
+
+    // ========================================
+    // ORDENACAO
+    // ========================================
+
+    function ordenarPorCampo(campo) {
+        if (estado.ordenacao.campo === campo) {
+            estado.ordenacao.direcao = estado.ordenacao.direcao === 'asc' ? 'desc' : 'asc';
         } else {
-            const linha30 = linhas[CONFIG.limiteLinhas - 1];
-            if (!linha30) {
+            estado.ordenacao.campo = campo;
+            estado.ordenacao.direcao = 'asc';
+        }
+
+        var aba = obterAbaAtiva();
+
+        if (aba === 'leitos-ocupados') {
+            ordenarArray(estado.filtrados.ocupados, campo);
+            renderizarTabelaOcupados();
+        } else if (aba === 'leitos-disponiveis') {
+            ordenarArray(estado.filtrados.disponiveis, campo);
+            renderizarTabelaDisponiveis();
+        } else {
+            ordenarArray(estado.filtrados.todos, campo);
+            renderizarTabelaTodos();
+        }
+
+        atualizarIconesOrdenacao(campo);
+    }
+
+    function ordenarArray(array, campo) {
+        var direcao = estado.ordenacao.direcao;
+
+        array.sort(function (a, b) {
+            var valorA = a[campo];
+            var valorB = b[campo];
+
+            if (valorA == null) valorA = '';
+            if (valorB == null) valorB = '';
+
+            if (typeof valorA === 'string') valorA = valorA.toLowerCase();
+            if (typeof valorB === 'string') valorB = valorB.toLowerCase();
+
+            var resultado = 0;
+            if (valorA < valorB) resultado = -1;
+            if (valorA > valorB) resultado = 1;
+
+            return direcao === 'asc' ? resultado : -resultado;
+        });
+    }
+
+    function atualizarIconesOrdenacao(campoAtivo) {
+        var icons = document.querySelectorAll('.sort-icon');
+        for (var i = 0; i < icons.length; i++) {
+            icons[i].className = 'fas fa-sort sort-icon';
+        }
+
+        var th = document.querySelector('th[data-campo="' + campoAtivo + '"]');
+        if (th) {
+            var icon = th.querySelector('.sort-icon');
+            if (icon) {
+                icon.className = estado.ordenacao.direcao === 'asc'
+                    ? 'fas fa-sort-up sort-icon active'
+                    : 'fas fa-sort-down sort-icon active';
+            }
+        }
+    }
+
+    // ========================================
+    // AUTO-SCROLL
+    // ========================================
+
+    function toggleAutoScroll() {
+        if (estado.autoScroll.ativo) {
+            desativarAutoScroll();
+        } else {
+            ativarAutoScroll();
+        }
+    }
+
+    function ativarAutoScroll() {
+        estado.autoScroll.ativo = true;
+        estado.autoScroll.emPausa = false;
+        estado.autoScroll.aguardando = false;
+
+        var btn = document.getElementById('btn-auto-scroll');
+        if (btn) {
+            btn.classList.add('scroll-active');
+            btn.innerHTML = '<i class="fas fa-pause"></i> <span class="btn-text">Pausar</span>';
+        }
+
+        iniciarCicloScroll();
+    }
+
+    function desativarAutoScroll() {
+        estado.autoScroll.ativo = false;
+
+        if (estado.autoScroll.intervalo) {
+            clearInterval(estado.autoScroll.intervalo);
+            estado.autoScroll.intervalo = null;
+        }
+
+        var btn = document.getElementById('btn-auto-scroll');
+        if (btn) {
+            btn.classList.remove('scroll-active');
+            btn.innerHTML = '<i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>';
+        }
+    }
+
+    function iniciarCicloScroll() {
+        // Limpar intervalo anterior
+        if (estado.autoScroll.intervalo) {
+            clearInterval(estado.autoScroll.intervalo);
+        }
+
+        estado.autoScroll.intervalo = setInterval(function () {
+            if (!estado.autoScroll.ativo || estado.autoScroll.emPausa || estado.autoScroll.aguardando) {
+                return;
+            }
+
+            // Obter container da aba ativa
+            var container = obterContainerAtivo();
+            if (!container) return;
+
+            var tbody = container.querySelector('tbody');
+            if (!tbody) return;
+
+            var linhas = tbody.getElementsByTagName('tr');
+            if (!linhas || linhas.length === 0) return;
+
+            // Ignorar se so tem estado vazio ou loading
+            if (linhas[0].querySelector('.td-empty, .td-loading')) return;
+
+            // Calcular limite de scroll
+            var scrollMax;
+            if (linhas.length <= CONFIG.limiteLinhas) {
                 scrollMax = container.scrollHeight - container.clientHeight;
             } else {
-                const posicaoLinha30 = linha30.offsetTop + linha30.offsetHeight;
-                scrollMax = posicaoLinha30 - container.clientHeight + 50;
+                var linhaLimite = linhas[CONFIG.limiteLinhas - 1];
+                if (linhaLimite) {
+                    scrollMax = linhaLimite.offsetTop + linhaLimite.offsetHeight - container.clientHeight + 50;
+                } else {
+                    scrollMax = container.scrollHeight - container.clientHeight;
+                }
             }
-        }
 
-        // Chegou no final?
-        if (scrollAtual >= scrollMax - 10) {
-            console.log('⏸️ Chegou no final! Pausando 2s...');
-            emPausa = true;
+            // Chegou no final
+            if (container.scrollTop >= scrollMax - 10) {
+                estado.autoScroll.emPausa = true;
 
-            // Pausa 2 segundos
-            setTimeout(() => {
-                if (!autoScrollAtivo) return;
+                setTimeout(function () {
+                    if (!estado.autoScroll.ativo) return;
 
-                console.log('🔄 Resetando para o topo...');
-                container.scrollTop = 0;
-                aguardandoReinicio = true;
+                    container.scrollTop = 0;
+                    estado.autoScroll.aguardando = true;
 
-                // Aguarda 5 segundos antes de recomeçar
-                setTimeout(() => {
-                    if (autoScrollAtivo) {
-                        aguardandoReinicio = false;
-                        emPausa = false;
-                        console.log('▶️ Reiniciando scroll após 5s!');
-                    }
-                }, 5000);
+                    setTimeout(function () {
+                        if (estado.autoScroll.ativo) {
+                            estado.autoScroll.aguardando = false;
+                            estado.autoScroll.emPausa = false;
+                        }
+                    }, CONFIG.pausaReinicio);
 
-            }, CONFIG.pausaNaLinha100);
+                }, CONFIG.pausaNoFinal);
 
-            return;
-        }
+                return;
+            }
 
-        // Continua scrollando
-        container.scrollTop += CONFIG.velocidadeScroll;
+            // Scrollar
+            container.scrollTop += CONFIG.velocidadeScroll;
 
-    }, 50); // Executa a cada 50ms
-}
-
-function pararAutoScroll() {
-    if (intervaloAutoScroll) {
-        clearInterval(intervaloAutoScroll);
-        intervaloAutoScroll = null;
-        console.log('🛑 Auto-scroll parado');
+        }, 50);
     }
-}
 
-// ========================================
-// ❌ TRATAMENTO DE ERROS
-// ========================================
+    function obterContainerAtivo() {
+        var aba = obterAbaAtiva();
+        var mapa = {
+            'leitos-ocupados': 'scroll-container-ocupados',
+            'leitos-disponiveis': 'scroll-container-disponiveis',
+            'todos-leitos': 'scroll-container-todos'
+        };
 
-function mostrarErro(mensagem) {
-    console.error('❌', mensagem);
-    alert(mensagem);
-}
+        var id = mapa[aba];
+        return id ? document.getElementById(id) : null;
+    }
+
+    // ========================================
+    // UTILITARIOS
+    // ========================================
+
+    function setText(id, valor) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = valor;
+    }
+
+    // ========================================
+    // START
+    // ========================================
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+        inicializar();
+    }
+
+})();

@@ -3,212 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalhes por Setor - Ocupação Hospitalar</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    <title>Detalhes por Setor - Ocupacao Hospitalar</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- CSS Customizado -->
     <link rel="stylesheet" href="/paineis/painel4/detalhes.css">
     <link rel="icon" href="/static/img/favicon.png">
 </head>
 <body>
     <div class="painel-container">
-        <!-- Cabeçalho -->
-        <div class="painel-header">
-            <div class="header-top">
+
+        <!-- Header -->
+        <header class="painel-header">
+            <div class="header-content">
                 <div class="header-left">
-                    <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
-                    <button id="btn-voltar-dashboard" class="btn-voltar">
-                        <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" class="header-logo" onerror="this.style.display='none'">
+                    <button id="btn-voltar-dashboard" class="btn-header" title="Voltar ao dashboard">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
-                    <h1><i class="fas fa-list-ul"></i> Detalhes por Setor</h1>
+                    <div class="header-title">
+                        <h1><i class="fas fa-table-list"></i> Detalhes por Setor</h1>
+                    </div>
                 </div>
                 <div class="header-right">
-                    <button id="btn-auto-scroll" class="btn-auto-scroll">
-                        <i class="fas fa-play"></i> Auto Scroll
-                    </button>
-                    <button id="btn-refresh" class="btn-refresh">
-                        <i class="fas fa-sync-alt"></i> Atualizar
-                    </button>
+                    <div class="header-clock">
+                        <i class="fas fa-clock"></i>
+                        <span id="ultima-atualizacao">--:--</span>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btn-auto-scroll" class="btn-header" title="Auto Scroll">
+                            <i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header" title="Atualizar">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Filtros -->
-            <div class="filtros-container">
+            <!-- Filters Bar -->
+            <div class="filtros-bar">
                 <div class="filtro-group">
-                    <label for="filtro-setor"><i class="fas fa-hospital"></i> Setor:</label>
-                    <select id="filtro-setor" class="filtro-select">
+                    <label for="filtro-setor"><i class="fas fa-hospital"></i> Setor</label>
+                    <select id="filtro-setor" class="filtro-control">
                         <option value="">Todos os Setores</option>
                     </select>
                 </div>
 
                 <div class="filtro-group">
-                    <label for="filtro-status"><i class="fas fa-filter"></i> Status do Leito:</label>
-                    <select id="filtro-status" class="filtro-select">
+                    <label for="filtro-status"><i class="fas fa-circle-dot"></i> Status</label>
+                    <select id="filtro-status" class="filtro-control">
                         <option value="">Todos</option>
                         <option value="P">Ocupado</option>
                         <option value="L">Livre</option>
-                        <option value="H">Higienização</option>
+                        <option value="H">Higienizacao</option>
                         <option value="I">Interditado</option>
                     </select>
                 </div>
 
-                <div class="filtro-group">
-                    <label for="filtro-busca"><i class="fas fa-search"></i> Buscar:</label>
-                    <input type="text" id="filtro-busca" class="filtro-input" placeholder="Paciente, leito, médico...">
+                <div class="filtro-group filtro-busca-group">
+                    <label for="filtro-busca"><i class="fas fa-search"></i> Buscar</label>
+                    <input type="text" id="filtro-busca" class="filtro-control" placeholder="Paciente, leito, medico...">
                 </div>
 
-                <button id="btn-limpar-filtros" class="btn-limpar">
-                    <i class="fas fa-times"></i> Limpar
+                <button id="btn-limpar-filtros" class="btn-limpar" title="Limpar filtros">
+                    <i class="fas fa-xmark"></i>
                 </button>
-            </div>
 
-            <!-- Estatísticas do Filtro -->
-            <div class="stats-filtro">
-                <div class="stat-item">
-                    <strong>Total de Registros:</strong> <span id="total-registros">-</span>
-                </div>
-                <div class="stat-item">
-                    <strong>Filtrados:</strong> <span id="total-filtrados">-</span>
-                </div>
-                <div class="stat-item">
-                    <strong>Última atualização:</strong> <span id="ultima-atualizacao">-</span>
+                <div class="filtro-stats">
+                    <span class="stat-chip">
+                        <strong id="total-filtrados">0</strong> / <span id="total-registros">0</span>
+                    </span>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <!-- Abas de Navegação -->
-        <div class="tabs-container">
-            <button class="tab-button active" data-tab="leitos-ocupados">
-                <i class="fas fa-user-injured"></i> Leitos Ocupados
-                <span class="badge" id="badge-ocupados">0</span>
+        <!-- Tab Navigation -->
+        <nav class="tabs-nav" role="tablist">
+            <button class="tab-btn active" data-tab="leitos-ocupados" role="tab" aria-selected="true">
+                <i class="fas fa-user-injured"></i> Ocupados
+                <span class="tab-badge tab-badge-danger" id="badge-ocupados">0</span>
             </button>
-            <button class="tab-button" data-tab="leitos-disponiveis">
-                <i class="fas fa-check-circle"></i> Leitos Disponíveis
-                <span class="badge badge-success" id="badge-disponiveis">0</span>
+            <button class="tab-btn" data-tab="leitos-disponiveis" role="tab" aria-selected="false">
+                <i class="fas fa-check-circle"></i> Disponiveis
+                <span class="tab-badge tab-badge-success" id="badge-disponiveis">0</span>
             </button>
-            <button class="tab-button" data-tab="todos-leitos">
-                <i class="fas fa-th-list"></i> Todos os Leitos
-                <span class="badge badge-secondary" id="badge-todos">0</span>
+            <button class="tab-btn" data-tab="todos-leitos" role="tab" aria-selected="false">
+                <i class="fas fa-th-list"></i> Todos
+                <span class="tab-badge tab-badge-neutral" id="badge-todos">0</span>
             </button>
-        </div>
+        </nav>
 
-        <!-- Conteúdo das Abas -->
+        <!-- Tab Content -->
         <div class="tabs-content">
-            <!-- Aba: Leitos Ocupados -->
-            <div class="tab-pane active" id="tab-leitos-ocupados">
-                <div class="table-container">
-                    <table class="table table-hover">
+
+            <!-- Tab: Occupied Beds -->
+            <div class="tab-panel active" id="tab-leitos-ocupados" role="tabpanel">
+                <div class="table-wrap" id="scroll-container-ocupados">
+                    <table>
                         <thead>
                             <tr>
-                                <th class="ordenavel" data-campo="leito">
-                                    Leito <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="paciente">
-                                    Paciente <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="idade">
-                                    Idade <i class="fas fa-sort sort-icon"></i>
-                                </th>
+                                <th class="col-sortable" data-campo="leito">Leito <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="paciente">Paciente <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="idade">Idade <i class="fas fa-sort sort-icon"></i></th>
                                 <th>Sexo</th>
-                                <th class="ordenavel" data-campo="convenio">
-                                    Convênio <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="medico">
-                                    Médico <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="dias_internado">
-                                    Dias <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th>Clínica</th>
-                                <th>Acomodação</th>
+                                <th class="col-sortable" data-campo="convenio">Convenio <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="medico">Medico <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="dias_internado">Dias <i class="fas fa-sort sort-icon"></i></th>
+                                <th>Clinica</th>
+                                <th>Acomodacao</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-ocupados">
-                            <tr>
-                                <td colspan="9" class="loading">
-                                    <div class="loading-spinner"></div>
-                                    <div>Carregando dados...</div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="9" class="td-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Aba: Leitos Disponíveis -->
-            <div class="tab-pane" id="tab-leitos-disponiveis">
-                <div class="table-container">
-                    <table class="table table-hover">
+            <!-- Tab: Available Beds -->
+            <div class="tab-panel" id="tab-leitos-disponiveis" role="tabpanel">
+                <div class="table-wrap" id="scroll-container-disponiveis">
+                    <table>
                         <thead>
                             <tr>
-                                <th class="ordenavel" data-campo="leito">
-                                    Leito <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="setor">
-                                    Setor <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="tipo_acomodacao">
-                                    Tipo de Acomodação <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="status">
-                                    Status <i class="fas fa-sort sort-icon"></i>
-                                </th>
+                                <th class="col-sortable" data-campo="leito">Leito <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="setor">Setor <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="tipo_acomodacao">Acomodacao <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="status">Status <i class="fas fa-sort sort-icon"></i></th>
                             </tr>
                         </thead>
                         <tbody id="tbody-disponiveis">
-                            <tr>
-                                <td colspan="4" class="loading">
-                                    <div class="loading-spinner"></div>
-                                    <div>Carregando dados...</div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="4" class="td-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Aba: Todos os Leitos -->
-            <div class="tab-pane" id="tab-todos-leitos">
-                <div class="table-container">
-                    <table class="table table-hover">
+            <!-- Tab: All Beds -->
+            <div class="tab-panel" id="tab-todos-leitos" role="tabpanel">
+                <div class="table-wrap" id="scroll-container-todos">
+                    <table>
                         <thead>
                             <tr>
-                                <th class="ordenavel" data-campo="leito">
-                                    Leito <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="setor">
-                                    Setor <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="status_leito">
-                                    Status <i class="fas fa-sort sort-icon"></i>
-                                </th>
-                                <th class="ordenavel" data-campo="paciente">
-                                    Paciente <i class="fas fa-sort sort-icon"></i>
-                                </th>
+                                <th class="col-sortable" data-campo="leito">Leito <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="setor">Setor <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="status_leito">Status <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="paciente">Paciente <i class="fas fa-sort sort-icon"></i></th>
                                 <th>Idade</th>
-                                <th>Convênio</th>
-                                <th>Médico</th>
+                                <th>Convenio</th>
+                                <th>Medico</th>
                                 <th>Dias</th>
-                                <th>Acomodação</th>
+                                <th>Acomodacao</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-todos">
-                            <tr>
-                                <td colspan="9" class="loading">
-                                    <div class="loading-spinner"></div>
-                                    <div>Carregando dados...</div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="9" class="td-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+
         </div>
     </div>
 
-    <!-- JavaScript -->
     <script src="/paineis/painel4/detalhes.js"></script>
 </body>
 </html>
