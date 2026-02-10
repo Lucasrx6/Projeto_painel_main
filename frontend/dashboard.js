@@ -43,7 +43,8 @@ var Estado = {
     isAdmin: false,
     paineis: [
         'painel2', 'painel3', 'painel4', 'painel5', 'painel6', 'painel7',
-        'painel8', 'painel9', 'painel10', 'painel11', 'painel12', 'painel13'
+        'painel8', 'painel9', 'painel10', 'painel11', 'painel12', 'painel13',
+        'painel14', 'painel15'
     ]
 };
 
