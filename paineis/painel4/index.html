@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ocupação Hospitalar - Anchieta Ceilândia</title>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- CSS Customizado -->
     <link rel="stylesheet" href="/paineis/painel4/style.css">
     <link rel="icon" href="/static/img/favicon.png">
 </head>
 <body>
     <div class="painel-container">
-        <!-- Cabeçalho Ultra Compacto -->
+        <!-- Cabecalho -->
         <div class="painel-header">
             <div class="header-content">
                 <div class="header-left">
@@ -34,18 +32,20 @@
             </div>
         </div>
 
-        <!-- Dashboard Compacto -->
+        <!-- Dashboard -->
         <div class="dashboard-content">
-            <!-- Cards Superiores (6 cards em linha) -->
+            <!-- Cards Superiores -->
             <div class="stats-row">
+                <!-- Card 1: Total Leitos -->
                 <div class="stat-card">
                     <div class="stat-icon icon-total">
                         <i class="fas fa-bed"></i>
                     </div>
                     <h3 id="total-leitos">-</h3>
-                    <p>Total</p>
+                    <p>Total Leitos</p>
                 </div>
 
+                <!-- Card 2: Ocupados -->
                 <div class="stat-card">
                     <div class="stat-icon icon-ocupados">
                         <i class="fas fa-user-injured"></i>
@@ -54,6 +54,7 @@
                     <p>Ocupados</p>
                 </div>
 
+                <!-- Card 3: Livres -->
                 <div class="stat-card">
                     <div class="stat-icon icon-livres">
                         <i class="fas fa-check-circle"></i>
@@ -62,6 +63,7 @@
                     <p>Livres</p>
                 </div>
 
+                <!-- Card 4: Higienizacao -->
                 <div class="stat-card">
                     <div class="stat-icon icon-higienizacao">
                         <i class="fas fa-soap"></i>
@@ -70,6 +72,7 @@
                     <p>Higienização</p>
                 </div>
 
+                <!-- Card 5: Interditados -->
                 <div class="stat-card">
                     <div class="stat-icon icon-interditados">
                         <i class="fas fa-ban"></i>
@@ -78,7 +81,7 @@
                     <p>Interditados</p>
                 </div>
 
-                <!-- NOVO CARD: TAXA DE OCUPAÇÃO -->
+                <!-- Card 6: Taxa Ocupacao -->
                 <div class="stat-card stat-card-taxa">
                     <div class="stat-icon icon-taxa">
                         <i class="fas fa-percentage"></i>
@@ -88,7 +91,7 @@
                 </div>
             </div>
 
-            <!-- Cards de Setores (Grid Responsivo) -->
+            <!-- Cards de Setores -->
             <div class="setores-grid" id="lista-setores">
                 <div class="loading">
                     <div class="loading-spinner"></div>
@@ -98,7 +101,6 @@
         </div>
     </div>
 
-    <!-- JavaScript -->
     <script src="/paineis/painel4/main.js"></script>
 </body>
 </html>

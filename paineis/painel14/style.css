@@ -224,7 +224,7 @@ body {
 .icon-atendimento { background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%); }
 .icon-nao-vistos { background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%); }
 .icon-fechados-hoje { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
-.icon-abertos-hoje { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
+.icon-abertos-hoje { background: linear-gradient(135deg, #dc3545 0%, #ff4757 100%); }
 .icon-tempo-medio { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 
 /* ========================================
