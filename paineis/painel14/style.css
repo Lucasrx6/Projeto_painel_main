@@ -81,6 +81,7 @@ body {
 
 .btn-som-ativo { background: rgba(40, 167, 69, 0.3); border-color: var(--cor-sucesso); }
 .btn-som-inativo { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); opacity: 0.7; }
+.btn-gerenciar { background: rgba(73, 80, 87, 0.3); border-color: rgba(255, 255, 255, 0.4); }
 
 .ultima-atualizacao { font-size: 0.7rem; opacity: 0.9; min-width: 40px; text-align: center; }
 
@@ -224,7 +225,7 @@ body {
 .icon-atendimento { background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%); }
 .icon-nao-vistos { background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%); }
 .icon-fechados-hoje { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
-.icon-abertos-hoje { background: linear-gradient(135deg, #dc3545 0%, #ff4757 100%); }
+.icon-abertos-hoje { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
 .icon-tempo-medio { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 
 /* ========================================
@@ -708,6 +709,123 @@ body {
 .chamados-vazio small { font-size: 0.8rem; color: #aaa; }
 
 /* ========================================
+   GERENCIAMENTO DE LOCAIS / PROBLEMAS
+   ======================================== */
+
+.modal-xl { max-width: 800px; }
+.modal-header-gerenciar { background: linear-gradient(135deg, #495057, #343a40); }
+.modal-body-gerenciar { padding: 0; }
+
+.gerenciar-tabs {
+    display: flex; border-bottom: 2px solid #f0f0f0;
+}
+
+.gerenciar-tab {
+    flex: 1; padding: 12px; border: none; background: #f8f9fa;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; color: var(--cor-texto-sec);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.gerenciar-tab:hover { background: #e9ecef; }
+.gerenciar-tab-ativa { background: white; color: var(--cor-primaria); border-bottom: 3px solid var(--cor-primaria); }
+
+.gerenciar-painel { padding: 14px 16px; }
+
+.gerenciar-form-inline {
+    display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;
+}
+
+.gerenciar-form-inline input {
+    flex: 1; min-width: 100px; padding: 8px 10px; border: 2px solid var(--cor-borda);
+    border-radius: 6px; font-size: 0.8rem; font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.gerenciar-form-inline input:focus {
+    border-color: var(--cor-primaria); outline: none;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1);
+}
+
+.btn-g-add {
+    padding: 8px 14px !important; font-size: 0.75rem !important; white-space: nowrap;
+}
+
+.gerenciar-lista {
+    max-height: 400px; overflow-y: auto;
+    border: 1px solid #f0f0f0; border-radius: 6px;
+}
+
+.gerenciar-lista::-webkit-scrollbar { width: 4px; }
+.gerenciar-lista::-webkit-scrollbar-thumb { background: var(--cor-borda); border-radius: 2px; }
+
+/* Linha de item */
+.g-item {
+    display: flex; align-items: center; padding: 8px 12px;
+    border-bottom: 1px solid #f5f5f5; gap: 8px; font-size: 0.78rem;
+    transition: background 0.2s;
+}
+
+.g-item:last-child { border-bottom: none; }
+.g-item:hover { background: #fafafa; }
+.g-item.g-inativo { opacity: 0.5; background: #f8f8f8; }
+
+.g-item-info { flex: 1; min-width: 0; }
+
+.g-item-setor {
+    font-weight: 700; color: var(--cor-primaria); font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 0.3px;
+}
+
+.g-item-local { font-weight: 600; color: var(--cor-texto); }
+
+.g-item-hostname {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    color: var(--cor-info); background: #f0f8ff; padding: 1px 6px;
+    border-radius: 3px; display: inline-block; margin-top: 2px;
+}
+
+.g-item-ip {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    color: #6f42c1; background: #f5f0ff; padding: 1px 6px;
+    border-radius: 3px; display: inline-block; margin-top: 2px; margin-left: 4px;
+}
+
+.input-ip { font-family: 'Courier New', monospace; }
+
+.g-item-desc { font-weight: 600; color: var(--cor-texto); flex: 1; }
+
+.g-item-acoes { display: flex; gap: 4px; flex-shrink: 0; }
+
+.g-btn {
+    padding: 4px 8px; border: none; border-radius: 4px;
+    font-size: 0.65rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; gap: 3px;
+}
+
+.g-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.g-btn-editar { background: var(--cor-alerta); color: #333; }
+.g-btn-toggle { background: #6c757d; color: white; }
+.g-btn-toggle.ativo { background: var(--cor-sucesso); }
+
+.g-item-vazio {
+    text-align: center; padding: 30px; color: #aaa; font-size: 0.85rem;
+}
+
+/* Edicao inline */
+.g-edit-inline {
+    display: flex; gap: 4px; flex: 1; flex-wrap: wrap;
+}
+
+.g-edit-inline input {
+    padding: 4px 8px; border: 2px solid var(--cor-alerta);
+    border-radius: 4px; font-size: 0.75rem; flex: 1; min-width: 70px;
+}
+
+.g-btn-salvar { background: var(--cor-sucesso); color: white; }
+.g-btn-cancelar-edit { background: #e0e0e0; color: #666; }
+
+/* ========================================
    RESPONSIVIDADE
    ======================================== */
 
@@ -760,6 +878,9 @@ body {
     .chamado-card-acoes { gap: 3px; }
     .btn-acao { padding: 4px 7px; font-size: 0.62rem; }
     .modal { max-width: 100%; max-height: 95vh; margin: 8px; border-radius: 10px; }
+    .modal-xl { max-width: 100%; }
+    .gerenciar-form-inline { flex-direction: column; }
+    .gerenciar-form-inline input { min-width: 100%; }
     .modal-header { padding: 10px 14px; border-radius: 10px 10px 0 0; }
     .modal-header h2 { font-size: 0.9rem; }
     .modal-body { padding: 12px 14px; }

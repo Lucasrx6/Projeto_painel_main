@@ -73,6 +73,9 @@
         var btnHistorico = document.getElementById('btn-historico');
         if (btnHistorico) btnHistorico.addEventListener('click', function () { trocarAba('historico'); });
 
+        var btnGerenciar = document.getElementById('btn-gerenciar');
+        if (btnGerenciar) btnGerenciar.addEventListener('click', function () { abrirGerenciamento(); });
+
         // Botao entendido do modal novo chamado
         var btnEntendido = document.getElementById('btn-novo-entendido');
         if (btnEntendido) {
@@ -299,6 +302,9 @@
                 (ch.numero_kora || '').toLowerCase().indexOf(termoLower) !== -1 ||
                 (ch.nome_solicitante || '').toLowerCase().indexOf(termoLower) !== -1 ||
                 (ch.local_problema || '').toLowerCase().indexOf(termoLower) !== -1 ||
+                (ch.hostname || '').toLowerCase().indexOf(termoLower) !== -1 ||
+                (ch.ip || '').toLowerCase().indexOf(termoLower) !== -1 ||
+                (ch.problema_descricao || '').toLowerCase().indexOf(termoLower) !== -1 ||
                 (ch.tecnico_atendimento || '').toLowerCase().indexOf(termoLower) !== -1 ||
                 (ch.observacao_fechamento || '').toLowerCase().indexOf(termoLower) !== -1 ||
                 (ch.observacao_abertura || '').toLowerCase().indexOf(termoLower) !== -1 ||
@@ -450,6 +456,9 @@
             '<div class="novo-campo"><i class="fas fa-ticket-alt"></i> <strong>Kora #' + escapeHtml(chamado.numero_kora) + '</strong></div>' +
             '<div class="novo-campo"><i class="fas fa-user"></i> Solicitante: <strong>' + escapeHtml(chamado.nome_solicitante) + '</strong></div>' +
             '<div class="novo-campo"><i class="fas fa-map-marker-alt"></i> Local: <strong>' + escapeHtml(chamado.local_problema) + '</strong></div>' +
+            (chamado.hostname ? '<div class="novo-campo"><i class="fas fa-desktop"></i> Hostname: <strong>' + escapeHtml(chamado.hostname) + '</strong></div>' : '') +
+            (chamado.ip ? '<div class="novo-campo"><i class="fas fa-network-wired"></i> IP: <strong>' + escapeHtml(chamado.ip) + '</strong></div>' : '') +
+            (chamado.problema_descricao ? '<div class="novo-campo"><i class="fas fa-tools"></i> Problema: <strong>' + escapeHtml(chamado.problema_descricao) + '</strong></div>' : '') +
             '<div class="novo-campo"><i class="fas fa-clock"></i> Abertura: <strong>' + dataAbertura + '</strong></div>' +
             (chamado.observacao_abertura ? '<div class="novo-campo"><i class="fas fa-comment"></i> ' + escapeHtml(chamado.observacao_abertura) + '</div>' : '');
 
@@ -555,6 +564,9 @@
             html += '<div class="chamado-card-body">';
             html += '  <div class="chamado-campo"><i class="fas fa-user"></i> <strong>' + escapeHtml(ch.nome_solicitante) + '</strong></div>';
             html += '  <div class="chamado-campo"><i class="fas fa-map-marker-alt"></i> ' + escapeHtml(ch.local_problema) + '</div>';
+            if (ch.hostname) html += '  <div class="chamado-campo"><i class="fas fa-desktop"></i> <code style="background:#f0f8ff;padding:1px 5px;border-radius:3px;font-size:0.72rem;color:#17a2b8;">' + escapeHtml(ch.hostname) + '</code></div>';
+            if (ch.ip) html += '  <div class="chamado-campo"><i class="fas fa-network-wired"></i> <code style="background:#f5f0ff;padding:1px 5px;border-radius:3px;font-size:0.72rem;color:#6f42c1;">' + escapeHtml(ch.ip) + '</code></div>';
+            if (ch.problema_descricao) html += '  <div class="chamado-campo"><i class="fas fa-tools"></i> ' + escapeHtml(ch.problema_descricao) + '</div>';
             html += '  <div class="chamado-campo"><i class="fas fa-calendar"></i> ' + dataAbertura + '</div>';
             if (ch.tecnico_atendimento) html += '  <div class="chamado-campo"><i class="fas fa-wrench"></i> Tec: <strong>' + escapeHtml(ch.tecnico_atendimento) + '</strong></div>';
             if (ch.observacao_abertura) html += '  <div class="chamado-obs-abertura"><i class="fas fa-comment"></i> ' + escapeHtml(ch.observacao_abertura) + '</div>';
@@ -608,6 +620,9 @@
             html += '<div class="chamado-card-body">';
             html += '  <div class="chamado-campo"><i class="fas fa-user"></i> <strong>' + escapeHtml(ch.nome_solicitante) + '</strong></div>';
             html += '  <div class="chamado-campo"><i class="fas fa-map-marker-alt"></i> ' + escapeHtml(ch.local_problema) + '</div>';
+            if (ch.hostname) html += '  <div class="chamado-campo"><i class="fas fa-desktop"></i> <code style="background:#f0f8ff;padding:1px 5px;border-radius:3px;font-size:0.72rem;color:#17a2b8;">' + escapeHtml(ch.hostname) + '</code></div>';
+            if (ch.ip) html += '  <div class="chamado-campo"><i class="fas fa-network-wired"></i> <code style="background:#f5f0ff;padding:1px 5px;border-radius:3px;font-size:0.72rem;color:#6f42c1;">' + escapeHtml(ch.ip) + '</code></div>';
+            if (ch.problema_descricao) html += '  <div class="chamado-campo"><i class="fas fa-tools"></i> ' + escapeHtml(ch.problema_descricao) + '</div>';
             html += '  <div class="chamado-campo"><i class="fas fa-calendar"></i> Aberto: ' + dataAbertura + '</div>';
             html += '  <div class="chamado-campo"><i class="fas fa-calendar-check"></i> Fechado: ' + dataFechamento + '</div>';
             if (ch.tecnico_atendimento) html += '  <div class="chamado-campo"><i class="fas fa-wrench"></i> Tec: <strong>' + escapeHtml(ch.tecnico_atendimento) + '</strong></div>';
@@ -861,6 +876,285 @@
     }
 
     // ========================================
+    // GERENCIAMENTO DE LOCAIS E PROBLEMAS
+    // ========================================
+
+    function abrirGerenciamento() {
+        abrirModal('modal-gerenciar');
+        configurarGerenciamentoTabs();
+        carregarGerenciarLocais();
+        configurarBotoesGerenciar();
+    }
+
+    function configurarGerenciamentoTabs() {
+        var tabs = document.querySelectorAll('.gerenciar-tab');
+        tabs.forEach(function (tab) {
+            tab.onclick = function () {
+                tabs.forEach(function (t) { t.classList.remove('gerenciar-tab-ativa'); });
+                this.classList.add('gerenciar-tab-ativa');
+                var gtab = this.getAttribute('data-gtab');
+                document.getElementById('gpainel-locais').style.display = gtab === 'locais' ? 'block' : 'none';
+                document.getElementById('gpainel-problemas').style.display = gtab === 'problemas' ? 'block' : 'none';
+                if (gtab === 'locais') carregarGerenciarLocais();
+                else carregarGerenciarProblemas();
+            };
+        });
+    }
+
+    function configurarBotoesGerenciar() {
+        // Aplicar mascara IP no campo
+        var inputIP = document.getElementById('g-local-ip');
+        if (inputIP) aplicarMascaraIP(inputIP);
+
+        var btnAddLocal = document.getElementById('btn-add-local');
+        if (btnAddLocal) btnAddLocal.onclick = function () {
+            var setor = document.getElementById('g-local-setor').value.trim();
+            var local = document.getElementById('g-local-local').value.trim();
+            var hostname = document.getElementById('g-local-hostname').value.trim();
+            var ip = document.getElementById('g-local-ip').value.trim();
+            if (!setor || !local) { mostrarToast('Setor e Local sao obrigatorios', 'erro'); return; }
+            if (ip && !validarIP(ip)) { mostrarToast('IP invalido (Ex: 192.168.1.100)', 'erro'); return; }
+            fetch(BASE_URL + '/api/paineis/painel14/locais', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setor: setor, local: local, hostname: hostname || null, ip: ip || null })
+            }).then(function (r) { return r.json(); }).then(function (d) {
+                if (d.success) {
+                    mostrarToast('Local cadastrado', 'sucesso');
+                    document.getElementById('g-local-setor').value = '';
+                    document.getElementById('g-local-local').value = '';
+                    document.getElementById('g-local-hostname').value = '';
+                    document.getElementById('g-local-ip').value = '';
+                    carregarGerenciarLocais();
+                } else { mostrarToast(d.error || 'Erro', 'erro'); }
+            }).catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+        };
+
+        var btnAddProblema = document.getElementById('btn-add-problema');
+        if (btnAddProblema) btnAddProblema.onclick = function () {
+            var desc = document.getElementById('g-problema-descricao').value.trim();
+            if (!desc) { mostrarToast('Descricao e obrigatoria', 'erro'); return; }
+            fetch(BASE_URL + '/api/paineis/painel14/problemas', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descricao: desc })
+            }).then(function (r) { return r.json(); }).then(function (d) {
+                if (d.success) {
+                    mostrarToast('Problema cadastrado', 'sucesso');
+                    document.getElementById('g-problema-descricao').value = '';
+                    carregarGerenciarProblemas();
+                } else { mostrarToast(d.error || 'Erro', 'erro'); }
+            }).catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+        };
+    }
+
+    // -- LOCAIS --
+
+    function carregarGerenciarLocais() {
+        var lista = document.getElementById('g-lista-locais');
+        if (!lista) return;
+        lista.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+        fetch(BASE_URL + '/api/paineis/painel14/locais')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) renderizarGerenciarLocais(d.data || []);
+                else lista.innerHTML = '<div class="g-item-vazio">Erro ao carregar</div>';
+            })
+            .catch(function () { lista.innerHTML = '<div class="g-item-vazio">Erro de conexao</div>'; });
+    }
+
+    function renderizarGerenciarLocais(locais) {
+        var lista = document.getElementById('g-lista-locais');
+        if (!lista) return;
+
+        if (locais.length === 0) {
+            lista.innerHTML = '<div class="g-item-vazio"><i class="fas fa-map-marker-alt"></i> Nenhum local cadastrado</div>';
+            return;
+        }
+
+        lista.innerHTML = locais.map(function (loc) {
+            var cls = loc.ativo ? 'g-item' : 'g-item g-inativo';
+            var html = '<div class="' + cls + '" data-id="' + loc.id + '">';
+            html += '<div class="g-item-info">';
+            html += '  <div class="g-item-setor">' + escapeHtml(loc.setor) + '</div>';
+            html += '  <div class="g-item-local">' + escapeHtml(loc.local) + '</div>';
+            if (loc.hostname) html += '  <span class="g-item-hostname">' + escapeHtml(loc.hostname) + '</span>';
+            if (loc.ip) html += '  <span class="g-item-ip">' + escapeHtml(loc.ip) + '</span>';
+            html += '</div>';
+            html += '<div class="g-item-acoes">';
+            html += '  <button class="g-btn g-btn-editar" onclick="window.P14.editarLocal(' + loc.id + ',\'' + escapeAttr(loc.setor) + '\',\'' + escapeAttr(loc.local) + '\',\'' + escapeAttr(loc.hostname || '') + '\',\'' + escapeAttr(loc.ip || '') + '\')"><i class="fas fa-edit"></i></button>';
+            html += '  <button class="g-btn g-btn-toggle ' + (loc.ativo ? 'ativo' : '') + '" onclick="window.P14.toggleLocal(' + loc.id + ')" title="' + (loc.ativo ? 'Desativar' : 'Reativar') + '"><i class="fas fa-' + (loc.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
+            html += '</div></div>';
+            return html;
+        }).join('');
+    }
+
+    function editarLocal(id, setor, local, hostname, ip) {
+        var item = document.querySelector('.g-item[data-id="' + id + '"]');
+        if (!item) return;
+
+        var infoDiv = item.querySelector('.g-item-info');
+        var acoesDiv = item.querySelector('.g-item-acoes');
+        if (!infoDiv || !acoesDiv) return;
+
+        infoDiv.innerHTML =
+            '<div class="g-edit-inline">' +
+            '  <input type="text" value="' + escapeAttr(setor) + '" id="ge-setor-' + id + '" placeholder="Setor">' +
+            '  <input type="text" value="' + escapeAttr(local) + '" id="ge-local-' + id + '" placeholder="Local">' +
+            '  <input type="text" value="' + escapeAttr(hostname) + '" id="ge-host-' + id + '" placeholder="Hostname">' +
+            '  <input type="text" value="' + escapeAttr(ip) + '" id="ge-ip-' + id + '" placeholder="IP" maxlength="15" class="input-ip">' +
+            '</div>';
+
+        // Aplicar mascara no campo IP de edicao
+        var ipInput = document.getElementById('ge-ip-' + id);
+        if (ipInput) aplicarMascaraIP(ipInput);
+
+        acoesDiv.innerHTML =
+            '<button class="g-btn g-btn-salvar" onclick="window.P14.salvarLocal(' + id + ')"><i class="fas fa-check"></i></button>' +
+            '<button class="g-btn g-btn-cancelar-edit" onclick="window.P14.carregarGLocais()"><i class="fas fa-times"></i></button>';
+    }
+
+    function salvarLocal(id) {
+        var setor = (document.getElementById('ge-setor-' + id).value || '').trim();
+        var local = (document.getElementById('ge-local-' + id).value || '').trim();
+        var hostname = (document.getElementById('ge-host-' + id).value || '').trim();
+        var ip = (document.getElementById('ge-ip-' + id).value || '').trim();
+        if (!setor || !local) { mostrarToast('Setor e Local obrigatorios', 'erro'); return; }
+        if (ip && !validarIP(ip)) { mostrarToast('IP invalido (Ex: 192.168.1.100)', 'erro'); return; }
+
+        fetch(BASE_URL + '/api/paineis/painel14/locais/' + id, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ setor: setor, local: local, hostname: hostname || null, ip: ip || null })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (d.success) { mostrarToast('Local atualizado', 'sucesso'); carregarGerenciarLocais(); }
+            else mostrarToast(d.error || 'Erro', 'erro');
+        }).catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    function toggleLocal(id) {
+        fetch(BASE_URL + '/api/paineis/painel14/locais/' + id, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) { mostrarToast(d.message, 'sucesso'); carregarGerenciarLocais(); }
+                else mostrarToast(d.error || 'Erro', 'erro');
+            }).catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    // -- PROBLEMAS --
+
+    function carregarGerenciarProblemas() {
+        var lista = document.getElementById('g-lista-problemas');
+        if (!lista) return;
+        lista.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+        fetch(BASE_URL + '/api/paineis/painel14/problemas')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) renderizarGerenciarProblemas(d.data || []);
+                else lista.innerHTML = '<div class="g-item-vazio">Erro ao carregar</div>';
+            })
+            .catch(function () { lista.innerHTML = '<div class="g-item-vazio">Erro de conexao</div>'; });
+    }
+
+    function renderizarGerenciarProblemas(problemas) {
+        var lista = document.getElementById('g-lista-problemas');
+        if (!lista) return;
+
+        if (problemas.length === 0) {
+            lista.innerHTML = '<div class="g-item-vazio"><i class="fas fa-tools"></i> Nenhum problema cadastrado</div>';
+            return;
+        }
+
+        lista.innerHTML = problemas.map(function (p) {
+            var cls = p.ativo ? 'g-item' : 'g-item g-inativo';
+            var html = '<div class="' + cls + '" data-pid="' + p.id + '">';
+            html += '<span class="g-item-desc">' + escapeHtml(p.descricao) + '</span>';
+            html += '<div class="g-item-acoes">';
+            html += '  <button class="g-btn g-btn-editar" onclick="window.P14.editarProblema(' + p.id + ',\'' + escapeAttr(p.descricao) + '\')"><i class="fas fa-edit"></i></button>';
+            html += '  <button class="g-btn g-btn-toggle ' + (p.ativo ? 'ativo' : '') + '" onclick="window.P14.toggleProblema(' + p.id + ')" title="' + (p.ativo ? 'Desativar' : 'Reativar') + '"><i class="fas fa-' + (p.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
+            html += '</div></div>';
+            return html;
+        }).join('');
+    }
+
+    function editarProblema(id, descricao) {
+        var item = document.querySelector('.g-item[data-pid="' + id + '"]');
+        if (!item) return;
+
+        var desc = item.querySelector('.g-item-desc');
+        var acoes = item.querySelector('.g-item-acoes');
+        if (!desc || !acoes) return;
+
+        desc.outerHTML = '<div class="g-edit-inline" style="flex:1;"><input type="text" value="' + escapeAttr(descricao) + '" id="gp-desc-' + id + '" placeholder="Descricao"></div>';
+        acoes.innerHTML =
+            '<button class="g-btn g-btn-salvar" onclick="window.P14.salvarProblema(' + id + ')"><i class="fas fa-check"></i></button>' +
+            '<button class="g-btn g-btn-cancelar-edit" onclick="window.P14.carregarGProblemas()"><i class="fas fa-times"></i></button>';
+    }
+
+    function salvarProblema(id) {
+        var desc = (document.getElementById('gp-desc-' + id).value || '').trim();
+        if (!desc) { mostrarToast('Descricao obrigatoria', 'erro'); return; }
+
+        fetch(BASE_URL + '/api/paineis/painel14/problemas/' + id, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descricao: desc })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (d.success) { mostrarToast('Problema atualizado', 'sucesso'); carregarGerenciarProblemas(); }
+            else mostrarToast(d.error || 'Erro', 'erro');
+        }).catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    function toggleProblema(id) {
+        fetch(BASE_URL + '/api/paineis/painel14/problemas/' + id, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) { mostrarToast(d.message, 'sucesso'); carregarGerenciarProblemas(); }
+                else mostrarToast(d.error || 'Erro', 'erro');
+            }).catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    // Mascara e validacao de IP
+    function aplicarMascaraIP(input) {
+        input.addEventListener('input', function () {
+            var val = this.value.replace(/[^0-9.]/g, '');
+            // Impedir pontos consecutivos
+            val = val.replace(/\.{2,}/g, '.');
+            // Limitar a 3 pontos (4 octetos)
+            var partes = val.split('.');
+            if (partes.length > 4) partes = partes.slice(0, 4);
+            // Limitar cada octeto a 3 digitos
+            partes = partes.map(function (p) { return p.substring(0, 3); });
+            this.value = partes.join('.');
+        });
+
+        input.addEventListener('blur', function () {
+            if (this.value && !validarIP(this.value)) {
+                this.style.borderColor = '#dc3545';
+                this.title = 'IP invalido (Ex: 192.168.1.100)';
+            } else {
+                this.style.borderColor = '';
+                this.title = '';
+            }
+        });
+    }
+
+    function validarIP(ip) {
+        if (!ip) return true; // Opcional
+        var partes = ip.split('.');
+        if (partes.length !== 4) return false;
+        for (var i = 0; i < 4; i++) {
+            var num = parseInt(partes[i], 10);
+            if (isNaN(num) || num < 0 || num > 255 || partes[i] !== String(num)) return false;
+        }
+        return true;
+    }
+
+    // Escape para atributos HTML
+    function escapeAttr(text) {
+        if (!text) return '';
+        return text.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ========================================
     // EXPOR FUNCOES GLOBAIS
     // ========================================
 
@@ -869,7 +1163,15 @@
         abrirModalFechar: abrirModalFechar,
         abrirModalInativar: abrirModalInativar,
         abrirModalObs: abrirModalObs,
-        abrirHistoricoChamado: abrirHistoricoChamado
+        abrirHistoricoChamado: abrirHistoricoChamado,
+        editarLocal: editarLocal,
+        salvarLocal: salvarLocal,
+        toggleLocal: toggleLocal,
+        carregarGLocais: carregarGerenciarLocais,
+        editarProblema: editarProblema,
+        salvarProblema: salvarProblema,
+        toggleProblema: toggleProblema,
+        carregarGProblemas: carregarGerenciarProblemas
     };
 
     window.fecharModal = fecharModalFn;

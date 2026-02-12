@@ -755,3 +755,359 @@ def api_painel14_contagem():
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro'}), 500
+
+
+# =========================================================
+# GERENCIAMENTO DE LOCAIS PADRONIZADOS
+# Adicionar ao final do painel14_routes.py
+# =========================================================
+
+@painel14_bp.route('/api/paineis/painel14/locais', methods=['GET'])
+@login_required
+def api_painel14_locais():
+    """Lista todos os locais cadastrados (ativos e inativos)"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT id, setor, local, hostname, ip, ativo,
+                   data_criacao, data_atualizacao
+            FROM chamados_locais
+            ORDER BY setor, local
+        """)
+        locais = [dict(row) for row in cursor.fetchall()]
+        for loc in locais:
+            for campo in ['data_criacao', 'data_atualizacao']:
+                if loc.get(campo) and isinstance(loc[campo], datetime):
+                    loc[campo] = loc[campo].isoformat()
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'data': locais, 'total': len(locais)})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro listar locais: {e}', exc_info=True)
+        if conn: conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao listar locais'}), 500
+
+
+@painel14_bp.route('/api/paineis/painel14/locais', methods=['POST'])
+@login_required
+def api_painel14_locais_criar():
+    """Cria um novo local padronizado"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    dados = request.get_json()
+    if not dados:
+        return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+    setor = (dados.get('setor') or '').strip()
+    local = (dados.get('local') or '').strip()
+    hostname = (dados.get('hostname') or '').strip() or None
+    ip = (dados.get('ip') or '').strip() or None
+
+    if not setor:
+        return jsonify({'success': False, 'error': 'Setor e obrigatorio'}), 400
+    if not local:
+        return jsonify({'success': False, 'error': 'Local e obrigatorio'}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Verificar duplicata ativa
+        cursor.execute("""
+            SELECT id FROM chamados_locais
+            WHERE LOWER(setor) = LOWER(%s) AND LOWER(local) = LOWER(%s) AND ativo = TRUE
+        """, (setor, local))
+        if cursor.fetchone():
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Ja existe um local ativo com este Setor e Local'}), 409
+
+        cursor.execute("""
+            INSERT INTO chamados_locais (setor, local, hostname, ip)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id, setor, local, hostname, ip, ativo
+        """, (setor, local, hostname, ip))
+        novo = dict(cursor.fetchone())
+        conn.commit()
+        cursor.close(); conn.close()
+
+        current_app.logger.info(f'Local criado: {setor} / {local} ({hostname})')
+        return jsonify({'success': True, 'message': 'Local cadastrado com sucesso', 'data': novo}), 201
+
+    except Exception as e:
+        current_app.logger.error(f'Erro criar local: {e}', exc_info=True)
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao cadastrar local'}), 500
+
+
+@painel14_bp.route('/api/paineis/painel14/locais/<int:local_id>', methods=['PUT'])
+@login_required
+def api_painel14_locais_editar(local_id):
+    """Edita um local existente"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    dados = request.get_json()
+    if not dados:
+        return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+    setor = (dados.get('setor') or '').strip()
+    local = (dados.get('local') or '').strip()
+    hostname = (dados.get('hostname') or '').strip() or None
+    ip = (dados.get('ip') or '').strip() or None
+
+    if not setor or not local:
+        return jsonify({'success': False, 'error': 'Setor e Local sao obrigatorios'}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Verificar duplicata (excluindo o proprio registro)
+        cursor.execute("""
+            SELECT id FROM chamados_locais
+            WHERE LOWER(setor) = LOWER(%s) AND LOWER(local) = LOWER(%s) AND ativo = TRUE AND id != %s
+        """, (setor, local, local_id))
+        if cursor.fetchone():
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Ja existe outro local ativo com este Setor e Local'}), 409
+
+        cursor.execute("""
+            UPDATE chamados_locais
+            SET setor = %s, local = %s, hostname = %s, ip = %s
+            WHERE id = %s
+            RETURNING id, setor, local, hostname, ip, ativo
+        """, (setor, local, hostname, ip, local_id))
+        atualizado = cursor.fetchone()
+
+        if not atualizado:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Local nao encontrado'}), 404
+
+        conn.commit()
+        cursor.close(); conn.close()
+        return jsonify({'success': True, 'message': 'Local atualizado', 'data': dict(atualizado)})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro editar local {local_id}: {e}', exc_info=True)
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao editar local'}), 500
+
+
+@painel14_bp.route('/api/paineis/painel14/locais/<int:local_id>', methods=['DELETE'])
+@login_required
+def api_painel14_locais_remover(local_id):
+    """Ativa/desativa um local (soft delete)"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, ativo FROM chamados_locais WHERE id = %s", (local_id,))
+        registro = cursor.fetchone()
+
+        if not registro:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Local nao encontrado'}), 404
+
+        novo_ativo = not registro['ativo']
+        cursor.execute("UPDATE chamados_locais SET ativo = %s WHERE id = %s", (novo_ativo, local_id))
+        conn.commit()
+        cursor.close(); conn.close()
+
+        msg = 'Local reativado' if novo_ativo else 'Local desativado'
+        return jsonify({'success': True, 'message': msg, 'ativo': novo_ativo})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro remover local {local_id}: {e}', exc_info=True)
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao alterar local'}), 500
+
+
+# =========================================================
+# GERENCIAMENTO DE TIPOS DE PROBLEMA
+# =========================================================
+
+@painel14_bp.route('/api/paineis/painel14/problemas', methods=['GET'])
+@login_required
+def api_painel14_problemas():
+    """Lista todos os tipos de problema"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT id, descricao, ativo, data_criacao, data_atualizacao
+            FROM chamados_problemas
+            ORDER BY descricao
+        """)
+        problemas = [dict(row) for row in cursor.fetchall()]
+        for p in problemas:
+            for campo in ['data_criacao', 'data_atualizacao']:
+                if p.get(campo) and isinstance(p[campo], datetime):
+                    p[campo] = p[campo].isoformat()
+        cursor.close(); conn.close()
+        return jsonify({'success': True, 'data': problemas, 'total': len(problemas)})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro listar problemas: {e}', exc_info=True)
+        if conn: conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao listar problemas'}), 500
+
+
+@painel14_bp.route('/api/paineis/painel14/problemas', methods=['POST'])
+@login_required
+def api_painel14_problemas_criar():
+    """Cria novo tipo de problema"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    dados = request.get_json()
+    descricao = (dados.get('descricao') or '').strip() if dados else ''
+    if not descricao:
+        return jsonify({'success': False, 'error': 'Descricao e obrigatoria'}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT id FROM chamados_problemas
+            WHERE LOWER(descricao) = LOWER(%s) AND ativo = TRUE
+        """, (descricao,))
+        if cursor.fetchone():
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Tipo de problema ja existe'}), 409
+
+        cursor.execute("""
+            INSERT INTO chamados_problemas (descricao)
+            VALUES (%s)
+            RETURNING id, descricao, ativo
+        """, (descricao,))
+        novo = dict(cursor.fetchone())
+        conn.commit()
+        cursor.close(); conn.close()
+        return jsonify({'success': True, 'message': 'Problema cadastrado', 'data': novo}), 201
+
+    except Exception as e:
+        current_app.logger.error(f'Erro criar problema: {e}', exc_info=True)
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao cadastrar problema'}), 500
+
+
+@painel14_bp.route('/api/paineis/painel14/problemas/<int:problema_id>', methods=['PUT'])
+@login_required
+def api_painel14_problemas_editar(problema_id):
+    """Edita tipo de problema"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    dados = request.get_json()
+    descricao = (dados.get('descricao') or '').strip() if dados else ''
+    if not descricao:
+        return jsonify({'success': False, 'error': 'Descricao e obrigatoria'}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT id FROM chamados_problemas
+            WHERE LOWER(descricao) = LOWER(%s) AND ativo = TRUE AND id != %s
+        """, (descricao, problema_id))
+        if cursor.fetchone():
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Ja existe outro problema com esta descricao'}), 409
+
+        cursor.execute("""
+            UPDATE chamados_problemas SET descricao = %s WHERE id = %s
+            RETURNING id, descricao, ativo
+        """, (descricao, problema_id))
+        atualizado = cursor.fetchone()
+        if not atualizado:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Problema nao encontrado'}), 404
+
+        conn.commit()
+        cursor.close(); conn.close()
+        return jsonify({'success': True, 'message': 'Problema atualizado', 'data': dict(atualizado)})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro editar problema {problema_id}: {e}', exc_info=True)
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao editar problema'}), 500
+
+
+@painel14_bp.route('/api/paineis/painel14/problemas/<int:problema_id>', methods=['DELETE'])
+@login_required
+def api_painel14_problemas_remover(problema_id):
+    """Ativa/desativa tipo de problema"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel14'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, ativo FROM chamados_problemas WHERE id = %s", (problema_id,))
+        registro = cursor.fetchone()
+        if not registro:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Problema nao encontrado'}), 404
+
+        novo_ativo = not registro['ativo']
+        cursor.execute("UPDATE chamados_problemas SET ativo = %s WHERE id = %s", (novo_ativo, problema_id))
+        conn.commit()
+        cursor.close(); conn.close()
+        return jsonify({'success': True, 'message': 'Reativado' if novo_ativo else 'Desativado', 'ativo': novo_ativo})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro remover problema {problema_id}: {e}', exc_info=True)
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'error': 'Erro'}), 500
