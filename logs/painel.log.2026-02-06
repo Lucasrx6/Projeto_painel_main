@@ -1,0 +1,28 @@
+[2026-02-06 22:25:43] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 22:25:43] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 22:25:43] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 22:25:44] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 22:25:45] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 22:25:45] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 22:25:45] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 22:25:45] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 22:25:51] INFO [app:32] - Tentativa de login: postgres
+[2026-02-06 22:25:52] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-06 22:46:30] INFO [app:32] - Tentativa de login: postgres
+[2026-02-06 22:46:31] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-06 23:02:56] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:02:56] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:02:56] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:02:57] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 23:02:58] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:02:58] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:02:58] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:02:58] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 23:14:11] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:14:11] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:14:11] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:14:11] INFO [app:106] -  16 Blueprints registrados com sucesso
+[2026-02-06 23:14:13] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-06 23:14:13] INFO [app:73] - ✅ Security headers configurados
+[2026-02-06 23:14:13] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-06 23:14:13] INFO [app:106] -  16 Blueprints registrados com sucesso
