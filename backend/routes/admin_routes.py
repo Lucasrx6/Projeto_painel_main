@@ -40,7 +40,7 @@ def api_minhas_permissoes():
                     'painel2', 'painel3', 'painel4', 'painel5',
                     'painel6', 'painel7', 'painel8', 'painel9',
                     'painel10', 'painel11', 'painel12', 'painel13',
-                    'painel14', 'painel15'
+                    'painel14', 'painel15', 'painel16'
                 ],
                 'is_admin': True
             })
@@ -343,6 +343,8 @@ def api_listar_paineis():
              'descricao': 'Paineis de gerencia de chamados emergenciais', 'ativo': True},
             {'nome': 'painel15', 'titulo': 'Abrir Chamados',
              'descricao': 'Painel para abrir chamados emergenciais', 'ativo': True},
+            {'nome': 'painel16', 'titulo': 'Desempenho Recepcao',
+             'descricao': 'Painel para acompanhar a recepcao', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

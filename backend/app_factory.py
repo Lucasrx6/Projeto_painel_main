@@ -84,7 +84,7 @@ def create_app(config_name=None):
     return app
 
 
-    app.logger.info('✅ Aplicação Flask criada e configurada com sucesso')
+    app.logger.info('Aplicação Flask criada e configurada com sucesso')
 
     return app
 
@@ -137,6 +137,9 @@ def register_blueprints(app):
     from backend.routes.painel11_routes import painel11_bp
     from backend.routes.painel12_routes import painel12_bp
     from backend.routes.painel13_routes import painel13_bp
+    from backend.routes.painel14_routes import painel14_bp
+    from backend.routes.painel15_routes import painel15_bp
+    from backend.routes.painel16_routes import painel16_bp
 
     # Registra Blueprints Core
     app.register_blueprint(auth_bp)
@@ -148,10 +151,11 @@ def register_blueprints(app):
     paineis = [
         painel2_bp, painel3_bp, painel4_bp, painel5_bp,
         painel6_bp, painel7_bp, painel8_bp, painel9_bp,
-        painel10_bp, painel11_bp, painel12_bp, painel13_bp
+        painel10_bp, painel11_bp, painel12_bp, painel13_bp,
+        painel14_bp, painel15_bp, painel16_bp
     ]
 
     for painel in paineis:
         app.register_blueprint(painel)
 
-    app.logger.info(f'✅ {len(paineis) + 4} Blueprints registrados com sucesso')
+    app.logger.info(f'{len(paineis) + 4} Blueprints registrados com sucesso')
