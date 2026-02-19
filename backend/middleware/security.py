@@ -27,7 +27,7 @@ def add_security_headers(response, app_config):
     # Política de referrer
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
 
-    # ✅ NOVO: Content Security Policy (CSP)
+    # Content Security Policy (CSP)
     if not app_config.get('DEBUG', False):
         # Em produção, adiciona CSP mais restritivo
         response.headers['Content-Security-Policy'] = (
@@ -44,7 +44,7 @@ def add_security_headers(response, app_config):
     if app_config.get('SESSION_COOKIE_SECURE', False):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
 
-    # ✅ NOVO: Permissions Policy (antes Feature-Policy)
+    # Permissions Policy (antes Feature-Policy)
     response.headers['Permissions-Policy'] = (
         "geolocation=(), "
         "microphone=(), "

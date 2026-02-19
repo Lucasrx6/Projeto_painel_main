@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desempenho Recepcao - Anchieta Ceilandia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel16/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-headset"></i> Desempenho da Recepcao</h1>
+                        <span class="header-subtitle">Monitoramento em tempo real</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-actions">
+                        <select id="filtro-setor" class="btn-header filtro-setor-select">
+                            <option value="">Todos os Setores</option>
+                            <option value="PS">Pronto Socorro</option>
+                            <option value="AMB">Ambulatorio</option>
+                            <option value="RAD">Radiologia</option>
+                        </select>
+                        <select id="filtro-turno" class="btn-header filtro-setor-select">
+                            <option value="">Todos os Turnos</option>
+                            <option value="diurno">Diurno (07h-19h)</option>
+                            <option value="noturno">Noturno (19h-07h)</option>
+                        </select>
+                        <button id="btn-voltar" class="btn-header">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll">
+                            <i class="fas fa-play"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="header-status">
+                        <span class="status-indicator status-loading" id="status-indicator"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Resumo -->
+        <div class="dashboard-resumo">
+            <div class="resumo-grid">
+                <div class="resumo-card card-total">
+                    <div class="card-icon"><i class="fas fa-desktop"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-conectados">-</span>
+                        <span class="card-label">Guiches Ativos</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-realizados">
+                    <div class="card-icon"><i class="fas fa-ticket-alt"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-atendimentos">-</span>
+                        <span class="card-label">Atendimentos Hoje</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-aguardando">
+                    <div class="card-icon"><i class="fas fa-user-friends"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-recepcionistas">-</span>
+                        <span class="card-label">Recepcionistas</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-alta">
+                    <div class="card-icon"><i class="fas fa-ambulance"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-ps">-</span>
+                        <span class="card-label">Pronto Socorro</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-tempo-espera">
+                    <div class="card-icon"><i class="fas fa-hospital-user"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-amb">-</span>
+                        <span class="card-label">Ambulatorio</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-permanencia">
+                    <div class="card-icon"><i class="fas fa-clipboard-check"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-externo">-</span>
+                        <span class="card-label">Radiologia</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteudo Principal -->
+        <div class="painel-main">
+            <div class="content-scroll" id="content-scroll">
+
+                <!-- Secao: Guiches Ativos -->
+                <div class="secao-analise">
+                    <div class="secao-header">
+                        <div class="secao-titulo">
+                            <i class="fas fa-desktop"></i>
+                            <h2>Guiches Ativos</h2>
+                        </div>
+                        <span class="secao-contador" id="contador-guiches">0 guiches</span>
+                    </div>
+                    <div class="secao-content">
+                        <div class="guiches-grid" id="guiches-grid">
+                            <div class="loading-container">
+                                <div class="loading-spinner"></div>
+                                <p>Carregando guiches...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Secao: Atendimentos por Recepcionista -->
+                <div class="secao-analise">
+                    <div class="secao-header">
+                        <div class="secao-titulo">
+                            <i class="fas fa-chart-bar"></i>
+                            <h2>Atendimentos por Recepcionista</h2>
+                        </div>
+                        <span class="secao-contador" id="contador-atendimentos">0 atendimentos</span>
+                    </div>
+                    <div class="secao-content">
+                        <div class="tabela-container">
+                            <table class="tabela-dados" id="tabela-ranking">
+                                <thead>
+                                    <tr>
+                                        <th class="texto-centro">#</th>
+                                        <th>Recepcionista</th>
+                                        <th>Setor</th>
+                                        <th>Turno</th>
+                                        <th class="texto-centro">Qtd</th>
+                                        <th>Desempenho</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ranking-body">
+                                    <tr>
+                                        <td colspan="6" class="texto-centro texto-muted">
+                                            Carregando atendimentos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/paineis/painel16/main.js"></script>
+</body>
+</html>

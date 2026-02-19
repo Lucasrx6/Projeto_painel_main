@@ -1,24 +1,66 @@
-[2026-02-12 15:16:10] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-12 15:16:10] INFO [app:73] - ✅ Security headers configurados
-[2026-02-12 15:16:10] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-12 15:16:11] INFO [app:107] -  18 Blueprints registrados com sucesso
-[2026-02-12 15:16:12] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-12 15:16:12] INFO [app:73] - ✅ Security headers configurados
-[2026-02-12 15:16:12] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-12 15:16:12] INFO [app:107] -  18 Blueprints registrados com sucesso
-[2026-02-12 15:16:31] INFO [app:845] - Local criado: Pronto Socorro / Consultório 01 (FB-D-PS-CONS01)
-[2026-02-12 15:16:54] INFO [app:845] - Local criado: Pronto Socorro / Consultório 02 (FB-D-PS-CONS02)
-[2026-02-12 15:17:11] INFO [app:845] - Local criado: Pronto Socorro / Consultório 03 (FB-D-PS-CONS03)
-[2026-02-12 15:17:29] INFO [app:845] - Local criado: Pronto Socorro / Consultório 04 (FB-D-PS-CONS04)
-[2026-02-12 15:17:48] INFO [app:845] - Local criado: Pronto Socorro / Consultório 05 (FB-D-PS-CONS05)
-[2026-02-12 15:18:05] INFO [app:845] - Local criado: Pronto Socorro / Consultório 06 (FB-D-PS-CONS06)
-[2026-02-12 15:18:18] INFO [app:845] - Local criado: Pronto Socorro / Consultório 07 (FB-D-PS-CONS07)
-[2026-02-12 15:18:46] INFO [app:845] - Local criado: Pronto Socorro / Consultório 08 (FB-D-PS-CONS08)
-[2026-02-12 15:19:02] INFO [app:845] - Local criado: Pronto Socorro / Consultório 09 (FB-D-PS-CONS09)
-[2026-02-12 15:19:15] INFO [app:845] - Local criado: Pronto Socorro / Consultório 10 (FB-D-PS-CONS10)
-[2026-02-12 15:19:47] INFO [app:252] - EMERGENCIAL - Chamado #12 | Teste | Pronto Socorro - Consultório 09 | Computador | Kora: 1412312
-[2026-02-12 15:20:06] INFO [app:428] - Chamado 12 fechado por Teste
-[2026-02-12 15:30:28] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-02-12 15:30:28] INFO [app:73] - ✅ Security headers configurados
-[2026-02-12 15:30:28] INFO [app:72] - ✅ Error handlers registrados
-[2026-02-12 15:30:29] INFO [app:107] -  18 Blueprints registrados com sucesso
+[2026-02-19 12:27:17] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:17] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:17] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:27:23] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:23] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:23] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:27:32] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:32] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:32] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:27:49] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:49] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:49] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:19] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:28:19] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:28:19] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:22] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:28:22] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:28:22] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:58] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:28:58] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:28:58] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:59] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:29:00] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:29:00] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:29:00] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:29:00] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:29:05] INFO [app:32] - Tentativa de login: postgres
+[2026-02-19 12:29:05] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-19 12:29:27] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:29:27] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:29:27] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:29:27] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:29:29] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:29:29] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:29:29] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:29:29] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:30:04] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-02-19 12:36:24] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:36:24] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:36:24] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:36:24] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:36:26] INFO [app:66] - 👋 Logout: postgres
+[2026-02-19 12:36:28] INFO [app:32] - Tentativa de login: postgres
+[2026-02-19 12:36:29] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-19 12:39:37] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:39:37] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:39:37] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:39:38] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:40:44] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-02-19 12:58:52] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-02-19 13:00:33] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:00:33] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:00:33] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:00:33] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 13:14:56] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:14:56] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:14:56] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:14:57] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 13:25:18] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:25:18] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:25:18] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:25:19] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 13:41:19] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:41:19] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:41:19] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:41:19] INFO [app:109] -  19 Blueprints registrados com sucesso
