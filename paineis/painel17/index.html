@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tempo de Espera - Pronto Socorro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel17/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-clock"></i> Tempo Estimado de Espera</h1>
+                        <span class="header-subtitle">Pronto Socorro - Hospital Anchieta Ceilandia</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-actions">
+                        <button id="btn-voltar" class="btn-header">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="header-status">
+                        <span class="status-indicator status-loading" id="status-indicator"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards de Clinicas -->
+        <div class="painel-main">
+            <div class="clinicas-grid" id="clinicas-grid">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando informacoes...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rodape informativo -->
+        <div class="painel-footer">
+            <p><i class="fas fa-info-circle"></i> Tempos estimados com base nos ultimos atendimentos. Valores podem variar conforme a complexidade de cada caso.</p>
+        </div>
+
+    </div>
+
+    <script src="/paineis/painel17/main.js"></script>
+</body>
+</html>

@@ -40,7 +40,8 @@ def api_minhas_permissoes():
                     'painel2', 'painel3', 'painel4', 'painel5',
                     'painel6', 'painel7', 'painel8', 'painel9',
                     'painel10', 'painel11', 'painel12', 'painel13',
-                    'painel14', 'painel15', 'painel16'
+                    'painel14', 'painel15', 'painel16', 'painel17',
+                    'painel18'
                 ],
                 'is_admin': True
             })
@@ -345,6 +346,10 @@ def api_listar_paineis():
              'descricao': 'Painel para abrir chamados emergenciais', 'ativo': True},
             {'nome': 'painel16', 'titulo': 'Desempenho Recepcao',
              'descricao': 'Painel para acompanhar a recepcao', 'ativo': True},
+            {'nome': 'painel17', 'titulo': 'Tempo Atendimento PS',
+             'descricao': 'Painel demonstrativo de tempo de espera no PS', 'ativo': True},
+            {'nome': 'painel18', 'titulo': 'Desempenho Médico PS',
+             'descricao': 'Painel demonstrativo de produção médico PS', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

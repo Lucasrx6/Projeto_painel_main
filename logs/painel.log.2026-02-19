@@ -1,0 +1,68 @@
+[2026-02-19 12:27:17] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:17] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:17] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:27:23] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:23] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:23] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:27:32] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:32] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:32] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:27:49] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:27:49] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:27:49] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:19] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:28:19] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:28:19] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:22] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:28:22] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:28:22] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:58] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:28:58] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:28:58] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:28:59] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:29:00] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:29:00] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:29:00] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:29:00] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:29:05] INFO [app:32] - Tentativa de login: postgres
+[2026-02-19 12:29:05] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-19 12:29:27] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:29:27] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:29:27] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:29:27] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:29:29] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:29:29] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:29:29] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:29:29] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:30:04] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-02-19 12:36:24] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:36:24] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:36:24] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:36:24] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:36:26] INFO [app:66] - 👋 Logout: postgres
+[2026-02-19 12:36:28] INFO [app:32] - Tentativa de login: postgres
+[2026-02-19 12:36:29] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-02-19 12:39:37] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 12:39:37] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 12:39:37] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 12:39:38] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 12:40:44] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-02-19 12:58:52] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-02-19 13:00:33] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:00:33] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:00:33] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:00:33] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 13:14:56] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:14:56] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:14:56] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:14:57] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 13:25:18] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:25:18] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:25:18] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:25:19] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 13:41:19] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-02-19 13:41:19] INFO [app:73] - ✅ Security headers configurados
+[2026-02-19 13:41:19] INFO [app:72] - ✅ Error handlers registrados
+[2026-02-19 13:41:19] INFO [app:109] -  19 Blueprints registrados com sucesso
+[2026-02-19 17:37:37] INFO [app:252] - EMERGENCIAL - Chamado #15 | Teste | Pronto Socorro - Consultório 01 | Tasy | Kora: 5271473
+[2026-02-19 17:38:53] INFO [app:428] - Chamado 15 fechado por testes

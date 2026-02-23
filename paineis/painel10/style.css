@@ -1,21 +1,6 @@
 /**
  * PAINEL 10 - Analise Pronto Socorro
  * Sistema de Paineis Hospitalares - Hospital Anchieta
- *
- * Estrutura:
- * 1. Variaveis CSS
- * 2. Reset e Base
- * 3. Layout Principal
- * 4. Cabecalho
- * 5. Dashboard Resumo
- * 6. Conteudo Principal
- * 7. Secoes de Analise
- * 8. Tabelas
- * 9. Graficos
- * 10. Badges e Tags
- * 11. Estados e Feedback
- * 12. Animacoes
- * 13. Responsividade
  */
 
 /* =========================================================
@@ -23,12 +8,10 @@
    ========================================================= */
 
 :root {
-    /* Cores Principais */
     --cor-primaria: #dc3545;
     --cor-primaria-hover: #c82333;
     --cor-primaria-light: #f8d7da;
 
-    /* Cores de Status */
     --cor-sucesso: #28a745;
     --cor-sucesso-light: #d4edda;
     --cor-alerta: #ffc107;
@@ -38,12 +21,10 @@
     --cor-info: #17a2b8;
     --cor-info-light: #d1ecf1;
 
-    /* Cores de Tempo */
     --cor-tempo-bom: #28a745;
     --cor-tempo-medio: #ffc107;
     --cor-tempo-critico: #dc3545;
 
-    /* Cores Neutras */
     --cor-texto: #333333;
     --cor-texto-secundario: #666666;
     --cor-texto-muted: #999999;
@@ -52,7 +33,6 @@
     --cor-borda: #e9ecef;
     --cor-borda-light: #f0f0f0;
 
-    /* Gradientes dos Cards */
     --grad-total: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
     --grad-realizados: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     --grad-aguardando: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
@@ -60,53 +40,39 @@
     --grad-tempo: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     --grad-permanencia: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 
-    /* Icones */
     --grad-icone-azul: linear-gradient(135deg, #4a90d9 0%, #2c6cb0 100%);
     --grad-icone-roxo: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
     --grad-icone-laranja: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-    --grad-icone-verde: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
 
-    /* Sombras */
     --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.1);
-    --sombra-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
     --sombra-card: 0 2px 8px rgba(0, 0, 0, 0.08);
     --sombra-card-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
 
-    /* Espacamentos */
     --espacamento-xs: 4px;
     --espacamento-sm: 8px;
     --espacamento-md: 16px;
     --espacamento-lg: 24px;
     --espacamento-xl: 32px;
 
-    /* Bordas */
     --raio-sm: 4px;
     --raio-md: 8px;
     --raio-lg: 12px;
     --raio-full: 50%;
 
-    /* Tipografia */
     --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --fonte-mono: "SF Mono", "Consolas", "Liberation Mono", monospace;
 
-    /* Transicoes */
     --transicao-rapida: 150ms ease;
     --transicao-normal: 250ms ease;
-    --transicao-lenta: 350ms ease;
 
-    /* Z-Index */
     --z-header: 100;
-    --z-modal: 1000;
 }
 
 /* =========================================================
    2. RESET E BASE
    ========================================================= */
 
-*,
-*::before,
-*::after {
+*, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -200,6 +166,11 @@ body {
     gap: var(--espacamento-md);
 }
 
+.header-actions {
+    display: flex;
+    gap: var(--espacamento-xs);
+}
+
 .header-status {
     display: flex;
     align-items: center;
@@ -235,11 +206,6 @@ body {
     font-weight: 500;
 }
 
-.header-actions {
-    display: flex;
-    gap: var(--espacamento-xs);
-}
-
 .btn-header {
     display: flex;
     align-items: center;
@@ -253,6 +219,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: var(--transicao-rapida);
+    font-family: var(--fonte-principal);
 }
 
 .btn-header:hover {
@@ -313,7 +280,6 @@ body {
     animation: piscar 0.3s ease;
 }
 
-/* Cores das bordas dos cards */
 .card-total { border-left-color: #dc3545; }
 .card-realizados { border-left-color: #28a745; }
 .card-aguardando { border-left-color: #ffc107; }
@@ -321,7 +287,6 @@ body {
 .card-tempo-espera { border-left-color: #9b59b6; }
 .card-permanencia { border-left-color: #667eea; }
 
-/* Cards de tempo com cores dinamicas */
 .card-tempo-espera.tempo-bom { border-left-color: var(--cor-tempo-bom); }
 .card-tempo-espera.tempo-medio { border-left-color: var(--cor-tempo-medio); }
 .card-tempo-espera.tempo-critico { border-left-color: var(--cor-tempo-critico); }
@@ -341,7 +306,6 @@ body {
     color: white;
 }
 
-/* Gradientes dos icones */
 .card-total .card-icon { background: var(--grad-total); }
 .card-realizados .card-icon { background: var(--grad-realizados); }
 .card-aguardando .card-icon { background: var(--grad-aguardando); }
@@ -387,24 +351,10 @@ body {
     scroll-behavior: smooth;
 }
 
-/* Scrollbar customizada */
-.content-scroll::-webkit-scrollbar {
-    width: 6px;
-}
-
-.content-scroll::-webkit-scrollbar-track {
-    background: var(--cor-borda);
-    border-radius: var(--raio-sm);
-}
-
-.content-scroll::-webkit-scrollbar-thumb {
-    background: var(--cor-primaria);
-    border-radius: var(--raio-sm);
-}
-
-.content-scroll::-webkit-scrollbar-thumb:hover {
-    background: var(--cor-primaria-hover);
-}
+.content-scroll::-webkit-scrollbar { width: 6px; }
+.content-scroll::-webkit-scrollbar-track { background: var(--cor-borda); border-radius: var(--raio-sm); }
+.content-scroll::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: var(--raio-sm); }
+.content-scroll::-webkit-scrollbar-thumb:hover { background: var(--cor-primaria-hover); }
 
 /* =========================================================
    7. SECOES DE ANALISE
@@ -467,6 +417,15 @@ body {
     padding: var(--espacamento-md);
 }
 
+/* Secao sucesso */
+.secao-sucesso .secao-header {
+    background: linear-gradient(180deg, var(--cor-sucesso-light) 0%, #ffffff 100%);
+}
+
+.secao-sucesso .secao-titulo i {
+    color: var(--cor-sucesso);
+}
+
 /* =========================================================
    8. METRICAS GRID (Recepcao)
    ========================================================= */
@@ -508,7 +467,6 @@ body {
 .icone-azul { background: var(--grad-icone-azul); }
 .icone-roxo { background: var(--grad-icone-roxo); }
 .icone-laranja { background: var(--grad-icone-laranja); }
-.icone-verde { background: var(--grad-icone-verde); }
 
 .metrica-info {
     display: flex;
@@ -557,12 +515,18 @@ body {
     color: var(--cor-texto-secundario);
     border-bottom: 2px solid var(--cor-borda);
     white-space: nowrap;
+    text-align: left;
+}
+
+.tabela-dados thead th.texto-centro {
+    text-align: center;
 }
 
 .tabela-dados tbody td {
     padding: var(--espacamento-sm) var(--espacamento-md);
     border-bottom: 1px solid var(--cor-borda-light);
     vertical-align: middle;
+    font-size: 0.82rem;
 }
 
 .tabela-dados tbody tr:last-child td {
@@ -573,14 +537,8 @@ body {
     background: rgba(220, 53, 69, 0.03);
 }
 
-.texto-centro {
-    text-align: center;
-}
-
-.texto-muted {
-    color: var(--cor-texto-muted);
-    font-size: 0.8rem;
-}
+.texto-centro { text-align: center; }
+.texto-muted { color: var(--cor-texto-muted); font-size: 0.8rem; }
 
 .clinica-nome,
 .medico-nome {
@@ -659,7 +617,6 @@ body {
     white-space: nowrap;
 }
 
-/* Destaque hora atual */
 .grafico-barra.barra-atual .barra-preenchimento {
     background: var(--grad-realizados);
     box-shadow: 0 0 12px rgba(40, 167, 69, 0.4);
@@ -671,7 +628,7 @@ body {
 }
 
 /* =========================================================
-   11. BADGES E TAGS
+   11. BADGES
    ========================================================= */
 
 .badge {
@@ -685,9 +642,7 @@ body {
     white-space: nowrap;
 }
 
-.badge-tempo {
-    min-width: 60px;
-}
+.badge-tempo { min-width: 60px; }
 
 .badge-tempo.tempo-bom {
     background: var(--cor-sucesso-light);
@@ -726,7 +681,6 @@ body {
    12. ESTADOS E FEEDBACK
    ========================================================= */
 
-/* Loading */
 .loading-container {
     display: flex;
     flex-direction: column;
@@ -750,7 +704,6 @@ body {
     font-size: 0.9rem;
 }
 
-/* Mensagens */
 .mensagem-vazia,
 .mensagem-sucesso,
 .mensagem-erro {
@@ -769,17 +722,9 @@ body {
     margin-bottom: var(--espacamento-md);
 }
 
-.mensagem-vazia i {
-    color: var(--cor-texto-muted);
-}
-
-.mensagem-sucesso i {
-    color: var(--cor-sucesso);
-}
-
-.mensagem-erro i {
-    color: var(--cor-perigo);
-}
+.mensagem-vazia i { color: var(--cor-texto-muted); }
+.mensagem-sucesso i { color: var(--cor-sucesso); }
+.mensagem-erro i { color: var(--cor-perigo); }
 
 .mensagem-vazia p,
 .mensagem-sucesso p {
@@ -818,20 +763,12 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: var(--transicao-rapida);
+    font-family: var(--fonte-principal);
 }
 
 .btn-tentar-novamente:hover {
     background: var(--cor-primaria-hover);
     transform: translateY(-1px);
-}
-
-/* Secao de sucesso (nenhum aguardando) */
-.secao-sucesso .secao-header {
-    background: linear-gradient(180deg, var(--cor-sucesso-light) 0%, #ffffff 100%);
-}
-
-.secao-sucesso .secao-titulo i {
-    color: var(--cor-sucesso);
 }
 
 /* =========================================================
@@ -862,153 +799,78 @@ body {
    14. RESPONSIVIDADE
    ========================================================= */
 
-/* Tablets e telas menores */
 @media (max-width: 1200px) {
-    .resumo-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .metricas-3 {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    .resumo-grid { grid-template-columns: repeat(3, 1fr); }
+    .metricas-3 { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 992px) {
-    .header-content {
-        flex-wrap: wrap;
-    }
-
-    .btn-text {
-        display: none;
-    }
-
-    .resumo-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .card-value {
-        font-size: 1.2rem;
-    }
+    .header-content { flex-wrap: wrap; }
+    .btn-text { display: none; }
+    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
+    .card-value { font-size: 1.2rem; }
 }
 
 @media (max-width: 768px) {
-    :root {
-        --espacamento-md: 12px;
-    }
+    :root { --espacamento-md: 12px; }
 
-    .painel-header {
-        padding: var(--espacamento-sm);
-    }
-
-    .header-title h1 {
-        font-size: 0.9rem;
-    }
-
-    .header-subtitle {
-        display: none;
-    }
+    .painel-header { padding: var(--espacamento-sm); }
+    .header-title h1 { font-size: 0.9rem; }
+    .header-subtitle { display: none; }
 
     .resumo-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: var(--espacamento-xs);
     }
 
-    .resumo-card {
-        padding: var(--espacamento-sm);
-    }
+    .resumo-card { padding: var(--espacamento-sm); }
+    .card-icon { width: 36px; height: 36px; }
+    .card-value { font-size: 1.1rem; }
 
-    .card-icon {
-        width: 36px;
-        height: 36px;
-    }
+    .metricas-3 { grid-template-columns: 1fr; }
 
-    .card-value {
-        font-size: 1.1rem;
-    }
-
-    .metricas-3 {
-        grid-template-columns: 1fr;
-    }
-
-    .tabela-dados {
-        font-size: 0.75rem;
-    }
-
+    .tabela-dados { font-size: 0.75rem; }
     .tabela-dados thead th,
     .tabela-dados tbody td {
         padding: var(--espacamento-xs) var(--espacamento-sm);
     }
 
-    .grafico-barras {
-        height: 180px;
-    }
+    .grafico-barras { height: 180px; }
 }
 
 @media (max-width: 480px) {
-    .resumo-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .header-actions {
-        width: 100%;
-        justify-content: flex-end;
-    }
-
-    .header-status {
-        display: none;
-    }
+    .resumo-grid { grid-template-columns: 1fr 1fr; }
+    .header-actions { width: 100%; justify-content: flex-end; }
+    .header-status { display: none; }
 
     .secao-header {
         flex-direction: column;
         align-items: flex-start;
         gap: var(--espacamento-sm);
     }
-
-    .secao-contador {
-        align-self: flex-start;
-    }
 }
 
-/* Telas grandes (TV/Monitor) */
 @media (min-width: 1600px) {
     :root {
         --espacamento-md: 20px;
         --espacamento-lg: 28px;
     }
 
-    .card-value {
-        font-size: 1.6rem;
-    }
-
-    .secao-titulo h2 {
-        font-size: 1.1rem;
-    }
-
-    .grafico-barras {
-        height: 280px;
-    }
+    .card-value { font-size: 1.6rem; }
+    .secao-titulo h2 { font-size: 1.1rem; }
+    .grafico-barras { height: 280px; }
 }
 
-/* Print */
 @media print {
-    .painel-header,
-    .btn-header {
-        display: none;
-    }
+    .painel-header, .btn-header { display: none; }
 
     .painel-container {
         height: auto;
         overflow: visible;
     }
 
-    .painel-main {
-        overflow: visible;
-    }
-
-    .content-scroll {
-        overflow: visible;
-        height: auto;
-    }
+    .painel-main { overflow: visible; }
+    .content-scroll { overflow: visible; height: auto; }
 
     .secao-analise {
         break-inside: avoid;
