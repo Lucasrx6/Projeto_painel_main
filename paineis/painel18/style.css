@@ -1,6 +1,7 @@
 /**
- * PAINEL 10 - Analise Pronto Socorro
+ * PAINEL 18 - Produtividade Medica do PS
  * Sistema de Paineis Hospitalares - Hospital Anchieta
+ * Visual identico ao Painel 16 (tema claro)
  */
 
 /* =========================================================
@@ -21,10 +22,6 @@
     --cor-info: #17a2b8;
     --cor-info-light: #d1ecf1;
 
-    --cor-tempo-bom: #28a745;
-    --cor-tempo-medio: #ffc107;
-    --cor-tempo-critico: #dc3545;
-
     --cor-texto: #333333;
     --cor-texto-secundario: #666666;
     --cor-texto-muted: #999999;
@@ -39,10 +36,6 @@
     --grad-alta: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
     --grad-tempo: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     --grad-permanencia: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-    --grad-icone-azul: linear-gradient(135deg, #4a90d9 0%, #2c6cb0 100%);
-    --grad-icone-roxo: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-    --grad-icone-laranja: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
 
     --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -61,6 +54,7 @@
     --raio-full: 50%;
 
     --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --fonte-mono: "SF Mono", "Consolas", "Liberation Mono", monospace;
 
     --transicao-rapida: 150ms ease;
     --transicao-normal: 250ms ease;
@@ -72,7 +66,9 @@
    2. RESET E BASE
    ========================================================= */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -190,11 +186,6 @@ body {
     box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
 }
 
-.status-indicator.status-offline {
-    background: #e74c3c;
-    box-shadow: 0 0 8px rgba(231, 76, 60, 0.6);
-}
-
 .status-indicator.status-loading {
     background: #f1c40f;
     animation: pulsar 1s ease-in-out infinite;
@@ -242,6 +233,23 @@ body {
     animation: girar 0.5s linear;
 }
 
+/* Filtros Select */
+.filtro-setor-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.filtro-setor-select option {
+    background: white;
+    color: var(--cor-texto);
+}
+
 /* =========================================================
    5. DASHBOARD RESUMO
    ========================================================= */
@@ -276,20 +284,12 @@ body {
     box-shadow: var(--sombra-card-hover);
 }
 
-.resumo-card.atualizando {
-    animation: piscar 0.3s ease;
-}
-
 .card-total { border-left-color: #dc3545; }
 .card-realizados { border-left-color: #28a745; }
 .card-aguardando { border-left-color: #ffc107; }
 .card-alta { border-left-color: #17a2b8; }
 .card-tempo-espera { border-left-color: #9b59b6; }
 .card-permanencia { border-left-color: #667eea; }
-
-.card-tempo-espera.tempo-bom { border-left-color: var(--cor-tempo-bom); }
-.card-tempo-espera.tempo-medio { border-left-color: var(--cor-tempo-medio); }
-.card-tempo-espera.tempo-critico { border-left-color: var(--cor-tempo-critico); }
 
 .card-icon {
     width: 40px;
@@ -351,10 +351,23 @@ body {
     scroll-behavior: smooth;
 }
 
-.content-scroll::-webkit-scrollbar { width: 6px; }
-.content-scroll::-webkit-scrollbar-track { background: var(--cor-borda); border-radius: var(--raio-sm); }
-.content-scroll::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: var(--raio-sm); }
-.content-scroll::-webkit-scrollbar-thumb:hover { background: var(--cor-primaria-hover); }
+.content-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.content-scroll::-webkit-scrollbar-track {
+    background: var(--cor-borda);
+    border-radius: var(--raio-sm);
+}
+
+.content-scroll::-webkit-scrollbar-thumb {
+    background: var(--cor-primaria);
+    border-radius: var(--raio-sm);
+}
+
+.content-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--cor-primaria-hover);
+}
 
 /* =========================================================
    7. SECOES DE ANALISE
@@ -408,38 +421,21 @@ body {
     font-weight: 500;
 }
 
-.secao-contador-alerta {
-    background: var(--cor-alerta-light);
-    color: #856404;
-}
-
 .secao-content {
     padding: var(--espacamento-md);
 }
 
-/* Secao sucesso */
-.secao-sucesso .secao-header {
-    background: linear-gradient(180deg, var(--cor-sucesso-light) 0%, #ffffff 100%);
-}
-
-.secao-sucesso .secao-titulo i {
-    color: var(--cor-sucesso);
-}
-
 /* =========================================================
-   8. METRICAS GRID (Recepcao)
+   8. MEDICOS GRID (Cards dos Consultorios)
    ========================================================= */
 
-.metricas-grid {
+.guiches-grid {
     display: grid;
-    gap: var(--espacamento-md);
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--espacamento-sm);
 }
 
-.metricas-3 {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.metrica-card {
+.guiche-card {
     display: flex;
     align-items: center;
     gap: var(--espacamento-md);
@@ -447,53 +443,167 @@ body {
     background: var(--cor-fundo);
     border-radius: var(--raio-md);
     border: 1px solid var(--cor-borda);
+    border-left: 4px solid var(--cor-info);
+    transition: var(--transicao-rapida);
 }
 
-.metrica-icone {
-    width: 48px;
-    height: 48px;
+.guiche-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-card-hover);
+}
+
+.guiche-card.status-atendendo {
+    border-left-color: var(--cor-sucesso);
+}
+
+.guiche-card.status-livre {
+    border-left-color: var(--cor-alerta);
+}
+
+.guiche-icone {
+    width: 44px;
+    height: 44px;
     border-radius: var(--raio-md);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    position: relative;
+    background: linear-gradient(135deg, #1565c0, #42a5f5);
 }
 
-.metrica-icone i {
-    font-size: 1.2rem;
+.guiche-icone i {
+    font-size: 1.1rem;
     color: white;
 }
 
-.icone-azul { background: var(--grad-icone-azul); }
-.icone-roxo { background: var(--grad-icone-roxo); }
-.icone-laranja { background: var(--grad-icone-laranja); }
-
-.metrica-info {
-    display: flex;
-    flex-direction: column;
+.guiche-icone::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-radius: var(--raio-full);
+    background: var(--cor-sucesso);
+    border: 2px solid var(--cor-fundo);
+    animation: pulsar-dot 2s ease-in-out infinite;
 }
 
-.metrica-valor {
-    font-size: 1.5rem;
+.guiche-card.status-livre .guiche-icone::after {
+    background: var(--cor-alerta);
+}
+
+.guiche-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.guiche-header-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+    flex-wrap: wrap;
+}
+
+.guiche-numero {
+    font-size: 0.9rem;
     font-weight: 700;
     color: var(--cor-texto);
-    line-height: 1.2;
 }
 
-.metrica-valor small {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--cor-texto-secundario);
+.guiche-badge {
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: var(--raio-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #90caf9;
 }
 
-.metrica-label {
-    font-size: 0.75rem;
-    color: var(--cor-texto-secundario);
-    margin-top: 2px;
+.guiche-badge-consulta {
+    background: var(--cor-sucesso-light);
+    color: #155724;
+    border: 1px solid #a3d9a5;
+}
+
+.guiche-badge-livre {
+    background: var(--cor-alerta-light);
+    color: #856404;
+    border: 1px solid #ffd97a;
+}
+
+.guiche-usuario {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.guiche-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    margin-top: 3px;
+    flex-wrap: wrap;
+}
+
+.guiche-login {
+    font-size: 0.68rem;
+    color: var(--cor-texto-muted);
+}
+
+.guiche-tempo {
+    font-size: 0.68rem;
+    color: var(--cor-sucesso);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.guiche-tempo i {
+    font-size: 0.6rem;
+}
+
+/* Contador de atendimentos no card */
+.guiche-atendimentos {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 48px;
+    padding: var(--espacamento-xs) var(--espacamento-sm);
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    border: 1px solid var(--cor-borda);
+}
+
+.guiche-atend-valor {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--cor-primaria);
+    line-height: 1.1;
+}
+
+.guiche-atend-label {
+    font-size: 0.55rem;
+    color: var(--cor-texto-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 600;
 }
 
 /* =========================================================
-   9. TABELAS
+   9. TABELA RANKING
    ========================================================= */
 
 .tabela-container {
@@ -537,148 +647,107 @@ body {
     background: rgba(220, 53, 69, 0.03);
 }
 
-.texto-centro { text-align: center; }
-.texto-muted { color: var(--cor-texto-muted); font-size: 0.8rem; }
-
-.clinica-nome,
-.medico-nome {
-    font-weight: 600;
-    color: var(--cor-texto);
+.texto-centro {
+    text-align: center;
 }
 
-/* =========================================================
-   10. GRAFICO DE BARRAS
-   ========================================================= */
-
-.grafico-container {
-    padding: var(--espacamento-sm) 0;
+.texto-muted {
+    color: var(--cor-texto-muted);
+    font-size: 0.8rem;
 }
 
-.grafico-barras {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    height: 220px;
-    gap: 6px;
-    padding: var(--espacamento-md) var(--espacamento-sm);
-    background: var(--cor-fundo);
-    border-radius: var(--raio-md);
-}
-
-.grafico-barra {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100%;
-    min-width: 0;
-}
-
-.barra-container {
-    flex: 1;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    position: relative;
-}
-
-.barra-valor {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--cor-texto);
-    margin-bottom: 4px;
-    background: white;
-    padding: 2px 6px;
-    border-radius: var(--raio-sm);
-    box-shadow: var(--sombra-sm);
-}
-
-.barra-preenchimento {
-    width: 100%;
-    max-width: 32px;
-    background: var(--grad-total);
-    border-radius: var(--raio-sm) var(--raio-sm) 0 0;
-    transition: height var(--transicao-normal);
-    min-height: 0;
-}
-
-.barra-preenchimento:hover {
-    opacity: 0.85;
-    transform: scaleX(1.05);
-}
-
-.barra-label {
-    font-size: 0.65rem;
-    color: var(--cor-texto-secundario);
-    font-weight: 600;
-    margin-top: var(--espacamento-xs);
-    white-space: nowrap;
-}
-
-.grafico-barra.barra-atual .barra-preenchimento {
-    background: var(--grad-realizados);
-    box-shadow: 0 0 12px rgba(40, 167, 69, 0.4);
-}
-
-.grafico-barra.barra-atual .barra-label {
-    color: var(--cor-sucesso);
-    font-weight: 700;
-}
-
-/* =========================================================
-   11. BADGES
-   ========================================================= */
-
-.badge {
+.ranking-posicao {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 10px;
-    border-radius: var(--raio-sm);
+    width: 26px;
+    height: 26px;
+    border-radius: var(--raio-full);
+    background: var(--cor-fundo);
+    color: var(--cor-texto-secundario);
     font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid var(--cor-borda);
+}
+
+.ranking-nome-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.ranking-nome {
     font-weight: 600;
-    white-space: nowrap;
+    color: var(--cor-texto);
 }
 
-.badge-tempo { min-width: 60px; }
-
-.badge-tempo.tempo-bom {
-    background: var(--cor-sucesso-light);
-    color: #155724;
+.ranking-clinica {
+    font-size: 0.68rem;
+    color: var(--cor-texto-muted);
 }
 
-.badge-tempo.tempo-medio {
-    background: var(--cor-alerta-light);
-    color: #856404;
+.ranking-total {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--cor-texto);
 }
 
-.badge-tempo.tempo-critico {
-    background: var(--cor-perigo-light);
-    color: #721c24;
-}
-
-.badge-aguardando {
-    background: var(--cor-alerta-light);
-    color: #856404;
-}
-
-.badge-aguardando-grande {
-    background: var(--cor-alerta);
-    color: white;
+.ranking-tempo {
     font-size: 0.85rem;
-    padding: 6px 14px;
-    border-radius: var(--raio-md);
+    color: var(--cor-texto-secundario);
+    font-weight: 500;
 }
 
-.badge-sucesso {
+/* Status badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--raio-sm);
+}
+
+.status-badge-online {
     background: var(--cor-sucesso-light);
     color: #155724;
+}
+
+.status-badge-offline {
+    background: var(--cor-fundo);
+    color: var(--cor-texto-muted);
+}
+
+.status-badge i {
+    font-size: 0.6rem;
+}
+
+/* Barra de desempenho */
+.barra-desempenho {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+}
+
+.barra-track {
+    flex: 1;
+    height: 8px;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-sm);
+    overflow: hidden;
+}
+
+.barra-fill {
+    height: 100%;
+    border-radius: var(--raio-sm);
+    background: var(--grad-total);
+    transition: width 0.6s ease;
 }
 
 /* =========================================================
-   12. ESTADOS E FEEDBACK
+   10. ESTADOS E FEEDBACK
    ========================================================= */
 
 .loading-container {
@@ -686,13 +755,13 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    padding: var(--espacamento-xl);
     gap: var(--espacamento-md);
 }
 
 .loading-spinner {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border: 4px solid var(--cor-borda);
     border-top-color: var(--cor-primaria);
     border-radius: var(--raio-full);
@@ -701,12 +770,10 @@ body {
 
 .loading-container p {
     color: var(--cor-texto-secundario);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
-.mensagem-vazia,
-.mensagem-sucesso,
-.mensagem-erro {
+.mensagem-vazia {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -715,64 +782,19 @@ body {
     text-align: center;
 }
 
-.mensagem-vazia i,
-.mensagem-sucesso i,
-.mensagem-erro i {
-    font-size: 2.5rem;
-    margin-bottom: var(--espacamento-md);
-}
-
-.mensagem-vazia i { color: var(--cor-texto-muted); }
-.mensagem-sucesso i { color: var(--cor-sucesso); }
-.mensagem-erro i { color: var(--cor-perigo); }
-
-.mensagem-vazia p,
-.mensagem-sucesso p {
-    color: var(--cor-texto-secundario);
-    font-size: 0.9rem;
-}
-
-.mensagem-erro-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-}
-
-.mensagem-erro h3 {
-    color: var(--cor-texto);
-    font-size: 1.1rem;
+.mensagem-vazia i {
+    font-size: 2rem;
+    color: var(--cor-texto-muted);
     margin-bottom: var(--espacamento-sm);
 }
 
-.mensagem-erro p {
+.mensagem-vazia p {
     color: var(--cor-texto-secundario);
-    margin-bottom: var(--espacamento-md);
-}
-
-.btn-tentar-novamente {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--espacamento-sm);
-    padding: var(--espacamento-sm) var(--espacamento-md);
-    background: var(--cor-primaria);
-    color: white;
-    border: none;
-    border-radius: var(--raio-md);
     font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transicao-rapida);
-    font-family: var(--fonte-principal);
-}
-
-.btn-tentar-novamente:hover {
-    background: var(--cor-primaria-hover);
-    transform: translateY(-1px);
 }
 
 /* =========================================================
-   13. ANIMACOES
+   11. ANIMACOES
    ========================================================= */
 
 @keyframes girar {
@@ -790,58 +812,132 @@ body {
     50% { box-shadow: 0 0 0 8px rgba(40, 167, 69, 0); }
 }
 
-@keyframes piscar {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; background: var(--cor-primaria-light); }
+@keyframes pulsar-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
 }
 
 /* =========================================================
-   14. RESPONSIVIDADE
+   12. RESPONSIVIDADE
    ========================================================= */
 
 @media (max-width: 1200px) {
-    .resumo-grid { grid-template-columns: repeat(3, 1fr); }
-    .metricas-3 { grid-template-columns: repeat(2, 1fr); }
+    .resumo-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .barra-desempenho {
+        min-width: 80px;
+    }
 }
 
 @media (max-width: 992px) {
-    .header-content { flex-wrap: wrap; }
-    .btn-text { display: none; }
-    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
-    .card-value { font-size: 1.2rem; }
+    .header-content {
+        flex-wrap: wrap;
+    }
+
+    .btn-text {
+        display: none;
+    }
+
+    .resumo-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card-value {
+        font-size: 1.2rem;
+    }
+
+    .barra-desempenho {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {
-    :root { --espacamento-md: 12px; }
+    :root {
+        --espacamento-md: 12px;
+    }
 
-    .painel-header { padding: var(--espacamento-sm); }
-    .header-title h1 { font-size: 0.9rem; }
-    .header-subtitle { display: none; }
+    .painel-header {
+        padding: var(--espacamento-sm);
+    }
+
+    .header-title h1 {
+        font-size: 0.9rem;
+    }
+
+    .header-subtitle {
+        display: none;
+    }
 
     .resumo-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: var(--espacamento-xs);
     }
 
-    .resumo-card { padding: var(--espacamento-sm); }
-    .card-icon { width: 36px; height: 36px; }
-    .card-value { font-size: 1.1rem; }
+    .resumo-card {
+        padding: var(--espacamento-sm);
+    }
 
-    .metricas-3 { grid-template-columns: 1fr; }
+    .card-icon {
+        width: 36px;
+        height: 36px;
+    }
 
-    .tabela-dados { font-size: 0.75rem; }
+    .card-value {
+        font-size: 1.1rem;
+    }
+
+    .guiches-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+
+    .guiche-card {
+        padding: var(--espacamento-sm);
+        gap: var(--espacamento-sm);
+    }
+
+    .guiche-icone {
+        width: 36px;
+        height: 36px;
+    }
+
+    .guiche-icone i {
+        font-size: 0.9rem;
+    }
+
+    .guiche-atend-valor {
+        font-size: 1rem;
+    }
+
+    .tabela-dados {
+        font-size: 0.75rem;
+    }
+
     .tabela-dados thead th,
     .tabela-dados tbody td {
         padding: var(--espacamento-xs) var(--espacamento-sm);
     }
-
-    .grafico-barras { height: 180px; }
 }
 
 @media (max-width: 480px) {
-    .resumo-grid { grid-template-columns: 1fr 1fr; }
-    .header-actions { width: 100%; justify-content: flex-end; }
-    .header-status { display: none; }
+    .resumo-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .header-status {
+        display: none;
+    }
+
+    .guiches-grid {
+        grid-template-columns: 1fr;
+    }
 
     .secao-header {
         flex-direction: column;
@@ -856,21 +952,38 @@ body {
         --espacamento-lg: 28px;
     }
 
-    .card-value { font-size: 1.6rem; }
-    .secao-titulo h2 { font-size: 1.1rem; }
-    .grafico-barras { height: 280px; }
+    .card-value {
+        font-size: 1.6rem;
+    }
+
+    .secao-titulo h2 {
+        font-size: 1.1rem;
+    }
+
+    .guiche-atend-valor {
+        font-size: 1.5rem;
+    }
 }
 
 @media print {
-    .painel-header, .btn-header { display: none; }
+    .painel-header,
+    .btn-header {
+        display: none;
+    }
 
     .painel-container {
         height: auto;
         overflow: visible;
     }
 
-    .painel-main { overflow: visible; }
-    .content-scroll { overflow: visible; height: auto; }
+    .painel-main {
+        overflow: visible;
+    }
+
+    .content-scroll {
+        overflow: visible;
+        height: auto;
+    }
 
     .secao-analise {
         break-inside: avoid;

@@ -1,361 +1,264 @@
-"""
-Painel 10 - Análise do Pronto Socorro
-Endpoints para análise de desempenho do PS
-"""
-from flask import Blueprint, jsonify, send_from_directory, session, current_app
+# =============================================================================
+# PAINEL 10 - ANALISE DO PRONTO SOCORRO
+# Hospital Anchieta Ceilandia
+#
+# Dashboard analitico com metricas de desempenho do PS:
+#   - Resumo geral do dia (total, realizados, aguardando, alta, tempos)
+#   - Tempo medio de espera por clinica
+#   - Pacientes aguardando por clinica
+#   - Atendimentos por hora (grafico)
+#   - Desempenho por medico
+#   - Desempenho da recepcao
+#
+# Dados: Views PostgreSQL (vw_ps_*)
+# =============================================================================
+
+import logging
 from datetime import datetime
+
+from flask import Blueprint, jsonify, send_from_directory, session, current_app
 from psycopg2.extras import RealDictCursor
+
 from backend.database import get_db_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
-# Cria o Blueprint
+logger = logging.getLogger(__name__)
+
 painel10_bp = Blueprint('painel10', __name__)
 
 
-# =========================================================
-# ROTAS DE PÁGINA HTML
-# =========================================================
+# =============================================================================
+# HELPERS
+# =============================================================================
+
+def _verificar_acesso():
+    """Verifica permissao de acesso ao painel. Retorna True se autorizado."""
+    is_admin = session.get('is_admin', False)
+    if is_admin:
+        return True
+    usuario_id = session.get('usuario_id')
+    return verificar_permissao_painel(usuario_id, 'painel10')
+
+
+def _consultar_view(view_name, fetchone=False):
+    """
+    Consulta uma view PostgreSQL e retorna os dados.
+    Retorna (dados, None) em sucesso ou (None, response_erro) em falha.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None, (jsonify({
+            'success': False,
+            'error': 'Erro de conexao com o banco'
+        }), 500)
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(f"SELECT * FROM {view_name}")
+
+        if fetchone:
+            resultado = cursor.fetchone()
+            dados = dict(resultado) if resultado else None
+        else:
+            resultados = cursor.fetchall()
+            dados = [dict(row) for row in resultados]
+
+        cursor.close()
+        return dados, None
+
+    except Exception as e:
+        logger.error('Erro ao consultar %s: %s', view_name, str(e), exc_info=True)
+        return None, (jsonify({
+            'success': False,
+            'error': 'Erro ao buscar dados'
+        }), 500)
+    finally:
+        if conn:
+            conn.close()
+
+
+# =============================================================================
+# ROTA DE PAGINA HTML
+# =============================================================================
 
 @painel10_bp.route('/painel/painel10')
 @login_required
 def painel10():
-    """Página principal do Painel 10"""
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel10'):
-            current_app.logger.warning(f'Acesso negado ao painel10: {session.get("usuario")}')
-            return send_from_directory('frontend', 'acesso-negado.html')
+    """Pagina principal do Painel 10"""
+    if not _verificar_acesso():
+        logger.warning('Acesso negado ao painel10: %s', session.get('usuario'))
+        return send_from_directory('frontend', 'acesso-negado.html')
 
     return send_from_directory('paineis/painel10', 'index.html')
 
 
-# =========================================================
-# ROTAS DE API
-# =========================================================
+# =============================================================================
+# ENDPOINT: DASHBOARD GERAL DO DIA
+# =============================================================================
 
 @painel10_bp.route('/api/paineis/painel10/dashboard', methods=['GET'])
 @login_required
 def api_painel10_dashboard():
     """
-    Dashboard geral do dia
-    GET /api/paineis/painel10/dashboard
+    Resumo geral do dia.
+    Retorna: total_atendimentos, realizados, aguardando, alta, tempos medios.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel10'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+    dados, erro = _consultar_view('vw_ps_dashboard_dia', fetchone=True)
+    if erro:
+        return erro
 
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+    if not dados:
+        dados = {
+            'total_atendimentos_dia': 0,
+            'atendimentos_realizados': 0,
+            'aguardando_atendimento': 0,
+            'pacientes_alta': 0,
+            'tempo_medio_permanencia_min': 0,
+            'tempo_medio_espera_consulta_min': 0
+        }
 
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+    return jsonify({
+        'success': True,
+        'data': dados,
+        'timestamp': datetime.now().isoformat()
+    })
 
-        query = "SELECT * FROM vw_ps_dashboard_dia"
-        cursor.execute(query)
-        resultado = cursor.fetchone()
 
-        cursor.close()
-        conn.close()
-
-        if not resultado:
-            dados = {
-                'total_atendimentos_dia': 0,
-                'atendimentos_realizados': 0,
-                'aguardando_atendimento': 0,
-                'pacientes_alta': 0,
-                'tempo_medio_permanencia_min': 0,
-                'tempo_medio_espera_consulta_min': 0
-            }
-        else:
-            dados = dict(resultado)
-
-        return jsonify({
-            'success': True,
-            'data': dados,
-            'timestamp': datetime.now().isoformat()
-        })
-
-    except Exception as e:
-        current_app.logger.error(f'Erro ao buscar dashboard painel10: {e}', exc_info=True)
-        if conn:
-            conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
-
+# =============================================================================
+# ENDPOINT: TEMPO MEDIO POR CLINICA
+# =============================================================================
 
 @painel10_bp.route('/api/paineis/painel10/tempo-clinica', methods=['GET'])
 @login_required
 def api_painel10_tempo_clinica():
     """
-    Tempo médio de espera por clínica
-    GET /api/paineis/painel10/tempo-clinica
+    Tempo medio de espera por clinica.
+    Retorna lista com: ds_clinica, total, realizados, aguardando, tempo_medio.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel10'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+    dados, erro = _consultar_view('vw_ps_tempo_por_clinica')
+    if erro:
+        return erro
 
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+    return jsonify({
+        'success': True,
+        'data': dados or [],
+        'total': len(dados or []),
+        'timestamp': datetime.now().isoformat()
+    })
 
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        query = "SELECT * FROM vw_ps_tempo_por_clinica"
-        cursor.execute(query)
-        dados = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            'success': True,
-            'data': [dict(row) for row in dados],
-            'total': len(dados),
-            'timestamp': datetime.now().isoformat()
-        })
-
-    except Exception as e:
-        current_app.logger.error(f'Erro ao buscar tempo por clínica: {e}', exc_info=True)
-        if conn:
-            conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
-
+# =============================================================================
+# ENDPOINT: PACIENTES AGUARDANDO POR CLINICA
+# =============================================================================
 
 @painel10_bp.route('/api/paineis/painel10/aguardando-clinica', methods=['GET'])
 @login_required
 def api_painel10_aguardando_clinica():
     """
-    Pacientes aguardando por clínica
-    GET /api/paineis/painel10/aguardando-clinica
+    Pacientes aguardando atendimento por clinica.
+    Retorna lista com: ds_clinica, total_aguardando, tempo_espera, tempo_max.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel10'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+    dados, erro = _consultar_view('vw_ps_aguardando_por_clinica')
+    if erro:
+        return erro
 
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+    return jsonify({
+        'success': True,
+        'data': dados or [],
+        'total': len(dados or []),
+        'timestamp': datetime.now().isoformat()
+    })
 
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        query = "SELECT * FROM vw_ps_aguardando_por_clinica"
-        cursor.execute(query)
-        dados = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            'success': True,
-            'data': [dict(row) for row in dados],
-            'total': len(dados),
-            'timestamp': datetime.now().isoformat()
-        })
-
-    except Exception as e:
-        current_app.logger.error(f'Erro ao buscar aguardando por clínica: {e}', exc_info=True)
-        if conn:
-            conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
-
+# =============================================================================
+# ENDPOINT: ATENDIMENTOS POR HORA
+# =============================================================================
 
 @painel10_bp.route('/api/paineis/painel10/atendimentos-hora', methods=['GET'])
 @login_required
 def api_painel10_atendimentos_hora():
     """
-    Atendimentos por hora do dia
-    GET /api/paineis/painel10/atendimentos-hora
+    Distribuicao de atendimentos por hora do dia.
+    Retorna lista com: hora, total_atendimentos.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel10'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+    dados, erro = _consultar_view('vw_ps_atendimentos_por_hora')
+    if erro:
+        return erro
 
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+    return jsonify({
+        'success': True,
+        'data': dados or [],
+        'total': len(dados or []),
+        'timestamp': datetime.now().isoformat()
+    })
 
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        query = "SELECT * FROM vw_ps_atendimentos_por_hora"
-        cursor.execute(query)
-        dados = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            'success': True,
-            'data': [dict(row) for row in dados],
-            'total': len(dados),
-            'timestamp': datetime.now().isoformat()
-        })
-
-    except Exception as e:
-        current_app.logger.error(f'Erro ao buscar atendimentos por hora: {e}', exc_info=True)
-        if conn:
-            conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
-
+# =============================================================================
+# ENDPOINT: DESEMPENHO POR MEDICO
+# =============================================================================
 
 @painel10_bp.route('/api/paineis/painel10/desempenho-medico', methods=['GET'])
 @login_required
 def api_painel10_desempenho_medico():
     """
-    Desempenho por médico
-    GET /api/paineis/painel10/desempenho-medico
+    Desempenho dos medicos do dia.
+    Retorna lista com: cd_medico, nm_guerra, total, tempo_medio, finalizados.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel10'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+    dados, erro = _consultar_view('vw_ps_desempenho_medico')
+    if erro:
+        return erro
 
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+    return jsonify({
+        'success': True,
+        'data': dados or [],
+        'total': len(dados or []),
+        'timestamp': datetime.now().isoformat()
+    })
 
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        query = "SELECT * FROM vw_ps_desempenho_medico"
-        cursor.execute(query)
-        dados = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            'success': True,
-            'data': [dict(row) for row in dados],
-            'total': len(dados),
-            'timestamp': datetime.now().isoformat()
-        })
-
-    except Exception as e:
-        current_app.logger.error(f'Erro ao buscar desempenho médico: {e}', exc_info=True)
-        if conn:
-            conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
-
+# =============================================================================
+# ENDPOINT: DESEMPENHO DA RECEPCAO
+# =============================================================================
 
 @painel10_bp.route('/api/paineis/painel10/desempenho-recepcao', methods=['GET'])
 @login_required
 def api_painel10_desempenho_recepcao():
     """
-    Desempenho da recepção
-    GET /api/paineis/painel10/desempenho-recepcao
+    Metricas de desempenho da recepcao.
+    Retorna: total_recebidos, tempo_medio_recepcao, aguardando_recepcao.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel10'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
+    dados, erro = _consultar_view('vw_ps_desempenho_recepcao', fetchone=True)
+    if erro:
+        return erro
 
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
+    if not dados:
+        dados = {
+            'total_recebidos': 0,
+            'tempo_medio_recepcao_min': 0,
+            'aguardando_recepcao': 0
+        }
 
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        query = "SELECT * FROM vw_ps_desempenho_recepcao"
-        cursor.execute(query)
-        resultado = cursor.fetchone()
-
-        cursor.close()
-        conn.close()
-
-        if not resultado:
-            dados = {
-                'total_recebidos': 0,
-                'tempo_medio_recepcao_min': 0,
-                'aguardando_recepcao': 0
-            }
-        else:
-            dados = dict(resultado)
-
-        return jsonify({
-            'success': True,
-            'data': dados,
-            'timestamp': datetime.now().isoformat()
-        })
-
-    except Exception as e:
-        current_app.logger.error(f'Erro ao buscar desempenho recepção: {e}', exc_info=True)
-        if conn:
-            conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar dados'
-        }), 500
+    return jsonify({
+        'success': True,
+        'data': dados,
+        'timestamp': datetime.now().isoformat()
+    })

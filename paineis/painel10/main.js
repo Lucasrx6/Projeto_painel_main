@@ -1,1003 +1,656 @@
-/**
- * PAINEL 10 - Analise Pronto Socorro
- * Sistema de Paineis Hospitalares - Hospital Anchieta
- *
- * Funcionalidades:
- * - Dashboard com metricas em tempo real
- * - Analise por clinica, medico e recepcao
- * - Grafico de atendimentos por hora
- * - Auto-scroll para monitores
- */
+// =============================================================================
+// PAINEL 10 - ANALISE DO PRONTO SOCORRO
+// Hospital Anchieta Ceilandia
+//
+// Carrega 6 endpoints em paralelo e renderiza:
+//   - Cards resumo (dashboard)
+//   - Desempenho da recepcao
+//   - Tempo medio por clinica
+//   - Pacientes aguardando
+//   - Grafico atendimentos por hora
+//   - Desempenho por medico
+// =============================================================================
 
-(function() {
-    'use strict';
+var BASE_URL = window.location.origin;
 
-    // =========================================================
-    // CONFIGURACAO
-    // =========================================================
+var CONFIG = {
+    api: {
+        dashboard: BASE_URL + '/api/paineis/painel10/dashboard',
+        tempoClinica: BASE_URL + '/api/paineis/painel10/tempo-clinica',
+        aguardandoClinica: BASE_URL + '/api/paineis/painel10/aguardando-clinica',
+        atendimentosHora: BASE_URL + '/api/paineis/painel10/atendimentos-hora',
+        desempenhoMedico: BASE_URL + '/api/paineis/painel10/desempenho-medico',
+        desempenhoRecepcao: BASE_URL + '/api/paineis/painel10/desempenho-recepcao'
+    },
+    intervaloRefresh: 60000,
+    velocidadeScroll: 0.5,
+    pausaFinal: 8000,
+    pausaAposReset: 5000,
+    watchdogInterval: 5000,
+    tempoEspera: { bom: 30, medio: 60 },
+    tempoAtendimento: { bom: 15, medio: 30 }
+};
 
-    const CONFIG = {
-        // URLs da API
-        api: {
-            dashboard: '/api/paineis/painel10/dashboard',
-            tempoClinica: '/api/paineis/painel10/tempo-clinica',
-            aguardandoClinica: '/api/paineis/painel10/aguardando-clinica',
-            atendimentosHora: '/api/paineis/painel10/atendimentos-hora',
-            desempenhoMedico: '/api/paineis/painel10/desempenho-medico',
-            desempenhoRecepcao: '/api/paineis/painel10/desempenho-recepcao'
-        },
+// Estado global
+var autoScrollAtivo = false;
+var intervaloAutoScroll = null;
+var intervaloWatchdog = null;
+var carregando = false;
+var errosConsecutivos = 0;
+var ultimaPosicaoScroll = 0;
+var contadorTravamento = 0;
 
-        // Intervalos (ms)
-        intervaloRefresh: 60000,      // 1 minuto
-        velocidadeScroll: 0.5,        // pixels por tick
-        intervaloScroll: 50,          // ms entre ticks
-        pausaNoFinal: 8000,           // pausa ao chegar no fim
-        pausaAposReset: 5000,         // pausa apos voltar ao topo
-        watchdogInterval: 5000,       // verificacao de travamento
+// Cache DOM
+var DOM = {};
 
-        // Limites
-        maxTentativasConexao: 3,
-        timeoutRequisicao: 30000,
+// =============================================================================
+// INICIALIZACAO
+// =============================================================================
 
-        // Thresholds de tempo (minutos)
-        tempoEspera: {
-            bom: 30,
-            medio: 60
-        },
-        tempoAtendimento: {
-            bom: 15,
-            medio: 30
+function inicializar() {
+    console.log('[Painel10] Inicializando...');
+    cachearElementos();
+    configurarBotoes();
+    carregarTudo();
+    setInterval(carregarTudo, CONFIG.intervaloRefresh);
+
+    // Recarrega ao voltar para aba
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            carregarTudo();
+            if (autoScrollAtivo) iniciarAutoScroll();
+        } else {
+            if (autoScrollAtivo) pararAutoScroll();
         }
-    };
+    });
 
-    // =========================================================
-    // ESTADO DA APLICACAO
-    // =========================================================
+    console.log('[Painel10] Inicializado com sucesso');
+}
 
-    const Estado = {
-        autoScrollAtivo: false,
-        carregando: false,
-        ultimaAtualizacao: null,
-        errosConsecutivos: 0,
+function cachearElementos() {
+    DOM.painelMain = document.getElementById('painel-main');
+    DOM.statusIndicator = document.getElementById('status-indicator');
+    DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
+    DOM.totalDia = document.getElementById('total-dia');
+    DOM.totalRealizados = document.getElementById('total-realizados');
+    DOM.totalAguardando = document.getElementById('total-aguardando');
+    DOM.totalAlta = document.getElementById('total-alta');
+    DOM.tempoMedioEspera = document.getElementById('tempo-medio-espera');
+    DOM.tempoMedioPermanencia = document.getElementById('tempo-medio-permanencia');
+}
 
-        // Intervalos
-        intervalos: {
-            refresh: null,
-            scroll: null,
-            watchdog: null
-        },
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializar);
+} else {
+    inicializar();
+}
 
-        // Scroll
-        scroll: {
-            ultimaPosicao: 0,
-            contadorTravamento: 0
-        }
-    };
+// =============================================================================
+// BOTOES E EVENTOS
+// =============================================================================
 
-    // =========================================================
-    // ELEMENTOS DOM (Cache)
-    // =========================================================
-
-    const DOM = {};
-
-    function cachearElementos() {
-        DOM.painelMain = document.getElementById('painel-main');
-        DOM.loadingContainer = document.getElementById('loading-container');
-        DOM.statusIndicator = document.getElementById('status-indicator');
-        DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
-
-        // Cards do resumo
-        DOM.totalDia = document.getElementById('total-dia');
-        DOM.totalRealizados = document.getElementById('total-realizados');
-        DOM.totalAguardando = document.getElementById('total-aguardando');
-        DOM.totalAlta = document.getElementById('total-alta');
-        DOM.tempoMedioEspera = document.getElementById('tempo-medio-espera');
-        DOM.tempoMedioPermanencia = document.getElementById('tempo-medio-permanencia');
-
-        // Botoes
-        DOM.btnVoltar = document.getElementById('btn-voltar');
-        DOM.btnRefresh = document.getElementById('btn-refresh');
-        DOM.btnAutoScroll = document.getElementById('btn-auto-scroll');
-    }
-
-    // =========================================================
-    // UTILITARIOS
-    // =========================================================
-
-    /**
-     * Formata numero com separador de milhar
-     */
-    function formatarNumero(valor) {
-        if (valor === null || valor === undefined || isNaN(valor)) {
-            return '-';
-        }
-        return new Intl.NumberFormat('pt-BR').format(valor);
-    }
-
-    /**
-     * Formata tempo em minutos para exibicao
-     */
-    function formatarTempo(minutos) {
-        if (minutos === null || minutos === undefined || isNaN(minutos)) {
-            return '-';
-        }
-
-        const min = Math.round(minutos);
-
-        if (min < 60) {
-            return `${min}`;
-        }
-
-        const horas = Math.floor(min / 60);
-        const mins = min % 60;
-        return `${horas}h${mins.toString().padStart(2, '0')}`;
-    }
-
-    /**
-     * Retorna classe CSS baseada no tempo de espera
-     */
-    function getClasseTempo(minutos, tipo = 'espera') {
-        const limites = tipo === 'atendimento' ? CONFIG.tempoAtendimento : CONFIG.tempoEspera;
-
-        if (minutos < limites.bom) {
-            return 'tempo-bom';
-        } else if (minutos < limites.medio) {
-            return 'tempo-medio';
-        }
-        return 'tempo-critico';
-    }
-
-    /**
-     * Escapa HTML para prevenir XSS
-     */
-    function escapeHtml(texto) {
-        if (!texto) return '-';
-        const div = document.createElement('div');
-        div.textContent = texto;
-        return div.innerHTML;
-    }
-
-    /**
-     * Faz requisicao com timeout e retry
-     */
-    async function fetchComRetry(url, tentativas = CONFIG.maxTentativasConexao) {
-        let ultimoErro;
-
-        for (let i = 0; i < tentativas; i++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), CONFIG.timeoutRequisicao);
-
-                const response = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                return await response.json();
-
-            } catch (erro) {
-                ultimoErro = erro;
-                console.warn(`[Painel10] Tentativa ${i + 1}/${tentativas} falhou para ${url}:`, erro.message);
-
-                if (i < tentativas - 1) {
-                    await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-                }
-            }
-        }
-
-        throw ultimoErro;
-    }
-
-    /**
-     * Atualiza indicador de status
-     */
-    function atualizarStatus(status) {
-        if (!DOM.statusIndicator) return;
-
-        DOM.statusIndicator.className = 'status-indicator';
-
-        switch (status) {
-            case 'online':
-                DOM.statusIndicator.classList.add('status-online');
-                DOM.statusIndicator.title = 'Conectado';
-                break;
-            case 'offline':
-                DOM.statusIndicator.classList.add('status-offline');
-                DOM.statusIndicator.title = 'Sem conexao';
-                break;
-            case 'loading':
-                DOM.statusIndicator.classList.add('status-loading');
-                DOM.statusIndicator.title = 'Carregando...';
-                break;
-        }
-    }
-
-    /**
-     * Atualiza horario da ultima atualizacao
-     */
-    function atualizarHorario() {
-        if (!DOM.ultimaAtualizacao) return;
-
-        const agora = new Date();
-        DOM.ultimaAtualizacao.textContent = agora.toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit'
+function configurarBotoes() {
+    var btnVoltar = document.getElementById('btn-voltar');
+    if (btnVoltar) {
+        btnVoltar.addEventListener('click', function() {
+            window.location.href = '/frontend/dashboard.html';
         });
-
-        Estado.ultimaAtualizacao = agora;
     }
 
-    // =========================================================
-    // CARREGAMENTO DE DADOS
-    // =========================================================
+    var btnRefresh = document.getElementById('btn-refresh');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', function() {
+            btnRefresh.classList.add('girando');
+            carregarTudo();
+            setTimeout(function() {
+                btnRefresh.classList.remove('girando');
+            }, 600);
+        });
+    }
 
-    /**
-     * Carrega todos os dados do painel
-     */
-    async function carregarDados() {
-        if (Estado.carregando) {
-            console.log('[Painel10] Carregamento ja em andamento, ignorando...');
-            return;
-        }
+    var btnAutoScroll = document.getElementById('btn-auto-scroll');
+    if (btnAutoScroll) {
+        btnAutoScroll.addEventListener('click', function() {
+            autoScrollAtivo = !autoScrollAtivo;
+            if (autoScrollAtivo) {
+                btnAutoScroll.classList.add('ativo');
+                btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> <span class="btn-text">Pausar</span>';
+                iniciarAutoScroll();
+            } else {
+                btnAutoScroll.classList.remove('ativo');
+                btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>';
+                pararAutoScroll();
+            }
+        });
+    }
 
-        Estado.carregando = true;
-        atualizarStatus('loading');
-
-        // Salva estado do scroll
-        const scrollEstaAtivo = Estado.autoScrollAtivo;
-        if (scrollEstaAtivo) {
+    // Atalho ESC para parar scroll
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && autoScrollAtivo) {
+            autoScrollAtivo = false;
+            var btn = document.getElementById('btn-auto-scroll');
+            if (btn) {
+                btn.classList.remove('ativo');
+                btn.innerHTML = '<i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>';
+            }
             pararAutoScroll();
         }
+    });
+}
 
-        try {
-            console.log('[Painel10] Carregando dados...');
+// =============================================================================
+// CARREGAMENTO DE DADOS (PARALELO)
+// =============================================================================
 
-            // Carrega todos os endpoints em paralelo
-            const [
-                dashboardResp,
-                tempoClinicaResp,
-                aguardandoResp,
-                horaResp,
-                medicoResp,
-                recepcaoResp
-            ] = await Promise.all([
-                fetchComRetry(CONFIG.api.dashboard),
-                fetchComRetry(CONFIG.api.tempoClinica),
-                fetchComRetry(CONFIG.api.aguardandoClinica),
-                fetchComRetry(CONFIG.api.atendimentosHora),
-                fetchComRetry(CONFIG.api.desempenhoMedico),
-                fetchComRetry(CONFIG.api.desempenhoRecepcao)
-            ]);
+function carregarTudo() {
+    if (carregando) return;
+    carregando = true;
+    atualizarStatus('loading');
 
-            // Atualiza dashboard
-            if (dashboardResp.success && dashboardResp.data) {
-                atualizarDashboard(dashboardResp.data);
-            }
+    console.log('[Painel10] Carregando dados...');
 
-            // Renderiza conteudo principal
-            renderizarConteudo({
-                recepcao: recepcaoResp.data || {},
-                tempoClinica: tempoClinicaResp.data || [],
-                aguardando: aguardandoResp.data || [],
-                porHora: horaResp.data || [],
-                medicos: medicoResp.data || []
+    var endpoints = [
+        { url: CONFIG.api.dashboard, chave: 'dashboard' },
+        { url: CONFIG.api.tempoClinica, chave: 'tempoClinica' },
+        { url: CONFIG.api.aguardandoClinica, chave: 'aguardando' },
+        { url: CONFIG.api.atendimentosHora, chave: 'porHora' },
+        { url: CONFIG.api.desempenhoMedico, chave: 'medicos' },
+        { url: CONFIG.api.desempenhoRecepcao, chave: 'recepcao' }
+    ];
+
+    var resultados = {};
+    var completos = 0;
+    var erros = 0;
+
+    endpoints.forEach(function(ep) {
+        fetch(ep.url, { credentials: 'include' })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    resultados[ep.chave] = data.data || data;
+                }
+            })
+            .catch(function(err) {
+                console.error('[Painel10] Erro ao carregar ' + ep.chave + ':', err);
+                erros++;
+            })
+            .finally(function() {
+                completos++;
+                if (completos === endpoints.length) {
+                    finalizarCarregamento(resultados, erros);
+                }
             });
+    });
+}
 
-            atualizarHorario();
-            atualizarStatus('online');
-            Estado.errosConsecutivos = 0;
+function finalizarCarregamento(dados, erros) {
+    carregando = false;
 
-            console.log('[Painel10] Dados carregados com sucesso');
-
-        } catch (erro) {
-            console.error('[Painel10] Erro ao carregar dados:', erro);
-            Estado.errosConsecutivos++;
-            atualizarStatus('offline');
-
-            if (Estado.errosConsecutivos >= 3) {
-                mostrarErro('Falha na conexao com o servidor. Verifique sua rede.');
-            }
-        } finally {
-            Estado.carregando = false;
-
-            // Restaura scroll se estava ativo
-            if (scrollEstaAtivo) {
-                setTimeout(() => {
-                    Estado.autoScrollAtivo = true;
-                    atualizarBotaoScroll();
-                    iniciarAutoScroll();
-                }, 500);
-            }
+    if (erros >= 4) {
+        errosConsecutivos++;
+        atualizarStatus('offline');
+        if (errosConsecutivos >= 3) {
+            mostrarErro('Falha na conexao com o servidor. Verifique sua rede.');
         }
+        return;
     }
 
-    /**
-     * Atualiza cards do dashboard
-     */
-    function atualizarDashboard(dados) {
-        if (!dados) return;
+    errosConsecutivos = 0;
 
-        // Animacao de atualizacao
-        const cards = document.querySelectorAll('.resumo-card');
-        cards.forEach(card => {
-            card.classList.add('atualizando');
-            setTimeout(() => card.classList.remove('atualizando'), 300);
-        });
-
-        // Atualiza valores
-        if (DOM.totalDia) {
-            DOM.totalDia.textContent = formatarNumero(dados.total_atendimentos_dia);
-        }
-        if (DOM.totalRealizados) {
-            DOM.totalRealizados.textContent = formatarNumero(dados.atendimentos_realizados);
-        }
-        if (DOM.totalAguardando) {
-            DOM.totalAguardando.textContent = formatarNumero(dados.aguardando_atendimento);
-        }
-        if (DOM.totalAlta) {
-            DOM.totalAlta.textContent = formatarNumero(dados.pacientes_alta);
-        }
-        if (DOM.tempoMedioEspera) {
-            const tempo = dados.tempo_medio_espera_consulta_min || 0;
-            DOM.tempoMedioEspera.textContent = formatarTempo(tempo);
-            DOM.tempoMedioEspera.parentElement.parentElement.className =
-                `resumo-card card-tempo-espera ${getClasseTempo(tempo)}`;
-        }
-        if (DOM.tempoMedioPermanencia) {
-            DOM.tempoMedioPermanencia.textContent = formatarTempo(dados.tempo_medio_permanencia_min);
-        }
+    // Atualizar cards do dashboard
+    if (dados.dashboard) {
+        atualizarDashboard(dados.dashboard);
     }
 
-    // =========================================================
-    // RENDERIZACAO DO CONTEUDO
-    // =========================================================
+    // Renderizar conteudo principal
+    renderizarConteudo(dados);
+    atualizarTimestamp();
+    atualizarStatus('online');
 
-    /**
-     * Renderiza todo o conteudo principal
-     */
-    function renderizarConteudo(dados) {
-        if (!DOM.painelMain) return;
+    console.log('[Painel10] Dados carregados com sucesso');
+}
 
-        let html = '<div class="content-scroll" id="content-scroll">';
+// =============================================================================
+// DASHBOARD (CARDS RESUMO)
+// =============================================================================
 
-        // Ordem das secoes
-        html += renderizarSecaoRecepcao(dados.recepcao);
-        html += renderizarSecaoTempoClinica(dados.tempoClinica);
-        html += renderizarSecaoAguardando(dados.aguardando);
-        html += renderizarSecaoGrafico(dados.porHora);
-        html += renderizarSecaoMedicos(dados.medicos);
+function atualizarDashboard(d) {
+    if (!d) return;
 
-        html += '</div>';
-
-        DOM.painelMain.innerHTML = html;
+    // Animacao sutil
+    var cards = document.querySelectorAll('.resumo-card');
+    for (var i = 0; i < cards.length; i++) {
+        cards[i].classList.add('atualizando');
     }
-
-    /**
-     * Secao: Desempenho da Recepcao
-     */
-    function renderizarSecaoRecepcao(dados) {
-        if (!dados) dados = {};
-
-        const totalRecebidos = dados.total_recebidos || 0;
-        const tempoMedio = dados.tempo_medio_recepcao_min || 0;
-        const aguardando = dados.aguardando_recepcao || 0;
-
-        return `
-            <section class="secao-analise" aria-label="Desempenho da Recepcao">
-                <header class="secao-header">
-                    <div class="secao-titulo">
-                        <i class="fas fa-desktop" aria-hidden="true"></i>
-                        <h2>Desempenho da Recepcao</h2>
-                    </div>
-                </header>
-                <div class="secao-content">
-                    <div class="metricas-grid metricas-3">
-                        <div class="metrica-card">
-                            <div class="metrica-icone icone-azul">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div class="metrica-info">
-                                <span class="metrica-valor">${formatarNumero(totalRecebidos)}</span>
-                                <span class="metrica-label">Total Recebidos</span>
-                            </div>
-                        </div>
-                        <div class="metrica-card">
-                            <div class="metrica-icone icone-roxo">
-                                <i class="fas fa-stopwatch"></i>
-                            </div>
-                            <div class="metrica-info">
-                                <span class="metrica-valor">${formatarTempo(tempoMedio)} <small>min</small></span>
-                                <span class="metrica-label">Tempo Medio</span>
-                            </div>
-                        </div>
-                        <div class="metrica-card">
-                            <div class="metrica-icone icone-laranja">
-                                <i class="fas fa-user-clock"></i>
-                            </div>
-                            <div class="metrica-info">
-                                <span class="metrica-valor">${formatarNumero(aguardando)}</span>
-                                <span class="metrica-label">Aguardando</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        `;
-    }
-
-    /**
-     * Secao: Tempo por Clinica
-     */
-    function renderizarSecaoTempoClinica(dados) {
-        if (!dados || dados.length === 0) {
-            return renderizarSecaoVazia(
-                'Tempo Medio por Clinica',
-                'fas fa-clinic-medical',
-                'Nenhum atendimento registrado hoje'
-            );
+    setTimeout(function() {
+        for (var j = 0; j < cards.length; j++) {
+            cards[j].classList.remove('atualizando');
         }
+    }, 300);
 
-        let linhasHtml = '';
-        dados.forEach(row => {
-            const tempo = row.tempo_medio_espera_min || 0;
-            const classeTempo = getClasseTempo(tempo);
+    atualizarEl(DOM.totalDia, formatarNumero(d.total_atendimentos_dia));
+    atualizarEl(DOM.totalRealizados, formatarNumero(d.atendimentos_realizados));
+    atualizarEl(DOM.totalAguardando, formatarNumero(d.aguardando_atendimento));
+    atualizarEl(DOM.totalAlta, formatarNumero(d.pacientes_alta));
+    atualizarEl(DOM.tempoMedioEspera, formatarTempo(d.tempo_medio_espera_consulta_min));
+    atualizarEl(DOM.tempoMedioPermanencia, formatarTempo(d.tempo_medio_permanencia_min));
 
-            linhasHtml += `
-                <tr>
-                    <td>
-                        <div class="clinica-info">
-                            <span class="clinica-nome">${escapeHtml(row.ds_clinica)}</span>
-                        </div>
-                    </td>
-                    <td class="texto-centro">${formatarNumero(row.total_atendimentos)}</td>
-                    <td class="texto-centro">${formatarNumero(row.atendimentos_realizados)}</td>
-                    <td class="texto-centro">
-                        <span class="badge badge-aguardando">${formatarNumero(row.aguardando_atendimento)}</span>
-                    </td>
-                    <td class="texto-centro">
-                        <span class="badge badge-tempo ${classeTempo}">${tempo} min</span>
-                    </td>
-                </tr>
-            `;
-        });
+    // Cor dinamica no card de espera
+    if (DOM.tempoMedioEspera) {
+        var tempo = d.tempo_medio_espera_consulta_min || 0;
+        var parent = DOM.tempoMedioEspera.parentElement.parentElement;
+        parent.className = 'resumo-card card-tempo-espera ' + getClasseTempo(tempo, 'espera');
+    }
+}
 
-        return `
-            <section class="secao-analise" aria-label="Tempo por Clinica">
-                <header class="secao-header">
-                    <div class="secao-titulo">
-                        <i class="fas fa-clinic-medical" aria-hidden="true"></i>
-                        <h2>Tempo Medio por Clinica</h2>
-                    </div>
-                    <span class="secao-contador">${dados.length} clinica(s)</span>
-                </header>
-                <div class="secao-content">
-                    <div class="tabela-container">
-                        <table class="tabela-dados">
-                            <thead>
-                                <tr>
-                                    <th>Clinica</th>
-                                    <th class="texto-centro">Total</th>
-                                    <th class="texto-centro">Realizados</th>
-                                    <th class="texto-centro">Aguardando</th>
-                                    <th class="texto-centro">Tempo Medio</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${linhasHtml}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        `;
+// =============================================================================
+// RENDERIZACAO DO CONTEUDO PRINCIPAL
+// =============================================================================
+
+function renderizarConteudo(dados) {
+    if (!DOM.painelMain) return;
+
+    var html = '<div class="content-scroll" id="content-scroll">';
+    html += renderizarRecepcao(dados.recepcao);
+    html += renderizarTempoClinica(dados.tempoClinica);
+    html += renderizarAguardando(dados.aguardando);
+    html += renderizarGrafico(dados.porHora);
+    html += renderizarMedicos(dados.medicos);
+    html += '</div>';
+
+    DOM.painelMain.innerHTML = html;
+}
+
+// ----- RECEPCAO -----
+function renderizarRecepcao(dados) {
+    if (!dados) dados = {};
+
+    var totalRecebidos = dados.total_recebidos || 0;
+    var tempoMedio = dados.tempo_medio_recepcao_min || 0;
+    var aguardando = dados.aguardando_recepcao || 0;
+
+    return '' +
+        '<section class="secao-analise">' +
+        '  <header class="secao-header">' +
+        '    <div class="secao-titulo">' +
+        '      <i class="fas fa-desktop"></i>' +
+        '      <h2>Desempenho da Recepcao</h2>' +
+        '    </div>' +
+        '  </header>' +
+        '  <div class="secao-content">' +
+        '    <div class="metricas-grid metricas-3">' +
+        '      <div class="metrica-card">' +
+        '        <div class="metrica-icone icone-azul"><i class="fas fa-users"></i></div>' +
+        '        <div class="metrica-info">' +
+        '          <span class="metrica-valor">' + formatarNumero(totalRecebidos) + '</span>' +
+        '          <span class="metrica-label">Total Recebidos</span>' +
+        '        </div>' +
+        '      </div>' +
+        '      <div class="metrica-card">' +
+        '        <div class="metrica-icone icone-roxo"><i class="fas fa-stopwatch"></i></div>' +
+        '        <div class="metrica-info">' +
+        '          <span class="metrica-valor">' + formatarTempo(tempoMedio) + ' <small>min</small></span>' +
+        '          <span class="metrica-label">Tempo Medio</span>' +
+        '        </div>' +
+        '      </div>' +
+        '      <div class="metrica-card">' +
+        '        <div class="metrica-icone icone-laranja"><i class="fas fa-user-clock"></i></div>' +
+        '        <div class="metrica-info">' +
+        '          <span class="metrica-valor">' + formatarNumero(aguardando) + '</span>' +
+        '          <span class="metrica-label">Aguardando</span>' +
+        '        </div>' +
+        '      </div>' +
+        '    </div>' +
+        '  </div>' +
+        '</section>';
+}
+
+// ----- TEMPO POR CLINICA -----
+function renderizarTempoClinica(dados) {
+    if (!dados || dados.length === 0) {
+        return renderizarSecaoVazia('Tempo Medio por Clinica', 'fas fa-clinic-medical', 'Nenhum atendimento registrado hoje');
     }
 
-    /**
-     * Secao: Pacientes Aguardando
-     */
-    function renderizarSecaoAguardando(dados) {
-        if (!dados || dados.length === 0) {
-            return `
-                <section class="secao-analise secao-sucesso" aria-label="Pacientes Aguardando">
-                    <header class="secao-header">
-                        <div class="secao-titulo">
-                            <i class="fas fa-user-clock" aria-hidden="true"></i>
-                            <h2>Pacientes Aguardando</h2>
-                        </div>
-                    </header>
-                    <div class="secao-content">
-                        <div class="mensagem-sucesso">
-                            <i class="fas fa-check-circle"></i>
-                            <p>Nenhum paciente aguardando atendimento</p>
-                        </div>
-                    </div>
-                </section>
-            `;
-        }
-
-        let linhasHtml = '';
-        dados.forEach(row => {
-            const tempoMedio = row.tempo_espera_atual_min || 0;
-            const tempoMax = row.tempo_max_espera_min || 0;
-
-            linhasHtml += `
-                <tr>
-                    <td>
-                        <span class="clinica-nome">${escapeHtml(row.ds_clinica)}</span>
-                    </td>
-                    <td class="texto-centro">
-                        <span class="badge badge-aguardando-grande">${formatarNumero(row.total_aguardando)}</span>
-                    </td>
-                    <td class="texto-centro">${tempoMedio} min</td>
-                    <td class="texto-centro">
-                        <span class="badge badge-tempo tempo-critico">${tempoMax} min</span>
-                    </td>
-                </tr>
-            `;
-        });
-
-        const totalAguardando = dados.reduce((acc, row) => acc + (row.total_aguardando || 0), 0);
-
-        return `
-            <section class="secao-analise" aria-label="Pacientes Aguardando">
-                <header class="secao-header">
-                    <div class="secao-titulo">
-                        <i class="fas fa-user-clock" aria-hidden="true"></i>
-                        <h2>Pacientes Aguardando</h2>
-                    </div>
-                    <span class="secao-contador secao-contador-alerta">${totalAguardando} paciente(s)</span>
-                </header>
-                <div class="secao-content">
-                    <div class="tabela-container">
-                        <table class="tabela-dados">
-                            <thead>
-                                <tr>
-                                    <th>Clinica</th>
-                                    <th class="texto-centro">Aguardando</th>
-                                    <th class="texto-centro">Tempo Medio</th>
-                                    <th class="texto-centro">Tempo Maximo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${linhasHtml}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        `;
+    var linhas = '';
+    for (var i = 0; i < dados.length; i++) {
+        var row = dados[i];
+        var tempo = row.tempo_medio_espera_min || 0;
+        linhas += '' +
+            '<tr>' +
+            '  <td><span class="clinica-nome">' + escapeHtml(row.ds_clinica) + '</span></td>' +
+            '  <td class="texto-centro">' + formatarNumero(row.total_atendimentos) + '</td>' +
+            '  <td class="texto-centro">' + formatarNumero(row.atendimentos_realizados) + '</td>' +
+            '  <td class="texto-centro"><span class="badge badge-aguardando">' + formatarNumero(row.aguardando_atendimento) + '</span></td>' +
+            '  <td class="texto-centro"><span class="badge badge-tempo ' + getClasseTempo(tempo, 'espera') + '">' + tempo + ' min</span></td>' +
+            '</tr>';
     }
 
-    /**
-     * Secao: Grafico de Atendimentos por Hora
-     */
-    function renderizarSecaoGrafico(dados) {
-        if (!dados || dados.length === 0) {
-            return renderizarSecaoVazia(
-                'Atendimentos por Hora',
-                'fas fa-chart-bar',
-                'Nenhum dado disponivel para o grafico'
-            );
-        }
+    return '' +
+        '<section class="secao-analise">' +
+        '  <header class="secao-header">' +
+        '    <div class="secao-titulo"><i class="fas fa-clinic-medical"></i><h2>Tempo Medio por Clinica</h2></div>' +
+        '    <span class="secao-contador">' + dados.length + ' clinica(s)</span>' +
+        '  </header>' +
+        '  <div class="secao-content">' +
+        '    <div class="tabela-container">' +
+        '      <table class="tabela-dados">' +
+        '        <thead><tr>' +
+        '          <th>Clinica</th>' +
+        '          <th class="texto-centro">Total</th>' +
+        '          <th class="texto-centro">Realizados</th>' +
+        '          <th class="texto-centro">Aguardando</th>' +
+        '          <th class="texto-centro">Tempo Medio</th>' +
+        '        </tr></thead>' +
+        '        <tbody>' + linhas + '</tbody>' +
+        '      </table>' +
+        '    </div>' +
+        '  </div>' +
+        '</section>';
+}
 
-        const maxValor = Math.max(...dados.map(d => d.total_atendimentos || 0), 1);
-        const totalDia = dados.reduce((acc, d) => acc + (d.total_atendimentos || 0), 0);
-
-        let barrasHtml = '';
-        dados.forEach(row => {
-            const hora = row.hora;
-            const total = row.total_atendimentos || 0;
-
-            // Calcula altura proporcional (minimo 4% se tiver valor)
-            let altura = 0;
-            if (total > 0) {
-                altura = Math.max((total / maxValor) * 100, 4);
-            }
-
-            // Destaca hora atual
-            const horaAtual = new Date().getHours();
-            const isHoraAtual = parseInt(hora) === horaAtual;
-
-            barrasHtml += `
-                <div class="grafico-barra ${isHoraAtual ? 'barra-atual' : ''}">
-                    <div class="barra-container">
-                        <span class="barra-valor">${total}</span>
-                        <div class="barra-preenchimento" style="height: ${altura}%;" title="${total} atendimentos"></div>
-                    </div>
-                    <span class="barra-label">${hora}h</span>
-                </div>
-            `;
-        });
-
-        return `
-            <section class="secao-analise" aria-label="Atendimentos por Hora">
-                <header class="secao-header">
-                    <div class="secao-titulo">
-                        <i class="fas fa-chart-bar" aria-hidden="true"></i>
-                        <h2>Atendimentos por Hora</h2>
-                    </div>
-                    <span class="secao-contador">${totalDia} total</span>
-                </header>
-                <div class="secao-content">
-                    <div class="grafico-container">
-                        <div class="grafico-barras">
-                            ${barrasHtml}
-                        </div>
-                    </div>
-                </div>
-            </section>
-        `;
+// ----- PACIENTES AGUARDANDO -----
+function renderizarAguardando(dados) {
+    if (!dados || dados.length === 0) {
+        return '' +
+            '<section class="secao-analise secao-sucesso">' +
+            '  <header class="secao-header">' +
+            '    <div class="secao-titulo"><i class="fas fa-user-clock"></i><h2>Pacientes Aguardando</h2></div>' +
+            '  </header>' +
+            '  <div class="secao-content">' +
+            '    <div class="mensagem-sucesso">' +
+            '      <i class="fas fa-check-circle"></i>' +
+            '      <p>Nenhum paciente aguardando atendimento</p>' +
+            '    </div>' +
+            '  </div>' +
+            '</section>';
     }
 
-    /**
-     * Secao: Desempenho dos Medicos
-     */
-    function renderizarSecaoMedicos(dados) {
-        if (!dados || dados.length === 0) {
-            return renderizarSecaoVazia(
-                'Desempenho por Medico',
-                'fas fa-user-md',
-                'Nenhum medico com atendimento registrado hoje'
-            );
-        }
+    var totalAguardando = 0;
+    var linhas = '';
+    for (var i = 0; i < dados.length; i++) {
+        var row = dados[i];
+        var tempoMedio = row.tempo_espera_atual_min || 0;
+        var tempoMax = row.tempo_max_espera_min || 0;
+        totalAguardando += row.total_aguardando || 0;
 
-        let linhasHtml = '';
-        dados.forEach(row => {
-            const tempo = row.tempo_medio_atendimento_min || 0;
-            const classeTempo = getClasseTempo(tempo, 'atendimento');
-
-            linhasHtml += `
-                <tr>
-                    <td class="texto-centro texto-muted">${escapeHtml(row.cd_medico_resp)}</td>
-                    <td>
-                        <span class="medico-nome">${escapeHtml(row.nm_guerra)}</span>
-                    </td>
-                    <td class="texto-centro">${formatarNumero(row.total_atendimentos)}</td>
-                    <td class="texto-centro">
-                        <span class="badge badge-tempo ${classeTempo}">${tempo} min</span>
-                    </td>
-                    <td class="texto-centro">
-                        <span class="badge badge-sucesso">${formatarNumero(row.pacientes_finalizados)}</span>
-                    </td>
-                </tr>
-            `;
-        });
-
-        return `
-            <section class="secao-analise" aria-label="Desempenho por Medico">
-                <header class="secao-header">
-                    <div class="secao-titulo">
-                        <i class="fas fa-user-md" aria-hidden="true"></i>
-                        <h2>Desempenho por Medico</h2>
-                    </div>
-                    <span class="secao-contador">${dados.length} medico(s)</span>
-                </header>
-                <div class="secao-content">
-                    <div class="tabela-container">
-                        <table class="tabela-dados">
-                            <thead>
-                                <tr>
-                                    <th class="texto-centro" style="width: 80px;">Codigo</th>
-                                    <th>Medico</th>
-                                    <th class="texto-centro">Atendimentos</th>
-                                    <th class="texto-centro">Tempo Medio</th>
-                                    <th class="texto-centro">Finalizados</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${linhasHtml}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        `;
+        linhas += '' +
+            '<tr>' +
+            '  <td><span class="clinica-nome">' + escapeHtml(row.ds_clinica) + '</span></td>' +
+            '  <td class="texto-centro"><span class="badge badge-aguardando-grande">' + formatarNumero(row.total_aguardando) + '</span></td>' +
+            '  <td class="texto-centro">' + tempoMedio + ' min</td>' +
+            '  <td class="texto-centro"><span class="badge badge-tempo tempo-critico">' + tempoMax + ' min</span></td>' +
+            '</tr>';
     }
 
-    /**
-     * Renderiza secao vazia padrao
-     */
-    function renderizarSecaoVazia(titulo, icone, mensagem) {
-        return `
-            <section class="secao-analise" aria-label="${titulo}">
-                <header class="secao-header">
-                    <div class="secao-titulo">
-                        <i class="${icone}" aria-hidden="true"></i>
-                        <h2>${titulo}</h2>
-                    </div>
-                </header>
-                <div class="secao-content">
-                    <div class="mensagem-vazia">
-                        <i class="fas fa-inbox"></i>
-                        <p>${mensagem}</p>
-                    </div>
-                </div>
-            </section>
-        `;
+    return '' +
+        '<section class="secao-analise">' +
+        '  <header class="secao-header">' +
+        '    <div class="secao-titulo"><i class="fas fa-user-clock"></i><h2>Pacientes Aguardando</h2></div>' +
+        '    <span class="secao-contador secao-contador-alerta">' + totalAguardando + ' paciente(s)</span>' +
+        '  </header>' +
+        '  <div class="secao-content">' +
+        '    <div class="tabela-container">' +
+        '      <table class="tabela-dados">' +
+        '        <thead><tr>' +
+        '          <th>Clinica</th>' +
+        '          <th class="texto-centro">Aguardando</th>' +
+        '          <th class="texto-centro">Tempo Medio</th>' +
+        '          <th class="texto-centro">Tempo Maximo</th>' +
+        '        </tr></thead>' +
+        '        <tbody>' + linhas + '</tbody>' +
+        '      </table>' +
+        '    </div>' +
+        '  </div>' +
+        '</section>';
+}
+
+// ----- GRAFICO POR HORA -----
+function renderizarGrafico(dados) {
+    if (!dados || dados.length === 0) {
+        return renderizarSecaoVazia('Atendimentos por Hora', 'fas fa-chart-bar', 'Nenhum dado disponivel');
     }
 
-    /**
-     * Mostra mensagem de erro
-     */
-    function mostrarErro(mensagem) {
-        if (!DOM.painelMain) return;
-
-        DOM.painelMain.innerHTML = `
-            <div class="mensagem-erro-container">
-                <div class="mensagem-erro">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Erro ao Carregar Dados</h3>
-                    <p>${escapeHtml(mensagem)}</p>
-                    <button class="btn-tentar-novamente" onclick="location.reload()">
-                        <i class="fas fa-sync-alt"></i> Tentar Novamente
-                    </button>
-                </div>
-            </div>
-        `;
+    var maxValor = 1;
+    var totalDia = 0;
+    for (var i = 0; i < dados.length; i++) {
+        var t = dados[i].total_atendimentos || 0;
+        if (t > maxValor) maxValor = t;
+        totalDia += t;
     }
 
-    // =========================================================
-    // AUTO SCROLL
-    // =========================================================
+    var horaAtual = new Date().getHours();
+    var barras = '';
 
-    /**
-     * Inicia o auto scroll
-     */
-    function iniciarAutoScroll() {
-        pararAutoScroll();
+    for (var j = 0; j < dados.length; j++) {
+        var row = dados[j];
+        var hora = row.hora;
+        var total = row.total_atendimentos || 0;
+        var altura = total > 0 ? Math.max((total / maxValor) * 100, 4) : 0;
+        var isAtual = parseInt(hora) === horaAtual;
 
-        const contentScroll = document.getElementById('content-scroll');
-        if (!contentScroll) {
-            console.warn('[Painel10] Elemento content-scroll nao encontrado');
+        barras += '' +
+            '<div class="grafico-barra' + (isAtual ? ' barra-atual' : '') + '">' +
+            '  <div class="barra-container">' +
+            '    <span class="barra-valor">' + total + '</span>' +
+            '    <div class="barra-preenchimento" style="height: ' + altura + '%"></div>' +
+            '  </div>' +
+            '  <span class="barra-label">' + hora + 'h</span>' +
+            '</div>';
+    }
+
+    return '' +
+        '<section class="secao-analise">' +
+        '  <header class="secao-header">' +
+        '    <div class="secao-titulo"><i class="fas fa-chart-bar"></i><h2>Atendimentos por Hora</h2></div>' +
+        '    <span class="secao-contador">' + totalDia + ' total</span>' +
+        '  </header>' +
+        '  <div class="secao-content">' +
+        '    <div class="grafico-container">' +
+        '      <div class="grafico-barras">' + barras + '</div>' +
+        '    </div>' +
+        '  </div>' +
+        '</section>';
+}
+
+// ----- DESEMPENHO MEDICOS -----
+function renderizarMedicos(dados) {
+    if (!dados || dados.length === 0) {
+        return renderizarSecaoVazia('Desempenho por Medico', 'fas fa-user-md', 'Nenhum medico com atendimento registrado hoje');
+    }
+
+    var linhas = '';
+    for (var i = 0; i < dados.length; i++) {
+        var row = dados[i];
+        var tempo = row.tempo_medio_atendimento_min || 0;
+
+        linhas += '' +
+            '<tr>' +
+            '  <td class="texto-centro texto-muted">' + escapeHtml(row.cd_medico_resp) + '</td>' +
+            '  <td><span class="medico-nome">' + escapeHtml(row.nm_guerra) + '</span></td>' +
+            '  <td class="texto-centro">' + formatarNumero(row.total_atendimentos) + '</td>' +
+            '  <td class="texto-centro"><span class="badge badge-tempo ' + getClasseTempo(tempo, 'atendimento') + '">' + tempo + ' min</span></td>' +
+            '  <td class="texto-centro"><span class="badge badge-sucesso">' + formatarNumero(row.pacientes_finalizados) + '</span></td>' +
+            '</tr>';
+    }
+
+    return '' +
+        '<section class="secao-analise">' +
+        '  <header class="secao-header">' +
+        '    <div class="secao-titulo"><i class="fas fa-user-md"></i><h2>Desempenho por Medico</h2></div>' +
+        '    <span class="secao-contador">' + dados.length + ' medico(s)</span>' +
+        '  </header>' +
+        '  <div class="secao-content">' +
+        '    <div class="tabela-container">' +
+        '      <table class="tabela-dados">' +
+        '        <thead><tr>' +
+        '          <th class="texto-centro" style="width:80px">Codigo</th>' +
+        '          <th>Medico</th>' +
+        '          <th class="texto-centro">Atendimentos</th>' +
+        '          <th class="texto-centro">Tempo Medio</th>' +
+        '          <th class="texto-centro">Finalizados</th>' +
+        '        </tr></thead>' +
+        '        <tbody>' + linhas + '</tbody>' +
+        '      </table>' +
+        '    </div>' +
+        '  </div>' +
+        '</section>';
+}
+
+// ----- SECAO VAZIA -----
+function renderizarSecaoVazia(titulo, icone, mensagem) {
+    return '' +
+        '<section class="secao-analise">' +
+        '  <header class="secao-header">' +
+        '    <div class="secao-titulo"><i class="' + icone + '"></i><h2>' + titulo + '</h2></div>' +
+        '  </header>' +
+        '  <div class="secao-content">' +
+        '    <div class="mensagem-vazia">' +
+        '      <i class="fas fa-inbox"></i>' +
+        '      <p>' + mensagem + '</p>' +
+        '    </div>' +
+        '  </div>' +
+        '</section>';
+}
+
+// ----- MENSAGEM DE ERRO -----
+function mostrarErro(mensagem) {
+    if (!DOM.painelMain) return;
+    DOM.painelMain.innerHTML = '' +
+        '<div class="mensagem-erro-container">' +
+        '  <div class="mensagem-erro">' +
+        '    <i class="fas fa-exclamation-triangle"></i>' +
+        '    <h3>Erro ao Carregar Dados</h3>' +
+        '    <p>' + escapeHtml(mensagem) + '</p>' +
+        '    <button class="btn-tentar-novamente" onclick="location.reload()">' +
+        '      <i class="fas fa-sync-alt"></i> Tentar Novamente' +
+        '    </button>' +
+        '  </div>' +
+        '</div>';
+}
+
+// =============================================================================
+// AUTO-SCROLL COM WATCHDOG
+// =============================================================================
+
+function iniciarAutoScroll() {
+    pararAutoScroll();
+
+    var container = document.getElementById('content-scroll');
+    if (!container) return;
+
+    var emPausa = false;
+    ultimaPosicaoScroll = container.scrollTop;
+    contadorTravamento = 0;
+
+    intervaloAutoScroll = setInterval(function() {
+        if (!autoScrollAtivo || emPausa) return;
+
+        var scrollMax = container.scrollHeight - container.clientHeight;
+        if (scrollMax <= 10) return;
+
+        if (container.scrollTop >= scrollMax - 5) {
+            emPausa = true;
+            setTimeout(function() {
+                if (autoScrollAtivo) {
+                    container.scrollTop = 0;
+                    setTimeout(function() {
+                        emPausa = false;
+                    }, CONFIG.pausaAposReset);
+                }
+            }, CONFIG.pausaFinal);
             return;
         }
 
-        console.log('[Painel10] Iniciando auto-scroll');
+        container.scrollTop += CONFIG.velocidadeScroll;
+    }, 50);
 
-        Estado.scroll.ultimaPosicao = contentScroll.scrollTop;
-        Estado.scroll.contadorTravamento = 0;
+    // Watchdog
+    if (intervaloWatchdog) clearInterval(intervaloWatchdog);
+    intervaloWatchdog = setInterval(function() {
+        if (!autoScrollAtivo) return;
 
-        // Inicia watchdog
-        iniciarWatchdog();
+        var posAtual = container.scrollTop;
+        var scrollMax = container.scrollHeight - container.clientHeight;
 
-        // Inicia scroll
-        Estado.intervalos.scroll = setInterval(() => {
-            if (!Estado.autoScrollAtivo) {
+        if (scrollMax > 10 && posAtual === ultimaPosicaoScroll && posAtual < scrollMax - 5) {
+            contadorTravamento++;
+            if (contadorTravamento >= 3) {
+                console.log('[Painel10] Watchdog: reiniciando auto-scroll');
                 pararAutoScroll();
-                return;
+                iniciarAutoScroll();
+                contadorTravamento = 0;
             }
-
-            const scrollAtual = contentScroll.scrollTop;
-            const scrollMax = contentScroll.scrollHeight - contentScroll.clientHeight;
-
-            if (scrollMax <= 0) return;
-
-            // Chegou ao final
-            if (scrollAtual >= scrollMax - 2) {
-                console.log('[Painel10] Scroll chegou ao final');
-                pararAutoScroll();
-
-                setTimeout(() => {
-                    if (!Estado.autoScrollAtivo) return;
-
-                    console.log('[Painel10] Voltando ao topo');
-                    contentScroll.scrollTop = 0;
-                    Estado.scroll.ultimaPosicao = 0;
-                    Estado.scroll.contadorTravamento = 0;
-
-                    setTimeout(() => {
-                        if (Estado.autoScrollAtivo) {
-                            iniciarAutoScroll();
-                        }
-                    }, CONFIG.pausaAposReset);
-
-                }, CONFIG.pausaNoFinal);
-                return;
-            }
-
-            // Continua scrollando
-            contentScroll.scrollTop += CONFIG.velocidadeScroll;
-
-        }, CONFIG.intervaloScroll);
-    }
-
-    /**
-     * Para o auto scroll
-     */
-    function pararAutoScroll() {
-        if (Estado.intervalos.scroll) {
-            clearInterval(Estado.intervalos.scroll);
-            Estado.intervalos.scroll = null;
-        }
-        pararWatchdog();
-    }
-
-    /**
-     * Inicia watchdog para detectar travamentos
-     */
-    function iniciarWatchdog() {
-        pararWatchdog();
-
-        Estado.intervalos.watchdog = setInterval(() => {
-            if (!Estado.autoScrollAtivo) {
-                pararWatchdog();
-                return;
-            }
-
-            const contentScroll = document.getElementById('content-scroll');
-            if (!contentScroll) return;
-
-            const posicaoAtual = contentScroll.scrollTop;
-            const scrollMax = contentScroll.scrollHeight - contentScroll.clientHeight;
-
-            // Verifica se travou (nao esta no final e nao esta movendo)
-            if (Math.abs(posicaoAtual - Estado.scroll.ultimaPosicao) < 1 && posicaoAtual < scrollMax - 10) {
-                Estado.scroll.contadorTravamento++;
-
-                if (Estado.scroll.contadorTravamento >= 3) {
-                    console.warn('[Painel10] Travamento detectado, reiniciando scroll');
-                    pararAutoScroll();
-                    setTimeout(() => {
-                        if (Estado.autoScrollAtivo) {
-                            iniciarAutoScroll();
-                        }
-                    }, 1000);
-                }
-            } else {
-                Estado.scroll.contadorTravamento = 0;
-            }
-
-            Estado.scroll.ultimaPosicao = posicaoAtual;
-
-        }, CONFIG.watchdogInterval);
-    }
-
-    /**
-     * Para watchdog
-     */
-    function pararWatchdog() {
-        if (Estado.intervalos.watchdog) {
-            clearInterval(Estado.intervalos.watchdog);
-            Estado.intervalos.watchdog = null;
-        }
-    }
-
-    /**
-     * Atualiza estado visual do botao de scroll
-     */
-    function atualizarBotaoScroll() {
-        if (!DOM.btnAutoScroll) return;
-
-        if (Estado.autoScrollAtivo) {
-            DOM.btnAutoScroll.classList.add('ativo');
-            DOM.btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i><span class="btn-text">Pausar</span>';
-            DOM.btnAutoScroll.title = 'Pausar rolagem automatica';
         } else {
-            DOM.btnAutoScroll.classList.remove('ativo');
-            DOM.btnAutoScroll.innerHTML = '<i class="fas fa-play"></i><span class="btn-text">Auto Scroll</span>';
-            DOM.btnAutoScroll.title = 'Ativar rolagem automatica';
-        }
-    }
-
-    // =========================================================
-    // EVENT HANDLERS
-    // =========================================================
-
-    /**
-     * Configura todos os event listeners
-     */
-    function configurarEventos() {
-        // Botao voltar
-        if (DOM.btnVoltar) {
-            DOM.btnVoltar.addEventListener('click', () => {
-                window.location.href = '/frontend/dashboard.html';
-            });
+            contadorTravamento = 0;
         }
 
-        // Botao refresh
-        if (DOM.btnRefresh) {
-            DOM.btnRefresh.addEventListener('click', () => {
-                DOM.btnRefresh.classList.add('girando');
-                carregarDados().finally(() => {
-                    setTimeout(() => {
-                        DOM.btnRefresh.classList.remove('girando');
-                    }, 500);
-                });
-            });
-        }
+        ultimaPosicaoScroll = posAtual;
+    }, CONFIG.watchdogInterval);
+}
 
-        // Botao auto scroll
-        if (DOM.btnAutoScroll) {
-            DOM.btnAutoScroll.addEventListener('click', () => {
-                Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
-                atualizarBotaoScroll();
-
-                if (Estado.autoScrollAtivo) {
-                    iniciarAutoScroll();
-                } else {
-                    pararAutoScroll();
-                }
-            });
-        }
-
-        // Teclas de atalho
-        document.addEventListener('keydown', (e) => {
-            // ESC - para scroll
-            if (e.key === 'Escape' && Estado.autoScrollAtivo) {
-                Estado.autoScrollAtivo = false;
-                atualizarBotaoScroll();
-                pararAutoScroll();
-            }
-
-            // F5 - refresh
-            if (e.key === 'F5') {
-                e.preventDefault();
-                carregarDados();
-            }
-
-            // Espaco - toggle scroll
-            if (e.key === ' ' && e.target === document.body) {
-                e.preventDefault();
-                Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
-                atualizarBotaoScroll();
-                if (Estado.autoScrollAtivo) {
-                    iniciarAutoScroll();
-                } else {
-                    pararAutoScroll();
-                }
-            }
-        });
-
-        // Visibilidade da pagina
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                // Pausa quando aba nao esta visivel
-                if (Estado.autoScrollAtivo) {
-                    pararAutoScroll();
-                }
-            } else {
-                // Retoma quando aba volta a ser visivel
-                if (Estado.autoScrollAtivo) {
-                    iniciarAutoScroll();
-                }
-                // Atualiza dados ao voltar
-                carregarDados();
-            }
-        });
+function pararAutoScroll() {
+    if (intervaloAutoScroll) {
+        clearInterval(intervaloAutoScroll);
+        intervaloAutoScroll = null;
     }
-
-    // =========================================================
-    // INICIALIZACAO
-    // =========================================================
-
-    /**
-     * Inicializa o painel
-     */
-    function inicializar() {
-        console.log('[Painel10] Inicializando...');
-
-        // Cache elementos DOM
-        cachearElementos();
-
-        // Configura eventos
-        configurarEventos();
-
-        // Carrega dados iniciais
-        carregarDados();
-
-        // Configura refresh automatico
-        Estado.intervalos.refresh = setInterval(carregarDados, CONFIG.intervaloRefresh);
-
-        console.log('[Painel10] Inicializado com sucesso');
+    if (intervaloWatchdog) {
+        clearInterval(intervaloWatchdog);
+        intervaloWatchdog = null;
     }
+}
 
-    // Aguarda DOM estar pronto
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', inicializar);
-    } else {
-        inicializar();
-    }
+// =============================================================================
+// UTILITARIOS
+// =============================================================================
 
-})();
+function atualizarEl(el, valor) {
+    if (el) el.textContent = valor !== null && valor !== undefined ? valor : '-';
+}
+
+function atualizarStatus(status) {
+    var el = DOM.statusIndicator;
+    if (!el) return;
+    el.className = 'status-indicator status-' + status;
+}
+
+function atualizarTimestamp() {
+    if (!DOM.ultimaAtualizacao) return;
+    var agora = new Date();
+    var h = agora.getHours().toString();
+    var m = agora.getMinutes().toString();
+    if (h.length < 2) h = '0' + h;
+    if (m.length < 2) m = '0' + m;
+    DOM.ultimaAtualizacao.textContent = h + ':' + m;
+}
+
+function formatarNumero(valor) {
+    if (valor === null || valor === undefined || isNaN(valor)) return '-';
+    return Number(valor).toLocaleString('pt-BR');
+}
+
+function formatarTempo(minutos) {
+    if (minutos === null || minutos === undefined || isNaN(minutos)) return '-';
+    var min = Math.round(minutos);
+    if (min < 60) return '' + min;
+    var horas = Math.floor(min / 60);
+    var mins = min % 60;
+    return horas + 'h' + (mins < 10 ? '0' : '') + mins;
+}
+
+function getClasseTempo(minutos, tipo) {
+    var limites = tipo === 'atendimento' ? CONFIG.tempoAtendimento : CONFIG.tempoEspera;
+    if (minutos < limites.bom) return 'tempo-bom';
+    if (minutos < limites.medio) return 'tempo-medio';
+    return 'tempo-critico';
+}
+
+function escapeHtml(text) {
+    if (!text) return '-';
+    var str = String(text);
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
