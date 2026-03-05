@@ -17,7 +17,6 @@ var CONFIG = {
 };
 
 // Cores e icones alinhados com o mini dashboard
-// PS = card-alta (teal), AMB = card-tempo-espera (rosa/roxo), RAD = card-permanencia (azul/roxo)
 var SETORES = {
     'PS':  { nome: 'Pronto Socorro', sigla: 'PS',  icone: 'fa-ambulance',      classeIcone: 'icone-ps',  classeCard: 'setor-ps',  classeBadge: 'badge-setor-ps' },
     'AMB': { nome: 'Ambulatorio',    sigla: 'AMB', icone: 'fa-hospital-user',  classeIcone: 'icone-amb', classeCard: 'setor-amb', classeBadge: 'badge-setor-amb' },
@@ -191,7 +190,7 @@ function carregarAtendimentos() {
             console.error('Erro ao carregar atendimentos:', err);
             var body = document.getElementById('ranking-body');
             if (body) {
-                body.innerHTML = '<tr><td colspan="6" class="texto-centro texto-muted">Erro ao carregar dados</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="texto-centro texto-muted">Erro ao carregar dados</td></tr>';
             }
         });
 }
@@ -254,7 +253,7 @@ function renderizarRanking(dados) {
     if (!body) return;
 
     if (!dados || dados.length === 0) {
-        body.innerHTML = '<tr><td colspan="6" class="texto-centro texto-muted">Nenhum atendimento registrado</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="texto-centro texto-muted">Nenhum atendimento registrado</td></tr>';
         return;
     }
 
@@ -268,11 +267,25 @@ function renderizarRanking(dados) {
     var html = '';
     dados.forEach(function(item, index) {
         var posicao = index + 1;
-        var nomeCompleto = item.usuario_atendimento || item.usuario || '-';
+        var nomeCompleto = item.nome_recepcionista || item.usuario_atendimento || item.usuario || '-';
         var total = item.total_atendimentos || 0;
         var percentual = maxAtendimentos > 0 ? ((total / maxAtendimentos) * 100).toFixed(1) : 0;
         var setorPrincipal = item.setor_principal || '-';
         var turno = item.turno || 'Diurno';
+
+        // Tempo mediano
+        var tempoMediano = item.tempo_mediano_min;
+        var tempoTexto = tempoMediano !== null && tempoMediano !== undefined ? tempoMediano + ' min' : '-';
+
+        // Cor do tempo baseada em faixas
+        var tempoClasse = 'tempo-normal';
+        if (tempoMediano !== null && tempoMediano !== undefined) {
+            if (tempoMediano <= 3) {
+                tempoClasse = 'tempo-rapido';
+            } else if (tempoMediano > 6) {
+                tempoClasse = 'tempo-lento';
+            }
+        }
 
         var turnoIcone = '';
         var turnoClasse = '';
@@ -293,6 +306,7 @@ function renderizarRanking(dados) {
         html += '  <td><span class="ranking-setor">' + escapeHtml(setorPrincipal) + '</span></td>';
         html += '  <td><span class="ranking-turno ' + turnoClasse + '">' + turnoIcone + escapeHtml(turno) + '</span></td>';
         html += '  <td class="texto-centro"><span class="ranking-total">' + total + '</span></td>';
+        html += '  <td class="texto-centro"><span class="ranking-tempo ' + tempoClasse + '"><i class="fas fa-stopwatch"></i> ' + escapeHtml(tempoTexto) + '</span></td>';
         html += '  <td>';
         html += '    <div class="barra-desempenho">';
         html += '      <div class="barra-track">';

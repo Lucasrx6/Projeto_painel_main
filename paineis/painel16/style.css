@@ -478,8 +478,6 @@ body {
     color: white;
 }
 
-/* Icones dos guiches - mesmos gradientes do mini dashboard */
-/* PS = card-alta (grad-alta), AMB = card-tempo-espera (grad-tempo), RAD = card-permanencia (grad-permanencia) */
 .guiche-icone.icone-ps { background: var(--grad-alta); }
 .guiche-icone.icone-amb { background: var(--grad-tempo); }
 .guiche-icone.icone-rad { background: var(--grad-permanencia); }
@@ -516,7 +514,6 @@ body {
     color: var(--cor-texto);
 }
 
-/* Badge de setor - cores alinhadas com dashboard */
 .guiche-badge {
     font-size: 0.6rem;
     font-weight: 700;
@@ -574,7 +571,6 @@ body {
     font-size: 0.6rem;
 }
 
-/* Contador de atendimentos inline - discreto */
 .guiche-atend-inline {
     font-size: 0.68rem;
     font-weight: 600;
@@ -690,6 +686,37 @@ body {
 
 .ranking-turno.turno-diurno i {
     color: #f57f17;
+}
+
+/* Tempo medio de atendimento */
+.ranking-tempo {
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--raio-sm);
+    white-space: nowrap;
+}
+
+.ranking-tempo i {
+    font-size: 0.65rem;
+}
+
+.ranking-tempo.tempo-rapido {
+    color: #1b5e20;
+    background: var(--cor-sucesso-light);
+}
+
+.ranking-tempo.tempo-normal {
+    color: #7b5800;
+    background: var(--cor-alerta-light);
+}
+
+.ranking-tempo.tempo-lento {
+    color: #7f1d1d;
+    background: var(--cor-perigo-light);
 }
 
 /* Barra de desempenho */
