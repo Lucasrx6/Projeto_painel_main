@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Evolução de Contas - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
+    <title>Evolução de Contas - Anchieta Ceilândia</title>
+
+    <!-- Fontes e Ícones -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="/paineis/painel21/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabeçalho -->
+        <header class="painel-header" role="banner">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1>
+                            <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>
+                            Evolução de Contas
+                        </h1>
+                        <span class="header-subtitle">Monitoramento do ciclo de faturamento</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-controls">
+                        <!-- Filtro de Período -->
+                        <div class="filtro-container">
+                            <label for="filtro-periodo" class="sr-only">Filtrar por período</label>
+                            <select id="filtro-periodo" class="filtro-select" aria-label="Filtrar por período">
+                                <option value="">Todos</option>
+                                <option value="7">7 dias</option>
+                                <option value="14">14 dias</option>
+                                <option value="30" selected>1 mês</option>
+                                <option value="90">3 meses</option>
+                                <option value="180">6 meses</option>
+                                <option value="365">1 ano</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Status Conta -->
+                        <div class="filtro-container">
+                            <label for="filtro-status-conta" class="sr-only">Status da Conta</label>
+                            <select id="filtro-status-conta" class="filtro-select" aria-label="Status da Conta">
+                                <option value="">St. Conta</option>
+                                <option value="Provisório">Provisório</option>
+                                <option value="Definitivo">Definitivo</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Legenda -->
+                        <div class="filtro-container">
+                            <label for="filtro-legenda" class="sr-only">Legenda</label>
+                            <select id="filtro-legenda" class="filtro-select" aria-label="Legenda">
+                                <option value="">Legenda</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Tipo Atendimento -->
+                        <div class="filtro-container">
+                            <label for="filtro-tipo" class="sr-only">Tipo Atendimento</label>
+                            <select id="filtro-tipo" class="filtro-select" aria-label="Tipo Atendimento">
+                                <option value="">Tipo Atend.</option>
+                                <option value="1">Internado</option>
+                                <option value="3">Pronto Socorro</option>
+                                <option value="7">Externo</option>
+                                <option value="8">Ambulatorial</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Status Protocolo -->
+                        <div class="filtro-container">
+                            <label for="filtro-protocolo" class="sr-only">Status Protocolo</label>
+                            <select id="filtro-protocolo" class="filtro-select" aria-label="Status Protocolo">
+                                <option value="">St. Protocolo</option>
+                                <option value="Provisório">Provisório</option>
+                                <option value="Definitivo">Definitivo</option>
+                                <option value="Auditoria">Auditoria</option>
+                                <option value="Fora Remessa">Fora Remessa</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Convênio -->
+                        <div class="filtro-container">
+                            <label for="filtro-convenio" class="sr-only">Convênio</label>
+                            <select id="filtro-convenio" class="filtro-select" aria-label="Convênio">
+                                <option value="">Convênio</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Setor -->
+                        <div class="filtro-container">
+                            <label for="filtro-setor" class="sr-only">Setor</label>
+                            <select id="filtro-setor" class="filtro-select" aria-label="Setor">
+                                <option value="">Setor</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Etapa -->
+                        <div class="filtro-container">
+                            <label for="filtro-etapa" class="sr-only">Etapa</label>
+                            <select id="filtro-etapa" class="filtro-select" aria-label="Etapa">
+                                <option value="">Etapa</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Data Início -->
+                        <div class="filtro-container filtro-data">
+                            <label for="filtro-dt-inicio" class="sr-only">Data Início</label>
+                            <input type="date" id="filtro-dt-inicio" class="filtro-input filtro-date" title="Data Início" aria-label="Data Início">
+                        </div>
+
+                        <!-- Filtro Data Fim -->
+                        <div class="filtro-container filtro-data">
+                            <label for="filtro-dt-fim" class="sr-only">Data Fim</label>
+                            <input type="date" id="filtro-dt-fim" class="filtro-input filtro-date" title="Data Fim" aria-label="Data Fim">
+                        </div>
+
+                        <!-- Busca -->
+                        <div class="filtro-container filtro-busca">
+                            <label for="filtro-busca" class="sr-only">Buscar</label>
+                            <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar atend./paciente..." aria-label="Buscar">
+                        </div>
+
+                        <!-- Limpar -->
+                        <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
+                            <i class="fas fa-eraser" aria-hidden="true"></i>
+                        </button>
+
+                        <!-- Status e Hora -->
+                        <div class="header-status">
+                            <span class="filtro-stats">
+                                <strong id="total-filtrados">0</strong> / <span id="total-registros">0</span>
+                            </span>
+                            <span class="status-indicator" id="status-indicator" title="Status da conexão"></span>
+                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                        </div>
+                    </div>
+
+                    <div class="header-actions">
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Ativar rolagem automática" aria-label="Ativar rolagem automática">
+                            <i class="fas fa-play" aria-hidden="true"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar ao Dashboard" aria-label="Voltar ao Dashboard">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Resumo -->
+        <section class="dashboard-resumo" aria-label="Resumo de Contas">
+            <div class="resumo-grid">
+                <article class="resumo-card card-total-contas">
+                    <div class="card-icon"><i class="fas fa-file-invoice" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-total-contas">-</span>
+                        <span class="card-label">Total Contas</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-valor-total">
+                    <div class="card-icon"><i class="fas fa-dollar-sign" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-valor-total">-</span>
+                        <span class="card-label">Valor Total</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-provisorio">
+                    <div class="card-icon"><i class="fas fa-hourglass-half" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-provisorio">-</span>
+                        <span class="card-label">Provisórias</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-definitivo">
+                    <div class="card-icon"><i class="fas fa-check-double" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-definitivo">-</span>
+                        <span class="card-label">Definitivas</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-sem-nf">
+                    <div class="card-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-sem-nf">-</span>
+                        <span class="card-label">Sem NF/Título</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-em-protocolo">
+                    <div class="card-icon"><i class="fas fa-clipboard-list" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-em-protocolo">-</span>
+                        <span class="card-label">Em Protocolo</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Conteúdo Principal -->
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando dados de faturamento...</p>
+            </div>
+        </main>
+
+    </div>
+
+    <script src="/paineis/painel21/main.js"></script>
+</body>
+</html>

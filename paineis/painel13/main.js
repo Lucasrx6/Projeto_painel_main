@@ -26,8 +26,8 @@
         },
 
         // Intervalos (ms)
-        intervaloRefresh: 180000,      // 3 minutos
-        velocidadeScroll: 0.6,         // pixels por tick
+        intervaloRefresh: 380000,      // 3 minutos
+        velocidadeScroll: 1.6,         // pixels por tick
         intervaloScroll: 50,           // ms entre ticks
         pausaNoFinal: 8000,            // pausa ao chegar no fim
         pausaAposReset: 6000,          // pausa apos voltar ao topo

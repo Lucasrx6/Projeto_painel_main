@@ -1,0 +1,1298 @@
+/**
+ * PAINEL 19 - Pendências Radiologia
+ * Sistema de Painéis Hospitalares - Hospital Anchieta
+ *
+ * Estrutura:
+ * 1. Variáveis CSS
+ * 2. Reset e Base
+ * 3. Layout Principal
+ * 4. Cabeçalho
+ * 4.5 Controle de Volume
+ * 5. Dashboard Resumo
+ * 6. Conteúdo Principal
+ * 7. Tabela de Radiologia
+ * 8. Linhas e Detalhes (sub-linhas de exames)
+ * 9. Badges e Ícones
+ * 10. Estados e Feedback
+ * 11. Animações
+ * 12. Alerta Global (barra inferior)
+ * 13. Modal Novo Exame
+ * 14. Responsividade
+ */
+
+/* =========================================================
+   1. VARIÁVEIS CSS
+   ========================================================= */
+
+:root {
+    /* Cores Principais - Vermelho Hospital Anchieta */
+    --cor-primaria: #dc3545;
+    --cor-primaria-hover: #c82333;
+    --cor-primaria-light: #f8d7da;
+    --cor-primaria-dark: #bd2130;
+
+    /* Cores Header */
+    --cor-header: #dc3545;
+    --cor-header-dark: #c82333;
+
+    /* Cores de Status Radiologia */
+    --cor-aguardando: #ffc107;
+    --cor-aguardando-light: #fff3cd;
+    --cor-aguardando-dark: #856404;
+    --cor-sem-laudo: #dc3545;
+    --cor-sem-laudo-light: #f8d7da;
+    --cor-sem-laudo-dark: #721c24;
+    --cor-laudado: #28a745;
+    --cor-laudado-light: #d4edda;
+    --cor-laudado-dark: #155724;
+
+    /* Cores de Status Gerais */
+    --cor-sucesso: #28a745;
+    --cor-sucesso-light: #d4edda;
+    --cor-alerta: #ffc107;
+    --cor-alerta-light: #fff3cd;
+    --cor-perigo: #dc3545;
+    --cor-perigo-light: #f8d7da;
+    --cor-info: #17a2b8;
+    --cor-info-light: #d1ecf1;
+
+    /* Cores Neutras */
+    --cor-texto: #333333;
+    --cor-texto-secundario: #666666;
+    --cor-texto-muted: #999999;
+    --cor-fundo: #f5f7fa;
+    --cor-fundo-card: #ffffff;
+    --cor-borda: #e9ecef;
+    --cor-borda-light: #f0f0f0;
+
+    /* Gradientes dos Cards */
+    --grad-pacientes: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --grad-total: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    --grad-aguardando: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    --grad-sem-laudo: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    --grad-laudado: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+
+    /* Sombras */
+    --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --sombra-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --sombra-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --sombra-card-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    /* Espaçamentos */
+    --espacamento-xs: 4px;
+    --espacamento-sm: 8px;
+    --espacamento-md: 16px;
+    --espacamento-lg: 24px;
+    --espacamento-xl: 32px;
+
+    /* Bordas */
+    --raio-sm: 4px;
+    --raio-md: 8px;
+    --raio-lg: 12px;
+    --raio-full: 50%;
+
+    /* Tipografia */
+    --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /* Transições */
+    --transicao-rapida: 150ms ease;
+    --transicao-normal: 250ms ease;
+    --transicao-lenta: 350ms ease;
+
+    /* Z-Index */
+    --z-header: 100;
+    --z-alerta: 900;
+    --z-modal: 1000;
+}
+
+/* =========================================================
+   2. RESET E BASE
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: var(--fonte-principal);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+/* =========================================================
+   3. LAYOUT PRINCIPAL
+   ========================================================= */
+
+.painel-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--cor-fundo);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* =========================================================
+   4. CABEÇALHO
+   ========================================================= */
+
+.painel-header {
+    background: linear-gradient(135deg, var(--cor-header) 0%, var(--cor-header-dark) 100%);
+    color: white;
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    flex-shrink: 0;
+    box-shadow: var(--sombra-md);
+    z-index: var(--z-header);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--espacamento-md);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+}
+
+.header-logo {
+    height: 32px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: var(--raio-sm);
+    box-shadow: var(--sombra-sm);
+}
+
+.header-title h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.header-title h1 i {
+    font-size: 0.9rem;
+}
+
+.header-subtitle {
+    font-size: 0.7rem;
+    opacity: 0.85;
+    display: block;
+    margin-top: 2px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-md);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-md);
+}
+
+/* Filtros */
+.filtro-container {
+    position: relative;
+}
+
+.filtro-setor-select,
+.filtro-status-select {
+    appearance: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    padding: 6px 32px 6px 12px;
+    border-radius: var(--raio-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 160px;
+    transition: var(--transicao-rapida);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
+}
+
+.filtro-setor-select:hover,
+.filtro-status-select:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-color: white;
+}
+
+.filtro-setor-select:focus,
+.filtro-status-select:focus {
+    outline: none;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-color: white;
+}
+
+.filtro-setor-select option,
+.filtro-status-select option {
+    color: var(--cor-texto);
+    background: white;
+}
+
+/* Status e Hora */
+.header-status {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--raio-full);
+    background: rgba(255, 255, 255, 0.5);
+    transition: var(--transicao-normal);
+}
+
+.status-indicator.status-online {
+    background: #90EE90;
+    box-shadow: 0 0 8px rgba(144, 238, 144, 0.8);
+}
+
+.status-indicator.status-offline {
+    background: #ff6b6b;
+    box-shadow: 0 0 8px rgba(255, 107, 107, 0.8);
+}
+
+.status-indicator.status-loading {
+    background: #ffd93d;
+    animation: pulsar 1s ease-in-out infinite;
+}
+
+.ultima-atualizacao {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* Botões Header */
+.header-actions {
+    display: flex;
+    gap: var(--espacamento-xs);
+}
+
+.btn-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--raio-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
+
+.btn-header:hover {
+    background: white;
+    color: var(--cor-primaria);
+    transform: translateY(-1px);
+}
+
+.btn-header:active {
+    transform: translateY(0);
+}
+
+.btn-auto-scroll.ativo {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #333;
+    animation: pulsar-borda 2s ease-in-out infinite;
+}
+
+.btn-refresh.girando i {
+    animation: girar 0.5s linear;
+}
+
+/* =========================================================
+   4.5 CONTROLE DE VOLUME
+   ========================================================= */
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+}
+
+.volume-slider-wrapper {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 3px 10px 3px 6px;
+    backdrop-filter: blur(4px);
+}
+
+.volume-control.expandido .volume-slider-wrapper {
+    display: flex;
+}
+
+.volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 80px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.volume-valor {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: white;
+    min-width: 28px;
+    text-align: center;
+}
+
+.btn-som-ativo {
+    background: rgba(40, 167, 69, 0.3) !important;
+    border-color: var(--cor-sucesso) !important;
+}
+
+.btn-som-inativo {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    opacity: 0.7;
+}
+
+/* =========================================================
+   5. DASHBOARD RESUMO
+   ========================================================= */
+
+.dashboard-resumo {
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: linear-gradient(180deg, #ffffff 0%, var(--cor-fundo) 100%);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--espacamento-sm);
+}
+
+.resumo-card {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-card);
+    transition: var(--transicao-rapida);
+    border-left: 3px solid transparent;
+}
+
+.resumo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-card-hover);
+}
+
+.resumo-card.atualizando {
+    animation: piscar 0.3s ease;
+}
+
+/* Cores das bordas dos cards */
+.card-pacientes   { border-left-color: #667eea; }
+.card-total       { border-left-color: #17a2b8; }
+.card-aguardando  { border-left-color: var(--cor-aguardando); }
+.card-sem-laudo   { border-left-color: var(--cor-sem-laudo); }
+.card-laudado     { border-left-color: var(--cor-laudado); }
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--raio-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.card-icon i {
+    font-size: 1rem;
+    color: white;
+}
+
+/* Gradientes dos ícones */
+.card-pacientes  .card-icon { background: var(--grad-pacientes); }
+.card-total      .card-icon { background: var(--grad-total); }
+.card-aguardando .card-icon { background: var(--grad-aguardando); }
+.card-sem-laudo  .card-icon { background: var(--grad-sem-laudo); }
+.card-laudado    .card-icon { background: var(--grad-laudado); }
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.card-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-label {
+    font-size: 0.65rem;
+    color: var(--cor-texto-secundario);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   6. CONTEÚDO PRINCIPAL
+   ========================================================= */
+
+.painel-main {
+    flex: 1;
+    overflow: hidden;
+    padding: var(--espacamento-sm) var(--espacamento-md);
+}
+
+.tabela-container {
+    height: 100%;
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   7. TABELA DE RADIOLOGIA
+   ========================================================= */
+
+.tabela-radiologia {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* THEAD */
+.tabela-radiologia thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    flex-shrink: 0;
+}
+
+.tabela-radiologia thead tr {
+    display: table-row;
+}
+
+.tabela-radiologia thead th {
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--cor-texto-secundario);
+    background: var(--cor-fundo);
+    border-bottom: 2px solid var(--cor-borda);
+    white-space: nowrap;
+}
+
+/* Larguras das colunas */
+.col-leito       { width: 70px; }
+.col-atendimento { width: 90px; }
+.col-setor       { width: 15%; }
+.col-paciente    { width: 22%; }
+.col-convenio    { width: 15%; }
+.col-aguardando  { width: 80px; text-align: center; }
+.col-sem-laudo   { width: 80px; text-align: center; }
+.col-laudado     { width: 80px; text-align: center; }
+
+/* TBODY com scroll */
+.tabela-radiologia tbody {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    scroll-behavior: smooth;
+}
+
+/* Scrollbar customizada */
+.tabela-radiologia tbody::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tabela-radiologia tbody::-webkit-scrollbar-track {
+    background: var(--cor-borda);
+    border-radius: var(--raio-sm);
+}
+
+.tabela-radiologia tbody::-webkit-scrollbar-thumb {
+    background: var(--cor-primaria);
+    border-radius: var(--raio-sm);
+}
+
+.tabela-radiologia tbody::-webkit-scrollbar-thumb:hover {
+    background: var(--cor-primaria-hover);
+}
+
+/* =========================================================
+   8. LINHAS E DETALHES
+   ========================================================= */
+
+/* Linha Principal do Paciente */
+.tabela-radiologia tbody tr.linha-principal {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    background: var(--cor-fundo-card);
+    transition: var(--transicao-rapida);
+}
+
+.tabela-radiologia tbody tr.linha-principal:hover {
+    background: rgba(220, 53, 69, 0.04);
+}
+
+.tabela-radiologia tbody tr.linha-principal td {
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    font-size: 0.8rem;
+    color: var(--cor-texto);
+    vertical-align: middle;
+    border-bottom: 1px solid var(--cor-borda-light);
+}
+
+/* Linha com exames sem laudo - destaque */
+.tabela-radiologia tbody tr.linha-principal.tem-sem-laudo {
+    border-left: 4px solid var(--cor-sem-laudo);
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0.06) 0%, transparent 100%);
+}
+
+/* Linha somente aguardando */
+.tabela-radiologia tbody tr.linha-principal.tem-aguardando {
+    border-left: 4px solid var(--cor-aguardando);
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.06) 0%, transparent 100%);
+}
+
+/* Linha somente laudados (tudo ok) */
+.tabela-radiologia tbody tr.linha-principal.todos-laudados {
+    border-left: 4px solid var(--cor-laudado);
+}
+
+/* Leito Badge */
+.leito-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    background: var(--cor-primaria);
+    color: white;
+    border-radius: var(--raio-sm);
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+/* Paciente Info */
+.paciente-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.paciente-nome {
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+.paciente-idade {
+    font-size: 0.7rem;
+    color: var(--cor-texto-muted);
+}
+
+/* Badges de contagem */
+.badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    border-radius: 13px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0 7px;
+    color: white;
+}
+
+.badge-aguardando { background: var(--cor-aguardando); color: #333; }
+.badge-sem-laudo  { background: var(--cor-sem-laudo); }
+.badge-laudado    { background: var(--cor-laudado); }
+.badge-zero       { background: #e9ecef; color: #adb5bd; }
+
+/* =========================================================
+   SUB-LINHAS DE EXAMES (abaixo do paciente)
+   ========================================================= */
+
+.tabela-radiologia tbody tr.linha-detalhes {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    background: var(--cor-fundo);
+}
+
+.tabela-radiologia tbody tr.linha-detalhes td {
+    padding: var(--espacamento-xs) var(--espacamento-md);
+    font-size: 0.75rem;
+    color: var(--cor-texto-secundario);
+    line-height: 1.4;
+}
+
+/* Linha de exame individual */
+.exame-linha {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-md);
+    padding: 4px 0;
+}
+
+.exame-status-icone {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--raio-full);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+.exame-status-icone.aguardando { background: var(--cor-aguardando); color: #333; }
+.exame-status-icone.sem-laudo  { background: var(--cor-sem-laudo); }
+.exame-status-icone.laudado    { background: var(--cor-laudado); }
+
+.exame-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.exame-status-badge.aguardando { background: var(--cor-aguardando-light); color: var(--cor-aguardando-dark); border: 1px solid var(--cor-aguardando); }
+.exame-status-badge.sem-laudo  { background: var(--cor-sem-laudo-light); color: var(--cor-sem-laudo-dark); border: 1px solid var(--cor-sem-laudo); }
+.exame-status-badge.laudado    { background: var(--cor-laudado-light); color: var(--cor-laudado-dark); border: 1px solid var(--cor-laudado); }
+
+.exame-prescricao {
+    font-size: 0.7rem;
+    color: var(--cor-texto-muted);
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 80px;
+}
+
+.exame-nome {
+    font-weight: 600;
+    color: var(--cor-texto);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.exame-datas {
+    display: flex;
+    gap: var(--espacamento-sm);
+    font-size: 0.7rem;
+    color: var(--cor-texto-muted);
+    flex-shrink: 0;
+}
+
+.exame-datas span {
+    white-space: nowrap;
+}
+
+.exame-datas i {
+    margin-right: 3px;
+    font-size: 0.65rem;
+}
+
+.exame-tempo {
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.72rem;
+}
+
+.tempo-normal  { color: var(--cor-laudado); }
+.tempo-alerta  { color: var(--cor-aguardando-dark); }
+.tempo-critico { color: var(--cor-sem-laudo); }
+
+/* Separador entre pacientes */
+.tabela-radiologia tbody tr.ultima-linha td {
+    border-bottom: none;
+    padding-bottom: var(--espacamento-sm);
+}
+
+.tabela-radiologia tbody tr.ultima-linha + tr.linha-principal {
+    border-top: 2px solid var(--cor-borda);
+}
+
+.tabela-radiologia tbody tr.ultima-linha + tr.linha-principal td {
+    padding-top: var(--espacamento-md);
+}
+
+/* Backgrounds das sub-linhas por status */
+.tabela-radiologia tbody tr.linha-exame-aguardando {
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.06) 0%, var(--cor-fundo) 100%);
+}
+
+.tabela-radiologia tbody tr.linha-exame-sem-laudo {
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0.06) 0%, var(--cor-fundo) 100%);
+}
+
+.tabela-radiologia tbody tr.linha-exame-laudado {
+    background: linear-gradient(90deg, rgba(40, 167, 69, 0.06) 0%, var(--cor-fundo) 100%);
+}
+
+/* =========================================================
+   10. ESTADOS E FEEDBACK
+   ========================================================= */
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: var(--espacamento-md);
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria);
+    border-radius: var(--raio-full);
+    animation: girar 0.8s linear infinite;
+}
+
+.loading-container p {
+    color: var(--cor-texto-secundario);
+    font-size: 0.9rem;
+}
+
+.mensagem-vazia,
+.mensagem-erro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: var(--espacamento-xl);
+    text-align: center;
+}
+
+.mensagem-vazia i,
+.mensagem-erro i {
+    font-size: 3rem;
+    margin-bottom: var(--espacamento-md);
+}
+
+.mensagem-vazia i { color: var(--cor-texto-muted); }
+.mensagem-erro i  { color: var(--cor-perigo); }
+
+.mensagem-vazia h3,
+.mensagem-erro h3 {
+    font-size: 1.1rem;
+    color: var(--cor-texto);
+    margin-bottom: var(--espacamento-sm);
+}
+
+.mensagem-vazia p,
+.mensagem-erro p {
+    color: var(--cor-texto-secundario);
+    font-size: 0.9rem;
+}
+
+.btn-tentar-novamente {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    margin-top: var(--espacamento-md);
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: var(--cor-primaria);
+    color: white;
+    border: none;
+    border-radius: var(--raio-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
+
+.btn-tentar-novamente:hover {
+    background: var(--cor-primaria-hover);
+    transform: translateY(-1px);
+}
+
+/* =========================================================
+   11. ANIMAÇÕES
+   ========================================================= */
+
+@keyframes girar {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulsar {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+@keyframes pulsar-borda {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+}
+
+@keyframes piscar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; background: var(--cor-primaria-light); }
+}
+
+/* =========================================================
+   12. ALERTA GLOBAL (barra inferior piscante)
+   ========================================================= */
+
+.alerta-global {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-alerta);
+    background: var(--cor-perigo);
+    color: white;
+    padding: 8px 16px;
+    animation: piscarAlerta 1s ease-in-out infinite;
+}
+
+.alerta-global.ativo {
+    display: block;
+}
+
+.alerta-global-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.alerta-global-content > i {
+    font-size: 1.1rem;
+    animation: sacudir 0.5s ease-in-out infinite;
+}
+
+.alerta-global-fechar {
+    background: none;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--raio-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: var(--transicao-rapida);
+    margin-left: 8px;
+}
+
+.alerta-global-fechar:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: white;
+}
+
+@keyframes piscarAlerta {
+    0%, 100% { background: var(--cor-perigo); }
+    50% { background: #ff1a1a; }
+}
+
+@keyframes sacudir {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+}
+
+/* =========================================================
+   13. MODAL NOVO EXAME
+   ========================================================= */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: var(--z-modal);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.ativo {
+    display: flex;
+}
+
+.modal-novo-exame-visual {
+    background: white;
+    border-radius: var(--raio-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 480px;
+    width: 90%;
+    overflow: hidden;
+    animation: modalNovoEntrar 0.4s ease-out;
+    border: 3px solid var(--cor-perigo);
+}
+
+.modal-novo-header {
+    background: linear-gradient(135deg, #dc3545, #ff1a1a, #c82333);
+    color: white;
+    padding: 24px 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    animation: piscarFundoModal 2s ease-in-out infinite;
+}
+
+.modal-novo-pulso {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    border-radius: var(--raio-full);
+    background: rgba(255, 255, 255, 0.1);
+    animation: novoPulso 2s ease-out infinite;
+    pointer-events: none;
+}
+
+.modal-novo-icone {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
+    animation: pulsarIcone 1.5s ease-in-out infinite;
+}
+
+.modal-novo-header h2 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.modal-novo-body {
+    padding: 20px;
+}
+
+.novo-campo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    color: var(--cor-texto);
+    border-bottom: 1px solid var(--cor-borda-light);
+}
+
+.novo-campo:last-child {
+    border-bottom: none;
+}
+
+.novo-campo i {
+    color: var(--cor-primaria);
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.novo-exames-lista {
+    margin-top: 12px;
+    background: #fef9f9;
+    border-radius: var(--raio-md);
+    padding: 12px;
+    border: 1px solid var(--cor-primaria-light);
+}
+
+.novo-exames-titulo {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--cor-primaria);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.novo-exame-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--cor-borda-light);
+}
+
+.novo-exame-item:last-child {
+    border-bottom: none;
+}
+
+.novo-exame-nome {
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--cor-texto);
+}
+
+.novo-exame-data {
+    font-size: 0.72rem;
+    color: var(--cor-texto-muted);
+    flex-shrink: 0;
+}
+
+.modal-novo-footer {
+    padding: 16px 20px;
+    text-align: center;
+    border-top: 1px solid var(--cor-borda);
+    background: var(--cor-fundo);
+}
+
+.btn-novo-entendido {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 32px;
+    background: var(--cor-primaria);
+    color: white;
+    border: none;
+    border-radius: var(--raio-md);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
+
+.btn-novo-entendido:hover {
+    background: var(--cor-primaria-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--sombra-md);
+}
+
+/* Animações do Modal */
+@keyframes modalNovoEntrar {
+    0% { transform: scale(0.5) rotate(-5deg); opacity: 0; }
+    60% { transform: scale(1.05) rotate(1deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes piscarFundoModal {
+    0%, 100% { background: linear-gradient(135deg, #dc3545, #ff1a1a, #c82333); }
+    50% { background: linear-gradient(135deg, #ff1a1a, #ff4444, #dc3545); }
+}
+
+@keyframes novoPulso {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.5; }
+    100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+@keyframes pulsarIcone {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+/* =========================================================
+   14. RESPONSIVIDADE
+   ========================================================= */
+
+@media (max-width: 1400px) {
+    .resumo-grid { grid-template-columns: repeat(5, 1fr); }
+    .card-value { font-size: 1.1rem; }
+}
+
+@media (max-width: 1200px) {
+    .resumo-grid { grid-template-columns: repeat(3, 1fr); }
+    .filtro-setor-select,
+    .filtro-status-select { min-width: 140px; }
+    .col-convenio { display: none; }
+}
+
+@media (max-width: 992px) {
+    .header-content { flex-wrap: wrap; }
+    .btn-text { display: none; }
+    .resumo-grid { grid-template-columns: repeat(3, 1fr); }
+    .tabela-radiologia thead th,
+    .tabela-radiologia tbody td {
+        padding: var(--espacamento-xs) var(--espacamento-sm);
+        font-size: 0.75rem;
+    }
+    .col-setor { display: none; }
+}
+
+@media (max-width: 768px) {
+    :root { --espacamento-md: 12px; }
+    .painel-header { padding: var(--espacamento-sm); }
+    .header-title h1 { font-size: 0.9rem; }
+    .header-subtitle { display: none; }
+    .header-controls { flex-wrap: wrap; gap: var(--espacamento-sm); }
+    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
+    .card-icon { width: 36px; height: 36px; }
+    .card-value { font-size: 1rem; }
+    .filtro-status-select { display: none; }
+    .exame-datas { display: none; }
+    .modal-novo-exame-visual { max-width: 100%; margin: 8px; }
+    .modal-novo-header { padding: 20px 16px; }
+    .modal-novo-header h2 { font-size: 1.2rem; }
+    .modal-novo-icone { font-size: 2.5rem; }
+    .alerta-global { font-size: 0.75rem; padding: 5px 10px; }
+    .volume-slider { width: 60px; }
+}
+
+@media (max-width: 576px) {
+    .resumo-grid { grid-template-columns: 1fr 1fr; }
+    .card-pacientes { grid-column: span 2; }
+    .header-right { width: 100%; justify-content: space-between; }
+    .filtro-setor-select { flex: 1; min-width: 0; }
+    .col-atendimento { display: none; }
+    .col-aguardando, .col-sem-laudo, .col-laudado { width: 50px; }
+    .volume-slider { width: 50px; }
+    .volume-valor { display: none; }
+}
+
+/* Telas grandes (TV/Monitor) */
+@media (min-width: 1600px) {
+    :root { --espacamento-md: 20px; }
+    .card-value { font-size: 1.5rem; }
+    .tabela-radiologia thead th { font-size: 0.75rem; }
+    .tabela-radiologia tbody td { font-size: 0.85rem; }
+}
+
+/* Safe area (notch) */
+@supports (padding: env(safe-area-inset-top)) {
+    .painel-header {
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+    .painel-main {
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+}
+
+/* Acessibilidade: motion reduzido */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+    .tabela-radiologia tbody {
+        scroll-behavior: auto;
+    }
+}
+
+/* Print */
+@media print {
+    .painel-header, .btn-header, .header-actions { display: none; }
+    .painel-container { height: auto; overflow: visible; }
+    .painel-main { overflow: visible; }
+    .tabela-radiologia tbody { overflow: visible; height: auto; }
+    .alerta-global, .modal-overlay { display: none !important; }
+}

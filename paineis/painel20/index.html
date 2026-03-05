@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Radiologia Pronto Socorro - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
+    <title>Radiologia PS - Anchieta Ceilândia</title>
+
+    <!-- Fontes e Ícones -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="/paineis/painel20/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabeçalho -->
+        <header class="painel-header" role="banner">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1>
+                            <i class="fas fa-x-ray" aria-hidden="true"></i>
+                            Radiologia - Pronto Socorro
+                        </h1>
+                        <span class="header-subtitle">Exames pendentes de pacientes no PS</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-controls">
+                        <!-- Filtro de Período -->
+                        <div class="filtro-container">
+                            <label for="filtro-periodo" class="sr-only">Filtrar por período</label>
+                            <select id="filtro-periodo" class="filtro-status-select" aria-label="Filtrar por período">
+                                <option value="">Todos</option>
+                                <option value="6">Últimas 6h</option>
+                                <option value="12" selected>Últimas 12h</option>
+                                <option value="24">Últimas 24h</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro de Status -->
+                        <div class="filtro-container">
+                            <label for="filtro-status" class="sr-only">Filtrar por status</label>
+                            <select id="filtro-status" class="filtro-status-select" aria-label="Filtrar por status">
+                                <option value="">Todos os Status</option>
+                                <option value="AGUARDANDO">Aguardando Execução</option>
+                                <option value="EXECUTADO_SEM_LAUDO">Sem Laudo</option>
+                                <option value="LAUDADO">Laudados</option>
+                            </select>
+                        </div>
+
+                        <!-- Status e Hora -->
+                        <div class="header-status">
+                            <span class="status-indicator" id="status-indicator" title="Status da conexão"></span>
+                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                        </div>
+                    </div>
+
+                    <div class="header-actions">
+                        <!-- Controle de Volume -->
+                        <div class="volume-control" id="volume-control">
+                            <button id="btn-som" class="btn-header btn-som-ativo" title="Som de alerta">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                            <div class="volume-slider-wrapper" id="volume-slider-wrapper">
+                                <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="70" title="Volume">
+                                <span class="volume-valor" id="volume-valor">70%</span>
+                            </div>
+                        </div>
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Ativar rolagem automática" aria-label="Ativar rolagem automática">
+                            <i class="fas fa-play" aria-hidden="true"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar ao Dashboard" aria-label="Voltar ao Dashboard">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Resumo -->
+        <section class="dashboard-resumo" aria-label="Resumo Radiologia PS">
+            <div class="resumo-grid">
+                <article class="resumo-card card-pacientes">
+                    <div class="card-icon"><i class="fas fa-users" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-pacientes">-</span>
+                        <span class="card-label">Pacientes</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-total">
+                    <div class="card-icon"><i class="fas fa-x-ray" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-exames">-</span>
+                        <span class="card-label">Total Exames</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-aguardando">
+                    <div class="card-icon"><i class="fas fa-hourglass-half" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-aguardando">-</span>
+                        <span class="card-label">Aguardando</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-sem-laudo">
+                    <div class="card-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-sem-laudo">-</span>
+                        <span class="card-label">Sem Laudo</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-laudado">
+                    <div class="card-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-laudado">-</span>
+                        <span class="card-label">Laudados</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Conteúdo Principal -->
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando dados do Pronto Socorro...</p>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Alerta Global (barra superior piscante) -->
+    <div class="alerta-global" id="alerta-global">
+        <div class="alerta-global-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="alerta-global-texto">NOVO EXAME SOLICITADO!</span>
+            <button class="alerta-global-fechar" id="alerta-global-fechar" title="Dispensar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal: Novo Exame Detectado -->
+    <div class="modal-overlay" id="modal-novo-exame">
+        <div class="modal modal-novo-exame-visual">
+            <div class="modal-novo-header">
+                <div class="modal-novo-pulso"></div>
+                <div class="modal-novo-icone">
+                    <i class="fas fa-x-ray"></i>
+                </div>
+                <h2>NOVO EXAME SOLICITADO!</h2>
+            </div>
+            <div class="modal-novo-body" id="modal-novo-body">
+                <!-- Preenchido via JS -->
+            </div>
+            <div class="modal-novo-footer">
+                <button class="btn-novo-entendido" id="btn-novo-entendido">
+                    <i class="fas fa-check"></i> Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio de alerta -->
+    <audio id="audio-alerta" preload="auto">
+        <source src="/static/audio/chamado.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="/paineis/painel20/main.js"></script>
+</body>
+</html>

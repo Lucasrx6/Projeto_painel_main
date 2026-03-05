@@ -222,7 +222,15 @@ def api_painel16_atendimentos():
             SELECT
                 usuario,
                 usuario_atendimento,
+                COALESCE(MAX(ds_usuario), usuario_atendimento) AS nome_recepcionista,
                 COUNT(*) AS total_atendimentos,
+                ROUND(
+                    (percentile_cont(0.5) WITHIN GROUP (
+                        ORDER BY tempo_atend_recepcao_min
+                    ) FILTER (
+                        WHERE tempo_atend_recepcao_min > 0
+                    ))::numeric, 1
+                ) AS tempo_mediano_min,
                 MODE() WITHIN GROUP (ORDER BY
                     CASE cd_tipo_atendimento
                         WHEN 3 THEN 'Pronto Socorro'
@@ -259,6 +267,10 @@ def api_painel16_atendimentos():
                 reg['turno'] = 'Diurno'
             else:
                 reg['turno'] = 'Ambos'
+
+            # Converter Decimal para float para serializacao JSON
+            if reg.get('tempo_mediano_min') is not None:
+                reg['tempo_mediano_min'] = float(reg['tempo_mediano_min'])
 
         cursor.close()
         conn.close()

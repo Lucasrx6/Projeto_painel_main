@@ -41,7 +41,7 @@ def api_minhas_permissoes():
                     'painel6', 'painel7', 'painel8', 'painel9',
                     'painel10', 'painel11', 'painel12', 'painel13',
                     'painel14', 'painel15', 'painel16', 'painel17',
-                    'painel18'
+                    'painel18', 'painel19', 'painel20', 'painel21'
                 ],
                 'is_admin': True
             })
@@ -350,6 +350,12 @@ def api_listar_paineis():
              'descricao': 'Painel demonstrativo de tempo de espera no PS', 'ativo': True},
             {'nome': 'painel18', 'titulo': 'Desempenho Médico PS',
              'descricao': 'Painel demonstrativo de produção médico PS', 'ativo': True},
+            {'nome': 'painel19', 'titulo': 'Pendencias Radiologia',
+             'descricao': 'Painel de Pendencias da Radiologia', 'ativo': True},
+            {'nome': 'painel20', 'titulo': 'Pendencias Radiologia NO PS',
+             'descricao': 'Painel de Pendencias da Radiologia no PS', 'ativo': True},
+            {'nome': 'painel21', 'titulo': 'Status contas ',
+             'descricao': 'Painel para acompanhar status das contas HAC', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200
