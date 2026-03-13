@@ -1,27 +1,160 @@
-[2026-03-04 20:18:57] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-03-04 20:18:57] INFO [app:73] - ✅ Security headers configurados
-[2026-03-04 20:18:57] INFO [app:72] - ✅ Error handlers registrados
-[2026-03-04 20:19:00] INFO [app:114] -  23 Blueprints registrados com sucesso
-[2026-03-04 20:19:00] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-03-04 20:19:00] INFO [app:73] - ✅ Security headers configurados
-[2026-03-04 20:19:00] INFO [app:72] - ✅ Error handlers registrados
-[2026-03-04 20:19:01] INFO [app:114] -  23 Blueprints registrados com sucesso
-[2026-03-04 20:24:54] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
-[2026-03-04 20:51:37] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-03-04 20:51:37] INFO [app:73] - ✅ Security headers configurados
-[2026-03-04 20:51:37] INFO [app:72] - ✅ Error handlers registrados
-[2026-03-04 20:51:37] INFO [app:114] -  23 Blueprints registrados com sucesso
-[2026-03-04 20:52:44] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
-[2026-03-04 20:56:59] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-03-04 20:56:59] INFO [app:73] - ✅ Security headers configurados
-[2026-03-04 20:56:59] INFO [app:72] - ✅ Error handlers registrados
-[2026-03-04 20:56:59] INFO [app:115] -  24 Blueprints registrados com sucesso
-[2026-03-04 20:57:24] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-03-04 20:57:24] INFO [app:73] - ✅ Security headers configurados
-[2026-03-04 20:57:24] INFO [app:72] - ✅ Error handlers registrados
-[2026-03-04 20:57:25] INFO [app:115] -  24 Blueprints registrados com sucesso
-[2026-03-04 21:01:25] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
-[2026-03-04 21:01:25] INFO [app:73] - ✅ Security headers configurados
-[2026-03-04 21:01:25] INFO [app:72] - ✅ Error handlers registrados
-[2026-03-04 21:01:26] INFO [app:115] -  24 Blueprints registrados com sucesso
-[2026-03-04 21:01:38] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 10:51:06] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:51:06] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:51:06] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:51:06] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:51:08] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:51:08] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:51:08] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:51:08] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:51:08] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 10:51:16] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 10:51:41] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:51:41] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:51:41] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:51:41] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:51:42] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:51:42] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:51:42] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:51:43] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:51:48] INFO [app:66] - 👋 Logout: postgres
+[2026-03-10 10:52:36] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:52:36] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:52:37] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:52:38] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:52:43] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:52:43] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:52:43] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:52:43] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:52:43] INFO [app:32] - Tentativa de login: postgres
+[2026-03-10 10:52:44] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-03-10 10:53:04] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:04] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:04] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:05] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:53:08] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:08] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:08] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:09] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:53:39] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:39] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:40] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:40] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:53:40] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:40] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:40] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:41] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:53:50] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:50] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:50] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:50] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:53:52] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:52] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:52] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:52] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:53:59] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:59] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:59] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:59] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:53:59] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 10:53:59] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 10:53:59] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 10:53:59] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 10:57:08] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 11:17:29] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 11:17:29] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 11:17:29] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 11:17:29] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 11:23:49] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 11:23:49] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 11:23:49] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 11:23:50] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 11:23:50] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 11:23:50] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 11:23:50] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 11:23:50] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 11:23:53] ERROR [app:110] - Erro ao buscar dashboard painel12: relation "vw_painel12_dashboards" does not exist
+LINE 1: SELECT * FROM vw_painel12_dashboards
+                      ^
+Traceback (most recent call last):
+  File "C:\Projeto_Painel_Main\backend\routes\painel12_routes.py", line 68, in api_painel12_dashboard
+    cursor.execute(query)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Projeto_Painel_Main\.venv\Lib\site-packages\psycopg2\extras.py", line 236, in execute
+    return super().execute(query, vars)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.UndefinedTable: relation "vw_painel12_dashboards" does not exist
+LINE 1: SELECT * FROM vw_painel12_dashboards
+                      ^
+
+[2026-03-10 11:23:54] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 11:23:54] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 11:23:54] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 11:23:54] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 11:24:00] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 11:24:00] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 11:24:00] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 11:24:01] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 11:24:01] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 11:24:01] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 11:24:01] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 11:24:01] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 12:24:47] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 12:24:47] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 12:24:47] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 12:24:48] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 12:24:57] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:28:28] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:28:59] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:30:36] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:30:45] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:30:51] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:31:01] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:31:10] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:31:23] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:31:43] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:32:12] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:34:33] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:45:10] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:47:46] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:48:32] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:50:07] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:52:41] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:52:51] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:53:17] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 12:54:25] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 14:23:48] INFO [app:32] - Tentativa de login: Shayra
+[2026-03-10 14:23:48] INFO [app:42] - ✅ Login bem-sucedido: Shayra
+[2026-03-10 14:24:07] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 14:28:43] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 14:34:16] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 14:36:02] INFO [app:32] - Tentativa de login: Anakarlla
+[2026-03-10 14:36:02] INFO [app:42] - ✅ Login bem-sucedido: Anakarlla
+[2026-03-10 14:36:22] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 14:36:52] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 14:38:52] INFO [app:66] - 👋 Logout: postgres
+[2026-03-10 14:38:56] INFO [app:32] - Tentativa de login: postgres
+[2026-03-10 14:38:57] INFO [app:42] - ✅ Login bem-sucedido: postgres
+[2026-03-10 14:57:06] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 15:00:34] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 15:07:49] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 15:24:14] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 15:24:14] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 15:24:14] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 15:24:14] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 16:40:39] INFO [app:58] - ✅ Sistema de logging configurado (rotação diária, retenção: 3 dias)
+[2026-03-10 16:40:39] INFO [app:73] - ✅ Security headers configurados
+[2026-03-10 16:40:39] INFO [app:72] - ✅ Error handlers registrados
+[2026-03-10 16:40:39] INFO [app:118] -  25 Blueprints registrados com sucesso
+[2026-03-10 16:49:58] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:22:36] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:23:18] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:23:23] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:23:35] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:23:46] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:25:38] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:25:52] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 17:26:01] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 18:32:17] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 18:32:53] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 18:33:02] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json
+[2026-03-10 18:34:18] WARNING [app:17] - 404 Error: http://172.16.1.75:5000/static/manifest.json

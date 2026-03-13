@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Acompanhamento de Exames PS - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
+    <title>Acompanhamento de Exames - PS Anchieta</title>
+
+    <!-- Fontes e Ícones -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="/paineis/painel22/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabeçalho -->
+        <header class="painel-header" role="banner">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1>
+                            <i class="fas fa-heartbeat" aria-hidden="true"></i>
+                            Acompanhamento de Exames
+                        </h1>
+                        <span class="header-subtitle">Pronto Socorro - Hospital Anchieta</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-status">
+                        <span class="status-indicator" id="status-indicator" title="Status da conexão"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Rolagem automática">
+                            <i class="fas fa-play"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mini Dashboard -->
+        <section class="dashboard-resumo" aria-label="Resumo de Exames">
+            <div class="resumo-grid">
+                <article class="resumo-card card-pacientes">
+                    <div class="card-icon"><i class="fas fa-users"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-pacientes">-</span>
+                        <span class="card-label">Pacientes</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-pendentes">
+                    <div class="card-icon"><i class="fas fa-clock"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-pendentes">-</span>
+                        <span class="card-label">Pendentes</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-andamento">
+                    <div class="card-icon"><i class="fas fa-spinner"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-andamento">-</span>
+                        <span class="card-label">Em Andamento</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-concluidos">
+                    <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="total-concluidos">-</span>
+                        <span class="card-label">Concluídos</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Conteúdo Principal: Tabela -->
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando exames...</p>
+            </div>
+        </main>
+
+        <!-- Legenda -->
+        <footer class="legenda-footer" id="legenda-footer">
+            <div class="legenda-items">
+                <span class="legenda-item"><span class="legenda-dot dot-pendente"></span> Aguardando</span>
+                <span class="legenda-item"><span class="legenda-dot dot-andamento"></span> Em andamento</span>
+                <span class="legenda-item"><span class="legenda-dot dot-concluido"></span> Concluído</span>
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="/paineis/painel22/main.js"></script>
+</body>
+</html>

@@ -92,7 +92,7 @@ def cadastro():
         resultado = criar_usuario(usuario, senha, email, is_admin)
 
         if resultado['success']:
-            current_app.logger.info(f'✅ Usuário criado: {usuario} (admin={is_admin})')
+            current_app.logger.info(f'Usuário criado: {usuario} (admin={is_admin})')
             return jsonify({'success': True, 'message': 'Usuário criado com sucesso'})
         else:
             return jsonify({'success': False, 'error': resultado['error']}), 400

@@ -1,0 +1,620 @@
+/**
+ * PAINEL 22 - Acompanhamento de Exames PS
+ * Layout: Tabela para TV Vertical
+ *
+ * Colunas: Atend. | Paciente (nome+idade+conv) | Tempo PS | Lab | Radio
+ */
+
+/* =========================================================
+   1. VARIÁVEIS CSS
+   ========================================================= */
+
+:root {
+    --cor-primaria: #dc3545;
+    --cor-primaria-hover: #c82333;
+    --cor-primaria-light: #f8d7da;
+    --cor-primaria-dark: #bd2130;
+
+    --cor-header: #dc3545;
+    --cor-header-dark: #c82333;
+
+    /* Status */
+    --cor-pendente: #dc3545;
+    --cor-pendente-light: #f8d7da;
+    --cor-andamento: #f0ad4e;
+    --cor-andamento-light: #fff3cd;
+    --cor-concluido: #28a745;
+    --cor-concluido-light: #d4edda;
+
+    /* Tipo exame */
+    --cor-lab: #8e44ad;
+    --cor-radio: #2980b9;
+
+    /* Neutras */
+    --cor-texto: #2c3e50;
+    --cor-texto-secundario: #5a6c7d;
+    --cor-texto-muted: #95a5a6;
+    --cor-fundo: #f0f3f7;
+    --cor-fundo-card: #ffffff;
+    --cor-borda: #e1e8ef;
+    --cor-borda-light: #f0f0f0;
+
+    /* Gradientes */
+    --grad-pacientes: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --grad-pendentes: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    --grad-andamento: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);
+    --grad-concluidos: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+
+    /* Sombras */
+    --sombra-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --sombra-card: 0 2px 12px rgba(0,0,0,0.08);
+    --sombra-card-hover: 0 6px 20px rgba(0,0,0,0.12);
+
+    /* Espaçamentos */
+    --espacamento-xs: 4px;
+    --espacamento-sm: 8px;
+    --espacamento-md: 16px;
+    --espacamento-lg: 24px;
+    --espacamento-xl: 32px;
+
+    /* Bordas */
+    --raio-sm: 4px;
+    --raio-md: 8px;
+    --raio-lg: 12px;
+    --raio-full: 50%;
+
+    --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --transicao-rapida: 150ms ease;
+    --transicao-normal: 250ms ease;
+    --z-header: 100;
+}
+
+/* =========================================================
+   2. RESET E BASE
+   ========================================================= */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+body {
+    font-family: var(--fonte-principal);
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+}
+
+/* =========================================================
+   3. LAYOUT PRINCIPAL
+   ========================================================= */
+
+.painel-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* =========================================================
+   4. CABEÇALHO
+   ========================================================= */
+
+.painel-header {
+    background: linear-gradient(135deg, var(--cor-header) 0%, var(--cor-header-dark) 100%);
+    color: white;
+    padding: 10px var(--espacamento-lg);
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(220,53,69,0.3);
+    z-index: var(--z-header);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--espacamento-md);
+}
+
+.header-left { display: flex; align-items: center; gap: var(--espacamento-md); }
+
+.header-logo {
+    height: 38px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: var(--raio-sm);
+}
+
+.header-title h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+.header-title h1 i { font-size: 1.1rem; }
+
+.header-subtitle {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    display: block;
+    margin-top: 2px;
+}
+
+.header-right { display: flex; align-items: center; gap: var(--espacamento-md); }
+
+.header-status { display: flex; align-items: center; gap: var(--espacamento-sm); }
+
+.status-indicator {
+    width: 10px; height: 10px;
+    border-radius: var(--raio-full);
+    background: rgba(255,255,255,0.5);
+    transition: var(--transicao-normal);
+}
+.status-indicator.status-online  { background: #90EE90; box-shadow: 0 0 8px rgba(144,238,144,0.8); }
+.status-indicator.status-offline { background: #ff6b6b; box-shadow: 0 0 8px rgba(255,107,107,0.8); }
+.status-indicator.status-loading { background: #ffd93d; animation: pulsar 1s infinite; }
+
+.ultima-atualizacao { font-size: 0.85rem; opacity: 0.9; font-weight: 500; }
+
+.header-actions { display: flex; gap: var(--espacamento-xs); }
+
+.btn-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1.5px solid rgba(255,255,255,0.4);
+    border-radius: var(--raio-sm);
+    font-size: 0.8rem; font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
+.btn-header:hover { background: white; color: var(--cor-primaria); transform: translateY(-1px); }
+
+.btn-auto-scroll.ativo {
+    background: #ffc107; border-color: #ffc107; color: #333;
+    animation: pulsar-borda 2s infinite;
+}
+
+.btn-refresh.girando i { animation: girar 0.5s linear; }
+
+/* =========================================================
+   5. DASHBOARD RESUMO
+   ========================================================= */
+
+.dashboard-resumo {
+    padding: 10px var(--espacamento-lg);
+    background: linear-gradient(180deg, #fff 0%, var(--cor-fundo) 100%);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--espacamento-sm);
+}
+
+.resumo-card {
+    display: flex; align-items: center; gap: var(--espacamento-sm);
+    padding: 10px var(--espacamento-md);
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-sm);
+    border-left: 4px solid transparent;
+    transition: var(--transicao-rapida);
+}
+.resumo-card:hover { transform: translateY(-2px); box-shadow: var(--sombra-card); }
+.resumo-card.atualizando { animation: piscar 0.3s ease; }
+
+.card-pacientes  { border-left-color: #667eea; }
+.card-pendentes  { border-left-color: var(--cor-pendente); }
+.card-andamento  { border-left-color: var(--cor-andamento); }
+.card-concluidos { border-left-color: var(--cor-concluido); }
+
+.card-icon {
+    width: 44px; height: 44px;
+    border-radius: var(--raio-full);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.card-icon i { font-size: 1.1rem; color: white; }
+
+.card-pacientes  .card-icon { background: var(--grad-pacientes); }
+.card-pendentes  .card-icon { background: var(--grad-pendentes); }
+.card-andamento  .card-icon { background: var(--grad-andamento); }
+.card-concluidos .card-icon { background: var(--grad-concluidos); }
+
+.card-content { display: flex; flex-direction: column; min-width: 0; }
+.card-value { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.card-label { font-size: 0.72rem; color: var(--cor-texto-secundario); text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* =========================================================
+   6. CONTEÚDO PRINCIPAL
+   ========================================================= */
+
+.painel-main {
+    flex: 1;
+    overflow: hidden;
+    padding: var(--espacamento-sm) var(--espacamento-lg);
+}
+
+.tabela-container {
+    height: 100%;
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   7. TABELA
+   ========================================================= */
+
+.tabela-exames {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.tabela-exames thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    flex-shrink: 0;
+}
+
+.tabela-exames thead tr { display: table-row; }
+
+.tabela-exames thead th {
+    padding: 14px var(--espacamento-md);
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--cor-texto-secundario);
+    background: var(--cor-fundo);
+    border-bottom: 2px solid var(--cor-borda);
+    white-space: nowrap;
+}
+
+/* Larguras das colunas */
+.col-atendimento { width: 130px; }
+.col-paciente    { width: auto; }
+.col-tempo-ps    { width: 210px; text-align: center; }
+.col-lab         { width: 260px; text-align: center; }
+.col-radio       { width: 260px; text-align: center; }
+
+/* TBODY com scroll */
+.tabela-exames tbody {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    scroll-behavior: smooth;
+}
+
+.tabela-exames tbody::-webkit-scrollbar { width: 6px; }
+.tabela-exames tbody::-webkit-scrollbar-track { background: var(--cor-borda); border-radius: 3px; }
+.tabela-exames tbody::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: 3px; }
+
+/* =========================================================
+   8. LINHAS DA TABELA
+   ========================================================= */
+
+.tabela-exames tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    background: var(--cor-fundo-card);
+    transition: var(--transicao-rapida);
+    border-bottom: 1px solid var(--cor-borda-light);
+}
+
+.tabela-exames tbody tr:hover {
+    background: rgba(220,53,69,0.03);
+}
+
+.tabela-exames tbody tr td {
+    padding: 16px var(--espacamento-md);
+    font-size: 1.05rem;
+    color: var(--cor-texto);
+    vertical-align: middle;
+}
+
+/* Borda esquerda por estado do paciente */
+.tabela-exames tbody tr.linha-concluida {
+    background: linear-gradient(90deg, rgba(40,167,69,0.06) 0%, transparent 100%);
+    border-left: 5px solid var(--cor-concluido);
+}
+
+.tabela-exames tbody tr.linha-pendente {
+    border-left: 5px solid var(--cor-pendente);
+    background: linear-gradient(90deg, rgba(220,53,69,0.04) 0%, transparent 100%);
+}
+
+.tabela-exames tbody tr.linha-andamento {
+    border-left: 5px solid var(--cor-andamento);
+    background: linear-gradient(90deg, rgba(240,173,78,0.04) 0%, transparent 100%);
+}
+
+/* Atendimento */
+.atendimento-valor {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--cor-texto-secundario);
+}
+
+/* Paciente agrupado: nome + subinfo */
+.paciente-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.paciente-nome {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--cor-texto);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.paciente-subinfo {
+    display: flex;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: var(--cor-texto-muted);
+}
+
+.paciente-subinfo span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.paciente-subinfo i { font-size: 0.7rem; }
+
+/* Tempo no PS */
+.tempo-ps-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+.tempo-normal  { background: #e8f5e9; color: #2e7d32; }
+.tempo-alerta  { background: #fff3cd; color: #856404; }
+.tempo-critico { background: #f8d7da; color: #721c24; }
+
+/* =========================================================
+   9. CÉLULAS DE STATUS (Lab / Radio)
+   ========================================================= */
+
+.status-exame-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.status-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--raio-full);
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+}
+
+.status-dot.dot-pendente  { background: var(--cor-pendente); }
+.status-dot.dot-andamento { background: var(--cor-andamento); color: #333; }
+.status-dot.dot-concluido { background: var(--cor-concluido); }
+
+.status-sem-exame {
+    color: var(--cor-texto-muted);
+    font-size: 1rem;
+}
+
+/* =========================================================
+   10. LEGENDA FOOTER
+   ========================================================= */
+
+.legenda-footer {
+    flex-shrink: 0;
+    background: var(--cor-fundo-card);
+    border-top: 2px solid var(--cor-borda);
+    padding: 12px var(--espacamento-lg);
+}
+
+.legenda-items {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.legenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--cor-texto);
+    font-weight: 600;
+}
+
+.legenda-dot {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--raio-full);
+    flex-shrink: 0;
+}
+
+.legenda-dot.dot-pendente  { background: var(--cor-pendente); }
+.legenda-dot.dot-andamento { background: var(--cor-andamento); }
+.legenda-dot.dot-concluido { background: var(--cor-concluido); }
+
+.legenda-item .cor-lab   { color: var(--cor-lab); font-size: 1.1rem; }
+.legenda-item .cor-radio { color: var(--cor-radio); font-size: 1.1rem; }
+
+.legenda-sep {
+    width: 2px;
+    height: 20px;
+    background: var(--cor-borda);
+    border-radius: 1px;
+}
+
+/* =========================================================
+   11. ESTADOS E FEEDBACK
+   ========================================================= */
+
+.loading-container {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; gap: var(--espacamento-md);
+}
+.loading-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria);
+    border-radius: var(--raio-full);
+    animation: girar 0.8s linear infinite;
+}
+.loading-container p { color: var(--cor-texto-secundario); font-size: 1rem; }
+
+.mensagem-vazia, .mensagem-erro {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; padding: var(--espacamento-xl); text-align: center;
+}
+.mensagem-vazia i { font-size: 3.5rem; color: var(--cor-texto-muted); margin-bottom: var(--espacamento-md); }
+.mensagem-erro i  { font-size: 3.5rem; color: var(--cor-pendente); margin-bottom: var(--espacamento-md); }
+.mensagem-vazia h3, .mensagem-erro h3 { font-size: 1.3rem; margin-bottom: var(--espacamento-sm); }
+.mensagem-vazia p, .mensagem-erro p { color: var(--cor-texto-secundario); font-size: 1rem; }
+
+.btn-tentar-novamente {
+    display: inline-flex; align-items: center; gap: var(--espacamento-sm);
+    margin-top: var(--espacamento-md);
+    padding: 10px 20px;
+    background: var(--cor-primaria); color: white; border: none;
+    border-radius: var(--raio-md); font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: var(--transicao-rapida);
+}
+.btn-tentar-novamente:hover { background: var(--cor-primaria-hover); transform: translateY(-1px); }
+
+/* =========================================================
+   12. ANIMAÇÕES
+   ========================================================= */
+
+@keyframes girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulsar { 0%, 100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(1.1); } }
+@keyframes pulsar-borda { 0%,100% { box-shadow:0 0 0 0 rgba(255,193,7,0.5); } 50% { box-shadow:0 0 0 8px rgba(255,193,7,0); } }
+@keyframes piscar { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+
+/* =========================================================
+   13. RESPONSIVIDADE
+   ========================================================= */
+
+@media (max-width: 992px) {
+    .header-content { flex-wrap: wrap; }
+    .btn-text { display: none; }
+}
+
+@media (max-width: 768px) {
+    :root { --espacamento-md: 12px; --espacamento-lg: 16px; }
+    .painel-header { padding: var(--espacamento-sm) var(--espacamento-md); }
+    .header-title h1 { font-size: 1rem; }
+    .header-subtitle { display: none; }
+    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
+    .card-icon { width: 38px; height: 38px; }
+    .card-value { font-size: 1.2rem; }
+    .col-tempo-ps { display: none; }
+    .legenda-item { font-size: 0.8rem; }
+    .legenda-dot { width: 12px; height: 12px; }
+    .legenda-items { gap: 14px; }
+}
+
+@media (max-width: 576px) {
+    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
+    .header-right { width: 100%; justify-content: space-between; }
+    .paciente-subinfo { display: none; }
+    .tabela-exames tbody tr td { padding: 10px 8px; font-size: 0.85rem; }
+    .status-dot { width: 26px; height: 26px; font-size: 0.72rem; }
+}
+
+/* TV Vertical (tipicamente ~1080x1920 rotacionada) */
+@media (min-height: 1200px) {
+    .tabela-exames thead th { font-size: 1.05rem; padding: 16px var(--espacamento-md); }
+    .tabela-exames tbody tr td { padding: 20px var(--espacamento-md); font-size: 1.15rem; }
+    .paciente-nome { font-size: 0.9rem; }
+    .paciente-subinfo { font-size: 0.9rem; }
+    .atendimento-valor { font-size: 1.15rem; }
+    .status-dot { width: 40px; height: 40px; font-size: 1rem; }
+    .status-exame-cell { gap: 8px; }
+    .tempo-ps-badge { font-size: 1.05rem; padding: 5px 14px; }
+    .card-value { font-size: 1.8rem; }
+    .card-label { font-size: 0.8rem; }
+    .card-icon { width: 50px; height: 50px; }
+    .card-icon i { font-size: 1.3rem; }
+    .legenda-item { font-size: 1.1rem; }
+    .legenda-dot { width: 20px; height: 20px; }
+    .legenda-items { gap: 30px; }
+    .legenda-footer { padding: 16px var(--espacamento-lg); }
+    .col-atendimento { width: 150px; }
+    .col-tempo-ps { width: 130px; }
+    .col-lab { width: 180px; }
+    .col-radio { width: 180px; }
+}
+
+/* Telas grandes horizontais */
+@media (min-width: 1600px) {
+    .card-value { font-size: 1.6rem; }
+    .tabela-exames thead th { font-size: 0.95rem; }
+    .tabela-exames tbody td { font-size: 1.1rem; }
+    .paciente-nome { font-size: 0.88rem; }
+    .atendimento-valor { font-size: 1.1rem; }
+    .status-dot { width: 36px; height: 36px; font-size: 0.95rem; }
+    .tempo-ps-badge { font-size: 1rem; }
+}
+
+/* Safe area */
+@supports (padding: env(safe-area-inset-top)) {
+    .painel-header {
+        padding-top: max(10px, env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+    .painel-main { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    .tabela-exames tbody { scroll-behavior: auto; }
+}
+
+@media print {
+    .painel-header, .header-actions, .dashboard-resumo, .legenda-footer { display: none; }
+    .painel-container { height: auto; overflow: visible; }
+    .painel-main { overflow: visible; }
+    .tabela-exames tbody { overflow: visible; height: auto; }
+}
