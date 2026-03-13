@@ -7,14 +7,17 @@
  * 2. Reset e Base
  * 3. Layout Principal
  * 4. Cabecalho
- * 5. Dashboard Resumo
- * 6. Conteudo Principal
- * 7. Tabela de Nutricao
- * 8. Linhas e Detalhes
- * 9. Badges e Icones
- * 10. Estados e Feedback
- * 11. Animacoes
- * 12. Responsividade
+ * 5. Multi-Select de Setores
+ * 6. Filtros de Status
+ * 7. Dashboard Resumo
+ * 8. Indicador de Paginacao
+ * 9. Conteudo Principal
+ * 10. Tabela de Nutricao
+ * 11. Linhas e Detalhes
+ * 12. Badges e Icones
+ * 13. Estados e Feedback
+ * 14. Animacoes
+ * 15. Responsividade
  */
 
 /* =========================================================
@@ -88,6 +91,7 @@
 
     /* Z-Index */
     --z-header: 100;
+    --z-dropdown: 200;
 }
 
 /* =========================================================
@@ -118,7 +122,6 @@ body {
     height: 100vh;
 }
 
-/* Screen reader only */
 .sr-only {
     position: absolute;
     width: 1px;
@@ -205,46 +208,7 @@ body {
 .header-controls {
     display: flex;
     align-items: center;
-    gap: var(--espacamento-md);
-}
-
-/* Filtro de Setor */
-.filtro-container {
-    position: relative;
-}
-
-.filtro-setor-select {
-    appearance: none;
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    border: 1.5px solid rgba(255, 255, 255, 0.4);
-    padding: 6px 32px 6px 12px;
-    border-radius: var(--raio-sm);
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    min-width: 160px;
-    transition: var(--transicao-rapida);
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    background-size: 12px;
-}
-
-.filtro-setor-select:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-    border-color: white;
-}
-
-.filtro-setor-select:focus {
-    outline: none;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-color: white;
-}
-
-.filtro-setor-select option {
-    color: var(--cor-texto);
-    background: white;
+    gap: var(--espacamento-sm);
 }
 
 .header-status {
@@ -319,12 +283,228 @@ body {
     animation: pulsar-borda 2s ease-in-out infinite;
 }
 
+.btn-modo-scroll.modo-paginado {
+    background: rgba(103, 126, 234, 0.3);
+    border-color: rgba(103, 126, 234, 0.6);
+}
+
 .btn-refresh.girando i {
     animation: girar 0.5s linear;
 }
 
 /* =========================================================
-   5. DASHBOARD RESUMO
+   5. MULTI-SELECT DE SETORES
+   ========================================================= */
+
+.multi-select-container {
+    position: relative;
+}
+
+.multi-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--raio-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 160px;
+    max-width: 260px;
+    transition: var(--transicao-rapida);
+}
+
+.multi-select-trigger:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: white;
+}
+
+.multi-select-trigger.aberto {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: white;
+}
+
+.multi-select-trigger .fa-hospital {
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.multi-select-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.multi-select-arrow {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+    transition: transform var(--transicao-rapida);
+}
+
+.multi-select-trigger.aberto .multi-select-arrow {
+    transform: rotate(180deg);
+}
+
+.multi-select-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 220px;
+    max-width: 300px;
+    max-height: 320px;
+    background: white;
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-lg);
+    z-index: var(--z-dropdown);
+    overflow: hidden;
+    border: 1px solid var(--cor-borda);
+}
+
+.multi-select-dropdown.aberto {
+    display: flex;
+    flex-direction: column;
+    animation: dropdown-entrar 200ms ease;
+}
+
+.multi-select-actions {
+    display: flex;
+    gap: var(--espacamento-xs);
+    padding: var(--espacamento-sm);
+    border-bottom: 1px solid var(--cor-borda);
+    background: var(--cor-fundo);
+}
+
+.btn-select-action {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: white;
+    color: var(--cor-texto-secundario);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-sm);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
+
+.btn-select-action:hover {
+    background: var(--cor-primaria);
+    color: white;
+    border-color: var(--cor-primaria);
+}
+
+.multi-select-options {
+    overflow-y: auto;
+    flex: 1;
+    padding: var(--espacamento-xs) 0;
+}
+
+.multi-select-options::-webkit-scrollbar {
+    width: 5px;
+}
+
+.multi-select-options::-webkit-scrollbar-thumb {
+    background: var(--cor-borda);
+    border-radius: 3px;
+}
+
+.multi-select-item {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background var(--transicao-rapida);
+    font-size: 0.8rem;
+    color: var(--cor-texto);
+    user-select: none;
+}
+
+.multi-select-item:hover {
+    background: var(--cor-fundo);
+}
+
+.multi-select-item.selecionado {
+    background: rgba(220, 53, 69, 0.06);
+}
+
+.multi-select-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--cor-primaria);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.multi-select-item-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* =========================================================
+   6. FILTROS DE STATUS
+   ========================================================= */
+
+.filtro-status-container {
+    display: flex;
+    gap: var(--espacamento-xs);
+}
+
+.btn-filtro-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    border-radius: var(--raio-sm);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+    white-space: nowrap;
+}
+
+.btn-filtro-status:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-filtro-status.ativo {
+    color: #333;
+    border-color: transparent;
+}
+
+#btn-filtro-sem-prescricao.ativo {
+    background: var(--cor-alerta);
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+}
+
+#btn-filtro-desatualizadas.ativo {
+    background: #fd7e14;
+    box-shadow: 0 0 8px rgba(253, 126, 20, 0.4);
+}
+
+.btn-filtro-status i {
+    font-size: 0.75rem;
+}
+
+/* =========================================================
+   7. DASHBOARD RESUMO
    ========================================================= */
 
 .dashboard-resumo {
@@ -361,7 +541,6 @@ body {
     animation: piscar 0.3s ease;
 }
 
-/* Cores das bordas dos cards */
 .card-setor { border-left-color: #667eea; }
 .card-total { border-left-color: #17a2b8; }
 .card-com-prescricao { border-left-color: #28a745; }
@@ -383,7 +562,6 @@ body {
     color: white;
 }
 
-/* Gradientes dos icones */
 .card-setor .card-icon { background: var(--grad-setor); }
 .card-total .card-icon { background: var(--grad-total); }
 .card-com-prescricao .card-icon { background: var(--grad-com-prescricao); }
@@ -415,7 +593,54 @@ body {
 }
 
 /* =========================================================
-   6. CONTEUDO PRINCIPAL
+   8. INDICADOR DE PAGINACAO
+   ========================================================= */
+
+.paginacao-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--espacamento-md);
+    padding: 6px var(--espacamento-md);
+    background: white;
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.paginacao-texto {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cor-texto-secundario);
+}
+
+.paginacao-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.paginacao-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--raio-full);
+    background: var(--cor-borda);
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+}
+
+.paginacao-dot:hover {
+    background: var(--cor-primaria-light);
+    transform: scale(1.2);
+}
+
+.paginacao-dot.dot-ativo {
+    background: var(--cor-primaria);
+    transform: scale(1.3);
+    box-shadow: 0 0 6px rgba(220, 53, 69, 0.4);
+}
+
+/* =========================================================
+   9. CONTEUDO PRINCIPAL
    ========================================================= */
 
 .painel-main {
@@ -435,7 +660,7 @@ body {
 }
 
 /* =========================================================
-   7. TABELA DE NUTRICAO
+   10. TABELA DE NUTRICAO
    ========================================================= */
 
 .tabela-nutricao {
@@ -490,6 +715,11 @@ body {
     scroll-behavior: smooth;
 }
 
+/* Transicao para modo paginado */
+.tabela-nutricao tbody.pagina-transicao {
+    scroll-behavior: smooth;
+}
+
 /* Scrollbar customizada */
 .tabela-nutricao tbody::-webkit-scrollbar {
     width: 6px;
@@ -510,7 +740,7 @@ body {
 }
 
 /* =========================================================
-   8. LINHAS E DETALHES
+   11. LINHAS E DETALHES
    ========================================================= */
 
 /* Linha Principal */
@@ -534,7 +764,7 @@ body {
     border-bottom: 1px solid var(--cor-borda-light);
 }
 
-/* Linha sem prescricao - destaque */
+/* Linha sem prescricao */
 .tabela-nutricao tbody tr.linha-principal.sem-prescricao {
     border-left: 4px solid var(--cor-alerta);
     background: linear-gradient(90deg, rgba(255, 193, 7, 0.08) 0%, transparent 100%);
@@ -582,12 +812,24 @@ body {
 }
 
 .prescritor-info i {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 
-.prescritor-nutricionista i { color: var(--cor-sucesso); }
-.prescritor-medico i { color: var(--cor-info); }
-.prescritor-outro i { color: var(--cor-texto-muted); }
+/* Nutricionista: verde com icone de maca */
+.prescritor-nutricionista i {
+    color: var(--cor-sucesso);
+}
+
+/* Medico: azul com estetoscopio */
+.prescritor-medico i {
+    color: #2980b9;
+    font-size: 1rem;
+}
+
+/* Outro: cinza */
+.prescritor-outro i {
+    color: var(--cor-texto-muted);
+}
 
 /* Linhas de Detalhes */
 .tabela-nutricao tbody tr.linha-detalhes {
@@ -671,16 +913,14 @@ body {
     border-top: 2px solid var(--cor-borda);
 }
 
-/* Espacamento entre grupos de pacientes */
 .tabela-nutricao tbody tr.ultima-linha + tr.linha-principal td {
     padding-top: var(--espacamento-md);
 }
 
 /* =========================================================
-   9. BADGES E ICONES
+   12. BADGES E ICONES
    ========================================================= */
 
-/* Badge de Data */
 .badge-data {
     display: inline-flex;
     align-items: center;
@@ -698,7 +938,6 @@ body {
     font-size: 0.75rem;
 }
 
-/* Badge desatualizada */
 .badge-data.desatualizada {
     background: var(--cor-alerta-light);
     color: #856404;
@@ -716,7 +955,6 @@ body {
     font-size: 1.1rem;
 }
 
-/* Sem acompanhante - vazio/em branco */
 .icone-acompanhante-nao {
     display: none;
 }
@@ -733,7 +971,6 @@ body {
     font-size: 0.85rem;
 }
 
-/* Texto auxiliar */
 .texto-centro {
     text-align: center;
 }
@@ -743,7 +980,7 @@ body {
 }
 
 /* =========================================================
-   10. ESTADOS E FEEDBACK
+   13. ESTADOS E FEEDBACK
    ========================================================= */
 
 /* Loading */
@@ -831,7 +1068,7 @@ body {
 }
 
 /* =========================================================
-   11. ANIMACOES
+   14. ANIMACOES
    ========================================================= */
 
 @keyframes girar {
@@ -859,11 +1096,21 @@ body {
     50% { opacity: 0.7; background: var(--cor-primaria-light); }
 }
 
+@keyframes dropdown-entrar {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* =========================================================
-   12. RESPONSIVIDADE
+   15. RESPONSIVIDADE
    ========================================================= */
 
-/* Tablets */
 @media (max-width: 1400px) {
     .resumo-grid {
         grid-template-columns: repeat(5, 1fr);
@@ -883,8 +1130,12 @@ body {
         grid-column: span 1;
     }
 
-    .filtro-setor-select {
+    .multi-select-trigger {
         min-width: 140px;
+    }
+
+    .btn-filtro-text {
+        display: none;
     }
 }
 
@@ -894,6 +1145,10 @@ body {
     }
 
     .btn-text {
+        display: none;
+    }
+
+    .btn-filtro-text {
         display: none;
     }
 
@@ -907,7 +1162,6 @@ body {
         font-size: 0.75rem;
     }
 
-    /* Esconde colunas menos importantes */
     .col-atendimento,
     .col-medico {
         display: none;
@@ -933,7 +1187,7 @@ body {
 
     .header-controls {
         flex-wrap: wrap;
-        gap: var(--espacamento-sm);
+        gap: var(--espacamento-xs);
     }
 
     .resumo-grid {
@@ -958,6 +1212,14 @@ body {
         align-items: flex-start;
         gap: var(--espacamento-sm);
     }
+
+    .multi-select-trigger {
+        min-width: 120px;
+    }
+
+    .multi-select-dropdown {
+        min-width: 200px;
+    }
 }
 
 @media (max-width: 576px) {
@@ -974,12 +1236,15 @@ body {
         justify-content: space-between;
     }
 
-    .filtro-setor-select {
+    .multi-select-trigger {
         flex: 1;
         min-width: 0;
     }
 
-    /* Esconde mais colunas */
+    .filtro-status-container {
+        display: none;
+    }
+
     .col-prescritor,
     .col-acompanhante {
         display: none;
@@ -1003,13 +1268,24 @@ body {
     .tabela-nutricao tbody td {
         font-size: 0.85rem;
     }
+
+    .multi-select-trigger {
+        font-size: 0.8rem;
+        padding: 8px 14px;
+    }
+
+    .btn-filtro-status {
+        font-size: 0.75rem;
+        padding: 6px 12px;
+    }
 }
 
 /* Print */
 @media print {
     .painel-header,
     .btn-header,
-    .header-actions {
+    .header-actions,
+    .paginacao-indicator {
         display: none;
     }
 

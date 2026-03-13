@@ -4,10 +4,12 @@
  *
  * Funcionalidades:
  * - Listagem de pacientes com prescricoes de nutricao
- * - Filtro por setor com persistencia
+ * - Filtro multi-setor com dropdown de checkboxes
+ * - Filtros de status (sem prescricao / desatualizadas)
+ * - Auto-scroll com dois modos: rolagem continua e paginado horizontal
  * - Destaque para pacientes sem prescricao
  * - Alerta para prescricoes desatualizadas (dia anterior)
- * - Auto-scroll robusto com watchdog
+ * - Watchdog robusto para deteccao de travamento
  */
 
 (function() {
@@ -17,7 +19,7 @@
     // CONFIGURACAO
     // =========================================================
 
-    const CONFIG = {
+    var CONFIG = {
         // URLs da API
         api: {
             nutricao: '/api/paineis/painel13/nutricao',
@@ -26,32 +28,44 @@
         },
 
         // Intervalos (ms)
-        intervaloRefresh: 380000,      // 3 minutos
-        velocidadeScroll: 1.6,         // pixels por tick
-        intervaloScroll: 50,           // ms entre ticks
-        pausaNoFinal: 8000,            // pausa ao chegar no fim
-        pausaAposReset: 6000,          // pausa apos voltar ao topo
-        delayAutoScrollInicial: 8000,  // delay para iniciar auto-scroll
-        watchdogInterval: 3000,        // verificacao de travamento (mais frequente)
-        watchdogMaxTravamentos: 3,     // tentativas antes de reiniciar
+        intervaloRefresh: 380000,
+        velocidadeScroll: 1.6,
+        intervaloScroll: 50,
+        pausaNoFinal: 8000,
+        pausaAposReset: 6000,
+        delayAutoScrollInicial: 8000,
+        watchdogInterval: 3000,
+        watchdogMaxTravamentos: 3,
+
+        // Modo paginado
+        paginadoTempo: 12000,           // tempo por pagina (ms)
+        paginadoTransicao: 600,         // duracao da transicao (ms)
 
         // Limites
         maxTentativasConexao: 3,
         timeoutRequisicao: 30000,
 
-        // Storage
-        storageKeySetor: 'painel13_setor'
+        // Storage keys
+        storageKeySetores: 'painel13_setores',
+        storageKeyModoScroll: 'painel13_modoScroll',
+        storageKeyFiltroSemPresc: 'painel13_filtroSemPresc',
+        storageKeyFiltroDesatual: 'painel13_filtroDesatual'
     };
 
     // =========================================================
     // ESTADO DA APLICACAO
     // =========================================================
 
-    const Estado = {
+    var Estado = {
         // Dados
         dadosNutricao: [],
+        dadosFiltrados: [],
         setores: [],
-        setorSelecionado: '',
+        setoresSelecionados: [],
+
+        // Filtros de status
+        filtroSemPrescricao: false,
+        filtroDesatualizadas: false,
 
         // Controle
         carregando: false,
@@ -60,11 +74,19 @@
         autoScrollAtivo: false,
         autoScrollIniciado: false,
 
+        // Modo de scroll: 'rolar' ou 'paginar'
+        modoScroll: 'rolar',
+
+        // Paginacao
+        paginaAtual: 0,
+        totalPaginas: 0,
+
         // Intervalos e Timeouts
         intervalos: {
             refresh: null,
             scroll: null,
-            watchdog: null
+            watchdog: null,
+            paginado: null
         },
         timeouts: {
             autoScrollInicial: null
@@ -75,21 +97,36 @@
             ultimaPosicao: 0,
             contadorTravamento: 0,
             ultimoTimestamp: 0
-        }
+        },
+
+        // Multi-select aberto
+        dropdownAberto: false
     };
 
     // =========================================================
     // ELEMENTOS DOM (Cache)
     // =========================================================
 
-    const DOM = {};
+    var DOM = {};
 
     function cachearElementos() {
         DOM.painelMain = document.getElementById('painel-main');
         DOM.loadingContainer = document.getElementById('loading-container');
         DOM.statusIndicator = document.getElementById('status-indicator');
         DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
-        DOM.filtroSetor = document.getElementById('filtro-setor');
+
+        // Multi-select setor
+        DOM.multiSelectContainer = document.getElementById('multi-select-setor');
+        DOM.btnMultiSetor = document.getElementById('btn-multi-setor');
+        DOM.dropdownSetor = document.getElementById('dropdown-setor');
+        DOM.optionsSetor = document.getElementById('options-setor');
+        DOM.labelSetor = document.getElementById('label-setor');
+        DOM.btnSelectAll = document.getElementById('btn-select-all');
+        DOM.btnSelectNone = document.getElementById('btn-select-none');
+
+        // Filtros de status
+        DOM.btnFiltroSemPrescricao = document.getElementById('btn-filtro-sem-prescricao');
+        DOM.btnFiltroDesatualizadas = document.getElementById('btn-filtro-desatualizadas');
 
         // Cards do resumo
         DOM.nomeSetor = document.getElementById('nome-setor');
@@ -98,19 +135,22 @@
         DOM.semPrescricao = document.getElementById('sem-prescricao');
         DOM.desatualizadas = document.getElementById('desatualizadas');
 
+        // Paginacao
+        DOM.paginacaoIndicator = document.getElementById('paginacao-indicator');
+        DOM.paginacaoTexto = document.getElementById('paginacao-texto');
+        DOM.paginacaoDots = document.getElementById('paginacao-dots');
+
         // Botoes
         DOM.btnVoltar = document.getElementById('btn-voltar');
         DOM.btnRefresh = document.getElementById('btn-refresh');
         DOM.btnAutoScroll = document.getElementById('btn-auto-scroll');
+        DOM.btnModoScroll = document.getElementById('btn-modo-scroll');
     }
 
     // =========================================================
     // UTILITARIOS
     // =========================================================
 
-    /**
-     * Formata numero com separador de milhar
-     */
     function formatarNumero(valor) {
         if (valor === null || valor === undefined || isNaN(valor)) {
             return '-';
@@ -118,28 +158,19 @@
         return new Intl.NumberFormat('pt-BR').format(valor);
     }
 
-    /**
-     * Formata nome do paciente (iniciais + ultimo nome)
-     */
     function formatarNome(nomeCompleto) {
         if (!nomeCompleto || nomeCompleto.trim() === '') return '-';
-
-        const partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
+        var partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
         if (partes.length === 1) return partes[0];
-
-        const iniciais = partes.slice(0, -1).map(p => p.charAt(0)).join(' ');
-        const ultimoNome = partes[partes.length - 1];
-        return `${iniciais} ${ultimoNome}`;
+        var iniciais = partes.slice(0, -1).map(function(p) { return p.charAt(0); }).join(' ');
+        var ultimoNome = partes[partes.length - 1];
+        return iniciais + ' ' + ultimoNome;
     }
 
-    /**
-     * Formata data da prescricao
-     */
     function formatarDataPrescricao(dataISO) {
         if (!dataISO) return '-';
-
         try {
-            const data = new Date(dataISO);
+            var data = new Date(dataISO);
             return data.toLocaleString('pt-BR', {
                 day: '2-digit',
                 month: '2-digit',
@@ -152,78 +183,64 @@
         }
     }
 
-    /**
-     * Verifica se a prescricao eh do dia anterior
-     */
     function verificarDesatualizada(dataISO) {
         if (!dataISO) return false;
-
         try {
-            const dataPrescricao = new Date(dataISO);
-            const hoje = new Date();
-
-            // Zera as horas para comparar apenas datas
+            var dataPrescricao = new Date(dataISO);
+            var hoje = new Date();
             dataPrescricao.setHours(0, 0, 0, 0);
             hoje.setHours(0, 0, 0, 0);
-
-            const diferencaDias = Math.floor((hoje - dataPrescricao) / (1000 * 60 * 60 * 24));
+            var diferencaDias = Math.floor((hoje - dataPrescricao) / (1000 * 60 * 60 * 24));
             return diferencaDias >= 1;
         } catch (e) {
             return false;
         }
     }
 
-    /**
-     * Escapa HTML para prevenir XSS
-     */
     function escapeHtml(texto) {
         if (!texto) return '-';
-        const div = document.createElement('div');
+        var div = document.createElement('div');
         div.textContent = texto;
         return div.innerHTML;
     }
 
-    /**
-     * Faz requisicao com timeout e retry
-     */
-    async function fetchComRetry(url, tentativas = CONFIG.maxTentativasConexao) {
-        let ultimoErro;
+    function fetchComRetry(url, tentativas) {
+        tentativas = tentativas || CONFIG.maxTentativasConexao;
+        var ultimoErro;
 
-        for (let i = 0; i < tentativas; i++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), CONFIG.timeoutRequisicao);
+        function tentativa(i) {
+            return new Promise(function(resolve, reject) {
+                var controller = new AbortController();
+                var timeoutId = setTimeout(function() { controller.abort(); }, CONFIG.timeoutRequisicao);
 
-                const response = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                return await response.json();
-
-            } catch (erro) {
-                ultimoErro = erro;
-                console.warn(`[Painel13] Tentativa ${i + 1}/${tentativas} falhou para ${url}:`, erro.message);
-
-                if (i < tentativas - 1) {
-                    await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-                }
-            }
+                fetch(url, { signal: controller.signal })
+                    .then(function(response) {
+                        clearTimeout(timeoutId);
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    })
+                    .then(resolve)
+                    .catch(function(erro) {
+                        clearTimeout(timeoutId);
+                        ultimoErro = erro;
+                        console.warn('[Painel13] Tentativa ' + (i + 1) + '/' + tentativas + ' falhou para ' + url + ':', erro.message);
+                        if (i < tentativas - 1) {
+                            setTimeout(function() {
+                                tentativa(i + 1).then(resolve).catch(reject);
+                            }, 1000 * (i + 1));
+                        } else {
+                            reject(ultimoErro);
+                        }
+                    });
+            });
         }
 
-        throw ultimoErro;
+        return tentativa(0);
     }
 
-    /**
-     * Atualiza indicador de status
-     */
     function atualizarStatus(status) {
         if (!DOM.statusIndicator) return;
-
         DOM.statusIndicator.className = 'status-indicator';
-
         switch (status) {
             case 'online':
                 DOM.statusIndicator.classList.add('status-online');
@@ -240,131 +257,300 @@
         }
     }
 
-    /**
-     * Atualiza horario da ultima atualizacao
-     */
     function atualizarHorario() {
         if (!DOM.ultimaAtualizacao) return;
-
-        const agora = new Date();
+        var agora = new Date();
         DOM.ultimaAtualizacao.textContent = agora.toLocaleTimeString('pt-BR', {
             hour: '2-digit',
             minute: '2-digit'
         });
-
         Estado.ultimaAtualizacao = agora;
     }
 
-    /**
-     * Salva setor selecionado no localStorage
-     */
-    function salvarSetorSelecionado(setor) {
+    // =========================================================
+    // PERSISTENCIA (localStorage)
+    // =========================================================
+
+    function salvarSetoresSelecionados(setores) {
         try {
-            localStorage.setItem(CONFIG.storageKeySetor, setor);
+            localStorage.setItem(CONFIG.storageKeySetores, JSON.stringify(setores));
         } catch (e) {
-            console.warn('[Painel13] Erro ao salvar setor no localStorage:', e);
+            console.warn('[Painel13] Erro ao salvar setores:', e);
         }
     }
 
-    /**
-     * Recupera setor salvo do localStorage
-     */
-    function recuperarSetorSelecionado() {
+    function recuperarSetoresSelecionados() {
         try {
-            return localStorage.getItem(CONFIG.storageKeySetor) || '';
+            var raw = localStorage.getItem(CONFIG.storageKeySetores);
+            if (raw) return JSON.parse(raw);
         } catch (e) {
-            return '';
+            // fallback
         }
+        return [];
+    }
+
+    function salvarModoScroll(modo) {
+        try { localStorage.setItem(CONFIG.storageKeyModoScroll, modo); } catch (e) {}
+    }
+
+    function recuperarModoScroll() {
+        try { return localStorage.getItem(CONFIG.storageKeyModoScroll) || 'rolar'; } catch (e) { return 'rolar'; }
+    }
+
+    function salvarFiltroStatus(key, valor) {
+        try { localStorage.setItem(key, valor ? '1' : '0'); } catch (e) {}
+    }
+
+    function recuperarFiltroStatus(key) {
+        try { return localStorage.getItem(key) === '1'; } catch (e) { return false; }
+    }
+
+    // =========================================================
+    // MULTI-SELECT DE SETORES
+    // =========================================================
+
+    function popularMultiSelect() {
+        if (!DOM.optionsSetor) return;
+        DOM.optionsSetor.innerHTML = '';
+
+        Estado.setores.forEach(function(setor) {
+            var selecionado = Estado.setoresSelecionados.indexOf(setor.setor) !== -1;
+            var item = document.createElement('label');
+            item.className = 'multi-select-item' + (selecionado ? ' selecionado' : '');
+
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = setor.setor;
+            checkbox.checked = selecionado;
+            checkbox.className = 'multi-select-checkbox';
+
+            var texto = document.createElement('span');
+            texto.className = 'multi-select-item-text';
+            texto.textContent = setor.setor;
+
+            item.appendChild(checkbox);
+            item.appendChild(texto);
+            DOM.optionsSetor.appendChild(item);
+
+            checkbox.addEventListener('change', function() {
+                onCheckboxSetorChange(this);
+            });
+        });
+    }
+
+    function onCheckboxSetorChange(checkbox) {
+        var valor = checkbox.value;
+        var idx = Estado.setoresSelecionados.indexOf(valor);
+
+        if (checkbox.checked && idx === -1) {
+            Estado.setoresSelecionados.push(valor);
+        } else if (!checkbox.checked && idx !== -1) {
+            Estado.setoresSelecionados.splice(idx, 1);
+        }
+
+        // Atualiza visual do item
+        var label = checkbox.closest('.multi-select-item');
+        if (label) {
+            if (checkbox.checked) {
+                label.classList.add('selecionado');
+            } else {
+                label.classList.remove('selecionado');
+            }
+        }
+
+        atualizarLabelMultiSelect();
+        salvarSetoresSelecionados(Estado.setoresSelecionados);
+        onFiltroAlterado();
+    }
+
+    function atualizarLabelMultiSelect() {
+        if (!DOM.labelSetor) return;
+        var qtd = Estado.setoresSelecionados.length;
+
+        if (qtd === 0) {
+            DOM.labelSetor.textContent = 'Todos os Setores';
+        } else if (qtd === 1) {
+            DOM.labelSetor.textContent = Estado.setoresSelecionados[0];
+        } else if (qtd <= 3) {
+            DOM.labelSetor.textContent = Estado.setoresSelecionados.join(', ');
+        } else {
+            DOM.labelSetor.textContent = qtd + ' setores';
+        }
+    }
+
+    function toggleDropdown() {
+        Estado.dropdownAberto = !Estado.dropdownAberto;
+
+        if (Estado.dropdownAberto) {
+            DOM.dropdownSetor.classList.add('aberto');
+            DOM.btnMultiSetor.setAttribute('aria-expanded', 'true');
+            DOM.btnMultiSetor.classList.add('aberto');
+        } else {
+            DOM.dropdownSetor.classList.remove('aberto');
+            DOM.btnMultiSetor.setAttribute('aria-expanded', 'false');
+            DOM.btnMultiSetor.classList.remove('aberto');
+        }
+    }
+
+    function fecharDropdown() {
+        if (!Estado.dropdownAberto) return;
+        Estado.dropdownAberto = false;
+        DOM.dropdownSetor.classList.remove('aberto');
+        DOM.btnMultiSetor.setAttribute('aria-expanded', 'false');
+        DOM.btnMultiSetor.classList.remove('aberto');
+    }
+
+    function selecionarTodosSetores() {
+        Estado.setoresSelecionados = Estado.setores.map(function(s) { return s.setor; });
+        popularMultiSelect();
+        atualizarLabelMultiSelect();
+        salvarSetoresSelecionados(Estado.setoresSelecionados);
+        onFiltroAlterado();
+    }
+
+    function limparSelecaoSetores() {
+        Estado.setoresSelecionados = [];
+        popularMultiSelect();
+        atualizarLabelMultiSelect();
+        salvarSetoresSelecionados(Estado.setoresSelecionados);
+        onFiltroAlterado();
+    }
+
+    // =========================================================
+    // FILTROS DE STATUS
+    // =========================================================
+
+    function toggleFiltroSemPrescricao() {
+        Estado.filtroSemPrescricao = !Estado.filtroSemPrescricao;
+        atualizarBotaoFiltroStatus(DOM.btnFiltroSemPrescricao, Estado.filtroSemPrescricao);
+        salvarFiltroStatus(CONFIG.storageKeyFiltroSemPresc, Estado.filtroSemPrescricao);
+        aplicarFiltrosEAtualizar();
+    }
+
+    function toggleFiltroDesatualizadas() {
+        Estado.filtroDesatualizadas = !Estado.filtroDesatualizadas;
+        atualizarBotaoFiltroStatus(DOM.btnFiltroDesatualizadas, Estado.filtroDesatualizadas);
+        salvarFiltroStatus(CONFIG.storageKeyFiltroDesatual, Estado.filtroDesatualizadas);
+        aplicarFiltrosEAtualizar();
+    }
+
+    function atualizarBotaoFiltroStatus(btn, ativo) {
+        if (!btn) return;
+        if (ativo) {
+            btn.classList.add('ativo');
+            btn.setAttribute('aria-pressed', 'true');
+        } else {
+            btn.classList.remove('ativo');
+            btn.setAttribute('aria-pressed', 'false');
+        }
+    }
+
+    function aplicarFiltrosStatus(dados) {
+        if (!Estado.filtroSemPrescricao && !Estado.filtroDesatualizadas) {
+            return dados;
+        }
+
+        return dados.filter(function(reg) {
+            var semPresc = !reg.dieta_limpa || reg.dieta_limpa.trim() === '';
+            var desatual = reg.dieta_limpa && verificarDesatualizada(reg.dt_prescricao);
+
+            // Se ambos filtros ativos: mostra quem atende qualquer um (OR)
+            if (Estado.filtroSemPrescricao && Estado.filtroDesatualizadas) {
+                return semPresc || desatual;
+            }
+            if (Estado.filtroSemPrescricao) return semPresc;
+            if (Estado.filtroDesatualizadas) return desatual;
+            return true;
+        });
+    }
+
+    function aplicarFiltrosEAtualizar() {
+        Estado.dadosFiltrados = aplicarFiltrosStatus(Estado.dadosNutricao);
+        renderizarTabela();
+
+        // Reinicia scroll/paginacao se ativo
+        if (Estado.autoScrollAtivo) {
+            pararAutoScroll();
+            setTimeout(function() {
+                if (Estado.autoScrollAtivo) {
+                    iniciarAutoScrollModo();
+                }
+            }, 500);
+        }
+    }
+
+    // =========================================================
+    // CALLBACK CENTRAL DE FILTRO ALTERADO
+    // =========================================================
+
+    function onFiltroAlterado() {
+        // Cancela auto-scroll inicial se estiver agendado
+        if (Estado.timeouts.autoScrollInicial) {
+            clearTimeout(Estado.timeouts.autoScrollInicial);
+            Estado.timeouts.autoScrollInicial = null;
+        }
+
+        carregarDados();
     }
 
     // =========================================================
     // CARREGAMENTO DE DADOS
     // =========================================================
 
-    /**
-     * Carrega lista de setores
-     */
-    async function carregarSetores() {
-        try {
-            console.log('[Painel13] Carregando setores...');
+    function carregarSetores() {
+        console.log('[Painel13] Carregando setores...');
 
-            const response = await fetchComRetry(CONFIG.api.setores);
-
-            if (response.success && response.setores) {
-                Estado.setores = response.setores;
-                popularSelectSetores();
-                console.log(`[Painel13] ${Estado.setores.length} setores carregados`);
-            }
-        } catch (erro) {
-            console.error('[Painel13] Erro ao carregar setores:', erro);
-        }
+        return fetchComRetry(CONFIG.api.setores)
+            .then(function(response) {
+                if (response.success && response.setores) {
+                    Estado.setores = response.setores;
+                    popularMultiSelect();
+                    atualizarLabelMultiSelect();
+                    console.log('[Painel13] ' + Estado.setores.length + ' setores carregados');
+                }
+            })
+            .catch(function(erro) {
+                console.error('[Painel13] Erro ao carregar setores:', erro);
+            });
     }
 
-    /**
-     * Popula o select de setores
-     */
-    function popularSelectSetores() {
-        if (!DOM.filtroSetor) return;
-
-        DOM.filtroSetor.innerHTML = '<option value="">Todos os Setores</option>';
-
-        Estado.setores.forEach(setor => {
-            const option = document.createElement('option');
-            option.value = setor.setor;
-            option.textContent = setor.setor;
-
-            if (setor.setor === Estado.setorSelecionado) {
-                option.selected = true;
-            }
-
-            DOM.filtroSetor.appendChild(option);
-        });
-    }
-
-    /**
-     * Carrega dados de nutricao
-     */
-    async function carregarDados() {
+    function carregarDados() {
         if (Estado.carregando) {
             console.log('[Painel13] Carregamento ja em andamento, ignorando...');
-            return;
+            return Promise.resolve();
         }
 
         Estado.carregando = true;
         atualizarStatus('loading');
 
-        // Salva estado do scroll
-        const scrollEstaAtivo = Estado.autoScrollAtivo;
+        var scrollEstaAtivo = Estado.autoScrollAtivo;
         if (scrollEstaAtivo) {
             pararAutoScroll();
         }
 
-        try {
-            console.log('[Painel13] Carregando dados...');
+        // Monta parametro de setores (virgula-separado)
+        var urlNutricao = CONFIG.api.nutricao;
+        var urlStats = CONFIG.api.stats;
 
-            // Monta URLs com filtro de setor
-            let urlNutricao = CONFIG.api.nutricao;
-            let urlStats = CONFIG.api.stats;
+        if (Estado.setoresSelecionados.length > 0) {
+            var setorParam = encodeURIComponent(Estado.setoresSelecionados.join(','));
+            urlNutricao += '?setor=' + setorParam;
+            urlStats += '?setor=' + setorParam;
+        }
 
-            if (Estado.setorSelecionado) {
-                const setorParam = encodeURIComponent(Estado.setorSelecionado);
-                urlNutricao += `?setor=${setorParam}`;
-                urlStats += `?setor=${setorParam}`;
-            }
+        return Promise.all([
+            fetchComRetry(urlNutricao),
+            fetchComRetry(urlStats)
+        ]).then(function(results) {
+            var nutricaoResp = results[0];
+            var statsResp = results[1];
 
-            // Carrega dados em paralelo
-            const [nutricaoResp, statsResp] = await Promise.all([
-                fetchComRetry(urlNutricao),
-                fetchComRetry(urlStats)
-            ]);
-
-            // Processa dados de nutricao
             if (nutricaoResp.success) {
                 Estado.dadosNutricao = nutricaoResp.data || [];
+                Estado.dadosFiltrados = aplicarFiltrosStatus(Estado.dadosNutricao);
                 renderizarTabela();
             }
 
-            // Atualiza dashboard
             if (statsResp.success && statsResp.stats) {
                 atualizarDashboard(statsResp.stats);
             }
@@ -373,23 +559,21 @@
             atualizarStatus('online');
             Estado.errosConsecutivos = 0;
 
-            console.log(`[Painel13] ${Estado.dadosNutricao.length} registros carregados`);
+            console.log('[Painel13] ' + Estado.dadosNutricao.length + ' registros carregados, ' + Estado.dadosFiltrados.length + ' apos filtro');
 
-            // Restaura scroll se estava ativo
             if (scrollEstaAtivo) {
-                setTimeout(() => {
+                setTimeout(function() {
                     Estado.autoScrollAtivo = true;
                     atualizarBotaoScroll();
-                    iniciarAutoScroll();
+                    iniciarAutoScrollModo();
                 }, 500);
             }
 
-            // Inicia auto-scroll automatico na primeira carga
             if (!Estado.autoScrollIniciado && !scrollEstaAtivo) {
                 agendarAutoScrollInicial();
             }
 
-        } catch (erro) {
+        }).catch(function(erro) {
             console.error('[Painel13] Erro ao carregar dados:', erro);
             Estado.errosConsecutivos++;
             atualizarStatus('offline');
@@ -397,46 +581,45 @@
             if (Estado.errosConsecutivos >= 3) {
                 mostrarErro('Falha na conexao com o servidor. Verifique sua rede.');
             }
-        } finally {
+        }).then(function() {
             Estado.carregando = false;
-        }
+        });
     }
 
-    /**
-     * Agenda inicio automatico do auto-scroll
-     */
     function agendarAutoScrollInicial() {
         if (Estado.timeouts.autoScrollInicial) {
             clearTimeout(Estado.timeouts.autoScrollInicial);
         }
 
-        Estado.timeouts.autoScrollInicial = setTimeout(() => {
-            if (!Estado.autoScrollAtivo && Estado.dadosNutricao.length > 0) {
+        Estado.timeouts.autoScrollInicial = setTimeout(function() {
+            if (!Estado.autoScrollAtivo && Estado.dadosFiltrados.length > 0) {
                 console.log('[Painel13] Iniciando auto-scroll automaticamente');
                 Estado.autoScrollAtivo = true;
                 Estado.autoScrollIniciado = true;
                 atualizarBotaoScroll();
-                iniciarAutoScroll();
+                iniciarAutoScrollModo();
             }
         }, CONFIG.delayAutoScrollInicial);
     }
 
-    /**
-     * Atualiza cards do dashboard
-     */
     function atualizarDashboard(stats) {
         if (!stats) return;
 
-        // Animacao de atualizacao
-        const cards = document.querySelectorAll('.resumo-card');
-        cards.forEach(card => {
+        var cards = document.querySelectorAll('.resumo-card');
+        cards.forEach(function(card) {
             card.classList.add('atualizando');
-            setTimeout(() => card.classList.remove('atualizando'), 300);
+            setTimeout(function() { card.classList.remove('atualizando'); }, 300);
         });
 
-        // Atualiza valores
         if (DOM.nomeSetor) {
-            DOM.nomeSetor.textContent = Estado.setorSelecionado || 'Todos';
+            var qtd = Estado.setoresSelecionados.length;
+            if (qtd === 0) {
+                DOM.nomeSetor.textContent = 'Todos';
+            } else if (qtd === 1) {
+                DOM.nomeSetor.textContent = Estado.setoresSelecionados[0];
+            } else {
+                DOM.nomeSetor.textContent = qtd + ' setores';
+            }
         }
         if (DOM.totalPacientes) {
             DOM.totalPacientes.textContent = formatarNumero(stats.total_pacientes);
@@ -448,11 +631,10 @@
             DOM.semPrescricao.textContent = formatarNumero(stats.sem_prescricao);
         }
 
-        // Conta prescricoes desatualizadas
         if (DOM.desatualizadas) {
-            const desatualizadas = Estado.dadosNutricao.filter(d =>
-                d.dieta_limpa && verificarDesatualizada(d.dt_prescricao)
-            ).length;
+            var desatualizadas = Estado.dadosNutricao.filter(function(d) {
+                return d.dieta_limpa && verificarDesatualizada(d.dt_prescricao);
+            }).length;
             DOM.desatualizadas.textContent = formatarNumero(desatualizadas);
         }
     }
@@ -461,164 +643,154 @@
     // RENDERIZACAO DA TABELA
     // =========================================================
 
-    /**
-     * Renderiza a tabela de nutricao
-     */
     function renderizarTabela() {
         if (!DOM.painelMain) return;
 
-        if (!Estado.dadosNutricao || Estado.dadosNutricao.length === 0) {
-            DOM.painelMain.innerHTML = `
-                <div class="mensagem-vazia">
-                    <i class="fas fa-inbox"></i>
-                    <h3>Nenhum registro encontrado</h3>
-                    <p>Nao ha dados para o setor selecionado</p>
-                </div>
-            `;
+        var dados = Estado.dadosFiltrados;
+
+        if (!dados || dados.length === 0) {
+            DOM.painelMain.innerHTML =
+                '<div class="mensagem-vazia">' +
+                    '<i class="fas fa-inbox"></i>' +
+                    '<h3>Nenhum registro encontrado</h3>' +
+                    '<p>Nao ha dados para os filtros selecionados</p>' +
+                '</div>';
+
+            // Esconde paginacao
+            if (DOM.paginacaoIndicator) DOM.paginacaoIndicator.style.display = 'none';
             return;
         }
 
-        // Gera linhas da tabela
-        const linhasHtml = Estado.dadosNutricao.map(registro => criarLinhasPaciente(registro)).join('');
+        var linhasHtml = dados.map(function(registro) {
+            return criarLinhasPaciente(registro);
+        }).join('');
 
-        const html = `
-            <div class="tabela-container">
-                <table class="tabela-nutricao">
-                    <thead>
-                        <tr>
-                            <th class="col-leito">Leito</th>
-                            <th class="col-atendimento">Atend.</th>
-                            <th class="col-paciente">Paciente</th>
-                            <th class="col-acompanhante">Acomp.</th>
-                            <th class="col-prescritor">Prescritor</th>
-                            <th class="col-medico">Medico Resp.</th>
-                            <th class="col-alergia">Alergia</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-body">
-                        ${linhasHtml}
-                    </tbody>
-                </table>
-            </div>
-        `;
+        var html =
+            '<div class="tabela-container">' +
+                '<table class="tabela-nutricao">' +
+                    '<thead>' +
+                        '<tr>' +
+                            '<th class="col-leito">Leito</th>' +
+                            '<th class="col-atendimento">Atend.</th>' +
+                            '<th class="col-paciente">Paciente</th>' +
+                            '<th class="col-acompanhante">Acomp.</th>' +
+                            '<th class="col-prescritor">Prescritor</th>' +
+                            '<th class="col-medico">Medico Resp.</th>' +
+                            '<th class="col-alergia">Alergia</th>' +
+                        '</tr>' +
+                    '</thead>' +
+                    '<tbody id="tabela-body">' +
+                        linhasHtml +
+                    '</tbody>' +
+                '</table>' +
+            '</div>';
 
         DOM.painelMain.innerHTML = html;
+
+        // Atualiza paginacao se modo paginado
+        if (Estado.modoScroll === 'paginar') {
+            calcularPaginas();
+            mostrarPagina(0);
+        } else {
+            if (DOM.paginacaoIndicator) DOM.paginacaoIndicator.style.display = 'none';
+        }
     }
 
-    /**
-     * Cria linhas HTML para um paciente
-     */
     function criarLinhasPaciente(registro) {
-        const nomeFormatado = formatarNome(registro.nm_paciente);
-        const temPrescricao = registro.dieta_limpa && registro.dieta_limpa.trim() !== '';
-        const ehDesatualizada = temPrescricao && verificarDesatualizada(registro.dt_prescricao);
+        var nomeFormatado = formatarNome(registro.nm_paciente);
+        var temPrescricao = registro.dieta_limpa && registro.dieta_limpa.trim() !== '';
+        var ehDesatualizada = temPrescricao && verificarDesatualizada(registro.dt_prescricao);
 
-        // Classes da linha principal
-        let classesLinha = 'linha-principal';
+        var classesLinha = 'linha-principal';
         if (!temPrescricao) {
             classesLinha += ' sem-prescricao';
         } else if (ehDesatualizada) {
             classesLinha += ' prescricao-desatualizada';
         }
 
-        // Linha principal
-        let html = `
-            <tr class="${classesLinha}">
-                <td class="col-leito">
-                    <span class="leito-badge">${escapeHtml(registro.leito) || '-'}</span>
-                </td>
-                <td class="col-atendimento">${escapeHtml(registro.nr_atendimento) || '-'}</td>
-                <td class="col-paciente">
-                    <div class="paciente-info">
-                        <span class="paciente-nome">${escapeHtml(nomeFormatado)}</span>
-                        <span class="paciente-detalhes">${escapeHtml(registro.convenio) || '-'} | ${escapeHtml(registro.idade) || '-'}</span>
-                    </div>
-                </td>
-                <td class="col-acompanhante texto-centro">
-                    ${renderizarIconeAcompanhante(registro.acompanhante)}
-                </td>
-                <td class="col-prescritor">
-                    ${renderizarPrescritor(registro)}
-                </td>
-                <td class="col-medico">${escapeHtml(registro.nm_medico) || '-'}</td>
-                <td class="col-alergia texto-centro">
-                    ${renderizarIconeAlergia(registro.alergia)}
-                </td>
-            </tr>
-        `;
+        var html =
+            '<tr class="' + classesLinha + '">' +
+                '<td class="col-leito">' +
+                    '<span class="leito-badge">' + (escapeHtml(registro.leito) || '-') + '</span>' +
+                '</td>' +
+                '<td class="col-atendimento">' + (escapeHtml(registro.nr_atendimento) || '-') + '</td>' +
+                '<td class="col-paciente">' +
+                    '<div class="paciente-info">' +
+                        '<span class="paciente-nome">' + escapeHtml(nomeFormatado) + '</span>' +
+                        '<span class="paciente-detalhes">' + (escapeHtml(registro.convenio) || '-') + ' | ' + (escapeHtml(registro.idade) || '-') + '</span>' +
+                    '</div>' +
+                '</td>' +
+                '<td class="col-acompanhante texto-centro">' +
+                    renderizarIconeAcompanhante(registro.acompanhante) +
+                '</td>' +
+                '<td class="col-prescritor">' +
+                    renderizarPrescritor(registro) +
+                '</td>' +
+                '<td class="col-medico">' + (escapeHtml(registro.nm_medico) || '-') + '</td>' +
+                '<td class="col-alergia texto-centro">' +
+                    renderizarIconeAlergia(registro.alergia) +
+                '</td>' +
+            '</tr>';
 
-        // Linha de prescricao ou alerta
         if (temPrescricao) {
-            const dataFormatada = formatarDataPrescricao(registro.dt_prescricao);
-            const classeBadgeData = ehDesatualizada ? 'badge-data desatualizada' : 'badge-data';
-            const iconeData = ehDesatualizada ? 'fa-calendar-times' : 'fa-calendar-check';
+            var dataFormatada = formatarDataPrescricao(registro.dt_prescricao);
+            var classeBadgeData = ehDesatualizada ? 'badge-data desatualizada' : 'badge-data';
+            var iconeData = ehDesatualizada ? 'fa-calendar-times' : 'fa-calendar-check';
 
-            html += `
-                <tr class="linha-detalhes linha-prescricao">
-                    <td colspan="7">
-                        <div class="prescricao-content">
-                            <span class="${classeBadgeData}">
-                                <i class="fas ${iconeData}"></i>
-                                ${dataFormatada}
-                            </span>
-                            <span class="prescricao-info">
-                                <i class="fas fa-prescription-bottle-medical"></i>
-                                <strong>Prescricao ${escapeHtml(registro.nr_prescricao) || '-'}:</strong>
-                                ${escapeHtml(registro.dieta_limpa)}
-                            </span>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            html +=
+                '<tr class="linha-detalhes linha-prescricao">' +
+                    '<td colspan="7">' +
+                        '<div class="prescricao-content">' +
+                            '<span class="' + classeBadgeData + '">' +
+                                '<i class="fas ' + iconeData + '"></i> ' +
+                                dataFormatada +
+                            '</span>' +
+                            '<span class="prescricao-info">' +
+                                '<i class="fas fa-prescription-bottle-medical"></i> ' +
+                                '<strong>Prescricao ' + (escapeHtml(registro.nr_prescricao) || '-') + ':</strong> ' +
+                                escapeHtml(registro.dieta_limpa) +
+                            '</span>' +
+                        '</div>' +
+                    '</td>' +
+                '</tr>';
 
-            // Linha de observacao (se existir)
-            const obsLimpa = registro.obs_limpa ? registro.obs_limpa.trim() : '';
+            var obsLimpa = registro.obs_limpa ? registro.obs_limpa.trim() : '';
             if (obsLimpa && obsLimpa !== '' && obsLimpa !== '-') {
-                html += `
-                    <tr class="linha-detalhes linha-observacao ultima-linha">
-                        <td colspan="7">
-                            <div class="observacao-content">
-                                <i class="fas fa-comment-medical"></i>
-                                <span><strong>Obs:</strong> ${escapeHtml(obsLimpa)}</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                html +=
+                    '<tr class="linha-detalhes linha-observacao ultima-linha">' +
+                        '<td colspan="7">' +
+                            '<div class="observacao-content">' +
+                                '<i class="fas fa-comment-medical"></i> ' +
+                                '<span><strong>Obs:</strong> ' + escapeHtml(obsLimpa) + '</span>' +
+                            '</div>' +
+                        '</td>' +
+                    '</tr>';
             } else {
-                // Adiciona classe ultima-linha na prescricao
+                // Marca prescricao como ultima linha
                 html = html.replace('linha-prescricao">', 'linha-prescricao ultima-linha">');
             }
         } else {
-            // Linha de alerta - sem prescricao
-            html += `
-                <tr class="linha-detalhes linha-alerta ultima-linha">
-                    <td colspan="7">
-                        <div class="alerta-sem-prescricao">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>Paciente sem prescricao de nutricao</span>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            html +=
+                '<tr class="linha-detalhes linha-alerta ultima-linha">' +
+                    '<td colspan="7">' +
+                        '<div class="alerta-sem-prescricao">' +
+                            '<i class="fas fa-exclamation-triangle"></i> ' +
+                            '<span>Paciente sem prescricao de nutricao</span>' +
+                        '</div>' +
+                    '</td>' +
+                '</tr>';
         }
 
         return html;
     }
 
-    /**
-     * Renderiza icone de acompanhante
-     */
     function renderizarIconeAcompanhante(acompanhante) {
         if (acompanhante === 'Sim') {
             return '<i class="fas fa-user-plus icone-acompanhante-sim" title="Com acompanhante"></i>';
         }
-        // Sem acompanhante - retorna vazio (em branco)
         return '';
     }
 
-    /**
-     * Renderiza icone de alergia
-     */
     function renderizarIconeAlergia(alergia) {
         if (alergia === 'Sim') {
             return '<i class="fas fa-allergies icone-alergia-sim" title="Paciente com alergia"></i>';
@@ -626,221 +798,363 @@
         return '<span class="icone-alergia-nao" title="Sem alergia registrada">-</span>';
     }
 
-    /**
-     * Renderiza informacoes do prescritor
-     */
+    // Melhoria 4: Icones diferenciados para prescritor
     function renderizarPrescritor(registro) {
         if (!registro.nm_prescritor || registro.nm_prescritor.trim() === '') {
             return '<span class="texto-muted">-</span>';
         }
 
-        let icone = '';
-        let classe = '';
+        var icone = '';
+        var classe = '';
 
         if (registro.tipo_prescritor === 'Nutricionista') {
-            icone = '<i class="fas fa-user-nurse" title="Nutricionista"></i>';
+            icone = '<i class="fas fa-apple-whole" title="Nutricionista"></i>';
             classe = 'prescritor-nutricionista';
         } else if (registro.tipo_prescritor === 'Medico') {
-            icone = '<i class="fas fa-user-md" title="Medico"></i>';
+            icone = '<i class="fas fa-stethoscope" title="Medico"></i>';
             classe = 'prescritor-medico';
         } else {
             icone = '<i class="fas fa-user" title="Outro"></i>';
             classe = 'prescritor-outro';
         }
 
-        return `
-            <div class="prescritor-info ${classe}">
-                ${icone}
-                <span>${escapeHtml(registro.nm_prescritor)}</span>
-            </div>
-        `;
+        return '<div class="prescritor-info ' + classe + '">' +
+                    icone +
+                    ' <span>' + escapeHtml(registro.nm_prescritor) + '</span>' +
+                '</div>';
     }
 
-    /**
-     * Mostra mensagem de erro
-     */
     function mostrarErro(mensagem) {
         if (!DOM.painelMain) return;
-
-        DOM.painelMain.innerHTML = `
-            <div class="mensagem-erro">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Erro ao Carregar Dados</h3>
-                <p>${escapeHtml(mensagem)}</p>
-                <button class="btn-tentar-novamente" onclick="location.reload()">
-                    <i class="fas fa-sync-alt"></i> Tentar Novamente
-                </button>
-            </div>
-        `;
+        DOM.painelMain.innerHTML =
+            '<div class="mensagem-erro">' +
+                '<i class="fas fa-exclamation-triangle"></i>' +
+                '<h3>Erro ao Carregar Dados</h3>' +
+                '<p>' + escapeHtml(mensagem) + '</p>' +
+                '<button class="btn-tentar-novamente" onclick="location.reload()">' +
+                    '<i class="fas fa-sync-alt"></i> Tentar Novamente' +
+                '</button>' +
+            '</div>';
     }
 
     // =========================================================
-    // AUTO-SCROLL COM WATCHDOG ROBUSTO
+    // MODO DE SCROLL - SELETOR
     // =========================================================
 
-    /**
-     * Obtem o elemento de scroll (tbody da tabela)
-     */
+    function iniciarAutoScrollModo() {
+        if (Estado.modoScroll === 'paginar') {
+            iniciarPaginado();
+        } else {
+            iniciarAutoScroll();
+        }
+    }
+
+    function alternarModoScroll() {
+        var scrollEstaAtivo = Estado.autoScrollAtivo;
+
+        if (scrollEstaAtivo) {
+            pararAutoScroll();
+        }
+
+        if (Estado.modoScroll === 'rolar') {
+            Estado.modoScroll = 'paginar';
+        } else {
+            Estado.modoScroll = 'rolar';
+        }
+
+        salvarModoScroll(Estado.modoScroll);
+        atualizarBotaoModoScroll();
+
+        // Re-renderiza para aplicar modo correto
+        renderizarTabela();
+
+        if (scrollEstaAtivo) {
+            Estado.autoScrollAtivo = true;
+            atualizarBotaoScroll();
+            setTimeout(function() {
+                iniciarAutoScrollModo();
+            }, 500);
+        }
+    }
+
+    function atualizarBotaoModoScroll() {
+        if (!DOM.btnModoScroll) return;
+
+        if (Estado.modoScroll === 'paginar') {
+            DOM.btnModoScroll.innerHTML = '<i class="fas fa-columns"></i><span class="btn-text">Paginar</span>';
+            DOM.btnModoScroll.title = 'Modo atual: Paginado. Clique para Rolagem';
+            DOM.btnModoScroll.classList.add('modo-paginado');
+        } else {
+            DOM.btnModoScroll.innerHTML = '<i class="fas fa-scroll"></i><span class="btn-text">Rolar</span>';
+            DOM.btnModoScroll.title = 'Modo atual: Rolagem. Clique para Paginado';
+            DOM.btnModoScroll.classList.remove('modo-paginado');
+        }
+    }
+
+    // =========================================================
+    // AUTO-SCROLL - MODO ROLAGEM CONTINUA
+    // =========================================================
+
     function getElementoScroll() {
         return document.getElementById('tabela-body');
     }
 
-    /**
-     * Inicia o auto-scroll
-     */
     function iniciarAutoScroll() {
-        // Para qualquer scroll anterior
-        pararAutoScroll();
+        pararScrollInterno();
 
-        const elemento = getElementoScroll();
+        var elemento = getElementoScroll();
         if (!elemento) {
             console.warn('[Painel13] Elemento de scroll nao encontrado');
             return;
         }
 
-        const scrollMax = elemento.scrollHeight - elemento.clientHeight;
+        var scrollMax = elemento.scrollHeight - elemento.clientHeight;
         if (scrollMax <= 5) {
             console.log('[Painel13] Conteudo cabe na tela, scroll nao necessario');
             return;
         }
 
-        console.log('[Painel13] Iniciando auto-scroll, altura total:', elemento.scrollHeight);
+        console.log('[Painel13] Iniciando auto-scroll (rolagem), altura total:', elemento.scrollHeight);
 
-        // Reseta watchdog
         Estado.watchdog = {
             ultimaPosicao: elemento.scrollTop,
             contadorTravamento: 0,
             ultimoTimestamp: Date.now()
         };
 
-        // Inicia watchdog primeiro
         iniciarWatchdog();
 
-        // Inicia scroll
-        Estado.intervalos.scroll = setInterval(() => {
+        Estado.intervalos.scroll = setInterval(function() {
             if (!Estado.autoScrollAtivo) {
                 pararAutoScroll();
                 return;
             }
 
-            const elem = getElementoScroll();
+            var elem = getElementoScroll();
             if (!elem) {
                 pararAutoScroll();
                 return;
             }
 
-            const scrollAtual = elem.scrollTop;
-            const scrollMax = elem.scrollHeight - elem.clientHeight;
+            var scrollAtual = elem.scrollTop;
+            var scrollMax = elem.scrollHeight - elem.clientHeight;
 
-            // Chegou ao final
             if (scrollAtual >= scrollMax - 2) {
                 console.log('[Painel13] Chegou ao final do scroll');
-
-                // Para o scroll mas mantem o estado ativo
                 clearInterval(Estado.intervalos.scroll);
                 Estado.intervalos.scroll = null;
 
-                // Pausa no final
-                setTimeout(() => {
+                setTimeout(function() {
                     if (!Estado.autoScrollAtivo) return;
-
                     console.log('[Painel13] Voltando ao topo');
                     elem.scrollTop = 0;
-
-                    // Reseta watchdog
                     Estado.watchdog.ultimaPosicao = 0;
                     Estado.watchdog.contadorTravamento = 0;
 
-                    // Pausa no topo antes de recomecar
-                    setTimeout(() => {
+                    setTimeout(function() {
                         if (Estado.autoScrollAtivo) {
                             console.log('[Painel13] Reiniciando ciclo de scroll');
                             iniciarAutoScroll();
                         }
                     }, CONFIG.pausaAposReset);
-
                 }, CONFIG.pausaNoFinal);
 
                 return;
             }
 
-            // Continua scrollando
             elem.scrollTop += CONFIG.velocidadeScroll;
-
         }, CONFIG.intervaloScroll);
     }
 
-    /**
-     * Para o auto-scroll
-     */
-    function pararAutoScroll() {
+    function pararScrollInterno() {
         if (Estado.intervalos.scroll) {
             clearInterval(Estado.intervalos.scroll);
             Estado.intervalos.scroll = null;
         }
         pararWatchdog();
-        console.log('[Painel13] Auto-scroll parado');
     }
 
-    /**
-     * Inicia watchdog para detectar travamentos
-     */
+    // =========================================================
+    // AUTO-SCROLL - MODO PAGINADO HORIZONTAL
+    // =========================================================
+
+    function calcularPaginas() {
+        var tbody = getElementoScroll();
+        if (!tbody) {
+            Estado.totalPaginas = 0;
+            return;
+        }
+
+        var alturaVisivel = tbody.clientHeight;
+        var alturaTotal = tbody.scrollHeight;
+
+        if (alturaTotal <= alturaVisivel || alturaVisivel <= 0) {
+            Estado.totalPaginas = 1;
+        } else {
+            Estado.totalPaginas = Math.ceil(alturaTotal / alturaVisivel);
+        }
+
+        Estado.paginaAtual = 0;
+        atualizarIndicadorPagina();
+    }
+
+    function mostrarPagina(indice) {
+        var tbody = getElementoScroll();
+        if (!tbody) return;
+
+        if (indice < 0) indice = 0;
+        if (indice >= Estado.totalPaginas) indice = 0;
+
+        Estado.paginaAtual = indice;
+
+        var alturaVisivel = tbody.clientHeight;
+        var targetScroll = indice * alturaVisivel;
+        var scrollMax = tbody.scrollHeight - alturaVisivel;
+
+        if (targetScroll > scrollMax) targetScroll = scrollMax;
+
+        // Transicao suave com classe de animacao
+        tbody.classList.add('pagina-transicao');
+        tbody.scrollTop = targetScroll;
+
+        setTimeout(function() {
+            tbody.classList.remove('pagina-transicao');
+        }, CONFIG.paginadoTransicao);
+
+        atualizarIndicadorPagina();
+    }
+
+    function proximaPagina() {
+        var proxima = Estado.paginaAtual + 1;
+        if (proxima >= Estado.totalPaginas) {
+            proxima = 0;
+        }
+        mostrarPagina(proxima);
+    }
+
+    function iniciarPaginado() {
+        pararPaginado();
+
+        calcularPaginas();
+
+        if (Estado.totalPaginas <= 1) {
+            console.log('[Painel13] Conteudo cabe em 1 pagina, paginacao nao necessaria');
+            return;
+        }
+
+        console.log('[Painel13] Iniciando modo paginado, ' + Estado.totalPaginas + ' paginas');
+        mostrarPagina(0);
+
+        Estado.intervalos.paginado = setInterval(function() {
+            if (!Estado.autoScrollAtivo) {
+                pararPaginado();
+                return;
+            }
+            proximaPagina();
+        }, CONFIG.paginadoTempo);
+    }
+
+    function pararPaginado() {
+        if (Estado.intervalos.paginado) {
+            clearInterval(Estado.intervalos.paginado);
+            Estado.intervalos.paginado = null;
+        }
+    }
+
+    function atualizarIndicadorPagina() {
+        if (!DOM.paginacaoIndicator) return;
+
+        if (Estado.modoScroll !== 'paginar' || Estado.totalPaginas <= 1) {
+            DOM.paginacaoIndicator.style.display = 'none';
+            return;
+        }
+
+        DOM.paginacaoIndicator.style.display = 'flex';
+
+        if (DOM.paginacaoTexto) {
+            DOM.paginacaoTexto.textContent = 'Pagina ' + (Estado.paginaAtual + 1) + ' de ' + Estado.totalPaginas;
+        }
+
+        if (DOM.paginacaoDots) {
+            var dotsHtml = '';
+            for (var i = 0; i < Estado.totalPaginas; i++) {
+                var classeAtivo = i === Estado.paginaAtual ? ' dot-ativo' : '';
+                dotsHtml += '<span class="paginacao-dot' + classeAtivo + '" data-pagina="' + i + '"></span>';
+            }
+            DOM.paginacaoDots.innerHTML = dotsHtml;
+
+            // Clique nos dots
+            var dots = DOM.paginacaoDots.querySelectorAll('.paginacao-dot');
+            dots.forEach(function(dot) {
+                dot.addEventListener('click', function() {
+                    var pag = parseInt(this.getAttribute('data-pagina'), 10);
+                    mostrarPagina(pag);
+
+                    // Reinicia timer se paginado automatico
+                    if (Estado.intervalos.paginado) {
+                        pararPaginado();
+                        Estado.intervalos.paginado = setInterval(function() {
+                            if (!Estado.autoScrollAtivo) {
+                                pararPaginado();
+                                return;
+                            }
+                            proximaPagina();
+                        }, CONFIG.paginadoTempo);
+                    }
+                });
+            });
+        }
+    }
+
+    // =========================================================
+    // WATCHDOG
+    // =========================================================
+
     function iniciarWatchdog() {
         pararWatchdog();
-
         console.log('[Painel13] Watchdog iniciado');
 
-        Estado.intervalos.watchdog = setInterval(() => {
+        Estado.intervalos.watchdog = setInterval(function() {
             if (!Estado.autoScrollAtivo) {
                 pararWatchdog();
                 return;
             }
 
-            const elemento = getElementoScroll();
+            var elemento = getElementoScroll();
             if (!elemento) return;
 
-            const posicaoAtual = elemento.scrollTop;
-            const scrollMax = elemento.scrollHeight - elemento.clientHeight;
-            const tempoAtual = Date.now();
+            var posicaoAtual = elemento.scrollTop;
+            var scrollMax = elemento.scrollHeight - elemento.clientHeight;
 
-            // Verifica se esta scrollando (nao esta no final e nao esta movendo)
-            const estaNoMeio = posicaoAtual > 5 && posicaoAtual < scrollMax - 5;
-            const naoMoveu = Math.abs(posicaoAtual - Estado.watchdog.ultimaPosicao) < 1;
-            const intervaloOk = Estado.intervalos.scroll !== null;
+            var estaNoMeio = posicaoAtual > 5 && posicaoAtual < scrollMax - 5;
+            var naoMoveu = Math.abs(posicaoAtual - Estado.watchdog.ultimaPosicao) < 1;
+            var intervaloOk = Estado.intervalos.scroll !== null;
 
             if (estaNoMeio && naoMoveu && intervaloOk) {
                 Estado.watchdog.contadorTravamento++;
-                console.warn(`[Painel13] Watchdog: possivel travamento (${Estado.watchdog.contadorTravamento}/${CONFIG.watchdogMaxTravamentos})`);
+                console.warn('[Painel13] Watchdog: possivel travamento (' + Estado.watchdog.contadorTravamento + '/' + CONFIG.watchdogMaxTravamentos + ')');
 
                 if (Estado.watchdog.contadorTravamento >= CONFIG.watchdogMaxTravamentos) {
                     console.error('[Painel13] Watchdog: TRAVAMENTO CONFIRMADO - Reiniciando scroll');
+                    pararScrollInterno();
 
-                    // Reinicia o scroll
-                    pararAutoScroll();
-
-                    setTimeout(() => {
+                    setTimeout(function() {
                         if (Estado.autoScrollAtivo) {
                             Estado.watchdog.contadorTravamento = 0;
                             iniciarAutoScroll();
                         }
                     }, 1000);
-
                     return;
                 }
             } else {
-                // Scroll funcionando normalmente
                 Estado.watchdog.contadorTravamento = 0;
             }
 
             Estado.watchdog.ultimaPosicao = posicaoAtual;
-            Estado.watchdog.ultimoTimestamp = tempoAtual;
-
+            Estado.watchdog.ultimoTimestamp = Date.now();
         }, CONFIG.watchdogInterval);
     }
 
-    /**
-     * Para watchdog
-     */
     function pararWatchdog() {
         if (Estado.intervalos.watchdog) {
             clearInterval(Estado.intervalos.watchdog);
@@ -848,9 +1162,16 @@
         }
     }
 
-    /**
-     * Atualiza estado visual do botao de scroll
-     */
+    // =========================================================
+    // CONTROLE UNIFICADO DE AUTO-SCROLL
+    // =========================================================
+
+    function pararAutoScroll() {
+        pararScrollInterno();
+        pararPaginado();
+        console.log('[Painel13] Auto-scroll parado');
+    }
+
     function atualizarBotaoScroll() {
         if (!DOM.btnAutoScroll) return;
 
@@ -869,40 +1190,62 @@
     // EVENT HANDLERS
     // =========================================================
 
-    /**
-     * Configura todos os event listeners
-     */
     function configurarEventos() {
-        // Filtro de setor
-        if (DOM.filtroSetor) {
-            DOM.filtroSetor.addEventListener('change', (e) => {
-                Estado.setorSelecionado = e.target.value;
-                salvarSetorSelecionado(Estado.setorSelecionado);
-
-                // Cancela auto-scroll inicial se estiver agendado
-                if (Estado.timeouts.autoScrollInicial) {
-                    clearTimeout(Estado.timeouts.autoScrollInicial);
-                    Estado.timeouts.autoScrollInicial = null;
-                }
-
-                // Recarrega dados
-                carregarDados();
+        // Multi-select: abrir/fechar dropdown
+        if (DOM.btnMultiSetor) {
+            DOM.btnMultiSetor.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleDropdown();
             });
+        }
+
+        // Selecionar todos / limpar
+        if (DOM.btnSelectAll) {
+            DOM.btnSelectAll.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selecionarTodosSetores();
+            });
+        }
+        if (DOM.btnSelectNone) {
+            DOM.btnSelectNone.addEventListener('click', function(e) {
+                e.stopPropagation();
+                limparSelecaoSetores();
+            });
+        }
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (Estado.dropdownAberto && DOM.multiSelectContainer && !DOM.multiSelectContainer.contains(e.target)) {
+                fecharDropdown();
+            }
+        });
+
+        // Filtros de status
+        if (DOM.btnFiltroSemPrescricao) {
+            DOM.btnFiltroSemPrescricao.addEventListener('click', toggleFiltroSemPrescricao);
+        }
+        if (DOM.btnFiltroDesatualizadas) {
+            DOM.btnFiltroDesatualizadas.addEventListener('click', toggleFiltroDesatualizadas);
+        }
+
+        // Botao modo scroll
+        if (DOM.btnModoScroll) {
+            DOM.btnModoScroll.addEventListener('click', alternarModoScroll);
         }
 
         // Botao voltar
         if (DOM.btnVoltar) {
-            DOM.btnVoltar.addEventListener('click', () => {
+            DOM.btnVoltar.addEventListener('click', function() {
                 window.location.href = '/frontend/dashboard.html';
             });
         }
 
         // Botao refresh
         if (DOM.btnRefresh) {
-            DOM.btnRefresh.addEventListener('click', () => {
+            DOM.btnRefresh.addEventListener('click', function() {
                 DOM.btnRefresh.classList.add('girando');
-                carregarDados().finally(() => {
-                    setTimeout(() => {
+                carregarDados().then(function() {
+                    setTimeout(function() {
                         DOM.btnRefresh.classList.remove('girando');
                     }, 500);
                 });
@@ -911,13 +1254,13 @@
 
         // Botao auto scroll
         if (DOM.btnAutoScroll) {
-            DOM.btnAutoScroll.addEventListener('click', () => {
+            DOM.btnAutoScroll.addEventListener('click', function() {
                 Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
                 Estado.autoScrollIniciado = true;
                 atualizarBotaoScroll();
 
                 if (Estado.autoScrollAtivo) {
-                    iniciarAutoScroll();
+                    iniciarAutoScrollModo();
                 } else {
                     pararAutoScroll();
                 }
@@ -925,48 +1268,60 @@
         }
 
         // Teclas de atalho
-        document.addEventListener('keydown', (e) => {
-            // ESC - para scroll
-            if (e.key === 'Escape' && Estado.autoScrollAtivo) {
-                Estado.autoScrollAtivo = false;
-                atualizarBotaoScroll();
-                pararAutoScroll();
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (Estado.dropdownAberto) {
+                    fecharDropdown();
+                } else if (Estado.autoScrollAtivo) {
+                    Estado.autoScrollAtivo = false;
+                    atualizarBotaoScroll();
+                    pararAutoScroll();
+                }
             }
 
-            // F5 - refresh
             if (e.key === 'F5') {
                 e.preventDefault();
                 carregarDados();
             }
 
-            // Espaco - toggle scroll
             if (e.key === ' ' && e.target === document.body) {
                 e.preventDefault();
                 Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
                 Estado.autoScrollIniciado = true;
                 atualizarBotaoScroll();
                 if (Estado.autoScrollAtivo) {
-                    iniciarAutoScroll();
+                    iniciarAutoScrollModo();
                 } else {
                     pararAutoScroll();
+                }
+            }
+
+            // Setas para navegacao manual de pagina
+            if (Estado.modoScroll === 'paginar') {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    proximaPagina();
+                }
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    var anterior = Estado.paginaAtual - 1;
+                    if (anterior < 0) anterior = Estado.totalPaginas - 1;
+                    mostrarPagina(anterior);
                 }
             }
         });
 
         // Visibilidade da pagina
-        document.addEventListener('visibilitychange', () => {
+        document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
-                // Pausa quando aba nao esta visivel
-                if (Estado.autoScrollAtivo && Estado.intervalos.scroll) {
+                if (Estado.autoScrollAtivo) {
                     pararAutoScroll();
-                    Estado.autoScrollAtivo = true; // Mantem estado para retomar
+                    Estado.autoScrollAtivo = true;
                 }
             } else {
-                // Retoma quando aba volta a ser visivel
-                if (Estado.autoScrollAtivo && !Estado.intervalos.scroll) {
-                    iniciarAutoScroll();
+                if (Estado.autoScrollAtivo) {
+                    iniciarAutoScrollModo();
                 }
-                // Atualiza dados ao voltar
                 carregarDados();
             }
         });
@@ -976,34 +1331,32 @@
     // INICIALIZACAO
     // =========================================================
 
-    /**
-     * Inicializa o painel
-     */
-    async function inicializar() {
+    function inicializar() {
         console.log('[Painel13] Inicializando...');
 
-        // Cache elementos DOM
         cachearElementos();
 
-        // Recupera setor salvo
-        Estado.setorSelecionado = recuperarSetorSelecionado();
+        // Recupera estados salvos
+        Estado.setoresSelecionados = recuperarSetoresSelecionados();
+        Estado.modoScroll = recuperarModoScroll();
+        Estado.filtroSemPrescricao = recuperarFiltroStatus(CONFIG.storageKeyFiltroSemPresc);
+        Estado.filtroDesatualizadas = recuperarFiltroStatus(CONFIG.storageKeyFiltroDesatual);
 
-        // Configura eventos
+        // Aplica estados visuais
+        atualizarBotaoModoScroll();
+        atualizarBotaoFiltroStatus(DOM.btnFiltroSemPrescricao, Estado.filtroSemPrescricao);
+        atualizarBotaoFiltroStatus(DOM.btnFiltroDesatualizadas, Estado.filtroDesatualizadas);
+
         configurarEventos();
 
-        // Carrega setores primeiro
-        await carregarSetores();
-
-        // Carrega dados
-        await carregarDados();
-
-        // Configura refresh automatico
-        Estado.intervalos.refresh = setInterval(carregarDados, CONFIG.intervaloRefresh);
-
-        console.log('[Painel13] Inicializado com sucesso');
+        carregarSetores().then(function() {
+            return carregarDados();
+        }).then(function() {
+            Estado.intervalos.refresh = setInterval(carregarDados, CONFIG.intervaloRefresh);
+            console.log('[Painel13] Inicializado com sucesso');
+        });
     }
 
-    // Aguarda DOM estar pronto
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', inicializar);
     } else {

@@ -3,156 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="Evolução de Contas - Hospital Anchieta">
+    <meta name="description" content="Evolucao de Contas - Hospital Anchieta">
     <meta name="theme-color" content="#dc3545">
-
-    <!-- PWA -->
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/img/icon-192.png">
-
-    <title>Evolução de Contas - Anchieta Ceilândia</title>
-
-    <!-- Fontes e Ícones -->
+    <title>Evolucao de Contas - Anchieta Ceilandia</title>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Estilos -->
     <link rel="stylesheet" href="/paineis/painel21/style.css">
     <link rel="icon" href="/static/img/favicon.png">
 </head>
 <body>
     <div class="painel-container">
-
-        <!-- Cabeçalho -->
         <header class="painel-header" role="banner">
             <div class="header-content">
                 <div class="header-left">
                     <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
                     <div class="header-title">
-                        <h1>
-                            <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>
-                            Evolução de Contas
-                        </h1>
+                        <h1><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Evolucao de Contas</h1>
                         <span class="header-subtitle">Monitoramento do ciclo de faturamento</span>
                     </div>
                 </div>
                 <div class="header-right">
-                    <div class="header-controls">
-                        <!-- Filtro de Período -->
+                    <!-- Botao recolher filtros -->
+                    <button id="btn-toggle-filtros" class="btn-header btn-toggle-filtros" title="Recolher/Expandir filtros" aria-label="Recolher filtros">
+                        <i class="fas fa-filter" aria-hidden="true"></i>
+                        <i class="fas fa-chevron-up toggle-arrow" aria-hidden="true"></i>
+                    </button>
+
+                    <div class="header-controls" id="header-controls">
                         <div class="filtro-container">
-                            <label for="filtro-periodo" class="sr-only">Filtrar por período</label>
-                            <select id="filtro-periodo" class="filtro-select" aria-label="Filtrar por período">
+                            <select id="filtro-periodo" class="filtro-select" aria-label="Filtrar por periodo">
                                 <option value="">Todos</option>
                                 <option value="7">7 dias</option>
                                 <option value="14">14 dias</option>
-                                <option value="30" selected>1 mês</option>
+                                <option value="30" selected>1 mes</option>
                                 <option value="90">3 meses</option>
                                 <option value="180">6 meses</option>
                                 <option value="365">1 ano</option>
                             </select>
                         </div>
 
-                        <!-- Filtro Status Conta -->
-                        <div class="filtro-container">
-                            <label for="filtro-status-conta" class="sr-only">Status da Conta</label>
-                            <select id="filtro-status-conta" class="filtro-select" aria-label="Status da Conta">
-                                <option value="">St. Conta</option>
-                                <option value="Provisório">Provisório</option>
-                                <option value="Definitivo">Definitivo</option>
-                            </select>
+                        <div class="multi-select-container" id="ms-status-conta" data-state-key="multiStatus" data-placeholder="St. Conta">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">St. Conta</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options">
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="Provisório"> <span class="multi-select-item-text">Provisorio</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="Definitivo"> <span class="multi-select-item-text">Definitivo</span></label>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Filtro Legenda -->
                         <div class="filtro-container">
-                            <label for="filtro-legenda" class="sr-only">Legenda</label>
                             <select id="filtro-legenda" class="filtro-select" aria-label="Legenda">
                                 <option value="">Legenda</option>
                             </select>
                         </div>
 
-                        <!-- Filtro Tipo Atendimento -->
-                        <div class="filtro-container">
-                            <label for="filtro-tipo" class="sr-only">Tipo Atendimento</label>
-                            <select id="filtro-tipo" class="filtro-select" aria-label="Tipo Atendimento">
-                                <option value="">Tipo Atend.</option>
-                                <option value="1">Internado</option>
-                                <option value="3">Pronto Socorro</option>
-                                <option value="7">Externo</option>
-                                <option value="8">Ambulatorial</option>
-                            </select>
+                        <div class="multi-select-container" id="ms-tipo" data-state-key="multiTipo" data-placeholder="Tipo Atend.">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Tipo Atend.</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options">
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="1"> <span class="multi-select-item-text">Internado</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="3"> <span class="multi-select-item-text">Pronto Socorro</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="7"> <span class="multi-select-item-text">Externo</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="8"> <span class="multi-select-item-text">Ambulatorial</span></label>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Filtro Status Protocolo -->
-                        <div class="filtro-container">
-                            <label for="filtro-protocolo" class="sr-only">Status Protocolo</label>
-                            <select id="filtro-protocolo" class="filtro-select" aria-label="Status Protocolo">
-                                <option value="">St. Protocolo</option>
-                                <option value="Provisório">Provisório</option>
-                                <option value="Definitivo">Definitivo</option>
-                                <option value="Auditoria">Auditoria</option>
-                                <option value="Fora Remessa">Fora Remessa</option>
-                            </select>
+                        <div class="multi-select-container" id="ms-protocolo" data-state-key="multiProtocolo" data-placeholder="St. Protocolo">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">St. Protocolo</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
                         </div>
 
-                        <!-- Filtro Convênio -->
-                        <div class="filtro-container">
-                            <label for="filtro-convenio" class="sr-only">Convênio</label>
-                            <select id="filtro-convenio" class="filtro-select" aria-label="Convênio">
-                                <option value="">Convênio</option>
-                            </select>
+                        <div class="multi-select-container" id="ms-convenio" data-state-key="multiConvenio" data-placeholder="Convenio">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Convenio</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
                         </div>
 
-                        <!-- Filtro Setor -->
-                        <div class="filtro-container">
-                            <label for="filtro-setor" class="sr-only">Setor</label>
-                            <select id="filtro-setor" class="filtro-select" aria-label="Setor">
-                                <option value="">Setor</option>
-                            </select>
+                        <div class="multi-select-container" id="ms-setor" data-state-key="multiSetor" data-placeholder="Setor">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Setor</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
                         </div>
 
-                        <!-- Filtro Etapa -->
-                        <div class="filtro-container">
-                            <label for="filtro-etapa" class="sr-only">Etapa</label>
-                            <select id="filtro-etapa" class="filtro-select" aria-label="Etapa">
-                                <option value="">Etapa</option>
-                            </select>
+                        <div class="multi-select-container" id="ms-etapa" data-state-key="multiEtapa" data-placeholder="Etapa">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Etapa</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
                         </div>
 
-                        <!-- Filtro Data Início -->
                         <div class="filtro-container filtro-data">
-                            <label for="filtro-dt-inicio" class="sr-only">Data Início</label>
-                            <input type="date" id="filtro-dt-inicio" class="filtro-input filtro-date" title="Data Início" aria-label="Data Início">
+                            <input type="date" id="filtro-dt-inicio" class="filtro-input filtro-date" title="Data Inicio" aria-label="Data Inicio">
                         </div>
-
-                        <!-- Filtro Data Fim -->
                         <div class="filtro-container filtro-data">
-                            <label for="filtro-dt-fim" class="sr-only">Data Fim</label>
                             <input type="date" id="filtro-dt-fim" class="filtro-input filtro-date" title="Data Fim" aria-label="Data Fim">
                         </div>
 
-                        <!-- Busca -->
+                        <!-- Filtro Valor Min/Max -->
+                        <div class="filtro-container filtro-valor">
+                            <input type="number" id="filtro-vl-min" class="filtro-input filtro-number" placeholder="R$ Min" min="0" step="0.01" title="Valor Minimo" aria-label="Valor Minimo">
+                        </div>
+                        <div class="filtro-container filtro-valor">
+                            <input type="number" id="filtro-vl-max" class="filtro-input filtro-number" placeholder="R$ Max" min="0" step="0.01" title="Valor Maximo" aria-label="Valor Maximo">
+                        </div>
+
                         <div class="filtro-container filtro-busca">
-                            <label for="filtro-busca" class="sr-only">Buscar</label>
                             <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar atend./paciente..." aria-label="Buscar">
                         </div>
 
-                        <!-- Limpar -->
+                        <button id="btn-excluir-zerados" class="btn-filtro-toggle" title="Excluir contas com valor R$ 0,00" aria-pressed="false">
+                            <i class="fas fa-ban" aria-hidden="true"></i>
+                            <span class="btn-filtro-text">R$0</span>
+                        </button>
+
                         <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
                             <i class="fas fa-eraser" aria-hidden="true"></i>
                         </button>
 
-                        <!-- Status e Hora -->
                         <div class="header-status">
-                            <span class="filtro-stats">
-                                <strong id="total-filtrados">0</strong> / <span id="total-registros">0</span>
-                            </span>
-                            <span class="status-indicator" id="status-indicator" title="Status da conexão"></span>
+                            <span class="filtro-stats"><strong id="total-filtrados">0</strong> / <span id="total-registros">0</span></span>
+                            <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
                             <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
                         </div>
                     </div>
 
                     <div class="header-actions">
-                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Ativar rolagem automática" aria-label="Ativar rolagem automática">
+                        <button id="btn-exportar" class="btn-header btn-exportar" title="Exportar Excel" aria-label="Exportar Excel">
+                            <i class="fas fa-file-excel" aria-hidden="true"></i>
+                            <span class="btn-text">Exportar</span>
+                        </button>
+                        <button id="btn-modo-scroll" class="btn-header btn-modo-scroll" title="Alternar modo: Rolagem / Paginado" aria-label="Alternar modo de scroll">
+                            <i class="fas fa-scroll" aria-hidden="true"></i>
+                            <span class="btn-text">Rolar</span>
+                        </button>
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Ativar rolagem automatica" aria-label="Ativar rolagem automatica">
                             <i class="fas fa-play" aria-hidden="true"></i>
                             <span class="btn-text">Auto Scroll</span>
                         </button>
@@ -168,62 +202,72 @@
             </div>
         </header>
 
-        <!-- Dashboard Resumo -->
         <section class="dashboard-resumo" aria-label="Resumo de Contas">
             <div class="resumo-grid">
                 <article class="resumo-card card-total-contas">
                     <div class="card-icon"><i class="fas fa-file-invoice" aria-hidden="true"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="kpi-total-contas">-</span>
-                        <span class="card-label">Total Contas</span>
-                    </div>
+                    <div class="card-content"><span class="card-value" id="kpi-total-contas">-</span><span class="card-label">Total Contas</span></div>
                 </article>
                 <article class="resumo-card card-valor-total">
                     <div class="card-icon"><i class="fas fa-dollar-sign" aria-hidden="true"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="kpi-valor-total">-</span>
-                        <span class="card-label">Valor Total</span>
-                    </div>
+                    <div class="card-content"><span class="card-value" id="kpi-valor-total">-</span><span class="card-label">Valor Total</span></div>
                 </article>
                 <article class="resumo-card card-provisorio">
                     <div class="card-icon"><i class="fas fa-hourglass-half" aria-hidden="true"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="kpi-provisorio">-</span>
-                        <span class="card-label">Provisórias</span>
-                    </div>
+                    <div class="card-content"><span class="card-value" id="kpi-provisorio">-</span><span class="card-label">Provisorias</span></div>
                 </article>
                 <article class="resumo-card card-definitivo">
                     <div class="card-icon"><i class="fas fa-check-double" aria-hidden="true"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="kpi-definitivo">-</span>
-                        <span class="card-label">Definitivas</span>
-                    </div>
+                    <div class="card-content"><span class="card-value" id="kpi-definitivo">-</span><span class="card-label">Definitivas</span></div>
                 </article>
                 <article class="resumo-card card-sem-nf">
                     <div class="card-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="kpi-sem-nf">-</span>
-                        <span class="card-label">Sem NF/Título</span>
-                    </div>
+                    <div class="card-content"><span class="card-value" id="kpi-sem-nf">-</span><span class="card-label">Sem NF/Titulo</span></div>
                 </article>
                 <article class="resumo-card card-em-protocolo">
                     <div class="card-icon"><i class="fas fa-clipboard-list" aria-hidden="true"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="kpi-em-protocolo">-</span>
-                        <span class="card-label">Em Protocolo</span>
-                    </div>
+                    <div class="card-content"><span class="card-value" id="kpi-em-protocolo">-</span><span class="card-label">Em Protocolo</span></div>
                 </article>
             </div>
         </section>
 
-        <!-- Conteúdo Principal -->
+        <div class="paginacao-indicator" id="paginacao-indicator" style="display: none;">
+            <span class="paginacao-texto" id="paginacao-texto">Pagina 1 de 1</span>
+            <div class="paginacao-dots" id="paginacao-dots"></div>
+        </div>
+
         <main class="painel-main" id="painel-main" role="main">
             <div class="loading-container" id="loading-container">
                 <div class="loading-spinner"></div>
                 <p>Carregando dados de faturamento...</p>
             </div>
         </main>
+    </div>
 
+    <!-- Modal Exportar -->
+    <div class="modal-overlay" id="modal-exportar">
+        <div class="modal modal-exportar">
+            <div class="modal-header-export">
+                <div class="modal-header-icon"><i class="fas fa-file-excel"></i></div>
+                <h2>Exportar para Excel</h2>
+                <button class="modal-fechar" id="modal-exportar-fechar" title="Fechar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body-export">
+                <p class="modal-instrucao">Selecione as colunas que deseja incluir na exportacao:</p>
+                <div class="modal-selecao-rapida">
+                    <button class="btn-selecao" id="btn-selecionar-todas">Selecionar Todas</button>
+                    <button class="btn-selecao" id="btn-desmarcar-todas">Desmarcar Todas</button>
+                </div>
+                <div class="modal-colunas-grid" id="modal-colunas-grid"></div>
+            </div>
+            <div class="modal-footer-export">
+                <span class="modal-export-info" id="modal-export-info">0 registros serao exportados</span>
+                <div class="modal-footer-btns">
+                    <button class="btn-cancelar" id="btn-exportar-cancelar">Cancelar</button>
+                    <button class="btn-confirmar-export" id="btn-exportar-confirmar"><i class="fas fa-download"></i> Exportar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/paineis/painel21/main.js"></script>

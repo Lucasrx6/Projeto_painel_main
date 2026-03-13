@@ -33,7 +33,7 @@
 
         <!-- Dashboard Compacto -->
         <div class="dashboard-content">
-            <!-- Cards Superiores (6 cards em linha) -->
+            <!-- Cards Superiores (grid) -->
             <div class="stats-row">
                 <!-- Card 1: Total Leitos -->
                 <div class="stat-card">
@@ -54,7 +54,7 @@
                 </div>
 
                 <!-- Card 3: Taxa Ocupação -->
-                <div class="stat-card stat-card-taxa">
+                <div class="stat-card stat-card-taxa" id="card-taxa">
                     <div class="stat-icon icon-taxa">
                         <i class="fas fa-percentage"></i>
                     </div>
@@ -82,28 +82,25 @@
                     <small class="stat-subtitle" id="conversao-qtd">-%</small>
                 </div>
 
-
-
-
-            <!-- Card 6: Cirurgias -->
-            <div class="stat-card">
-                <div class="stat-icon icon-cirurgias">
-                    <i class="fas fa-user-md"></i>
+                <!-- Card 6: Cirurgias -->
+                <div class="stat-card">
+                    <div class="stat-icon icon-cirurgias">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <h3 id="cirurgias-qtd">-</h3>
+                    <p>Cirurgias</p>
+                    <small class="stat-subtitle" id="cirurgias-subtitle">Média: -/dia</small>
                 </div>
-                <h3 id="cirurgias-qtd">-</h3>
-                <p>Cirurgias</p>
-                <small class="stat-subtitle" id="cirurgias-subtitle">Média: -/dia</small>
-            </div>
 
-            <!-- Card 7: Hemodinâmica  -->
-            <div class="stat-card">
-                <div class="stat-icon icon-hemodinamica">
-                    <i class="fas fa-heartbeat"></i>
+                <!-- Card 7: Hemodinâmica -->
+                <div class="stat-card">
+                    <div class="stat-icon icon-hemodinamica">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                    <h3 id="hemodinamica-qtd">-</h3>
+                    <p>Hemodinâmica</p>
+                    <small class="stat-subtitle" id="hemodinamica-subtitle">Média: -/dia</small>
                 </div>
-                <h3 id="hemodinamica-qtd">-</h3>
-                <p>Hemodinâmica</p>
-                <small class="stat-subtitle" id="hemodinamica-subtitle">Média: -/dia</small>
-            </div>
 
                 <!-- Card 8: Produção -->
                 <div class="stat-card stat-card-producao">
@@ -122,15 +119,7 @@
                     <h3 id="projecao-valor">R$ -</h3>
                     <p>Projeção</p>
                 </div>
-
-
-
-
-
-        </div>
-
-
-
+            </div>
 
             <!-- Cards de Setores (Grid Responsivo) -->
             <div class="setores-grid" id="lista-setores">
@@ -139,10 +128,6 @@
                     <p>Carregando setores...</p>
                 </div>
             </div>
-
-
-
-
 
         </div>
     </div>

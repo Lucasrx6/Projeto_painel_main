@@ -5,8 +5,8 @@ Endpoints para monitoramento do ciclo de faturamento hospitalar
 Endpoints:
     GET /painel/painel21                                - Pagina HTML
     GET /paineis/painel21/<filename>                     - Arquivos estaticos (CSS, JS)
-    GET /api/paineis/painel21/dashboard?dias=            - Cards KPI agregados
-    GET /api/paineis/painel21/dados?dias=&status=&legenda=&tipo=  - Listagem completa
+    GET /api/paineis/painel21/dashboard                  - Cards KPI agregados (todos filtros)
+    GET /api/paineis/painel21/dados                      - Listagem completa (todos filtros)
     GET /api/paineis/painel21/filtros                    - Valores distintos para filtros
 """
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
@@ -64,20 +64,163 @@ def serializar_linha(row):
     return resultado
 
 
-def _obter_filtro_periodo(dias):
-    """Retorna clausula SQL e parametro para filtro de periodo"""
-    if not dias:
-        return '', []
+def _parse_multi_param(param_name):
+    """
+    Extrai lista de valores do parametro (query string).
+    Suporta valor unico ou multiplos separados por virgula.
+    Retorna lista ou None.
+    """
+    raw = request.args.get(param_name, None)
+    if not raw or raw.strip() == '':
+        return None
 
-    try:
-        dias = int(dias)
-        if dias <= 0:
-            return '', []
-    except (ValueError, TypeError):
-        return '', []
+    valores = [v.strip() for v in raw.split(',') if v.strip()]
+    return valores if valores else None
 
-    dt_limite = datetime.now() - timedelta(days=dias)
-    return 'WHERE dt_periodo_inicial >= %s', [dt_limite]
+
+def _add_multi_filter(condicoes, params, coluna, valores):
+    """Adiciona clausula de filtro para lista de valores string."""
+    if not valores:
+        return
+
+    if len(valores) == 1:
+        condicoes.append(f'{coluna} = %s')
+        params.append(valores[0])
+    else:
+        placeholders = ', '.join(['%s'] * len(valores))
+        condicoes.append(f'{coluna} IN ({placeholders})')
+        params.extend(valores)
+
+
+def _add_multi_filter_int(condicoes, params, coluna, valores):
+    """Mesmo que _add_multi_filter mas converte valores para int."""
+    if not valores:
+        return
+
+    int_vals = []
+    for v in valores:
+        try:
+            int_vals.append(int(v))
+        except (ValueError, TypeError):
+            pass
+
+    if not int_vals:
+        return
+
+    if len(int_vals) == 1:
+        condicoes.append(f'{coluna} = %s')
+        params.append(int_vals[0])
+    else:
+        placeholders = ', '.join(['%s'] * len(int_vals))
+        condicoes.append(f'{coluna} IN ({placeholders})')
+        params.extend(int_vals)
+
+
+def _build_common_filters():
+    """
+    Constroi filtros comuns usados tanto por /dados quanto por /dashboard.
+    Retorna tupla (condicoes, params).
+    """
+    condicoes = []
+    params = []
+
+    # Periodo (dias)
+    dias = request.args.get('dias', '')
+    if dias:
+        try:
+            dias_int = int(dias)
+            if dias_int > 0:
+                dt_limite = datetime.now() - timedelta(days=dias_int)
+                condicoes.append('dt_conta >= %s')
+                params.append(dt_limite)
+        except (ValueError, TypeError):
+            pass
+
+    # Data inicio
+    dt_inicio = request.args.get('dt_inicio', '')
+    if dt_inicio:
+        try:
+            dt_ini_parsed = datetime.strptime(dt_inicio, '%Y-%m-%d')
+            condicoes.append('dt_conta >= %s')
+            params.append(dt_ini_parsed)
+        except (ValueError, TypeError):
+            pass
+
+    # Data fim
+    dt_fim = request.args.get('dt_fim', '')
+    if dt_fim:
+        try:
+            dt_fim_parsed = datetime.strptime(dt_fim, '%Y-%m-%d').replace(
+                hour=23, minute=59, second=59
+            )
+            condicoes.append('dt_conta <= %s')
+            params.append(dt_fim_parsed)
+        except (ValueError, TypeError):
+            pass
+
+    # Multi-filtro: Status Conta
+    status_list = _parse_multi_param('status_conta')
+    _add_multi_filter(condicoes, params, 'status_conta', status_list)
+
+    # Multi-filtro: Legenda
+    legendas = _parse_multi_param('legenda')
+    _add_multi_filter(condicoes, params, 'legenda_conta', legendas)
+
+    # Multi-filtro: Tipo Atendimento
+    tipos = _parse_multi_param('tipo')
+    _add_multi_filter_int(condicoes, params, 'ie_tipo', tipos)
+
+    # Multi-filtro: Status Protocolo
+    protocolos = _parse_multi_param('status_protocolo')
+    _add_multi_filter(condicoes, params, 'status_protocolo', protocolos)
+
+    # Multi-filtro: Convenio
+    convenios = _parse_multi_param('convenio')
+    _add_multi_filter(condicoes, params, 'convenio', convenios)
+
+    # Multi-filtro: Setor
+    setores = _parse_multi_param('setor')
+    _add_multi_filter(condicoes, params, 'setor_atendimento', setores)
+
+    # Multi-filtro: Etapa
+    etapas = _parse_multi_param('etapa')
+    _add_multi_filter(condicoes, params, 'etapa_conta', etapas)
+
+    # Excluir zerados
+    excluir_zerados = request.args.get('excluir_zerados', '')
+    if excluir_zerados == '1':
+        condicoes.append('vl_conta > 0')
+
+    # Valor minimo
+    vl_min = request.args.get('vl_min', '')
+    if vl_min:
+        try:
+            vl_min_float = float(vl_min)
+            if vl_min_float >= 0:
+                condicoes.append('vl_conta >= %s')
+                params.append(vl_min_float)
+        except (ValueError, TypeError):
+            pass
+
+    # Valor maximo
+    vl_max = request.args.get('vl_max', '')
+    if vl_max:
+        try:
+            vl_max_float = float(vl_max)
+            if vl_max_float > 0:
+                condicoes.append('vl_conta <= %s')
+                params.append(vl_max_float)
+        except (ValueError, TypeError):
+            pass
+
+    # Busca livre
+    busca = request.args.get('busca', '')
+    if busca:
+        condicoes.append('(CAST(nr_atendimento AS TEXT) LIKE %s OR UPPER(pessoa_fisica) LIKE UPPER(%s))')
+        params.append(f'%{busca}%')
+        params.append(f'%{busca}%')
+
+    return condicoes, params
 
 
 # =========================================================
@@ -89,8 +232,7 @@ def _obter_filtro_periodo(dias):
 def api_painel21_dashboard():
     """
     KPIs agregados para os cards do dashboard.
-    GET /api/paineis/painel21/dashboard
-    GET /api/paineis/painel21/dashboard?dias=30
+    Recebe TODOS os filtros para refletir exatamente o que esta na tabela.
     """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -106,40 +248,7 @@ def api_painel21_dashboard():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        dias = request.args.get('dias', '')
-        dt_inicio = request.args.get('dt_inicio', '')
-        dt_fim = request.args.get('dt_fim', '')
-
-        condicoes = []
-        params = []
-
-        if dias:
-            try:
-                dias_int = int(dias)
-                if dias_int > 0:
-                    dt_limite = datetime.now() - timedelta(days=dias_int)
-                    condicoes.append('dt_conta >= %s')
-                    params.append(dt_limite)
-            except (ValueError, TypeError):
-                pass
-
-        if dt_inicio:
-            try:
-                dt_ini_parsed = datetime.strptime(dt_inicio, '%Y-%m-%d')
-                condicoes.append('dt_conta >= %s')
-                params.append(dt_ini_parsed)
-            except (ValueError, TypeError):
-                pass
-
-        if dt_fim:
-            try:
-                dt_fim_parsed = datetime.strptime(dt_fim, '%Y-%m-%d').replace(
-                    hour=23, minute=59, second=59
-                )
-                condicoes.append('dt_conta <= %s')
-                params.append(dt_fim_parsed)
-            except (ValueError, TypeError):
-                pass
+        condicoes, params = _build_common_filters()
 
         filtro_where = ''
         if condicoes:
@@ -212,13 +321,7 @@ def api_painel21_dashboard():
 def api_painel21_dados():
     """
     Retorna contas com filtros server-side.
-    GET /api/paineis/painel21/dados
-    GET /api/paineis/painel21/dados?dias=30
-    GET /api/paineis/painel21/dados?dias=30&status_conta=Provisório
-    GET /api/paineis/painel21/dados?dias=30&legenda=SEM NOTA/TITULO
-    GET /api/paineis/painel21/dados?dias=30&tipo=1
-    GET /api/paineis/painel21/dados?dias=30&status_protocolo=Fora Remessa
-    GET /api/paineis/painel21/dados?busca=123456
+    Todos os filtros multi-valor sao separados por virgula.
     """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -234,97 +337,8 @@ def api_painel21_dados():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Construir filtros
-        condicoes = []
-        params = []
+        condicoes, params = _build_common_filters()
 
-        # Periodo (dias)
-        dias = request.args.get('dias', '')
-        if dias:
-            try:
-                dias_int = int(dias)
-                if dias_int > 0:
-                    dt_limite = datetime.now() - timedelta(days=dias_int)
-                    condicoes.append('dt_conta >= %s')
-                    params.append(dt_limite)
-            except (ValueError, TypeError):
-                pass
-
-        # Data início (filtro de intervalo por dt_conta)
-        dt_inicio = request.args.get('dt_inicio', '')
-        if dt_inicio:
-            try:
-                dt_ini_parsed = datetime.strptime(dt_inicio, '%Y-%m-%d')
-                condicoes.append('dt_conta >= %s')
-                params.append(dt_ini_parsed)
-            except (ValueError, TypeError):
-                pass
-
-        # Data fim (filtro de intervalo por dt_conta)
-        dt_fim = request.args.get('dt_fim', '')
-        if dt_fim:
-            try:
-                dt_fim_parsed = datetime.strptime(dt_fim, '%Y-%m-%d').replace(
-                    hour=23, minute=59, second=59
-                )
-                condicoes.append('dt_conta <= %s')
-                params.append(dt_fim_parsed)
-            except (ValueError, TypeError):
-                pass
-
-        # Status Conta
-        status_conta = request.args.get('status_conta', '')
-        if status_conta:
-            condicoes.append('status_conta = %s')
-            params.append(status_conta)
-
-        # Legenda
-        legenda = request.args.get('legenda', '')
-        if legenda:
-            condicoes.append('legenda_conta = %s')
-            params.append(legenda)
-
-        # Tipo Atendimento
-        tipo = request.args.get('tipo', '')
-        if tipo:
-            try:
-                condicoes.append('ie_tipo = %s')
-                params.append(int(tipo))
-            except (ValueError, TypeError):
-                pass
-
-        # Status Protocolo
-        status_protocolo = request.args.get('status_protocolo', '')
-        if status_protocolo:
-            condicoes.append('status_protocolo = %s')
-            params.append(status_protocolo)
-
-        # Convenio
-        convenio = request.args.get('convenio', '')
-        if convenio:
-            condicoes.append('convenio = %s')
-            params.append(convenio)
-
-        # Setor
-        setor = request.args.get('setor', '')
-        if setor:
-            condicoes.append('setor_atendimento = %s')
-            params.append(setor)
-
-        # Etapa
-        etapa = request.args.get('etapa', '')
-        if etapa:
-            condicoes.append('etapa_conta = %s')
-            params.append(etapa)
-
-        # Busca livre (nr_atendimento ou pessoa_fisica)
-        busca = request.args.get('busca', '')
-        if busca:
-            condicoes.append('(CAST(nr_atendimento AS TEXT) LIKE %s OR UPPER(pessoa_fisica) LIKE UPPER(%s))')
-            params.append(f'%{busca}%')
-            params.append(f'%{busca}%')
-
-        # Montar WHERE
         filtro_sql = ''
         if condicoes:
             filtro_sql = 'WHERE ' + ' AND '.join(condicoes)
@@ -372,8 +386,7 @@ def api_painel21_dados():
 @login_required
 def api_painel21_filtros():
     """
-    Retorna valores distintos para popular os selects de filtro.
-    GET /api/paineis/painel21/filtros
+    Retorna valores distintos para popular os multi-selects.
     """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -396,7 +409,8 @@ def api_painel21_filtros():
             ('setores', 'setor_atendimento'),
             ('etapas', 'etapa_conta'),
             ('legendas', 'legenda_conta'),
-            ('auditorias', 'auditoria')
+            ('auditorias', 'auditoria'),
+            ('protocolos', 'status_protocolo')
         ]
 
         for nome, coluna in campos:

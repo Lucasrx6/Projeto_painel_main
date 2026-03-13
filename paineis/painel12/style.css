@@ -1,6 +1,7 @@
 /* ========================================
    PAINEL 12 - OCUPACAO E PRODUCAO HAC
    Versao com Responsividade Mobile Corrigida
+   + Leitos Temporários
    ======================================== */
 
 * {
@@ -11,7 +12,6 @@
 
 /* ========================================
    FIX MOBILE VIEWPORT
-   Usa dvh (dynamic viewport height) com fallback
    ======================================== */
 
 :root {
@@ -151,7 +151,6 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Scrollbar customizado */
 .dashboard-content::-webkit-scrollbar {
     width: 6px;
 }
@@ -243,6 +242,29 @@ body {
 .stat-card-producao,
 .stat-card-projecao {
     border: 2px solid #28a745;
+}
+
+/* ========================================
+   TAXA CRITICA (>100%) - LEITOS TEMPORARIOS
+   ======================================== */
+
+.stat-card.taxa-critica {
+    border: 2px solid #dc3545;
+    background: #fff5f5;
+    animation: pulse-critico 2s ease-in-out infinite;
+}
+
+.stat-card.taxa-critica h3 {
+    color: #dc3545;
+}
+
+.stat-card.taxa-critica .stat-icon {
+    background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
+}
+
+@keyframes pulse-critico {
+    0%, 100% { box-shadow: 0 2px 10px rgba(220, 53, 69, 0.15); }
+    50% { box-shadow: 0 4px 20px rgba(220, 53, 69, 0.35); }
 }
 
 /* ========================================
@@ -348,6 +370,40 @@ body {
 
 .setor-card.ocupacao-alta .setor-card-taxa {
     color: #dc3545;
+}
+
+/* Ocupação Crítica (>100%) - Leitos Temporários */
+.setor-card.ocupacao-critica {
+    border-color: #a71d2a;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+    animation: pulse-setor-critico 2.5s ease-in-out infinite;
+}
+
+.setor-card.ocupacao-critica .setor-card-taxa {
+    color: #a71d2a;
+    font-weight: 800;
+}
+
+@keyframes pulse-setor-critico {
+    0%, 100% { box-shadow: 0 2px 8px rgba(167, 29, 42, 0.1); }
+    50% { box-shadow: 0 4px 16px rgba(167, 29, 42, 0.3); }
+}
+
+/* Badge de leitos temporários no setor */
+.setor-temp-badge {
+    display: inline-block;
+    background: #fd7e14;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.setor-temp-badge i {
+    font-size: 0.55rem;
 }
 
 /* ========================================
@@ -549,11 +605,15 @@ body {
         gap: 4px;
         margin-top: 4px;
     }
+
+    .setor-temp-badge {
+        font-size: 0.55rem;
+        padding: 1px 5px;
+    }
 }
 
 /* ========================================
    RESPONSIVIDADE - SMARTPHONES
-   CORRECAO PRINCIPAL AQUI
    ======================================== */
 
 @media (max-width: 600px) {
@@ -591,7 +651,6 @@ body {
         font-size: 0.65rem;
     }
 
-    /* Oculta texto do botao voltar */
     .btn-voltar {
         padding: 4px 6px;
     }
@@ -605,10 +664,6 @@ body {
         gap: 6px;
     }
 
-    /* ========================================
-       CARDS SUPERIORES MOBILE: 3 COLUNAS
-       Cards mais compactos em 3 colunas
-       ======================================== */
     .stats-row {
         grid-template-columns: repeat(3, 1fr);
         gap: 4px;
@@ -644,16 +699,11 @@ body {
         margin-top: 1px;
     }
 
-    /* Bordas mais finas nos cards especiais */
     .stat-card-producao,
     .stat-card-projecao {
         border-width: 1.5px;
     }
 
-    /* ========================================
-       GRID DE SETORES MOBILE: 2 COLUNAS
-       Setores visiveis e com scroll
-       ======================================== */
     .setores-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 5px;
@@ -689,7 +739,11 @@ body {
         flex-wrap: wrap;
     }
 
-    /* Loading menor */
+    .setor-temp-badge {
+        font-size: 0.5rem;
+        padding: 1px 4px;
+    }
+
     .loading {
         padding: 25px;
     }
@@ -793,6 +847,11 @@ body {
         font-size: 0.45rem;
         gap: 2px;
     }
+
+    .setor-temp-badge {
+        font-size: 0.45rem;
+        padding: 1px 3px;
+    }
 }
 
 /* ========================================
@@ -820,7 +879,6 @@ body {
         flex-wrap: wrap;
     }
 
-    /* Em landscape, cards em linha horizontal */
     .stats-row {
         flex: 0 0 100%;
         grid-template-columns: repeat(9, 1fr);
@@ -871,6 +929,11 @@ body {
     .setor-card-nome {
         font-size: 0.55rem;
     }
+
+    .setor-temp-badge {
+        font-size: 0.45rem;
+        padding: 1px 3px;
+    }
 }
 
 /* ========================================
@@ -889,38 +952,6 @@ body {
         padding-right: max(6px, env(safe-area-inset-right));
         padding-bottom: max(6px, env(safe-area-inset-bottom));
     }
-}
-
-/* ========================================
-   MODO ESCURO (OPCIONAL)
-   ======================================== */
-
-@media (prefers-color-scheme: dark) {
-    /* Descomente se quiser suporte a modo escuro
-    body {
-        background: #1a1a2e;
-    }
-
-    .painel-container {
-        background: #16213e;
-    }
-
-    .stat-card,
-    .setor-card {
-        background: #1a1a2e;
-        border-color: #333;
-    }
-
-    .stat-card h3,
-    .setor-card-nome {
-        color: #eee;
-    }
-
-    .stat-card p,
-    .setor-card-label {
-        color: #aaa;
-    }
-    */
 }
 
 /* ========================================

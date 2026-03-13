@@ -30,14 +30,14 @@ function inicializar() {
 function configurarBotoes() {
     var btnVoltar = document.getElementById('btn-voltar');
     if (btnVoltar) {
-        btnVoltar.addEventListener('click', function () {
+        btnVoltar.addEventListener('click', function() {
             window.location.href = '/frontend/dashboard.html';
         });
     }
 
     var btnDetalhes = document.getElementById('btn-detalhes');
     if (btnDetalhes) {
-        btnDetalhes.addEventListener('click', function () {
+        btnDetalhes.addEventListener('click', function() {
             window.location.href = '/painel/painel4/detalhes';
         });
     }
@@ -54,10 +54,10 @@ function configurarBotoes() {
 
 function carregarDados() {
     Promise.all([
-        fetch(CONFIG.apiDashboard).then(function (r) { return r.json(); }),
-        fetch(CONFIG.apiSetores).then(function (r) { return r.json(); })
+        fetch(CONFIG.apiDashboard).then(function(r) { return r.json(); }),
+        fetch(CONFIG.apiSetores).then(function(r) { return r.json(); })
     ])
-    .then(function (resultados) {
+    .then(function(resultados) {
         var dashboardData = resultados[0];
         var setoresData = resultados[1];
 
@@ -71,7 +71,7 @@ function carregarDados() {
 
         atualizarHoraAtualizacao();
     })
-    .catch(function (erro) {
+    .catch(function(erro) {
         console.error('Erro ao carregar dados:', erro);
     });
 }
@@ -100,6 +100,16 @@ function atualizarCards(dados) {
     var taxaOcupacao = parseFloat(dados.taxa_ocupacao_geral) || 0;
     document.getElementById('taxa-valor').textContent =
         taxaOcupacao.toFixed(0) + '%';
+
+    // Destaque visual quando taxa > 100% (leitos temporários em uso)
+    var cardTaxa = document.getElementById('card-taxa');
+    if (cardTaxa) {
+        if (taxaOcupacao > 100) {
+            cardTaxa.classList.add('taxa-critica');
+        } else {
+            cardTaxa.classList.remove('taxa-critica');
+        }
+    }
 }
 
 // ========================================
@@ -124,40 +134,57 @@ function atualizarListaSetores(setores) {
     }
 
     // Ordena setores por taxa de ocupacao (decrescente)
-    var setoresOrdenados = setores.slice().sort(function (a, b) {
+    var setoresOrdenados = setores.slice().sort(function(a, b) {
         return (parseFloat(b.taxa_ocupacao) || 0) - (parseFloat(a.taxa_ocupacao) || 0);
     });
 
-    container.innerHTML = setoresOrdenados.map(function (setor) {
+    var html = '';
+    for (var i = 0; i < setoresOrdenados.length; i++) {
+        var setor = setoresOrdenados[i];
         var taxaOcupacao = parseFloat(setor.taxa_ocupacao) || 0;
-        var totalLeitos = parseInt(setor.total_leitos) || 0;
+        var leitosFixos = parseInt(setor.leitos_fixos) || 0;
+        var leitosTemp = parseInt(setor.leitos_temporarios) || 0;
         var ocupados = parseInt(setor.leitos_ocupados) || 0;
         var livres = parseInt(setor.leitos_livres) || 0;
         var nomeSetor = setor.nm_setor || 'Setor Desconhecido';
+        var nomeSetorEscapado = nomeSetor.replace(/'/g, "\\'");
 
         // Define classe baseada na taxa de ocupacao
         var classeOcupacao = '';
-        if (taxaOcupacao < 50) {
-            classeOcupacao = 'ocupacao-baixa';
-        } else if (taxaOcupacao < 80) {
+        if (taxaOcupacao > 100) {
+            classeOcupacao = 'ocupacao-critica';
+        } else if (taxaOcupacao >= 80) {
+            classeOcupacao = 'ocupacao-alta';
+        } else if (taxaOcupacao >= 50) {
             classeOcupacao = 'ocupacao-media';
         } else {
-            classeOcupacao = 'ocupacao-alta';
+            classeOcupacao = 'ocupacao-baixa';
         }
 
-        return (
-            '<div class="setor-card ' + classeOcupacao + '" onclick="abrirDetalhesSetor(\'' + nomeSetor.replace(/'/g, "\\'") + '\')" style="cursor: pointer;">' +
+        // Badge de temporários no setor
+        var tempBadge = '';
+        if (leitosTemp > 0) {
+            tempBadge =
+                '<span class="setor-temp-badge" title="' + leitosTemp + ' leito(s) temporário(s)">' +
+                    '<i class="fas fa-plus-circle"></i> ' + leitosTemp + ' temp' +
+                '</span>';
+        }
+
+        html +=
+            '<div class="setor-card ' + classeOcupacao + '" onclick="abrirDetalhesSetor(\'' + nomeSetorEscapado + '\')" style="cursor: pointer;">' +
                 '<div class="setor-card-nome">' + nomeSetor + '</div>' +
+                tempBadge +
                 '<div class="setor-card-taxa">' + taxaOcupacao.toFixed(0) + '%</div>' +
-                '<div class="setor-card-label">Ocupacao</div>' +
+                '<div class="setor-card-label">Ocupação</div>' +
                 '<div class="setor-card-info">' +
-                    '<span><i class="fas fa-bed"></i> ' + totalLeitos + '</span>' +
-                    '<span style="color: #dc3545;"><i class="fas fa-user"></i> ' + ocupados + '</span>' +
-                    '<span style="color: #28a745;"><i class="fas fa-check"></i> ' + livres + '</span>' +
+                    '<span title="Leitos fixos"><i class="fas fa-bed"></i> ' + leitosFixos + '</span>' +
+                    '<span style="color: #dc3545;" title="Ocupados"><i class="fas fa-user"></i> ' + ocupados + '</span>' +
+                    '<span style="color: #28a745;" title="Livres"><i class="fas fa-check"></i> ' + livres + '</span>' +
                 '</div>' +
-            '</div>'
-        );
-    }).join('');
+            '</div>';
+    }
+
+    container.innerHTML = html;
 }
 
 // ========================================

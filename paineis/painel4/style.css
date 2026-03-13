@@ -1,6 +1,7 @@
 /* ========================================
    PAINEL 4 - OCUPACAO HOSPITALAR
    Visual identico ao Painel 12
+   + Leitos Temporários
    ======================================== */
 
 * {
@@ -11,7 +12,6 @@
 
 /* ========================================
    FIX MOBILE VIEWPORT
-   Usa dvh (dynamic viewport height) com fallback
    ======================================== */
 
 :root {
@@ -153,7 +153,6 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Scrollbar customizado */
 .dashboard-content::-webkit-scrollbar {
     width: 6px;
 }
@@ -233,6 +232,29 @@ body {
 /* Destaque no card de taxa */
 .stat-card-taxa {
     border: 2px solid #17a2b8;
+}
+
+/* ========================================
+   TAXA CRITICA (>100%) - LEITOS TEMPORARIOS
+   ======================================== */
+
+.stat-card.taxa-critica {
+    border: 2px solid #dc3545;
+    background: #fff5f5;
+    animation: pulse-critico 2s ease-in-out infinite;
+}
+
+.stat-card.taxa-critica h3 {
+    color: #dc3545;
+}
+
+.stat-card.taxa-critica .stat-icon {
+    background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
+}
+
+@keyframes pulse-critico {
+    0%, 100% { box-shadow: 0 2px 10px rgba(220, 53, 69, 0.15); }
+    50% { box-shadow: 0 4px 20px rgba(220, 53, 69, 0.35); }
 }
 
 /* ========================================
@@ -338,6 +360,40 @@ body {
 
 .setor-card.ocupacao-alta .setor-card-taxa {
     color: #dc3545;
+}
+
+/* Ocupação Crítica (>100%) - Leitos Temporários */
+.setor-card.ocupacao-critica {
+    border-color: #a71d2a;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+    animation: pulse-setor-critico 2.5s ease-in-out infinite;
+}
+
+.setor-card.ocupacao-critica .setor-card-taxa {
+    color: #a71d2a;
+    font-weight: 800;
+}
+
+@keyframes pulse-setor-critico {
+    0%, 100% { box-shadow: 0 2px 8px rgba(167, 29, 42, 0.1); }
+    50% { box-shadow: 0 4px 16px rgba(167, 29, 42, 0.3); }
+}
+
+/* Badge de leitos temporários no setor */
+.setor-temp-badge {
+    display: inline-block;
+    background: #fd7e14;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.setor-temp-badge i {
+    font-size: 0.55rem;
 }
 
 /* ========================================
@@ -531,6 +587,11 @@ body {
         gap: 4px;
         margin-top: 4px;
     }
+
+    .setor-temp-badge {
+        font-size: 0.55rem;
+        padding: 1px 5px;
+    }
 }
 
 /* ========================================
@@ -617,7 +678,6 @@ body {
         line-height: 1.1;
     }
 
-    /* Bordas mais finas nos cards especiais */
     .stat-card-taxa {
         border-width: 1.5px;
     }
@@ -657,7 +717,11 @@ body {
         flex-wrap: wrap;
     }
 
-    /* Loading menor */
+    .setor-temp-badge {
+        font-size: 0.5rem;
+        padding: 1px 4px;
+    }
+
     .loading {
         padding: 25px;
     }
@@ -758,6 +822,11 @@ body {
         font-size: 0.45rem;
         gap: 2px;
     }
+
+    .setor-temp-badge {
+        font-size: 0.45rem;
+        padding: 1px 3px;
+    }
 }
 
 /* ========================================
@@ -785,7 +854,6 @@ body {
         flex-wrap: wrap;
     }
 
-    /* Em landscape, cards em linha horizontal */
     .stats-row {
         flex: 0 0 100%;
         grid-template-columns: repeat(6, 1fr);
@@ -831,6 +899,11 @@ body {
 
     .setor-card-nome {
         font-size: 0.55rem;
+    }
+
+    .setor-temp-badge {
+        font-size: 0.45rem;
+        padding: 1px 3px;
     }
 }
 
