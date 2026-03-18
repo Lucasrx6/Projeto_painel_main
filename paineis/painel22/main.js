@@ -74,14 +74,26 @@
         return iniciais.join(' ') + ' ' + partes[partes.length - 1];
     }
 
-    function formatarTempo(horas) {
-        if (horas === null || horas === undefined) return '-';
-        horas = parseFloat(horas);
-        if (isNaN(horas)) return '-';
-        if (horas < 1) return Math.round(horas * 60) + 'min';
-        if (horas < 24) return horas.toFixed(1) + 'h';
-        return Math.floor(horas / 24) + 'd ' + Math.round(horas % 24) + 'h';
+function formatarTempo(horas) {
+    if (horas === null || horas === undefined) return '-';
+    horas = parseFloat(horas);
+    if (isNaN(horas)) return '-';
+    var totalMinutos = Math.round(horas * 60);
+    if (totalMinutos < 60) return totalMinutos + 'min';
+    var h = Math.floor(totalMinutos / 60);
+    var m = totalMinutos % 60;
+    if (h < 24) {
+        return m > 0 ? h + 'h' + (m < 10 ? '0' : '') + m + 'min' : h + 'h';
     }
+    var d = Math.floor(h / 24);
+    var hResto = h % 24;
+    var partes = d + 'd ';
+    if (hResto > 0 || m > 0) {
+        partes += hResto + 'h';
+        if (m > 0) partes += (m < 10 ? '0' : '') + m + 'min';
+    }
+    return partes;
+}
 
     function classeTempo(horas) {
         if (horas === null || horas === undefined) return 'tempo-normal';
