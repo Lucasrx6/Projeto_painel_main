@@ -19,11 +19,11 @@ def index():
     return send_from_directory('frontend', 'login.html')
 
 
+@main_bp.route('/login')
 @main_bp.route('/login.html')
 def login_page():
-    """Página de login"""
+    """Página de login — acessível via /login ou /login.html"""
     try:
-        # Tenta encontrar o arquivo
         filepath = os.path.join('frontend', 'login.html')
         if not os.path.exists(filepath):
             current_app.logger.error(f'Arquivo não encontrado: {filepath}')
