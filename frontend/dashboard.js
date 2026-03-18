@@ -109,6 +109,9 @@ function redirecionarLogin() {
 }
 
 function realizarLogout() {
+    // Sinaliza que o usuário saiu manualmente — impede o auto-login na tela de login
+    sessionStorage.setItem('saiu_manualmente', '1');
+
     fetch(CONFIG.endpoints.logout, {
         method: 'POST',
         credentials: 'include'

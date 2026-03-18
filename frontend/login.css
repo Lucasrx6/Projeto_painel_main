@@ -227,6 +227,50 @@ body {
 }
 
 /* ==============================================================================
+   SALVAR ACESSO (paineis estaticos / TVs)
+   ============================================================================== */
+
+.form-group-salvar {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+}
+
+.label-salvar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #495057;
+    font-weight: 500;
+    user-select: none;
+}
+
+.label-salvar input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: #dc3545;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.texto-salvar {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.78rem;
+    color: #6c757d;
+    padding-left: 25px;
+}
+
+.texto-salvar .fa-tv {
+    margin-right: 4px;
+    color: #adb5bd;
+}
+
+/* ==============================================================================
    ALERTAS
    ============================================================================== */
 
