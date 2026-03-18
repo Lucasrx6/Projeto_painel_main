@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Ambulatorial - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel23/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container" id="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-stethoscope"></i> Painel Ambulatorial</h1>
+                        <span class="header-subtitle">Tempos e Atendimentos</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-actions">
+                        <button id="btn-voltar" class="btn-header">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll">
+                            <i class="fas fa-play"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="header-status">
+                        <span class="status-indicator status-loading" id="status-indicator"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Resumo -->
+        <div class="dashboard-resumo" id="dashboard-resumo">
+            <div class="resumo-grid">
+                <div class="resumo-card card-total">
+                    <div class="card-icon"><i class="fas fa-calendar-check"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-atendimentos">-</span>
+                        <span class="card-label">Atendimentos</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-aguardando">
+                    <div class="card-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-aguardando">-</span>
+                        <span class="card-label">Aguardando</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-consulta">
+                    <div class="card-icon"><i class="fas fa-user-md"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-em-consulta">-</span>
+                        <span class="card-label">Em Consulta</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-medicos">
+                    <div class="card-icon"><i class="fas fa-user-nurse"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-medicos">-</span>
+                        <span class="card-label">Medicos Atendendo</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-tempo">
+                    <div class="card-icon"><i class="fas fa-clock"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-mediana-espera">-</span>
+                        <span class="card-label">Mediana Espera (min)</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-producao">
+                    <div class="card-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-producao">-</span>
+                        <span class="card-label">Producao (R$)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteudo Principal -->
+        <div class="painel-main">
+            <div class="content-scroll" id="content-scroll">
+
+                <!-- Secao: Tempo Estimado por Fila -->
+                <div class="secao-analise" id="secao-filas">
+                    <div class="secao-header">
+                        <div class="secao-titulo">
+                            <i class="fas fa-clock"></i>
+                            <h2>Tempo Estimado de Espera por Fila</h2>
+                        </div>
+                        <div class="secao-acoes">
+                            <span class="secao-contador" id="contador-filas">0 filas</span>
+
+                            <!-- Seletor de filas -->
+                            <div class="filtro-filas-wrapper" id="filtro-filas-wrapper">
+                                <button class="btn-filtro-filas" id="btn-filtro-filas">
+                                    <i class="fas fa-filter"></i>
+                                    <span>Filas</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="filtro-filas-dropdown" id="filtro-filas-dropdown">
+                                    <div class="filtro-filas-header">
+                                        <span>Selecionar filas</span>
+                                        <button class="filtro-filas-limpar" id="filtro-filas-limpar">Todas</button>
+                                    </div>
+                                    <div class="filtro-filas-lista" id="filtro-filas-lista">
+                                        <!-- Checkboxes populados via JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botao maximizar -->
+                            <button class="btn-secao-acao" id="btn-maximizar-filas" title="Maximizar filas">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="secao-content">
+                        <div class="filas-grid" id="filas-grid">
+                            <div class="loading-container">
+                                <div class="loading-spinner"></div>
+                                <p>Carregando filas...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Secao: Especialidades -->
+                <div class="secao-analise" id="secao-especialidades">
+                    <div class="secao-header">
+                        <div class="secao-titulo">
+                            <i class="fas fa-th-list"></i>
+                            <h2>Especialidades</h2>
+                        </div>
+                        <span class="secao-contador" id="contador-especialidades">0 especialidades</span>
+                    </div>
+                    <div class="secao-content">
+                        <div class="tabela-container">
+                            <table class="tabela-dados" id="tabela-especialidades">
+                                <thead>
+                                    <tr>
+                                        <th>Especialidade</th>
+                                        <th class="texto-centro">Medicos</th>
+                                        <th class="texto-centro">Atendidos</th>
+                                        <th class="texto-centro">Aguardando</th>
+                                        <th class="texto-centro">Em Consulta</th>
+                                        <th class="texto-centro">Espera Recepcao</th>
+                                        <th class="texto-centro">Espera Medico</th>
+                                        <th class="texto-centro">Consulta</th>
+                                        <th class="texto-centro">Producao</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-body">
+                                    <tr>
+                                        <td colspan="9" class="texto-centro texto-muted">
+                                            Carregando informacoes...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/paineis/painel23/main.js"></script>
+</body>
+</html>

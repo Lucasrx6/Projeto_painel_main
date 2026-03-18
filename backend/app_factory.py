@@ -140,6 +140,14 @@ def register_blueprints(app):
     from backend.routes.painel14_routes import painel14_bp
     from backend.routes.painel15_routes import painel15_bp
     from backend.routes.painel16_routes import painel16_bp
+    from backend.routes.painel17_routes import painel17_bp
+    from backend.routes.painel18_routes import painel18_bp
+    from backend.routes.painel19_routes import painel19_bp
+    from backend.routes.painel20_routes import painel20_bp
+    from backend.routes.painel21_routes import painel21_bp
+    from backend.routes.painel22_routes import painel22_bp
+    from backend.routes.painel23_routes import painel23_bp
+
 
     # Registra Blueprints Core
     app.register_blueprint(auth_bp)
@@ -152,7 +160,9 @@ def register_blueprints(app):
         painel2_bp, painel3_bp, painel4_bp, painel5_bp,
         painel6_bp, painel7_bp, painel8_bp, painel9_bp,
         painel10_bp, painel11_bp, painel12_bp, painel13_bp,
-        painel14_bp, painel15_bp, painel16_bp
+        painel14_bp, painel15_bp, painel16_bp, painel17_bp,
+        painel18_bp, painel19_bp, painel20_bp, painel21_bp,
+        painel22_bp, painel23_bp
     ]
 
     for painel in paineis:
