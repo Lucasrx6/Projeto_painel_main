@@ -3,115 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoramento de Alta do PS - Anchieta Ceilândia</title>
-    <!-- Font Awesome -->
+    <title>Monitoramento de Alta do PS - Anchieta Ceilandia</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- CSS Customizado -->
     <link rel="stylesheet" href="/paineis/painel11/style.css">
     <link rel="icon" href="/static/img/favicon.png">
 </head>
 <body>
     <div class="painel-container">
         <!-- ========================================
-             CABEÇALHO COMPACTO
+             CABECALHO - Padrao P24
              ======================================== -->
-        <div class="painel-header">
+        <header class="painel-header" role="banner">
             <div class="header-content">
                 <div class="header-left">
-                    <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
-                    <h1><i class="fas fa-bed-pulse"></i> Monitoramento de Alta do PS</h1>
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-bed-pulse" aria-hidden="true"></i> Monitoramento de Alta do PS</h1>
+                        <span class="header-subtitle">Acompanhamento de pacientes com alta para internacao</span>
+                    </div>
                 </div>
                 <div class="header-right">
-                    <!-- Filtro de Status -->
-                    <select id="filtro-status" class="filtro-status-select">
-                        <option value="">Todos os Pacientes</option>
-                        <option value="AGUARDANDO_VAGA" selected>🔴 Aguardando Vaga</option>
-                        <option value="INTERNADO">🟢 Já Internados</option>
-                    </select>
+                    <!-- Botao recolher filtros -->
+                    <button id="btn-toggle-filtros" class="btn-header btn-toggle-filtros" title="Recolher/Expandir filtros" aria-label="Recolher filtros">
+                        <i class="fas fa-filter" aria-hidden="true"></i>
+                        <i class="fas fa-chevron-up toggle-arrow" aria-hidden="true"></i>
+                    </button>
 
-                    <button id="btn-voltar" class="btn-voltar">
-                        <i class="fas fa-arrow-left"></i> Voltar
-                    </button>
-                    <button id="btn-auto-scroll" class="btn-auto-scroll">
-                        <i class="fas fa-play"></i> Auto Scroll
-                    </button>
-                    <button id="btn-refresh" class="btn-refresh">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <span class="ultima-atualizacao">-</span>
+                    <div class="header-controls" id="header-controls">
+                        <!-- Multi-Select: Status Internacao -->
+                        <div class="multi-select-container" id="ms-status-internacao" data-state-key="multiStatusInternacao" data-placeholder="Status Intern.">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Status Intern.</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
+                        </div>
+
+                        <!-- Multi-Select: Gestao de Vagas -->
+                        <div class="multi-select-container" id="ms-status-gv" data-state-key="multiStatusGv" data-placeholder="Gestao Vagas">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Gestao Vagas</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
+                        </div>
+
+                        <!-- Multi-Select: Clinica -->
+                        <div class="multi-select-container" id="ms-clinica" data-state-key="multiClinica" data-placeholder="Clinica">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Clinica</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
+                        </div>
+
+                        <!-- Multi-Select: Convenio -->
+                        <div class="multi-select-container" id="ms-convenio" data-state-key="multiConvenio" data-placeholder="Convenio">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Convenio</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
+                        </div>
+
+                        <!-- Limpar filtros -->
+                        <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
+                            <i class="fas fa-eraser" aria-hidden="true"></i>
+                        </button>
+
+                        <div class="header-status">
+                            <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
+                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                        </div>
+                    </div>
+
+                    <div class="header-actions">
+                        <button id="btn-auto-scroll" class="btn-header btn-auto-scroll" title="Ativar rolagem automatica" aria-label="Ativar rolagem automatica">
+                            <i class="fas fa-play" aria-hidden="true"></i>
+                            <span class="btn-text">Auto Scroll</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar ao Dashboard" aria-label="Voltar ao Dashboard">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </header>
 
         <!-- ========================================
-             MINI DASHBOARD - 1 LINHA
+             MINI DASHBOARD - KPIs
              ======================================== -->
-        <div class="mini-dashboard">
-            <div class="stat-card">
-                <div class="stat-icon icon-total">
-                    <i class="fas fa-clipboard-list"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-altas">-</h3>
-                    <p>Total Altas Hoje</p>
-                </div>
+        <section class="dashboard-resumo" aria-label="Resumo Alta PS">
+            <div class="resumo-grid">
+                <article class="resumo-card card-total">
+                    <div class="card-icon"><i class="fas fa-clipboard-list" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="total-altas">-</span><span class="card-label">Total Solicitações</span></div>
+                </article>
+                <article class="resumo-card card-aguardando">
+                    <div class="card-icon"><i class="fas fa-hourglass-half" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="total-aguardando">-</span><span class="card-label">Aguardando Vaga</span></div>
+                </article>
+                <article class="resumo-card card-transf-ext">
+                    <div class="card-icon"><i class="fas fa-ambulance" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="total-chamados">-</span><span class="card-label">Transf. Externa</span></div>
+                </article>
+                <article class="resumo-card card-aprovado">
+                    <div class="card-icon"><i class="fas fa-thumbs-up" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="total-aprovados">-</span><span class="card-label">Vaga Aprovada</span></div>
+                </article>
+                <article class="resumo-card card-internado">
+                    <div class="card-icon"><i class="fas fa-bed" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="total-internados">-</span><span class="card-label">Internados</span></div>
+                </article>
+                <article class="resumo-card card-critico">
+                    <div class="card-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="total-criticos">-</span><span class="card-label">Criticos (+4h)</span></div>
+                </article>
+                <article class="resumo-card card-tempo">
+                    <div class="card-icon"><i class="fas fa-stopwatch" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="tempo-medio">-</span><span class="card-label">Mediana Intern.</span></div>
+                </article>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-icon icon-aguardando">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-aguardando">-</h3>
-                    <p>Aguardando Vaga</p>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon icon-internados">
-                    <i class="fas fa-bed"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-internados">-</h3>
-                    <p>Já Internados</p>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon icon-tempo">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="tempo-medio">-</h3>
-                    <p>Tempo Médio Espera</p>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon icon-critico">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="total-criticos">-</h3>
-                    <p>Críticos (>4h)</p>
-                </div>
-            </div>
-        </div>
+        </section>
 
         <!-- ========================================
-             CONTEÚDO PRINCIPAL - TABELA
+             CONTEUDO PRINCIPAL - TABELA
              ======================================== -->
-        <div class="painel-content" id="painel-content">
-            <!-- Loading inicial -->
+        <main class="painel-main" id="painel-content" role="main">
             <div class="loading-container">
                 <div class="loading-spinner"></div>
                 <p>Carregando dados...</p>
             </div>
-        </div>
+        </main>
     </div>
 
-    <!-- JavaScript -->
     <script src="/paineis/painel11/main.js"></script>
-<script src="/static/js/auto-auth.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
 </body>
 </html>

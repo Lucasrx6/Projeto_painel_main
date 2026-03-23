@@ -6,7 +6,7 @@
  * - Listagem de estoque por setor com classificacao por dias
  * - Multi-select generico para: Local, Tipo Local, Grupo, Subgrupo, Classificacao
  * - Filtro de busca por item/codigo
- * - Toggles: ocultar sem consumo, ocultar carrinhos/maletas, apenas criticos (<7d)
+ * - Toggles: ocultar sem consumo, ocultar carrinhos/maletas, apenas criticos (<3d)
  * - Exportacao Excel com selecao de colunas
  * - Botao recolher/expandir filtros
  * - Dois modos de scroll: rolagem continua e paginado
@@ -93,7 +93,7 @@
         DOM.totalRegistros = document.getElementById('total-registros');
 
         DOM.kpiTotalItens = document.getElementById('kpi-total-itens');
-        DOM.kpiAbaixo7d = document.getElementById('kpi-abaixo-7d');
+        DOM.kpiAbaixo3d = document.getElementById('kpi-abaixo-3d');
         DOM.kpiSaldoNegativo = document.getElementById('kpi-saldo-negativo');
         DOM.kpiSemOrigem = document.getElementById('kpi-sem-origem');
         DOM.kpiComOrigem = document.getElementById('kpi-com-origem');
@@ -521,7 +521,7 @@
             (function(c) { setTimeout(function() { c.classList.remove('atualizando'); }, 300); })(cards[j]);
         }
         if (DOM.kpiTotalItens) DOM.kpiTotalItens.textContent = formatarNumero(d.total_itens);
-        if (DOM.kpiAbaixo7d) DOM.kpiAbaixo7d.textContent = formatarNumero(d.qt_abaixo_7d);
+        if (DOM.kpiAbaixo3d) DOM.kpiAbaixo3d.textContent = formatarNumero(d.qt_abaixo_3d);
         if (DOM.kpiSaldoNegativo) DOM.kpiSaldoNegativo.textContent = formatarNumero(d.qt_saldo_negativo);
         if (DOM.kpiSemOrigem) DOM.kpiSemOrigem.textContent = formatarNumero(d.qt_sem_origem_critico);
         if (DOM.kpiComOrigem) DOM.kpiComOrigem.textContent = formatarNumero(d.qt_com_origem);
@@ -545,7 +545,7 @@
             if (va === null || va === undefined) va = '';
             if (vb === null || vb === undefined) vb = '';
             if (campo === 'consumo_dia' || campo === 'saldo_disponivel' || campo === 'dias_estoque' ||
-                campo === 'qt_ressuprimento_7d' || campo === 'saldo_origem' || campo === 'dias_estoque_origem' ||
+                campo === 'qt_ressuprimento_3d' || campo === 'saldo_origem' || campo === 'dias_estoque_origem' ||
                 campo === 'codigo_material' || campo === 'ordem_classificacao') {
                 va = parseFloat(va) || 0;
                 vb = parseFloat(vb) || 0;
@@ -583,7 +583,7 @@
         { campo: 'consumo_dia',         titulo: 'Consumo/Dia',  classe: 'col-consumo' },
         { campo: 'saldo_disponivel',    titulo: 'Saldo',        classe: 'col-saldo' },
         { campo: 'dias_estoque',        titulo: 'Dias Est.',    classe: 'col-dias' },
-        { campo: 'qt_ressuprimento_7d', titulo: 'Repor p/ 7d',  classe: 'col-reposicao' },
+        { campo: 'qt_ressuprimento_3d', titulo: 'Repor p/ 3d',  classe: 'col-reposicao' },
         { campo: 'local_origem_sugerido', titulo: 'Origem Sugerida', classe: 'col-origem' },
         { campo: 'saldo_origem',        titulo: 'Saldo Orig.',  classe: 'col-saldo-origem' }
     ];
@@ -656,12 +656,12 @@
         if (dias !== null && dias !== undefined && reg.consumo_dia > 0) {
             var diasNum = parseFloat(dias);
             diasTexto = formatarDecimal(diasNum);
-            if (diasNum < 3) classeDias = 'dias-critico';
-            else if (diasNum < 7) classeDias = 'dias-urgente';
+            if (diasNum < 1) classeDias = 'dias-critico';
+            else if (diasNum < 3) classeDias = 'dias-urgente';
             else classeDias = 'dias-ok';
         }
 
-        var reposicao = parseFloat(reg.qt_ressuprimento_7d) || 0;
+        var reposicao = parseFloat(reg.qt_ressuprimento_3d) || 0;
         var reposicaoTexto = reposicao > 0 ? formatarNumero(Math.ceil(reposicao)) : '-';
         var classeRepo = reposicao > 0 ? 'reposicao-valor' : '';
 
@@ -787,7 +787,7 @@
         var html = '';
         for (var i = 0; i < recs.length; i++) {
             var r = recs[i];
-            var reposicao = Math.ceil(parseFloat(r.qt_ressuprimento_7d) || 0);
+            var reposicao = Math.ceil(parseFloat(r.qt_ressuprimento_3d) || 0);
             var badgeClasse = getBadgeClasseRec(r.classificacao);
 
             html += '<div class="rec-card">' +
@@ -1133,7 +1133,7 @@
         { campo: 'consumo_dia',           titulo: 'Consumo/Dia',         sel: true },
         { campo: 'saldo_disponivel',      titulo: 'Saldo Disponivel',    sel: true },
         { campo: 'dias_estoque',          titulo: 'Dias Estoque',        sel: true },
-        { campo: 'qt_ressuprimento_7d',   titulo: 'Repor p/ 7 Dias',    sel: true },
+        { campo: 'qt_ressuprimento_3d',   titulo: 'Repor p/ 3 Dias',    sel: true },
         { campo: 'local_origem_sugerido', titulo: 'Origem Sugerida',     sel: true },
         { campo: 'saldo_origem',          titulo: 'Saldo Origem',        sel: true },
         { campo: 'dias_estoque_origem',   titulo: 'Dias Est. Origem',    sel: false },
@@ -1198,7 +1198,7 @@
                 var cp = colsSel[c].campo;
                 var val = reg[cp];
                 if (cp === 'consumo_dia' || cp === 'saldo_disponivel' || cp === 'dias_estoque' ||
-                    cp === 'qt_ressuprimento_7d' || cp === 'saldo_origem' || cp === 'dias_estoque_origem') {
+                    cp === 'qt_ressuprimento_3d' || cp === 'saldo_origem' || cp === 'dias_estoque_origem') {
                     row.push(val !== null && val !== undefined ? parseFloat(val) : '');
                 } else {
                     row.push(val !== null && val !== undefined ? String(val) : '');
@@ -1493,6 +1493,13 @@
 
         // Restaurar campos de input
         if (DOM.filtroBusca) DOM.filtroBusca.value = Estado.filtros.busca;
+
+        // Restaurar arrays multi-select do localStorage ANTES do primeiro carregarDados
+        Estado.multiLocal = recuperarArray('multiLocal');
+        Estado.multiTipoLocal = recuperarArray('multiTipoLocal');
+        Estado.multiGrupo = recuperarArray('multiGrupo');
+        Estado.multiSubgrupo = recuperarArray('multiSubgrupo');
+        Estado.multiClassificacao = recuperarArray('multiClassificacao');
 
         configurarEventos();
         carregarFiltrosDinamicos();

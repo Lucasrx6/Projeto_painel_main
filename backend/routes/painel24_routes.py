@@ -1,6 +1,6 @@
 """
 Painel 24 - Estoque-Dia (Controle de Ressuprimento)
-Endpoints para monitoramento de estoque por setor e ressuprimento a 7 dias
+Endpoints para monitoramento de estoque por setor e ressuprimento a 3 dias
 
 Endpoints:
     GET /painel/painel24                        - Pagina HTML
@@ -155,7 +155,7 @@ def _build_common_filters():
     if ocultar_carrinhos == '1':
         condicoes.append("tipo_local NOT IN ('CARRINHO', 'MALETA')")
 
-    # Toggle: Apenas itens abaixo de 7 dias (com consumo)
+    # Toggle: Apenas itens abaixo de 3 dias (com consumo)
     apenas_criticos = request.args.get('apenas_criticos', '')
     if apenas_criticos == '1':
         condicoes.append("classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE','ATENCAO')")
@@ -219,7 +219,7 @@ def api_painel24_dashboard():
 
                 COUNT(*) FILTER (
                     WHERE classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE','ATENCAO')
-                )::INTEGER                                                      AS qt_abaixo_7d,
+                )::INTEGER                                                      AS qt_abaixo_3d,
 
                 COUNT(*) FILTER (WHERE saldo_disponivel < 0)::INTEGER           AS qt_saldo_negativo,
 
@@ -230,8 +230,8 @@ def api_painel24_dashboard():
                       AND tem_origem = FALSE
                 )::INTEGER                                                      AS qt_sem_origem_critico,
 
-                COALESCE(SUM(qt_ressuprimento_7d) FILTER (
-                    WHERE qt_ressuprimento_7d > 0
+                COALESCE(SUM(qt_ressuprimento_3d) FILTER (
+                    WHERE qt_ressuprimento_3d > 0
                 ), 0)                                                           AS qt_total_ressuprimento,
 
                 COUNT(DISTINCT cd_local_estoque) FILTER (
@@ -253,7 +253,7 @@ def api_painel24_dashboard():
         if not result:
             result = {
                 'total_itens': 0, 'total_materiais': 0, 'total_locais': 0,
-                'qt_abaixo_7d': 0, 'qt_saldo_negativo': 0
+                'qt_abaixo_3d': 0, 'qt_saldo_negativo': 0
             }
 
         return jsonify({
@@ -316,7 +316,7 @@ def api_painel24_dados():
                 dias_estoque,
                 classificacao,
                 ordem_classificacao,
-                qt_ressuprimento_7d,
+                qt_ressuprimento_3d,
                 cd_local_origem,
                 local_origem_sugerido,
                 saldo_origem,

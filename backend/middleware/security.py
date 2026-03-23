@@ -2,6 +2,7 @@
 Middleware de segurança HTTP
 Adiciona headers de segurança às respostas
 """
+from flask import request
 
 
 def add_security_headers(response, app_config):
@@ -15,6 +16,11 @@ def add_security_headers(response, app_config):
     Returns:
         response: Modified response with security headers
     """
+    # Cache-Control: dados médicos nunca devem ser cacheados por proxy/browser
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
+        response.headers['Pragma'] = 'no-cache'
+
     # Previne clickjacking
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
 

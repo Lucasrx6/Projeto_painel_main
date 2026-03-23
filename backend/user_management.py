@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any, Union
 
 from backend.database import get_db_connection
+from backend.auth import validar_senha_forte
 
 
 # ==============================================================================
@@ -135,48 +136,6 @@ def get_db_cursor(commit: bool = False):
 # ==============================================================================
 # FUNCOES DE VALIDACAO
 # ==============================================================================
-
-def validar_senha_forte(senha: str) -> Tuple[bool, str]:
-    """
-    Valida se a senha atende aos requisitos de seguranca.
-
-    Requisitos:
-        - Minimo 8 caracteres
-        - Maximo 128 caracteres
-        - Pelo menos uma letra maiuscula
-        - Pelo menos uma letra minuscula
-        - Pelo menos um numero
-        - Pelo menos um caractere especial
-
-    Args:
-        senha: Senha a ser validada
-
-    Returns:
-        tuple: (valida: bool, mensagem_erro: str)
-    """
-    if not senha or not isinstance(senha, str):
-        return False, 'Senha nao pode estar vazia'
-
-    if len(senha) < SENHA_MIN_LENGTH:
-        return False, f'A senha deve ter no minimo {SENHA_MIN_LENGTH} caracteres'
-
-    if len(senha) > SENHA_MAX_LENGTH:
-        return False, f'A senha deve ter no maximo {SENHA_MAX_LENGTH} caracteres'
-
-    if not re.search(r'[A-Z]', senha):
-        return False, 'A senha deve conter pelo menos uma letra maiuscula'
-
-    if not re.search(r'[a-z]', senha):
-        return False, 'A senha deve conter pelo menos uma letra minuscula'
-
-    if not re.search(r'[0-9]', senha):
-        return False, 'A senha deve conter pelo menos um numero'
-
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>\-_=+\[\]\\;\'`~]', senha):
-        return False, 'A senha deve conter pelo menos um caractere especial'
-
-    return True, ''
-
 
 def validar_email(email: str) -> Tuple[bool, str]:
     """
