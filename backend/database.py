@@ -73,7 +73,7 @@ _connection_pool = None
 # Configuracoes do pool
 POOL_MIN_CONNECTIONS = int(os.getenv('DB_POOL_MIN', '2'))
 POOL_MAX_CONNECTIONS = int(os.getenv('DB_POOL_MAX', '10'))
-USE_CONNECTION_POOL = os.getenv('DB_USE_POOL', 'false').lower() == 'true'
+USE_CONNECTION_POOL = os.getenv('DB_USE_POOL', 'true').lower() == 'true'
 
 
 def init_connection_pool():

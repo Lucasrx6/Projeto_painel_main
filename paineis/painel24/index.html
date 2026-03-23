@@ -125,10 +125,10 @@
                             <span class="btn-filtro-text">Carrinhos</span>
                         </button>
 
-                        <!-- Toggle: Apenas criticos (<7d) -->
-                        <button id="btn-apenas-criticos" class="btn-filtro-toggle" title="Mostrar apenas itens abaixo de 7 dias" aria-pressed="false">
+                        <!-- Toggle: Apenas criticos (<3d) -->
+                        <button id="btn-apenas-criticos" class="btn-filtro-toggle" title="Mostrar apenas itens abaixo de 3 dias" aria-pressed="false">
                             <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-                            <span class="btn-filtro-text">&lt;7d</span>
+                            <span class="btn-filtro-text">&lt;3d</span>
                         </button>
 
                         <!-- Limpar filtros -->
@@ -174,9 +174,9 @@
                     <div class="card-icon"><i class="fas fa-boxes-stacked" aria-hidden="true"></i></div>
                     <div class="card-content"><span class="card-value" id="kpi-total-itens">-</span><span class="card-label">Total Itens</span></div>
                 </article>
-                <article class="resumo-card card-abaixo-7d">
+                <article class="resumo-card card-abaixo-3d">
                     <div class="card-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></div>
-                    <div class="card-content"><span class="card-value" id="kpi-abaixo-7d">-</span><span class="card-label">Abaixo 7 Dias</span></div>
+                    <div class="card-content"><span class="card-value" id="kpi-abaixo-3d">-</span><span class="card-label">Abaixo 3 Dias</span></div>
                 </article>
                 <article class="resumo-card card-saldo-negativo">
                     <div class="card-icon"><i class="fas fa-arrow-trend-down" aria-hidden="true"></i></div>
@@ -263,6 +263,5 @@
     </div>
 
     <script src="/paineis/painel24/main.js"></script>
-<script src="/static/js/auto-auth.js"></script>
 </body>
 </html>
