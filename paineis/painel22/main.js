@@ -4,15 +4,32 @@
  * Colunas: Atend. | Paciente (nome+idade+convênio) | Tempo PS | Lab | Radio
  * Ícones: Vermelho (pendente), Amarelo (andamento), Verde (concluído)
  * Sem nomes de exames — apenas quantidades por status/tipo
+ *
+ * Suporte a rota pública (/publico/painel22) para acesso
+ * de pacientes via ngrok sem autenticação.
  */
 
 (function() {
     'use strict';
 
+    // =========================================================
+    // DETECÇÃO DE MODO PÚBLICO
+    // =========================================================
+
+    var IS_PUBLICO = window.location.pathname.indexOf('/publico/') !== -1;
+
+    // =========================================================
+    // CONFIGURAÇÃO
+    // =========================================================
+
     var CONFIG = {
         api: {
-            dashboard: '/api/paineis/painel22/dashboard',
-            dados: '/api/paineis/painel22/dados'
+            dashboard: IS_PUBLICO
+                ? '/api/publico/painel22/dashboard'
+                : '/api/paineis/painel22/dashboard',
+            dados: IS_PUBLICO
+                ? '/api/publico/painel22/dados'
+                : '/api/paineis/painel22/dados'
         },
         intervaloRefresh: 120000,
         velocidadeScroll: 1.0,
@@ -74,26 +91,26 @@
         return iniciais.join(' ') + ' ' + partes[partes.length - 1];
     }
 
-function formatarTempo(horas) {
-    if (horas === null || horas === undefined) return '-';
-    horas = parseFloat(horas);
-    if (isNaN(horas)) return '-';
-    var totalMinutos = Math.round(horas * 60);
-    if (totalMinutos < 60) return totalMinutos + 'min';
-    var h = Math.floor(totalMinutos / 60);
-    var m = totalMinutos % 60;
-    if (h < 24) {
-        return m > 0 ? h + 'h' + (m < 10 ? '0' : '') + m + 'min' : h + 'h';
+    function formatarTempo(horas) {
+        if (horas === null || horas === undefined) return '-';
+        horas = parseFloat(horas);
+        if (isNaN(horas)) return '-';
+        var totalMinutos = Math.round(horas * 60);
+        if (totalMinutos < 60) return totalMinutos + 'min';
+        var h = Math.floor(totalMinutos / 60);
+        var m = totalMinutos % 60;
+        if (h < 24) {
+            return m > 0 ? h + 'h' + (m < 10 ? '0' : '') + m + 'min' : h + 'h';
+        }
+        var d = Math.floor(h / 24);
+        var hResto = h % 24;
+        var partes = d + 'd ';
+        if (hResto > 0 || m > 0) {
+            partes += hResto + 'h';
+            if (m > 0) partes += (m < 10 ? '0' : '') + m + 'min';
+        }
+        return partes;
     }
-    var d = Math.floor(h / 24);
-    var hResto = h % 24;
-    var partes = d + 'd ';
-    if (hResto > 0 || m > 0) {
-        partes += hResto + 'h';
-        if (m > 0) partes += (m < 10 ? '0' : '') + m + 'min';
-    }
-    return partes;
-}
 
     function classeTempo(horas) {
         if (horas === null || horas === undefined) return 'tempo-normal';
@@ -535,6 +552,7 @@ function formatarTempo(horas) {
 
     function inicializar() {
         console.log('[P22] Inicializando Painel Acompanhamento Exames PS...');
+        console.log('[P22] Modo: ' + (IS_PUBLICO ? 'PUBLICO' : 'INTERNO'));
         cachearElementos();
         configurarEventos();
         carregarDados();

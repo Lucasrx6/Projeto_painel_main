@@ -42,7 +42,7 @@ def api_minhas_permissoes():
                     'painel10', 'painel11', 'painel12', 'painel13',
                     'painel14', 'painel15', 'painel16', 'painel17',
                     'painel18', 'painel19', 'painel20', 'painel21',
-                    'painel22', 'painel23', 'painel24'
+                    'painel22', 'painel23', 'painel24', 'painel25'
                 ],
                 'is_admin': True
             })
@@ -363,6 +363,8 @@ def api_listar_paineis():
              'descricao': 'Informações do Ambulatório', 'ativo': True},
             {'nome': 'painel24', 'titulo': 'Estoque Dia',
              'descricao': 'Acompanhar estoque dia', 'ativo': True},
+            {'nome': 'painel25', 'titulo': 'Exames médico PS',
+             'descricao': 'Resultado dos exames no PS', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

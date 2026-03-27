@@ -2,10 +2,15 @@
 Painel 22 - Jornada do Paciente PS
 Exames de Radiologia e Laboratório
 
-Endpoints:
+Endpoints INTERNOS (com login):
   GET /painel/painel22                    -> Página principal
   GET /api/paineis/painel22/dashboard     -> Cards resumo
   GET /api/paineis/painel22/dados         -> Dados agrupados por paciente
+
+Endpoints PÚBLICOS (sem login — acesso pacientes/ngrok):
+  GET /publico/painel22                   -> Página principal pública
+  GET /api/publico/painel22/dashboard     -> Cards resumo público
+  GET /api/publico/painel22/dados         -> Dados agrupados público
 """
 
 from flask import Blueprint, jsonify, request, session, current_app, send_from_directory
@@ -20,6 +25,10 @@ logger = logging.getLogger(__name__)
 
 painel22_bp = Blueprint('painel22', __name__)
 
+
+# =========================================================
+# UTILITÁRIOS DE SERIALIZAÇÃO
+# =========================================================
 
 def serializar_valor(val):
     """Converte valores para JSON-serializável."""
@@ -39,40 +48,17 @@ def serializar_dict(d):
 
 
 # =========================================================
-# PÁGINA PRINCIPAL
+# LÓGICA INTERNA (compartilhada entre rotas internas e públicas)
 # =========================================================
 
-@painel22_bp.route('/painel/painel22')
-@login_required
-def painel22():
-    """Página principal do Painel 22"""
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel22'):
-            current_app.logger.warning(
-                f'Acesso negado ao painel22: {session.get("usuario")}'
-            )
-            return send_from_directory('frontend', 'acesso-negado.html')
-
-    return send_from_directory('paineis/painel22', 'index.html')
-
-
-# =========================================================
-# API: DASHBOARD (cards resumo)
-# =========================================================
-
-@painel22_bp.route('/api/paineis/painel22/dashboard')
-@login_required
-def api_painel22_dashboard():
+def _buscar_dashboard():
     """
-    Dashboard de resumo: totais de pacientes, exames por status
-    GET /api/paineis/painel22/dashboard
+    Busca dados do dashboard (cards resumo).
+    Retorna tuple (dict_dados, erro_string).
     """
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
+        return None, 'Erro de conexão'
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -83,46 +69,34 @@ def api_painel22_dashboard():
         conn.close()
 
         if not row:
-            return jsonify({
-                'success': True,
-                'data': {
-                    'total_pacientes': 0,
-                    'total_exames': 0,
-                    'qt_radiologia': 0,
-                    'qt_laboratorio': 0,
-                    'qt_pendentes': 0,
-                    'qt_em_andamento': 0,
-                    'qt_concluidos': 0
-                }
-            })
+            return {
+                'total_pacientes': 0,
+                'total_exames': 0,
+                'qt_radiologia': 0,
+                'qt_laboratorio': 0,
+                'qt_pendentes': 0,
+                'qt_em_andamento': 0,
+                'qt_concluidos': 0
+            }, None
 
-        return jsonify({'success': True, 'data': serializar_dict(row)})
+        return serializar_dict(row), None
 
     except Exception as e:
         logger.error(f'[P22] Erro dashboard: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return None, str(e)
 
 
-# =========================================================
-# API: DADOS (pacientes com exames agrupados)
-# =========================================================
-
-@painel22_bp.route('/api/paineis/painel22/dados')
-@login_required
-def api_painel22_dados():
+def _buscar_dados():
     """
-    Pacientes do PS com exames agrupados por tipo (Lab/Radio).
-
-    Regra de ocultação: pacientes com TODOS os exames concluídos
-    há mais de 1 hora são filtrados para não poluir a tela.
-
-    GET /api/paineis/painel22/dados
+    Busca pacientes do PS com exames agrupados por tipo (Lab/Radio).
+    Regra de ocultação: pacientes 100% concluídos há mais de 1h.
+    Retorna tuple (lista_pacientes, erro_string).
     """
     conn = get_db_connection()
     if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
+        return None, 'Erro de conexão'
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -217,10 +191,82 @@ def api_painel22_dados():
             pac.pop('dt_ultimo_resultado', None)
             resultado.append(pac)
 
-        return jsonify({'success': True, 'data': resultado})
+        return resultado, None
 
     except Exception as e:
         logger.error(f'[P22] Erro dados: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return None, str(e)
+
+
+# =========================================================
+# ROTAS INTERNAS (com autenticação)
+# =========================================================
+
+@painel22_bp.route('/painel/painel22')
+@login_required
+def painel22():
+    """Página principal do Painel 22 (requer login)"""
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel22'):
+            current_app.logger.warning(
+                f'Acesso negado ao painel22: {session.get("usuario")}'
+            )
+            return send_from_directory('frontend', 'acesso-negado.html')
+
+    return send_from_directory('paineis/painel22', 'index.html')
+
+
+@painel22_bp.route('/api/paineis/painel22/dashboard')
+@login_required
+def api_painel22_dashboard():
+    """Dashboard com login — GET /api/paineis/painel22/dashboard"""
+    dados, erro = _buscar_dashboard()
+    if erro:
+        return jsonify({'success': False, 'error': erro}), 500
+    return jsonify({'success': True, 'data': dados})
+
+
+@painel22_bp.route('/api/paineis/painel22/dados')
+@login_required
+def api_painel22_dados():
+    """Dados com login — GET /api/paineis/painel22/dados"""
+    dados, erro = _buscar_dados()
+    if erro:
+        return jsonify({'success': False, 'error': erro}), 500
+    return jsonify({'success': True, 'data': dados})
+
+
+# =========================================================
+# ROTAS PÚBLICAS (sem autenticação — acesso pacientes/ngrok)
+# =========================================================
+
+@painel22_bp.route('/publico/painel22')
+def painel22_publico():
+    """Página pública do Painel 22 — sem login"""
+    current_app.logger.info(
+        f'[P22] Acesso público de {request.remote_addr}'
+    )
+    return send_from_directory('paineis/painel22', 'index.html')
+
+
+@painel22_bp.route('/api/publico/painel22/dashboard')
+def api_painel22_dashboard_publico():
+    """Dashboard público — GET /api/publico/painel22/dashboard"""
+    dados, erro = _buscar_dashboard()
+    if erro:
+        return jsonify({'success': False, 'error': erro}), 500
+    return jsonify({'success': True, 'data': dados})
+
+
+@painel22_bp.route('/api/publico/painel22/dados')
+def api_painel22_dados_publico():
+    """Dados público — GET /api/publico/painel22/dados"""
+    dados, erro = _buscar_dados()
+    if erro:
+        return jsonify({'success': False, 'error': erro}), 500
+    return jsonify({'success': True, 'data': dados})
