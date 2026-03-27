@@ -112,6 +112,26 @@
     </div>
 
     <script src="/paineis/painel22/main.js"></script>
-<script src="/static/js/auto-auth.js"></script>
+
+    <!-- Auto-auth: só carrega se NÃO for rota pública -->
+    <script>
+    (function() {
+        var isPublico = window.location.pathname.indexOf('/publico/') !== -1;
+
+        if (!isPublico) {
+            var s = document.createElement('script');
+            s.src = '/static/js/auto-auth.js';
+            document.body.appendChild(s);
+        }
+
+        // Oculta botão Voltar no modo público (paciente não precisa)
+        if (isPublico) {
+            document.addEventListener('DOMContentLoaded', function() {
+                var btnVoltar = document.getElementById('btn-voltar');
+                if (btnVoltar) btnVoltar.style.display = 'none';
+            });
+        }
+    })();
+    </script>
 </body>
 </html>

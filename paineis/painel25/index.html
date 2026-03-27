@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Exames PS - Visao Medica - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+    <title>Exames PS - Visao Medica - Anchieta Ceilandia</title>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel25/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+        <header class="painel-header" role="banner">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-stethoscope" aria-hidden="true"></i> Exames do PS</h1>
+                        <span class="header-subtitle">Resultados de Radiologia e Laboratorio</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <!-- Botao recolher filtros -->
+                    <button id="btn-toggle-filtros" class="btn-header btn-toggle-filtros" title="Recolher/Expandir filtros" aria-label="Recolher filtros">
+                        <i class="fas fa-filter" aria-hidden="true"></i>
+                        <i class="fas fa-chevron-up toggle-arrow" aria-hidden="true"></i>
+                    </button>
+
+                    <div class="header-controls" id="header-controls">
+                        <!-- Filtro Medico -->
+                        <div class="multi-select-container" id="ms-medico" data-state-key="multiMedico" data-placeholder="Medico">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Medico</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
+                        </div>
+
+                        <!-- Filtro Clinica -->
+                        <div class="multi-select-container" id="ms-clinica" data-state-key="multiClinica" data-placeholder="Clinica">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Clinica</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options"></div>
+                            </div>
+                        </div>
+
+                        <!-- Filtro Tipo Exame -->
+                        <div class="filtro-container">
+                            <select id="filtro-tipo-exame" class="filtro-select" aria-label="Tipo de Exame">
+                                <option value="">Tipo Exame</option>
+                                <option value="RADIOLOGIA">Radiologia</option>
+                                <option value="LABORATORIO">Laboratorio</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Status -->
+                        <div class="multi-select-container" id="ms-status" data-state-key="multiStatusExame" data-placeholder="Status">
+                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="multi-select-label">Status</span>
+                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                            </button>
+                            <div class="multi-select-dropdown" role="listbox">
+                                <div class="multi-select-actions">
+                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                                </div>
+                                <div class="multi-select-options">
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="LAUDADO"> <span class="multi-select-item-text">Laudado</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="LIBERADO"> <span class="multi-select-item-text">Liberado</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="EXECUTADO"> <span class="multi-select-item-text">Executado</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="EM_ANALISE"> <span class="multi-select-item-text">Em Analise</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="COLETADO"> <span class="multi-select-item-text">Coletado</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="AGUARDANDO"> <span class="multi-select-item-text">Aguardando</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="SOLICITADO"> <span class="multi-select-item-text">Solicitado</span></label>
+                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="RESULTADO_PARCIAL"> <span class="multi-select-item-text">Resultado Parcial</span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Busca por atendimento/paciente -->
+                        <div class="filtro-container filtro-busca">
+                            <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar atend./paciente..." aria-label="Buscar">
+                        </div>
+
+                        <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
+                            <i class="fas fa-eraser" aria-hidden="true"></i>
+                        </button>
+
+                        <div class="header-status">
+                            <span class="filtro-stats"><strong id="total-filtrados">0</strong> pac.</span>
+                            <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
+                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                        </div>
+                    </div>
+
+                    <div class="header-actions">
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar ao Dashboard" aria-label="Voltar ao Dashboard">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="dashboard-resumo" aria-label="Resumo de Exames">
+            <div class="resumo-grid">
+                <article class="resumo-card card-pacientes">
+                    <div class="card-icon"><i class="fas fa-users" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-pacientes">-</span><span class="card-label">Pacientes</span></div>
+                </article>
+                <article class="resumo-card card-total">
+                    <div class="card-icon"><i class="fas fa-vials" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-total">-</span><span class="card-label">Exames</span></div>
+                </article>
+                <article class="resumo-card card-prontos">
+                    <div class="card-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-prontos">-</span><span class="card-label">Prontos</span></div>
+                </article>
+                <article class="resumo-card card-andamento">
+                    <div class="card-icon"><i class="fas fa-spinner" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-andamento">-</span><span class="card-label">Em Andamento</span></div>
+                </article>
+                <article class="resumo-card card-pendentes">
+                    <div class="card-icon"><i class="fas fa-clock" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-pendentes">-</span><span class="card-label">Pendentes</span></div>
+                </article>
+                <article class="resumo-card card-radio">
+                    <div class="card-icon"><i class="fas fa-x-ray" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-radio">-</span><span class="card-label">Radiologia</span></div>
+                </article>
+                <article class="resumo-card card-lab">
+                    <div class="card-icon"><i class="fas fa-microscope" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-lab">-</span><span class="card-label">Laboratorio</span></div>
+                </article>
+            </div>
+        </section>
+
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando exames...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/paineis/painel25/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

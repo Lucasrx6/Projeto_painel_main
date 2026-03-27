@@ -1,0 +1,324 @@
+/**
+ * PAINEL 25 - Exames do PS (Visao Medica)
+ * Visual System: Identico ao P21 (Evolucao de Contas)
+ */
+
+/* =========================================================
+   1. VARIAVEIS CSS
+   ========================================================= */
+
+:root {
+    --cor-primaria: #dc3545;
+    --cor-primaria-hover: #c82333;
+    --cor-primaria-light: #f8d7da;
+    --cor-primaria-dark: #bd2130;
+    --cor-header: #dc3545;
+    --cor-header-dark: #c82333;
+
+    --cor-pronto: #28a745;
+    --cor-pronto-light: #d4edda;
+    --cor-pronto-dark: #155724;
+    --cor-andamento: #ffc107;
+    --cor-andamento-light: #fff3cd;
+    --cor-andamento-dark: #856404;
+    --cor-pendente: #dc3545;
+    --cor-pendente-light: #f8d7da;
+    --cor-pendente-dark: #721c24;
+    --cor-parcial: #6f42c1;
+    --cor-parcial-light: #e2d9f3;
+    --cor-parcial-dark: #4a235a;
+    --cor-info: #17a2b8;
+    --cor-info-light: #d1ecf1;
+    --cor-info-dark: #0c5460;
+
+    --cor-sucesso: #28a745;
+    --cor-sucesso-light: #d4edda;
+    --cor-alerta: #ffc107;
+    --cor-alerta-light: #fff3cd;
+    --cor-perigo: #dc3545;
+    --cor-perigo-light: #f8d7da;
+
+    --cor-texto: #333333;
+    --cor-texto-secundario: #666666;
+    --cor-texto-muted: #999999;
+    --cor-fundo: #f5f7fa;
+    --cor-fundo-card: #ffffff;
+    --cor-borda: #e9ecef;
+    --cor-borda-light: #f0f0f0;
+
+    --grad-pacientes: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+    --grad-total: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    --grad-prontos: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    --grad-andamento: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    --grad-pendentes: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    --grad-radio: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+    --grad-lab: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+
+    --sombra-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --sombra-md: 0 4px 12px rgba(0,0,0,0.1);
+    --sombra-lg: 0 8px 24px rgba(0,0,0,0.12);
+    --sombra-card: 0 2px 8px rgba(0,0,0,0.08);
+    --sombra-card-hover: 0 4px 16px rgba(0,0,0,0.12);
+
+    --espacamento-xs: 4px;
+    --espacamento-sm: 8px;
+    --espacamento-md: 16px;
+    --espacamento-lg: 24px;
+    --espacamento-xl: 32px;
+
+    --raio-sm: 4px;
+    --raio-md: 8px;
+    --raio-lg: 12px;
+    --raio-full: 50%;
+
+    --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --transicao-rapida: 150ms ease;
+    --transicao-normal: 250ms ease;
+    --transicao-lenta: 350ms ease;
+    --z-header: 100;
+    --z-dropdown: 200;
+}
+
+/* =========================================================
+   2. RESET E BASE
+   ========================================================= */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.5; color: var(--cor-texto); background: var(--cor-fundo); overflow: hidden; height: 100vh; height: 100dvh; }
+
+/* =========================================================
+   3. LAYOUT PRINCIPAL
+   ========================================================= */
+.painel-container { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: var(--cor-fundo); position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
+
+/* =========================================================
+   4. CABECALHO E FILTROS
+   ========================================================= */
+.painel-header { background: linear-gradient(135deg, var(--cor-header) 0%, var(--cor-header-dark) 100%); color: white; padding: var(--espacamento-sm) var(--espacamento-md); flex-shrink: 0; box-shadow: var(--sombra-md); z-index: var(--z-header); }
+.header-content { display: flex; justify-content: space-between; align-items: center; gap: var(--espacamento-sm); }
+.header-left { display: flex; align-items: center; gap: var(--espacamento-sm); flex-shrink: 0; }
+.header-logo { height: 32px; padding: 4px 6px; background: white; border-radius: var(--raio-sm); box-shadow: var(--sombra-sm); }
+.header-title h1 { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 6px; margin: 0; }
+.header-title h1 i { font-size: 0.9rem; }
+.header-subtitle { font-size: 0.7rem; opacity: 0.85; display: block; margin-top: 2px; }
+.header-right { display: flex; align-items: center; gap: var(--espacamento-sm); flex-wrap: wrap; justify-content: flex-end; }
+.header-controls { display: flex; align-items: center; gap: var(--espacamento-xs); flex-wrap: wrap; transition: max-height 0.35s ease, opacity 0.25s ease; max-height: 500px; opacity: 1; overflow: visible; }
+.header-controls.recolhido { max-height: 0; opacity: 0; overflow: hidden; padding: 0; gap: 0; pointer-events: none; }
+
+/* Filtros select */
+.filtro-container { position: relative; }
+.filtro-select { appearance: none; background: rgba(255,255,255,0.15); color: white; border: 1.5px solid rgba(255,255,255,0.3); padding: 5px 26px 5px 8px; border-radius: var(--raio-sm); font-size: 0.7rem; font-weight: 600; cursor: pointer; min-width: 90px; transition: var(--transicao-rapida); background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 6px center; background-size: 10px; }
+.filtro-select:hover { background-color: rgba(255,255,255,0.25); border-color: white; }
+.filtro-select:focus { outline: none; background-color: rgba(255,255,255,0.3); border-color: white; }
+.filtro-select option { color: var(--cor-texto); background: white; }
+
+/* Busca */
+.filtro-busca { flex-shrink: 1; }
+.filtro-input { background: rgba(255,255,255,0.2); color: white; border: 1.5px solid rgba(255,255,255,0.3); padding: 5px 10px; border-radius: var(--raio-sm); font-size: 0.7rem; font-weight: 500; width: 160px; transition: var(--transicao-rapida); font-family: var(--fonte-principal); }
+.filtro-input::placeholder { color: rgba(255,255,255,0.65); }
+.filtro-input:focus { outline: none; background-color: rgba(255,255,255,0.3); border-color: white; width: 200px; }
+
+/* Toggle filtros */
+.btn-toggle-filtros { display: flex; align-items: center; gap: 4px; padding: 5px 8px; flex-shrink: 0; }
+.btn-toggle-filtros .toggle-arrow { font-size: 0.55rem; transition: transform 0.3s ease; }
+.btn-toggle-filtros.recolhido .toggle-arrow { transform: rotate(180deg); }
+
+/* Status */
+.header-status { display: flex; align-items: center; gap: var(--espacamento-sm); }
+.filtro-stats { font-size: 0.7rem; opacity: 0.9; font-weight: 600; white-space: nowrap; }
+.status-indicator { width: 8px; height: 8px; border-radius: var(--raio-full); background: rgba(255,255,255,0.5); transition: var(--transicao-normal); }
+.status-indicator.status-online { background: #90EE90; box-shadow: 0 0 8px rgba(144,238,144,0.8); }
+.status-indicator.status-offline { background: #ff6b6b; box-shadow: 0 0 8px rgba(255,107,107,0.8); }
+.status-indicator.status-loading { background: #ffd93d; animation: pulsar 1s ease-in-out infinite; }
+.ultima-atualizacao { font-size: 0.7rem; opacity: 0.9; font-weight: 500; }
+
+/* Botoes header */
+.header-actions { display: flex; gap: var(--espacamento-xs); flex-shrink: 0; }
+.btn-header { display: flex; align-items: center; gap: 5px; padding: 5px 10px; background: rgba(255,255,255,0.15); color: white; border: 1.5px solid rgba(255,255,255,0.4); border-radius: var(--raio-sm); font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: var(--transicao-rapida); font-family: var(--fonte-principal); }
+.btn-header:hover { background: white; color: var(--cor-primaria); transform: translateY(-1px); }
+.btn-header:active { transform: translateY(0); }
+.btn-limpar:hover { background: #ffc107; border-color: #ffc107; color: #333; }
+.btn-refresh.girando i { animation: girar 0.5s linear; }
+
+/* =========================================================
+   5. MULTI-SELECT DROPDOWNS
+   ========================================================= */
+.multi-select-container { position: relative; }
+.multi-select-trigger { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: rgba(255,255,255,0.15); color: white; border: 1.5px solid rgba(255,255,255,0.3); border-radius: var(--raio-sm); font-size: 0.7rem; font-weight: 600; cursor: pointer; min-width: 90px; max-width: 180px; transition: var(--transicao-rapida); font-family: var(--fonte-principal); }
+.multi-select-trigger:hover { background: rgba(255,255,255,0.25); border-color: white; }
+.multi-select-trigger.aberto { background: rgba(255,255,255,0.3); border-color: white; }
+.multi-select-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.multi-select-arrow { font-size: 0.55rem; flex-shrink: 0; transition: transform var(--transicao-rapida); }
+.multi-select-trigger.aberto .multi-select-arrow { transform: rotate(180deg); }
+.multi-select-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 180px; max-width: 280px; max-height: 300px; background: white; border-radius: var(--raio-md); box-shadow: var(--sombra-lg); z-index: var(--z-dropdown); overflow: hidden; border: 1px solid var(--cor-borda); }
+.multi-select-dropdown.aberto { display: flex; flex-direction: column; animation: dropdown-entrar 200ms ease; }
+.multi-select-actions { display: flex; gap: var(--espacamento-xs); padding: var(--espacamento-sm); border-bottom: 1px solid var(--cor-borda); background: var(--cor-fundo); }
+.btn-select-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 8px; background: white; color: var(--cor-texto-secundario); border: 1px solid var(--cor-borda); border-radius: var(--raio-sm); font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: var(--transicao-rapida); font-family: var(--fonte-principal); }
+.btn-select-action:hover { background: var(--cor-primaria); color: white; border-color: var(--cor-primaria); }
+.multi-select-options { overflow-y: auto; flex: 1; padding: var(--espacamento-xs) 0; }
+.multi-select-options::-webkit-scrollbar { width: 5px; }
+.multi-select-options::-webkit-scrollbar-thumb { background: var(--cor-borda); border-radius: 3px; }
+.multi-select-item { display: flex; align-items: center; gap: var(--espacamento-sm); padding: 7px 12px; cursor: pointer; transition: background var(--transicao-rapida); font-size: 0.78rem; color: var(--cor-texto); user-select: none; }
+.multi-select-item:hover { background: var(--cor-fundo); }
+.multi-select-item.selecionado { background: rgba(220,53,69,0.06); }
+.multi-select-checkbox { width: 15px; height: 15px; accent-color: var(--cor-primaria); cursor: pointer; flex-shrink: 0; }
+.multi-select-item-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* =========================================================
+   6. DASHBOARD RESUMO
+   ========================================================= */
+.dashboard-resumo { padding: var(--espacamento-sm) var(--espacamento-md); background: linear-gradient(180deg, #ffffff 0%, var(--cor-fundo) 100%); border-bottom: 1px solid var(--cor-borda); flex-shrink: 0; }
+.resumo-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--espacamento-sm); }
+.resumo-card { display: flex; align-items: center; gap: var(--espacamento-sm); padding: var(--espacamento-sm) var(--espacamento-md); background: var(--cor-fundo-card); border-radius: var(--raio-md); box-shadow: var(--sombra-card); transition: var(--transicao-rapida); border-left: 3px solid transparent; }
+.resumo-card:hover { transform: translateY(-2px); box-shadow: var(--sombra-card-hover); }
+.resumo-card.atualizando { animation: piscar 0.3s ease; }
+
+.card-pacientes  { border-left-color: #1a5276; }
+.card-total      { border-left-color: #17a2b8; }
+.card-prontos    { border-left-color: #28a745; }
+.card-andamento  { border-left-color: #ffc107; }
+.card-pendentes  { border-left-color: #dc3545; }
+.card-radio      { border-left-color: #1abc9c; }
+.card-lab        { border-left-color: #6f42c1; }
+
+.card-icon { width: 40px; height: 40px; border-radius: var(--raio-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.card-icon i { font-size: 1rem; color: white; }
+.card-pacientes .card-icon  { background: var(--grad-pacientes); }
+.card-total .card-icon      { background: var(--grad-total); }
+.card-prontos .card-icon    { background: var(--grad-prontos); }
+.card-andamento .card-icon  { background: var(--grad-andamento); }
+.card-pendentes .card-icon  { background: var(--grad-pendentes); }
+.card-radio .card-icon      { background: var(--grad-radio); }
+.card-lab .card-icon        { background: var(--grad-lab); }
+
+.card-content { display: flex; flex-direction: column; min-width: 0; }
+.card-value { font-size: 1.3rem; font-weight: 700; color: var(--cor-texto); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-label { font-size: 0.65rem; color: var(--cor-texto-secundario); text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+
+/* =========================================================
+   7. CONTEUDO PRINCIPAL
+   ========================================================= */
+.painel-main { flex: 1; overflow-y: auto; padding: var(--espacamento-sm) var(--espacamento-md) var(--espacamento-md); scroll-behavior: smooth; }
+.painel-main::-webkit-scrollbar { width: 6px; }
+.painel-main::-webkit-scrollbar-track { background: var(--cor-borda); border-radius: var(--raio-sm); }
+.painel-main::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: var(--raio-sm); }
+.painel-main::-webkit-scrollbar-thumb:hover { background: var(--cor-primaria-hover); }
+
+.pacientes-container { display: flex; flex-direction: column; gap: var(--espacamento-sm); }
+
+/* =========================================================
+   8. CARD DO PACIENTE
+   ========================================================= */
+.paciente-card { background: var(--cor-fundo-card); border-radius: var(--raio-md); box-shadow: var(--sombra-card); overflow: hidden; transition: var(--transicao-rapida); border-left: 4px solid transparent; }
+.paciente-card:hover { box-shadow: var(--sombra-card-hover); transform: translateY(-1px); }
+
+.paciente-card.sit-todos-prontos { border-left-color: var(--cor-pronto); background: linear-gradient(90deg, rgba(40,167,69,0.04) 0%, var(--cor-fundo-card) 100%); }
+.paciente-card.sit-parcial       { border-left-color: var(--cor-andamento); }
+.paciente-card.sit-nenhum-pronto { border-left-color: var(--cor-pendente); }
+
+.paciente-header { display: flex; align-items: center; padding: var(--espacamento-sm) var(--espacamento-md); cursor: pointer; gap: var(--espacamento-md); user-select: none; transition: background var(--transicao-rapida); }
+.paciente-header:hover { background: rgba(0,0,0,0.02); }
+.paciente-card.sit-todos-prontos .paciente-header:hover { background: rgba(40,167,69,0.06); }
+
+.situacao-badge { width: 40px; height: 40px; border-radius: var(--raio-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.situacao-badge i { font-size: 1rem; color: white; }
+.sit-todos-prontos .situacao-badge { background: var(--grad-prontos); box-shadow: 0 2px 8px rgba(40,167,69,0.3); }
+.sit-parcial .situacao-badge       { background: var(--grad-andamento); box-shadow: 0 2px 8px rgba(255,193,7,0.3); }
+.sit-nenhum-pronto .situacao-badge { background: var(--grad-pendentes); box-shadow: 0 2px 8px rgba(220,53,69,0.3); }
+
+.paciente-info { flex: 1; min-width: 0; }
+.paciente-nome { font-size: 0.88rem; font-weight: 600; color: var(--cor-texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paciente-card.sit-todos-prontos .paciente-nome { color: var(--cor-pronto-dark); }
+.paciente-detalhes { font-size: 0.72rem; color: var(--cor-texto-secundario); margin-top: 2px; display: flex; gap: var(--espacamento-sm); flex-wrap: wrap; }
+.paciente-detalhes span { white-space: nowrap; }
+.detalhe-icon { color: var(--cor-primaria); margin-right: 2px; font-size: 0.6rem; }
+
+.paciente-contadores { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+.contador-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 0.65rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; line-height: 1.4; }
+.pill-prontos   { background: var(--cor-pronto-light); color: var(--cor-pronto-dark); border: 1px solid var(--cor-pronto); }
+.pill-andamento { background: var(--cor-andamento-light); color: var(--cor-andamento-dark); border: 1px solid var(--cor-andamento); }
+.pill-pendentes { background: var(--cor-pendente-light); color: var(--cor-pendente-dark); border: 1px solid var(--cor-pendente); }
+
+.expand-arrow { color: var(--cor-texto-muted); font-size: 0.7rem; transition: transform 0.3s ease; flex-shrink: 0; }
+.paciente-card.expandido .expand-arrow { transform: rotate(180deg); }
+
+/* =========================================================
+   9. EXAMES (area expansivel)
+   ========================================================= */
+.paciente-exames { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; background: var(--cor-fundo); border-top: 1px solid var(--cor-borda-light); }
+.paciente-card.expandido .paciente-exames { max-height: 2000px; }
+.exames-lista { padding: var(--espacamento-sm) var(--espacamento-md) var(--espacamento-md); display: flex; flex-direction: column; gap: 6px; }
+
+.exame-row { display: flex; align-items: center; padding: var(--espacamento-sm) var(--espacamento-md); background: var(--cor-fundo-card); border-radius: var(--raio-md); gap: var(--espacamento-sm); border-left: 3px solid transparent; box-shadow: var(--sombra-sm); transition: var(--transicao-rapida); }
+.exame-row:hover { box-shadow: var(--sombra-card); transform: translateX(2px); }
+
+.exame-row.exame-laudado, .exame-row.exame-liberado        { border-left-color: var(--cor-pronto); background: linear-gradient(90deg, rgba(40,167,69,0.04) 0%, var(--cor-fundo-card) 100%); }
+.exame-row.exame-executado, .exame-row.exame-coletado, .exame-row.exame-em-analise { border-left-color: var(--cor-andamento); }
+.exame-row.exame-aguardando, .exame-row.exame-solicitado   { border-left-color: var(--cor-pendente); }
+.exame-row.exame-resultado-parcial { border-left-color: var(--cor-parcial); }
+
+.exame-tipo-icon { width: 32px; height: 32px; border-radius: var(--raio-full); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
+.exame-tipo-icon i { color: white; }
+.exame-row.exame-laudado .exame-tipo-icon, .exame-row.exame-liberado .exame-tipo-icon { background: var(--grad-prontos); }
+.exame-row.exame-executado .exame-tipo-icon, .exame-row.exame-coletado .exame-tipo-icon, .exame-row.exame-em-analise .exame-tipo-icon { background: var(--grad-andamento); }
+.exame-row.exame-aguardando .exame-tipo-icon, .exame-row.exame-solicitado .exame-tipo-icon { background: var(--grad-pendentes); }
+.exame-row.exame-resultado-parcial .exame-tipo-icon { background: var(--grad-lab); }
+
+.exame-info { flex: 1; min-width: 0; }
+.exame-procedimento { font-size: 0.78rem; font-weight: 500; color: var(--cor-texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exame-material { font-size: 0.68rem; color: var(--cor-texto-muted); margin-top: 1px; }
+
+/* =========================================================
+   10. BADGES E STATUS
+   ========================================================= */
+.exame-status-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600; white-space: nowrap; line-height: 1.4; flex-shrink: 0; }
+.badge-laudado, .badge-liberado         { background: var(--cor-pronto-light); color: var(--cor-pronto-dark); border: 1px solid var(--cor-pronto); }
+.badge-executado, .badge-coletado, .badge-em-analise { background: var(--cor-andamento-light); color: var(--cor-andamento-dark); border: 1px solid var(--cor-andamento); }
+.badge-aguardando, .badge-solicitado    { background: var(--cor-pendente-light); color: var(--cor-pendente-dark); border: 1px solid var(--cor-pendente); }
+.badge-resultado-parcial { background: var(--cor-parcial-light); color: var(--cor-parcial-dark); border: 1px solid var(--cor-parcial); }
+
+.exame-tempo { font-size: 0.72rem; color: var(--cor-texto-secundario); white-space: nowrap; flex-shrink: 0; min-width: 75px; text-align: right; font-variant-numeric: tabular-nums; }
+.exame-tempo i { margin-right: 3px; font-size: 0.6rem; }
+
+/* =========================================================
+   11. ESTADOS E FEEDBACK
+   ========================================================= */
+.loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--espacamento-md); }
+.loading-spinner { width: 48px; height: 48px; border: 4px solid var(--cor-borda); border-top-color: var(--cor-primaria); border-radius: var(--raio-full); animation: girar 0.8s linear infinite; }
+.loading-container p { color: var(--cor-texto-secundario); font-size: 0.9rem; }
+.sem-resultados { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; padding: var(--espacamento-xl); text-align: center; color: var(--cor-texto-muted); font-size: 0.9rem; }
+.sem-resultados i { font-size: 3rem; margin-bottom: var(--espacamento-md); opacity: 0.4; }
+
+/* =========================================================
+   12. ANIMACOES
+   ========================================================= */
+@keyframes girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulsar { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } }
+@keyframes piscar { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; background: var(--cor-primaria-light); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes dropdown-entrar { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+.paciente-card { animation: fadeIn 0.25s ease both; }
+.paciente-card:nth-child(1)  { animation-delay: 0.02s; }
+.paciente-card:nth-child(2)  { animation-delay: 0.04s; }
+.paciente-card:nth-child(3)  { animation-delay: 0.06s; }
+.paciente-card:nth-child(4)  { animation-delay: 0.08s; }
+.paciente-card:nth-child(5)  { animation-delay: 0.10s; }
+.paciente-card:nth-child(6)  { animation-delay: 0.12s; }
+.paciente-card:nth-child(7)  { animation-delay: 0.14s; }
+.paciente-card:nth-child(8)  { animation-delay: 0.16s; }
+.paciente-card:nth-child(9)  { animation-delay: 0.18s; }
+.paciente-card:nth-child(10) { animation-delay: 0.20s; }
+
+/* =========================================================
+   13. RESPONSIVIDADE
+   ========================================================= */
+@media (max-width: 1400px) { .resumo-grid { grid-template-columns: repeat(4, 1fr); } .card-value { font-size: 1.1rem; } }
+@media (max-width: 1200px) { .resumo-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 992px) { .header-content { flex-wrap: wrap; } .btn-text { display: none; } .resumo-grid { grid-template-columns: repeat(3, 1fr); } .multi-select-trigger { min-width: 75px; } }
+@media (max-width: 768px) { :root { --espacamento-md: 12px; } .painel-header { padding: var(--espacamento-sm); } .header-title h1 { font-size: 0.9rem; } .header-subtitle { display: none; } .header-controls { flex-wrap: wrap; gap: var(--espacamento-xs); } .resumo-grid { grid-template-columns: repeat(2, 1fr); } .card-icon { width: 36px; height: 36px; } .card-value { font-size: 1rem; } .filtro-input { width: 120px; } .filtro-input:focus { width: 140px; } .multi-select-dropdown { min-width: 160px; } .paciente-header { flex-wrap: wrap; gap: var(--espacamento-sm); } .paciente-contadores { width: 100%; } .exame-row { flex-wrap: wrap; gap: var(--espacamento-xs); } .exame-tempo { min-width: auto; text-align: left; } }
+@media (max-width: 576px) { .resumo-grid { grid-template-columns: 1fr 1fr; } .header-right { width: 100%; justify-content: space-between; } .filtro-select { min-width: 70px; font-size: 0.65rem; } .multi-select-trigger { min-width: 70px; font-size: 0.65rem; } .paciente-detalhes { flex-direction: column; gap: 2px; } }
+@media (min-width: 1600px) { :root { --espacamento-md: 20px; } .card-value { font-size: 1.5rem; } }
+@supports (padding: env(safe-area-inset-top)) { .painel-header { padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); } .painel-main { padding-bottom: max(8px, env(safe-area-inset-bottom)); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } .painel-main { scroll-behavior: auto; } }
+@media print { .painel-header, .dashboard-resumo { display: none; } .painel-container { height: auto; overflow: visible; position: static; } .painel-main { overflow: visible; } .paciente-card { break-inside: avoid; } .paciente-exames { max-height: none !important; } }
