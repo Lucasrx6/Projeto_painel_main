@@ -4085,3 +4085,755 @@
 2026-03-27 13:40:10 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
 2026-03-27 13:40:10 [INFO] Ciclo concluido
 2026-03-27 13:40:10 [INFO] Scheduler ativo. Proximo ciclo em 10 min...
+2026-03-27 13:50:11 [INFO] ==================================================
+2026-03-27 13:50:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 13:50:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 13:50:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 13:50:11 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 13:50:11 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 13:50:11 [INFO] Ciclo concluido
+2026-03-27 14:00:11 [INFO] ==================================================
+2026-03-27 14:00:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 14:00:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 14:00:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 14:00:11 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 14:00:11 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 14:00:11 [INFO] Ciclo concluido
+2026-03-27 14:10:11 [INFO] ==================================================
+2026-03-27 14:10:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 14:10:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 14:10:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 14:10:12 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 14:10:12 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 14:10:12 [INFO] Ciclo concluido
+2026-03-27 14:20:12 [INFO] ==================================================
+2026-03-27 14:20:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 14:20:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 14:20:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 14:20:12 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 14:20:12 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 14:20:12 [INFO] Ciclo concluido
+2026-03-27 14:30:12 [INFO] ==================================================
+2026-03-27 14:30:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 14:30:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 14:30:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 14:30:12 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 14:30:13 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-27 14:30:14 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-27 14:30:15 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Pediátrica
+2026-03-27 14:30:16 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-27 14:30:17 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 14:30:17 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 14:30:18 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 14:30:19 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 14:30:19 [INFO] [prescricao] 8 notificacoes (novos: 0, exist: 8) -> 1 topicos
+2026-03-27 14:30:19 [INFO] Ciclo concluido
+2026-03-27 14:40:19 [INFO] ==================================================
+2026-03-27 14:40:19 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 14:40:19 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 14:40:20 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Pediátrica
+2026-03-27 14:40:20 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 14:40:20 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 14:40:20 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 14:40:20 [INFO] Ciclo concluido
+2026-03-27 14:50:20 [INFO] ==================================================
+2026-03-27 14:50:20 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 14:50:21 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 14:50:21 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 14:50:21 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 14:50:21 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 14:50:21 [INFO] Ciclo concluido
+2026-03-27 15:00:21 [INFO] ==================================================
+2026-03-27 15:00:21 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 15:00:21 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 15:00:22 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - UTI Adulto
+2026-03-27 15:00:23 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - UTI Adulto
+2026-03-27 15:00:23 [INFO] [admissao_nova] 2 notificadas -> 1 topicos
+2026-03-27 15:00:23 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 15:00:23 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 15:00:23 [INFO] Ciclo concluido
+2026-03-27 15:10:23 [INFO] ==================================================
+2026-03-27 15:10:23 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 15:10:23 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 15:10:23 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 15:10:24 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 15:10:24 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-27 15:10:24 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 15:10:24 [INFO] Ciclo concluido
+2026-03-27 15:20:25 [INFO] ==================================================
+2026-03-27 15:20:25 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 15:20:25 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 15:20:25 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Clínica
+2026-03-27 15:20:25 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 15:20:26 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 15:20:26 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 15:20:26 [INFO] Ciclo concluido
+2026-03-27 15:30:26 [INFO] ==================================================
+2026-03-27 15:30:26 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 15:30:26 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 15:30:26 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 15:30:26 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 15:30:27 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-27 15:30:28 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-27 15:30:28 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Pediátrica
+2026-03-27 15:30:29 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 15:30:30 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 15:30:31 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 15:30:32 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 15:30:32 [INFO] [prescricao] 7 notificacoes (novos: 0, exist: 7) -> 1 topicos
+2026-03-27 15:30:32 [INFO] Ciclo concluido
+2026-03-27 15:40:32 [INFO] ==================================================
+2026-03-27 15:40:32 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 15:40:32 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 15:40:33 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Maternidade
+2026-03-27 15:40:33 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 15:40:33 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 15:40:33 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 15:40:33 [INFO] Ciclo concluido
+2026-03-27 15:50:33 [INFO] ==================================================
+2026-03-27 15:50:33 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 15:50:33 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 15:50:33 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 15:50:33 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 15:50:34 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 15:50:34 [INFO] Ciclo concluido
+2026-03-27 16:00:34 [INFO] ==================================================
+2026-03-27 16:00:34 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 16:00:34 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 16:00:35 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Clínica
+2026-03-27 16:00:35 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 16:00:35 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 16:00:35 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 16:00:35 [INFO] Ciclo concluido
+2026-03-27 16:10:35 [INFO] ==================================================
+2026-03-27 16:10:35 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 16:10:35 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 16:10:35 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 16:10:35 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 16:10:35 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 16:10:35 [INFO] Ciclo concluido
+2026-03-27 16:20:35 [INFO] ==================================================
+2026-03-27 16:20:35 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 16:20:35 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 16:20:35 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 16:20:35 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 16:20:35 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 16:20:35 [INFO] Ciclo concluido
+2026-03-27 16:30:36 [INFO] ==================================================
+2026-03-27 16:30:36 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 16:30:36 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 16:30:36 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 16:30:36 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 16:30:37 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-27 16:30:38 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-27 16:30:39 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Pediátrica
+2026-03-27 16:30:39 [INFO] [prescricao] 3 notificacoes (novos: 0, exist: 3) -> 1 topicos
+2026-03-27 16:30:39 [INFO] Ciclo concluido
+2026-03-27 16:40:39 [INFO] ==================================================
+2026-03-27 16:40:39 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 16:40:39 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 16:40:39 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 16:40:39 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 16:40:40 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-27 16:40:40 [INFO] [prescricao] 1 notificacoes (novos: 1, exist: 0) -> 1 topicos
+2026-03-27 16:40:40 [INFO] Ciclo concluido
+2026-03-27 16:50:40 [INFO] ==================================================
+2026-03-27 16:50:40 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 16:50:40 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 16:50:40 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 16:50:41 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 16:50:42 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto 01
+2026-03-27 16:50:42 [INFO] [parecer_pendente] 2 detectados -> 1 topicos
+2026-03-27 16:50:43 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-27 16:50:43 [INFO] [prescricao] 1 notificacoes (novos: 1, exist: 0) -> 1 topicos
+2026-03-27 16:50:43 [INFO] Ciclo concluido
+2026-03-27 17:00:43 [INFO] ==================================================
+2026-03-27 17:00:43 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 17:00:43 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 17:00:43 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 17:00:43 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 17:00:44 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 17:00:44 [INFO] Ciclo concluido
+2026-03-27 17:10:44 [INFO] ==================================================
+2026-03-27 17:10:44 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 17:10:44 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 17:10:44 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 17:10:44 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 17:10:44 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 17:10:44 [INFO] Ciclo concluido
+2026-03-27 17:20:44 [INFO] ==================================================
+2026-03-27 17:20:44 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 17:20:44 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 17:20:45 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 17:20:45 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 17:20:45 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-27 17:20:45 [INFO] [prescricao] 1 notificacoes (novos: 1, exist: 0) -> 1 topicos
+2026-03-27 17:20:45 [INFO] Ciclo concluido
+2026-03-27 17:30:45 [INFO] ==================================================
+2026-03-27 17:30:45 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 17:30:46 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 17:30:46 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 17:30:46 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 17:30:47 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-27 17:30:47 [INFO] [prescricao] 1 notificacoes (novos: 0, exist: 1) -> 1 topicos
+2026-03-27 17:30:47 [INFO] Ciclo concluido
+2026-03-27 17:40:47 [INFO] ==================================================
+2026-03-27 17:40:47 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 17:40:47 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 17:40:47 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 17:40:47 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 17:40:47 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 17:40:47 [INFO] Ciclo concluido
+2026-03-27 17:50:47 [INFO] ==================================================
+2026-03-27 17:50:47 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 17:50:47 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 17:50:47 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 17:50:47 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 17:50:47 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 17:50:47 [INFO] Ciclo concluido
+2026-03-27 18:00:47 [INFO] ==================================================
+2026-03-27 18:00:47 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 18:00:48 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 18:00:48 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Clínica
+2026-03-27 18:00:48 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 18:00:48 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 18:00:49 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 18:00:49 [INFO] Ciclo concluido
+2026-03-27 18:10:49 [INFO] ==================================================
+2026-03-27 18:10:49 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 18:10:49 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 18:10:49 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 18:10:49 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 18:10:49 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 18:10:49 [INFO] Ciclo concluido
+2026-03-27 18:20:49 [INFO] ==================================================
+2026-03-27 18:20:49 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 18:20:49 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 18:20:49 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 18:20:49 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 18:20:49 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 18:20:49 [INFO] Ciclo concluido
+2026-03-27 18:30:49 [INFO] ==================================================
+2026-03-27 18:30:49 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 18:30:50 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 18:30:50 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 18:30:50 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 18:30:50 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 18:30:50 [INFO] Ciclo concluido
+2026-03-27 18:40:50 [INFO] ==================================================
+2026-03-27 18:40:50 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 18:40:50 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 18:40:50 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 18:40:50 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 18:40:50 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 18:40:50 [INFO] Ciclo concluido
+2026-03-27 18:50:50 [INFO] ==================================================
+2026-03-27 18:50:50 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 18:50:50 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 18:50:50 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 18:50:51 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 18:50:51 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 18:50:51 [INFO] Ciclo concluido
+2026-03-27 19:00:51 [INFO] ==================================================
+2026-03-27 19:00:51 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 19:00:51 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 19:00:51 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 19:00:51 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 19:00:51 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 19:00:51 [INFO] Ciclo concluido
+2026-03-27 19:10:51 [INFO] ==================================================
+2026-03-27 19:10:51 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 19:10:51 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 19:10:51 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 19:10:51 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 19:10:51 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 19:10:51 [INFO] Ciclo concluido
+2026-03-27 19:20:51 [INFO] ==================================================
+2026-03-27 19:20:51 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 19:20:52 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 19:20:52 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 19:20:52 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 19:20:52 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 19:20:52 [INFO] Ciclo concluido
+2026-03-27 19:30:52 [INFO] ==================================================
+2026-03-27 19:30:52 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 19:30:52 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 19:30:52 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 19:30:52 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 19:30:52 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 19:30:52 [INFO] Ciclo concluido
+2026-03-27 19:40:52 [INFO] ==================================================
+2026-03-27 19:40:52 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 19:40:52 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 19:40:52 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 19:40:52 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 19:40:53 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 19:40:53 [INFO] Ciclo concluido
+2026-03-27 19:50:53 [INFO] ==================================================
+2026-03-27 19:50:53 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 19:50:53 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 19:50:54 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - UTI Adulto 01
+2026-03-27 19:50:54 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 19:50:54 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 19:50:54 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 19:50:54 [INFO] Ciclo concluido
+2026-03-27 20:00:54 [INFO] ==================================================
+2026-03-27 20:00:54 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 20:00:54 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 20:00:54 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 20:00:54 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 20:00:54 [INFO] Ciclo concluido
+2026-03-27 20:10:54 [INFO] ==================================================
+2026-03-27 20:10:54 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 20:10:54 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 20:10:54 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 20:10:54 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 20:10:54 [INFO] Ciclo concluido
+2026-03-27 20:20:54 [INFO] ==================================================
+2026-03-27 20:20:54 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 20:20:55 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 20:20:55 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 20:20:55 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 20:20:55 [INFO] Ciclo concluido
+2026-03-27 20:30:55 [INFO] ==================================================
+2026-03-27 20:30:55 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 20:30:55 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 20:30:55 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 20:30:55 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 20:30:55 [INFO] Ciclo concluido
+2026-03-27 20:40:55 [INFO] ==================================================
+2026-03-27 20:40:55 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 20:40:55 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 20:40:55 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 20:40:56 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 20:40:56 [INFO] Ciclo concluido
+2026-03-27 20:50:56 [INFO] ==================================================
+2026-03-27 20:50:56 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 20:50:56 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 20:50:56 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 20:50:57 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto 01
+2026-03-27 20:50:57 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-27 20:50:57 [INFO] Ciclo concluido
+2026-03-27 21:00:57 [INFO] ==================================================
+2026-03-27 21:00:57 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 21:00:57 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 21:00:58 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Maternidade
+2026-03-27 21:00:58 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 21:00:58 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 21:00:58 [INFO] Ciclo concluido
+2026-03-27 21:10:58 [INFO] ==================================================
+2026-03-27 21:10:58 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 21:10:58 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 21:10:58 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 21:10:58 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 21:10:58 [INFO] Ciclo concluido
+2026-03-27 21:20:59 [INFO] ==================================================
+2026-03-27 21:20:59 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 21:20:59 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 21:20:59 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 21:20:59 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 21:20:59 [INFO] Ciclo concluido
+2026-03-27 21:30:59 [INFO] ==================================================
+2026-03-27 21:30:59 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 21:30:59 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 21:30:59 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 21:30:59 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 21:30:59 [INFO] Ciclo concluido
+2026-03-27 21:40:59 [INFO] ==================================================
+2026-03-27 21:40:59 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 21:40:59 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 21:41:00 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - UTI Adulto
+2026-03-27 21:41:00 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 21:41:00 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 21:41:00 [INFO] Ciclo concluido
+2026-03-27 21:51:00 [INFO] ==================================================
+2026-03-27 21:51:00 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 21:51:00 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 21:51:01 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Clínica
+2026-03-27 21:51:01 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-27 21:51:02 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 21:51:02 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-27 21:51:02 [INFO] Ciclo concluido
+2026-03-27 22:01:02 [INFO] ==================================================
+2026-03-27 22:01:02 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 22:01:02 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 22:01:02 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 22:01:02 [INFO] Ciclo concluido
+2026-03-27 22:11:02 [INFO] ==================================================
+2026-03-27 22:11:02 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 22:11:02 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 22:11:03 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 22:11:03 [INFO] Ciclo concluido
+2026-03-27 22:21:03 [INFO] ==================================================
+2026-03-27 22:21:03 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 22:21:03 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 22:21:03 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 22:21:03 [INFO] Ciclo concluido
+2026-03-27 22:31:03 [INFO] ==================================================
+2026-03-27 22:31:03 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 22:31:03 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 22:31:03 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 22:31:03 [INFO] Ciclo concluido
+2026-03-27 22:41:03 [INFO] ==================================================
+2026-03-27 22:41:03 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 22:41:03 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 22:41:03 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 22:41:03 [INFO] Ciclo concluido
+2026-03-27 22:51:03 [INFO] ==================================================
+2026-03-27 22:51:03 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 22:51:03 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 22:51:03 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 22:51:03 [INFO] Ciclo concluido
+2026-03-27 23:01:03 [INFO] ==================================================
+2026-03-27 23:01:03 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 23:01:04 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 23:01:04 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 23:01:04 [INFO] Ciclo concluido
+2026-03-27 23:11:04 [INFO] ==================================================
+2026-03-27 23:11:04 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 23:11:04 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 23:11:04 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 23:11:04 [INFO] Ciclo concluido
+2026-03-27 23:21:04 [INFO] ==================================================
+2026-03-27 23:21:04 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 23:21:04 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 23:21:04 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 23:21:04 [INFO] Ciclo concluido
+2026-03-27 23:31:04 [INFO] ==================================================
+2026-03-27 23:31:04 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 23:31:04 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 23:31:04 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 23:31:04 [INFO] Ciclo concluido
+2026-03-27 23:41:04 [INFO] ==================================================
+2026-03-27 23:41:04 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 23:41:04 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 23:41:04 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 23:41:04 [INFO] Ciclo concluido
+2026-03-27 23:51:04 [INFO] ==================================================
+2026-03-27 23:51:04 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 23:51:05 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 23:51:05 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 23:51:05 [INFO] Ciclo concluido
+2026-03-28 00:01:05 [INFO] ==================================================
+2026-03-28 00:01:05 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 00:01:05 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 00:01:05 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 00:01:05 [INFO] Ciclo concluido
+2026-03-28 00:11:05 [INFO] ==================================================
+2026-03-28 00:11:05 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 00:11:05 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 00:11:06 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação Pediátrica
+2026-03-28 00:11:06 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-28 00:11:06 [INFO] Ciclo concluido
+2026-03-28 00:21:06 [INFO] ==================================================
+2026-03-28 00:21:06 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 00:21:06 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 00:21:06 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 00:21:06 [INFO] Ciclo concluido
+2026-03-28 00:31:06 [INFO] ==================================================
+2026-03-28 00:31:06 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 00:31:06 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 00:31:06 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 00:31:06 [INFO] Ciclo concluido
+2026-03-28 00:41:06 [INFO] ==================================================
+2026-03-28 00:41:06 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 00:41:06 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 00:41:07 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 00:41:07 [INFO] Ciclo concluido
+2026-03-28 00:51:07 [INFO] ==================================================
+2026-03-28 00:51:07 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 00:51:07 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 00:51:07 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 00:51:07 [INFO] Ciclo concluido
+2026-03-28 01:01:07 [INFO] ==================================================
+2026-03-28 01:01:07 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 01:01:07 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 01:01:07 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 01:01:07 [INFO] Ciclo concluido
+2026-03-28 01:11:07 [INFO] ==================================================
+2026-03-28 01:11:07 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 01:11:07 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 01:11:07 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 01:11:07 [INFO] Ciclo concluido
+2026-03-28 01:21:07 [INFO] ==================================================
+2026-03-28 01:21:07 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 01:21:07 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 01:21:07 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 01:21:07 [INFO] Ciclo concluido
+2026-03-28 01:31:07 [INFO] ==================================================
+2026-03-28 01:31:07 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 01:31:07 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 01:31:08 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 01:31:08 [INFO] Ciclo concluido
+2026-03-28 01:41:08 [INFO] ==================================================
+2026-03-28 01:41:08 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 01:41:08 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 01:41:08 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 01:41:08 [INFO] Ciclo concluido
+2026-03-28 01:51:08 [INFO] ==================================================
+2026-03-28 01:51:08 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 01:51:08 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 01:51:08 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 01:51:08 [INFO] Ciclo concluido
+2026-03-28 02:01:08 [INFO] ==================================================
+2026-03-28 02:01:08 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 02:01:08 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 02:01:08 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 02:01:08 [INFO] Ciclo concluido
+2026-03-28 02:11:08 [INFO] ==================================================
+2026-03-28 02:11:08 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 02:11:09 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 02:11:09 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 02:11:09 [INFO] Ciclo concluido
+2026-03-28 02:21:09 [INFO] ==================================================
+2026-03-28 02:21:09 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 02:21:09 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 02:21:09 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 02:21:09 [INFO] Ciclo concluido
+2026-03-28 02:31:09 [INFO] ==================================================
+2026-03-28 02:31:09 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 02:31:09 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 02:31:09 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 02:31:09 [INFO] Ciclo concluido
+2026-03-28 02:41:09 [INFO] ==================================================
+2026-03-28 02:41:09 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 02:41:09 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 02:41:09 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 02:41:09 [INFO] Ciclo concluido
+2026-03-28 02:51:09 [INFO] ==================================================
+2026-03-28 02:51:09 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 02:51:09 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 02:51:09 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 02:51:09 [INFO] Ciclo concluido
+2026-03-28 03:01:10 [INFO] ==================================================
+2026-03-28 03:01:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 03:01:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 03:01:10 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 03:01:10 [INFO] Ciclo concluido
+2026-03-28 03:11:10 [INFO] ==================================================
+2026-03-28 03:11:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 03:11:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 03:11:10 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 03:11:10 [INFO] Ciclo concluido
+2026-03-28 03:21:10 [INFO] ==================================================
+2026-03-28 03:21:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 03:21:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 03:21:10 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 03:21:10 [INFO] Ciclo concluido
+2026-03-28 03:31:10 [INFO] ==================================================
+2026-03-28 03:31:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 03:31:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 03:31:10 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 03:31:10 [INFO] Ciclo concluido
+2026-03-28 03:41:10 [INFO] ==================================================
+2026-03-28 03:41:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 03:41:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 03:41:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 03:41:11 [INFO] Ciclo concluido
+2026-03-28 03:51:11 [INFO] ==================================================
+2026-03-28 03:51:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 03:51:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 03:51:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 03:51:11 [INFO] Ciclo concluido
+2026-03-28 04:01:11 [INFO] ==================================================
+2026-03-28 04:01:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 04:01:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 04:01:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 04:01:11 [INFO] Ciclo concluido
+2026-03-28 04:11:11 [INFO] ==================================================
+2026-03-28 04:11:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 04:11:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 04:11:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 04:11:11 [INFO] Ciclo concluido
+2026-03-28 04:21:11 [INFO] ==================================================
+2026-03-28 04:21:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 04:21:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 04:21:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 04:21:11 [INFO] Ciclo concluido
+2026-03-28 04:31:12 [INFO] ==================================================
+2026-03-28 04:31:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 04:31:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 04:31:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 04:31:12 [INFO] Ciclo concluido
+2026-03-28 04:41:12 [INFO] ==================================================
+2026-03-28 04:41:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 04:41:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 04:41:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 04:41:12 [INFO] Ciclo concluido
+2026-03-28 04:51:12 [INFO] ==================================================
+2026-03-28 04:51:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 04:51:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 04:51:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 04:51:12 [INFO] Ciclo concluido
+2026-03-28 05:01:12 [INFO] ==================================================
+2026-03-28 05:01:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 05:01:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 05:01:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 05:01:12 [INFO] Ciclo concluido
+2026-03-28 05:11:12 [INFO] ==================================================
+2026-03-28 05:11:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 05:11:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 05:11:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 05:11:12 [INFO] Ciclo concluido
+2026-03-28 05:21:13 [INFO] ==================================================
+2026-03-28 05:21:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 05:21:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 05:21:13 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 05:21:13 [INFO] Ciclo concluido
+2026-03-28 05:31:13 [INFO] ==================================================
+2026-03-28 05:31:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 05:31:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 05:31:13 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 05:31:13 [INFO] Ciclo concluido
+2026-03-28 05:41:13 [INFO] ==================================================
+2026-03-28 05:41:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 05:41:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 05:41:13 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 05:41:13 [INFO] Ciclo concluido
+2026-03-28 05:51:13 [INFO] ==================================================
+2026-03-28 05:51:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 05:51:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 05:51:13 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 05:51:13 [INFO] Ciclo concluido
+2026-03-28 06:00:14 [INFO] [limpeza] Expirados: 63, Removidos: 0
+2026-03-28 06:01:14 [INFO] ==================================================
+2026-03-28 06:01:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 06:01:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 06:01:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 06:01:14 [INFO] Ciclo concluido
+2026-03-28 06:11:14 [INFO] ==================================================
+2026-03-28 06:11:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 06:11:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 06:11:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 06:11:14 [INFO] Ciclo concluido
+2026-03-28 06:21:14 [INFO] ==================================================
+2026-03-28 06:21:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 06:21:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 06:21:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 06:21:14 [INFO] Ciclo concluido
+2026-03-28 06:31:14 [INFO] ==================================================
+2026-03-28 06:31:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 06:31:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 06:31:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 06:31:14 [INFO] Ciclo concluido
+2026-03-28 06:41:14 [INFO] ==================================================
+2026-03-28 06:41:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 06:41:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 06:41:15 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 06:41:15 [INFO] Ciclo concluido
+2026-03-28 06:51:15 [INFO] ==================================================
+2026-03-28 06:51:15 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 06:51:15 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 06:51:15 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 06:51:15 [INFO] Ciclo concluido
+2026-03-28 07:01:15 [INFO] ==================================================
+2026-03-28 07:01:15 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 07:01:15 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 07:01:15 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 07:01:16 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-28 07:01:17 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-28 07:01:17 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-28 07:01:18 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-28 07:01:18 [INFO] [parecer_pendente] 4 detectados -> 1 topicos
+2026-03-28 07:01:18 [INFO] Ciclo concluido
+2026-03-28 07:11:18 [INFO] ==================================================
+2026-03-28 07:11:18 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 07:11:18 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 07:11:18 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 07:11:19 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 07:11:19 [INFO] Ciclo concluido
+2026-03-28 07:21:19 [INFO] ==================================================
+2026-03-28 07:21:19 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 07:21:19 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 07:21:19 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 07:21:19 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 07:21:19 [INFO] Ciclo concluido
+2026-03-28 07:31:19 [INFO] ==================================================
+2026-03-28 07:31:19 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 07:31:19 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 07:31:19 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 07:31:19 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 07:31:19 [INFO] Ciclo concluido
+2026-03-28 07:41:19 [INFO] ==================================================
+2026-03-28 07:41:19 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 07:41:19 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 07:41:19 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 07:41:20 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 07:41:20 [INFO] Ciclo concluido
+2026-03-28 07:51:20 [INFO] ==================================================
+2026-03-28 07:51:20 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 07:51:20 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 07:51:20 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 07:51:20 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 07:51:20 [INFO] Ciclo concluido
+2026-03-28 08:01:20 [INFO] ==================================================
+2026-03-28 08:01:20 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 08:01:20 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 08:01:20 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 08:01:20 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 08:01:20 [INFO] Ciclo concluido
+2026-03-28 08:11:20 [INFO] ==================================================
+2026-03-28 08:11:20 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 08:11:20 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 08:11:20 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 08:11:20 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 08:11:20 [INFO] Ciclo concluido
+2026-03-28 08:21:21 [INFO] ==================================================
+2026-03-28 08:21:21 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 08:21:21 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 08:21:21 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 08:21:21 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 08:21:21 [INFO] Ciclo concluido
+2026-03-28 08:31:21 [INFO] ==================================================
+2026-03-28 08:31:21 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 08:31:21 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 08:31:21 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 08:31:21 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 08:31:21 [INFO] Ciclo concluido
+2026-03-28 08:41:21 [INFO] ==================================================
+2026-03-28 08:41:21 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 08:41:21 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 08:41:21 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 08:41:21 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 08:41:21 [INFO] Ciclo concluido
+2026-03-28 08:51:21 [INFO] ==================================================
+2026-03-28 08:51:21 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 08:51:22 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 08:51:22 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 08:51:22 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 08:51:22 [INFO] Ciclo concluido
+2026-03-28 09:01:22 [INFO] ==================================================
+2026-03-28 09:01:22 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 09:01:22 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 09:01:22 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 09:01:22 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 09:01:22 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 09:01:22 [INFO] Ciclo concluido
+2026-03-28 09:11:22 [INFO] ==================================================
+2026-03-28 09:11:22 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 09:11:22 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 09:11:22 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 09:11:22 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 09:11:23 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 09:11:23 [INFO] Ciclo concluido
+2026-03-28 09:21:23 [INFO] ==================================================
+2026-03-28 09:21:23 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 09:21:23 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 09:21:23 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 09:21:23 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 09:21:23 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 09:21:23 [INFO] Ciclo concluido
+2026-03-28 09:31:23 [INFO] ==================================================
+2026-03-28 09:31:23 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 09:31:23 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 09:31:23 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 09:31:23 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 09:31:23 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 09:31:23 [INFO] Ciclo concluido
+2026-03-28 09:41:23 [INFO] ==================================================
+2026-03-28 09:41:23 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 09:41:24 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 09:41:24 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 09:41:24 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 09:41:24 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 09:41:24 [INFO] Ciclo concluido
