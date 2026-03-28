@@ -8,14 +8,19 @@
   Servico independente que monitora o PostgreSQL e envia
   notificacoes via ntfy quando detecta eventos clinicos.
 
-  NOVIDADE: Topicos ntfy sao lidos da tabela
-  notificacoes_destinatarios (canal='ntfy').
+  Topicos ntfy lidos da tabela notificacoes_destinatarios.
   Suporta multiplos topicos por tipo de evento.
+  Tudo configuravel via Painel 26.
 
   Eventos monitorados:
   1. ADMISSAO NOVA - dt_entrada_unid nos ultimos 30min
   2. PARECER PENDENTE - Transicao 'Nao' -> 'Sim'
   3. PRESCRICAO PENDENTE - Cenarios novo (2h) e existente (11h)
+
+  CREDENCIAIS:
+  - Banco via .env (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD)
+  - Topicos ntfy via tabela notificacoes_destinatarios
+  - ZERO credenciais hardcoded no codigo
 
   Execucao:
   - Standalone: python notificador.py
@@ -71,18 +76,21 @@ logger.addHandler(console_handler)
 
 
 # =========================================================
-# CONFIGURACOES
+# CONFIGURACOES (sem credenciais hardcoded)
 # =========================================================
 
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'postgres'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'postgres'),
+    'database': os.getenv('DB_NAME', ''),
+    'user': os.getenv('DB_USER', ''),
+    'password': os.getenv('DB_PASSWORD', ''),
     'port': os.getenv('DB_PORT', '5432')
 }
 
+# ntfy - URL base (topicos vem do banco via Painel 26)
 NTFY_URL = os.getenv('NTFY_URL', 'https://ntfy.sh')
+
+# Intervalo de verificacao
 INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_INTERVALO_MIN', '15'))
 
 
@@ -138,18 +146,18 @@ def carregar_configs():
 def buscar_topicos_ntfy(conn, tipo_evento):
     """
     Busca topicos ntfy da tabela notificacoes_destinatarios.
-    Retorna lista de topicos (strings) para o tipo de evento.
-    Ex: ['hac-admissao', 'hac-equipetal', 'hac-equipe-uti']
+    Configuravel via Painel 26.
+    Retorna lista de topicos ativos para o tipo de evento.
     """
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     cursor.execute("""
-            SELECT email AS topico
-            FROM notificacoes_destinatarios
-            WHERE tipo_evento = %s
-              AND canal = 'ntfy'
-              AND ativo = true
-        """, (tipo_evento,))
+        SELECT email AS topico
+        FROM notificacoes_destinatarios
+        WHERE tipo_evento = %s
+          AND canal = 'ntfy'
+          AND ativo = true
+    """, (tipo_evento,))
 
     topicos = [row['topico'] for row in cursor.fetchall() if row['topico']]
     cursor.close()
@@ -173,17 +181,8 @@ def dentro_do_horario(config):
 
 def enviar_ntfy_topicos(topicos, titulo, mensagem, prioridade='3'):
     """
-    Envia notificacao para uma lista de topicos ntfy.
-    Cada topico recebe a mesma mensagem.
-
-    Args:
-        topicos: lista de strings (nomes dos topicos)
-        titulo: titulo da notificacao
-        mensagem: corpo da notificacao
-        prioridade: prioridade ntfy (1-5)
-
-    Returns:
-        (sucesso_total: bool, resposta: str)
+    Envia notificacao para todos os topicos ntfy configurados.
+    Trata erros individualmente por topico.
     """
     if not topicos:
         logger.debug('Nenhum topico ntfy configurado')
@@ -191,6 +190,7 @@ def enviar_ntfy_topicos(topicos, titulo, mensagem, prioridade='3'):
 
     enviados = 0
     erros = 0
+    erros_detalhe = []
 
     for topico in topicos:
         url = '{}/{}'.format(NTFY_URL, topico)
@@ -214,18 +214,26 @@ def enviar_ntfy_topicos(topicos, titulo, mensagem, prioridade='3'):
             else:
                 logger.warning('ntfy [%s] status %s', topico, resp.status_code)
                 erros += 1
+                erros_detalhe.append('[{}] HTTP {}'.format(topico, resp.status_code))
 
         except requests.exceptions.Timeout:
             logger.error('Timeout ntfy: %s', topico)
             erros += 1
+            erros_detalhe.append('[{}] Timeout'.format(topico))
         except requests.exceptions.ConnectionError:
             logger.error('Conexao recusada ntfy: %s', topico)
             erros += 1
+            erros_detalhe.append('[{}] Conexao recusada'.format(topico))
         except Exception as e:
             logger.error('Erro ntfy [%s]: %s', topico, e)
             erros += 1
+            erros_detalhe.append('[{}] {}'.format(topico, str(e)))
 
-    resposta = 'ntfy: {} enviados, {} erros de {} topicos'.format(enviados, erros, len(topicos))
+    if erros > 0:
+        resposta = 'ntfy: {} OK, {} erros - {}'.format(enviados, erros, '; '.join(erros_detalhe))
+    else:
+        resposta = 'ntfy: {} enviados para {} topicos'.format(enviados, len(topicos))
+
     return erros == 0, resposta
 
 
@@ -292,7 +300,7 @@ def precisa_renotificar(conn, chave_evento, config):
 
 
 def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topicos_str, sucesso, resposta):
-    """Registra notificacao no log."""
+    """Registra notificacao no log com detalhes."""
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     agora = datetime.now()
 
@@ -314,7 +322,13 @@ def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topicos_str, s
         """, (agora, novo_status, resposta, existente['id']))
     else:
         novo_status = 'notificado' if sucesso else 'erro'
-        dados_extra = dados.get('dados_extra') if dados.get('dados_extra') else None
+
+        # Monta dados_extra com informacoes uteis
+        dados_extra = json.dumps({
+            'topicos_ntfy': topicos_str,
+            'setor': dados.get('nm_setor', '-'),
+            'convenio': dados.get('ds_convenio', '-')
+        })
 
         cursor.execute("""
             INSERT INTO notificacoes_log
@@ -328,8 +342,7 @@ def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topicos_str, s
             tipo_evento, chave_evento,
             dados.get('nr_atendimento'), dados.get('nm_pessoa_fisica'),
             dados.get('cd_setor_atendimento'), dados.get('nm_setor'),
-            dados.get('cd_unidade'),
-            json.dumps(dados_extra) if dados_extra else None,
+            dados.get('cd_unidade'), dados_extra,
             topicos_str, novo_status, agora,
             agora if sucesso else None,
             agora if sucesso else None,
@@ -345,7 +358,7 @@ def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topicos_str, s
 # =========================================================
 
 def verificar_admissao_nova(configs):
-    """Detecta novas admissoes e envia para TODOS os topicos ntfy configurados."""
+    """Detecta novas admissoes e envia para todos os topicos ntfy."""
     config = configs.get('admissao_nova')
     if not config:
         return
@@ -358,8 +371,6 @@ def verificar_admissao_nova(configs):
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        # Busca topicos ntfy do banco
         topicos = buscar_topicos_ntfy(conn, 'admissao_nova')
 
         cursor.execute("""
@@ -375,7 +386,6 @@ def verificar_admissao_nova(configs):
 
         pacientes_novos = cursor.fetchall()
         cursor.close()
-
         notificados = 0
 
         for pac in pacientes_novos:
@@ -414,7 +424,7 @@ def verificar_admissao_nova(configs):
 # =========================================================
 
 def verificar_parecer_pendente(configs):
-    """Detecta transicao de parecer e envia para topicos ntfy configurados."""
+    """Detecta transicao de parecer e envia para topicos ntfy."""
     config = configs.get('parecer_pendente')
     if not config:
         return
@@ -427,7 +437,6 @@ def verificar_parecer_pendente(configs):
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
         topicos = buscar_topicos_ntfy(conn, 'parecer_pendente')
 
         cursor.execute("""
@@ -626,7 +635,7 @@ def ciclo_verificacao():
 # =========================================================
 
 def limpeza_diaria():
-    """Remove registros antigos."""
+    """Remove registros antigos e expira prescricoes do dia anterior."""
     conn = get_connection()
     if not conn:
         return
@@ -672,19 +681,55 @@ def main():
     logger.info('  ntfy base: %s', NTFY_URL)
     logger.info('  Topicos: lidos da tabela notificacoes_destinatarios')
     logger.info('  Banco: %s@%s:%s/%s',
-                 DB_CONFIG['user'], DB_CONFIG['host'],
-                 DB_CONFIG['port'], DB_CONFIG['database'])
+                 DB_CONFIG['user'] or '(nao configurado)',
+                 DB_CONFIG['host'],
+                 DB_CONFIG['port'],
+                 DB_CONFIG['database'] or '(nao configurado)')
     logger.info('=' * 60)
 
+    # Valida banco
+    if not DB_CONFIG['database'] or not DB_CONFIG['user']:
+        logger.error('DB_NAME e/ou DB_USER nao configurados no .env')
+        logger.error('Adicione ao .env: DB_NAME=postgres DB_USER=postgres DB_PASSWORD=suasenha')
+        sys.exit(1)
+
+    if not DB_CONFIG['password']:
+        logger.warning('DB_PASSWORD vazio no .env - pode falhar a conexao')
+
+    # Testa conexao
     conn = get_connection()
     if not conn:
         logger.error('Falha na conexao inicial. Encerrando.')
         sys.exit(1)
+
+    # Valida se existem topicos ntfy configurados
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("""
+        SELECT
+            tipo_evento,
+            COUNT(*) AS qt_topicos
+        FROM notificacoes_destinatarios
+        WHERE canal = 'ntfy' AND ativo = true
+        GROUP BY tipo_evento
+        ORDER BY tipo_evento
+    """)
+    topicos_resumo = cursor.fetchall()
+    cursor.close()
     conn.close()
+
+    if topicos_resumo:
+        for t in topicos_resumo:
+            logger.info('  Topicos [%s]: %s configurados', t['tipo_evento'], t['qt_topicos'])
+    else:
+        logger.warning('ATENCAO: Nenhum topico ntfy configurado no Painel 26!')
+        logger.warning('Cadastre topicos em: Central de Notificacoes > Novo > Canal: ntfy')
+
     logger.info('Conexao com banco OK')
 
+    # Primeiro ciclo imediato
     ciclo_verificacao()
 
+    # Agenda ciclos
     schedule.every(INTERVALO_VERIFICACAO).minutes.do(ciclo_verificacao)
     schedule.every().day.at('06:00').do(limpeza_diaria)
 
