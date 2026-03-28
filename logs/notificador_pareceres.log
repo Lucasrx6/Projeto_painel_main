@@ -756,3 +756,23 @@ LINE 4:                    ds_motivo_consulta, dt_solicitacao, horas...
 2026-03-28 16:05:22 [INFO] ntfy OK: Parecer Pendente - Cirurgia Geral - None
 2026-03-28 16:05:22 [INFO] [pareceres] 1 novos pareceres notificados por email
 2026-03-28 16:14:13 [INFO] Encerrado pelo usuario (Ctrl+C)
+2026-03-28 16:19:02 [INFO] ============================================================
+2026-03-28 16:19:02 [INFO]   NOTIFICADOR DE PARECERES - Email + ntfy
+2026-03-28 16:19:02 [INFO]   Intervalo: 10 minutos
+2026-03-28 16:19:02 [INFO]   SMTP: hac.notificacaotasy@saofranciscodf.med.br via smtp.gmail.com:587
+2026-03-28 16:19:02 [INFO]   ntfy base: https://ntfy.sh
+2026-03-28 16:19:02 [INFO]   Topicos ntfy: lidos da tabela notificacoes_destinatarios
+2026-03-28 16:19:02 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-03-28 16:19:02 [INFO] ============================================================
+2026-03-28 16:19:02 [INFO] Destinatarios ativos: 1 email, 1 ntfy
+2026-03-28 16:19:02 [INFO] Conexao com banco OK
+2026-03-28 16:19:02 [INFO] ==================================================
+2026-03-28 16:19:02 [INFO] Verificando pareceres pendentes...
+2026-03-28 16:19:07 [INFO] Email OK para: cadastro.medico@saofranciscodf.med.br
+2026-03-28 16:19:08 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Neurologia Clínica - UTI Adulto
+2026-03-28 16:19:08 [INFO] ntfy resumo: 1 enviados, 0 erros de 1 topicos
+2026-03-28 16:19:13 [INFO] Email OK para: cadastro.medico@saofranciscodf.med.br
+2026-03-28 16:19:13 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Fisioterapia - UTI Adulto
+2026-03-28 16:19:13 [INFO] ntfy resumo: 1 enviados, 0 erros de 1 topicos
+2026-03-28 16:19:13 [INFO] [pareceres] 2 notificados (email + 1 topicos ntfy)
+2026-03-28 16:19:13 [INFO] Scheduler ativo. Proximo ciclo em 10 min...
