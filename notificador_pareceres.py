@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 """
 ==============================================================
-  NOTIFICADOR DE PARECERES - Email via Apprise
+  NOTIFICADOR DE PARECERES - Email + ntfy
   Hospital Anchieta Ceilandia
 ==============================================================
 
   Servico independente que monitora a tabela pareceres_pendentes
-  e envia notificacoes por email quando detecta novos pareceres.
+  e envia notificacoes por email e push quando detecta novos.
 
   Funcionalidades:
   - Detecta novos pareceres comparando com snapshot anterior
   - Primeira execucao popula snapshot SEM notificar
   - So notifica pareceres dos ultimos 30 minutos
-  - Envia email HTML formatado via Apprise (SMTP)
-  - Parser RTF integrado para motivo da consulta
-  - Destinatarios configuraveis por especialidade ou geral
-  - Tambem envia ntfy para manter alerta push
+  - Envia email HTML via Apprise (SMTP configurado no .env)
+  - Motivo da consulta limpo via funcao PostgreSQL limpar_rtf()
+  - Envia ntfy para multiplos topicos (lidos do banco)
+  - Destinatarios email configuraveis por especialidade
+  - Tudo centralizado no Painel 26
 
-  Configuracao SMTP via .env:
-  - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
-
-  Destinatarios via tabela: notificacoes_destinatarios
+  CREDENCIAIS:
+  - SMTP via .env (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS)
+  - Topicos ntfy via tabela notificacoes_destinatarios
+  - ZERO credenciais hardcoded no codigo
 
   Execucao:
   - Standalone: python notificador_pareceres.py
@@ -39,7 +40,6 @@ import logging.handlers
 import os
 import sys
 import json
-import re
 from datetime import datetime
 from dotenv import load_dotenv
 from urllib.parse import quote as url_encode
@@ -79,27 +79,26 @@ logger.addHandler(console_handler)
 
 
 # =========================================================
-# CONFIGURACOES
+# CONFIGURACOES (sem credenciais hardcoded)
 # =========================================================
 
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'database': os.getenv('DB_NAME', 'postgres'),
     'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'postgres'),
+    'password': os.getenv('DB_PASSWORD', ''),
     'port': os.getenv('DB_PORT', '5432')
 }
 
-# SMTP para envio de email
-SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+# SMTP - lidos exclusivamente do .env
+SMTP_HOST = os.getenv('SMTP_HOST', '')
 SMTP_PORT = os.getenv('SMTP_PORT', '587')
-SMTP_USER = os.getenv('SMTP_USER', 'hac.notificacaotasy@saofranciscodf.med.br')
-SMTP_PASS = os.getenv('SMTP_PASS', 'dkyyifukkoqecohb')
-SMTP_FROM = os.getenv('SMTP_FROM', 'hac.notificacaotasy@saofranciscodf.med.br')
+SMTP_USER = os.getenv('SMTP_USER', '')
+SMTP_PASS = os.getenv('SMTP_PASS', '')
+SMTP_FROM = os.getenv('SMTP_FROM', '')
 
-# ntfy para notificacao push
+# ntfy - URL base (topicos vem do banco)
 NTFY_URL = os.getenv('NTFY_URL', 'https://ntfy.sh')
-NTFY_TOPIC = os.getenv('NTFY_TOPIC_PARECER', 'hac-parecer')
 
 # Intervalo de verificacao
 INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_PARECER_INTERVALO_MIN', '15'))
@@ -120,81 +119,14 @@ def get_connection():
 
 
 # =========================================================
-# PARSER RTF -> TEXTO LIMPO
+# BUSCAR DESTINATARIOS EMAIL (do banco)
 # =========================================================
 
-def limpar_rtf(texto_raw):
+def buscar_destinatarios_email(conn, especialidade=None):
     """
-    Converte texto RTF do Tasy para texto limpo.
-    O Tasy salva DS_MOTIVO_CONSULTA em formato RTF.
-    Remove fonttbl, colortbl, stylesheet, comandos e metadados.
-
-    Args:
-        texto_raw: string RTF ou texto simples
-
-    Returns:
-        string com texto limpo
-    """
-    if not texto_raw or not texto_raw.strip():
-        return ''
-
-    texto = texto_raw.strip()
-
-    # Se nao for RTF, retorna direto
-    if not texto.startswith('{\\rtf'):
-        return texto
-
-    # Remove grupos RTF aninhados entre chaves (fonttbl, colortbl, etc)
-    # Repete ate nao ter mais grupos aninhados
-    for _ in range(15):
-        novo = re.sub(r'\{[^{}]*\}', ' ', texto)
-        if novo == texto:
-            break
-        texto = novo
-
-    # Converte caracteres acentuados \'xx (encoding cp1252 do Windows)
-    texto = re.sub(
-        r"\\\'([0-9a-fA-F]{2})",
-        lambda m: bytes([int(m.group(1), 16)]).decode('cp1252', errors='replace'),
-        texto
-    )
-
-    # Remove comandos RTF (\palavra ou \palavraN ou \palavra-N)
-    texto = re.sub(r'\\[a-zA-Z]+[-]?\d*\s?', ' ', texto)
-
-    # Remove barras soltas, asteriscos e chaves restantes
-    texto = re.sub(r'[\\*{}]', '', texto)
-
-    # Remove quebras de linha RTF residuais
-    texto = texto.replace('\r', '\n').replace('\n\n', '\n')
-
-    # Limpa espacos multiplos
-    texto = re.sub(r'[ \t]+', ' ', texto)
-
-    # Limpa linhas vazias multiplas
-    texto = re.sub(r'\n\s*\n', '\n\n', texto)
-
-    return texto.strip()
-
-
-# =========================================================
-# BUSCAR DESTINATARIOS
-# =========================================================
-
-def buscar_destinatarios(conn, especialidade=None):
-    """
-    Busca destinatarios da tabela notificacoes_destinatarios.
-
-    Retorna emails de:
-    1. Destinatarios com especialidade correspondente
-    2. Destinatarios gerais (especialidade IS NULL) - recebem de todas
-
-    Args:
-        conn: conexao PostgreSQL
-        especialidade: especialidade do parecer (ou None)
-
-    Returns:
-        list de dicts {nome, email}
+    Busca destinatarios EMAIL da tabela notificacoes_destinatarios.
+    Filtra por especialidade quando informada.
+    Destinatarios com especialidade NULL recebem de todas.
     """
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -202,6 +134,7 @@ def buscar_destinatarios(conn, especialidade=None):
         SELECT DISTINCT nome, email
         FROM notificacoes_destinatarios
         WHERE tipo_evento = 'parecer_pendente'
+          AND canal = 'email'
           AND ativo = true
           AND (
               especialidade IS NULL
@@ -216,24 +149,42 @@ def buscar_destinatarios(conn, especialidade=None):
 
 
 # =========================================================
+# BUSCAR TOPICOS NTFY (do banco)
+# =========================================================
+
+def buscar_topicos_ntfy(conn):
+    """
+    Busca topicos ntfy da tabela notificacoes_destinatarios.
+    Retorna lista de topicos ativos para parecer_pendente.
+    Configuravel via Painel 26.
+    """
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    cursor.execute("""
+        SELECT email AS topico
+        FROM notificacoes_destinatarios
+        WHERE tipo_evento = 'parecer_pendente'
+          AND canal = 'ntfy'
+          AND ativo = true
+    """)
+
+    topicos = [row['topico'] for row in cursor.fetchall() if row['topico']]
+    cursor.close()
+
+    return topicos
+
+
+# =========================================================
 # MONTAR EMAIL HTML
 # =========================================================
 
 def montar_email_html(parecer):
     """
     Monta corpo do email em HTML com dados do parecer.
-    Formatacao profissional e limpa.
-    Inclui motivo da consulta parseado do RTF.
+    Motivo da consulta ja vem limpo do PostgreSQL (funcao limpar_rtf).
     """
-    # Limpa motivo RTF
-    motivo_limpo = parecer.get('ds_motivo_consulta', '') or 'Nao informado'
-    motivo_html = motivo_limpo.replace('\n', '<br>')
-
-    if not motivo_limpo:
-        motivo_limpo = 'Nao informado'
-
-    # Converte quebras de linha para <br> no HTML
-    motivo_html = motivo_limpo.replace('\n', '<br>')
+    motivo = parecer.get('ds_motivo_consulta', '') or 'Nao informado'
+    motivo_html = motivo.replace('\n', '<br>')
 
     html = """
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -248,6 +199,10 @@ def montar_email_html(parecer):
                 <tr>
                     <td style="padding: 8px 0; color: #6c757d; width: 140px;">Especialidade:</td>
                     <td style="padding: 8px 0; font-weight: bold;">%s</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #6c757d;">Paciente:</td>
+                    <td style="padding: 8px 0;">%s</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6c757d;">Setor:</td>
@@ -289,6 +244,7 @@ def montar_email_html(parecer):
     </div>
     """ % (
         parecer.get('especialidade_destino', '-'),
+        parecer.get('nm_paciente', '-'),
         parecer.get('nm_setor', '-'),
         parecer.get('cd_leito', '-'),
         parecer.get('nr_atendimento', '-'),
@@ -309,33 +265,31 @@ def montar_email_html(parecer):
 def enviar_email(destinatarios, titulo, corpo_html):
     """
     Envia email para lista de destinatarios via Apprise.
-
-    Args:
-        destinatarios: list de dicts {nome, email}
-        titulo: assunto do email
-        corpo_html: corpo HTML do email
-
-    Returns:
-        (sucesso: bool, resposta: str)
+    Credenciais SMTP lidas do .env.
     """
     if not destinatarios:
-        logger.warning('Nenhum destinatario para enviar email')
+        logger.warning('Nenhum destinatario email para enviar')
         return False, 'Sem destinatarios'
+
+    if not SMTP_USER or not SMTP_PASS:
+        logger.error('SMTP nao configurado no .env')
+        return False, 'SMTP nao configurado'
 
     try:
         ap = apprise.Apprise()
 
         user_encoded = url_encode(SMTP_USER, safe='')
         pass_encoded = url_encode(SMTP_PASS, safe='')
+        from_addr = SMTP_FROM if SMTP_FROM else SMTP_USER
 
         for dest in destinatarios:
             email_dest = dest['email']
-            url = 'mailtos://{user}:{pwd}@{host}:{port}?from={sender}&to={to}&name=ParecerPendente'.format(
+            url = 'mailtos://{user}:{pwd}@{host}:{port}?from={sender}&to={to}&name=Notificacao+Tasy'.format(
                 user=user_encoded,
                 pwd=pass_encoded,
                 host=SMTP_HOST,
                 port=SMTP_PORT,
-                sender=url_encode(SMTP_FROM, safe=''),
+                sender=url_encode(from_addr, safe=''),
                 to=url_encode(email_dest, safe='')
             )
             ap.add(url)
@@ -350,50 +304,73 @@ def enviar_email(destinatarios, titulo, corpo_html):
         emails_lista = ', '.join([d['email'] for d in destinatarios])
 
         if resultado:
-            logger.info('Email enviado OK para: %s', emails_lista)
-            return True, 'Email enviado para {} destinatarios'.format(len(destinatarios))
+            logger.info('Email OK para: %s', emails_lista)
+            return True, 'Email enviado para {}'.format(len(destinatarios))
         else:
-            logger.warning('Falha ao enviar email para: %s', emails_lista)
-            return False, 'Falha no envio'
+            logger.warning('Falha email para: %s', emails_lista)
+            return False, 'Falha no envio para {}'.format(emails_lista)
 
     except Exception as e:
-        logger.error('Erro ao enviar email: %s', e)
+        logger.error('Erro email: %s', e)
         return False, str(e)
 
 
 # =========================================================
-# ENVIAR NTFY (push notification)
+# ENVIAR NTFY PARA MULTIPLOS TOPICOS (do banco)
 # =========================================================
 
-def enviar_ntfy(titulo, mensagem):
-    """Envia notificacao push via ntfy."""
-    try:
-        url = '{}/{}'.format(NTFY_URL, NTFY_TOPIC)
-        resp = requests.post(
-            url,
-            data=mensagem.encode('utf-8'),
-            headers={
-                'Title': titulo.encode('utf-8'),
-                'Priority': '3',
-            },
-            timeout=10
-        )
+def enviar_ntfy_topicos(topicos, titulo, mensagem):
+    """
+    Envia push para todos os topicos ntfy configurados no banco.
+    Cada topico recebe a mesma mensagem.
+    """
+    if not topicos:
+        logger.debug('Nenhum topico ntfy configurado para parecer_pendente')
+        return
 
-        if resp.status_code == 200:
-            logger.info('ntfy OK: %s', titulo)
-        else:
-            logger.warning('ntfy status %s', resp.status_code)
+    enviados = 0
+    erros = 0
 
-    except Exception as e:
-        logger.error('Erro ntfy: %s', e)
+    for topico in topicos:
+        try:
+            url = '{}/{}'.format(NTFY_URL, topico)
+            resp = requests.post(
+                url,
+                data=mensagem.encode('utf-8'),
+                headers={
+                    'Title': titulo.encode('utf-8'),
+                    'Priority': '3',
+                },
+                timeout=10
+            )
+
+            if resp.status_code == 200:
+                logger.info('ntfy OK: [%s] %s', topico, titulo)
+                enviados += 1
+            else:
+                logger.warning('ntfy [%s] status %s', topico, resp.status_code)
+                erros += 1
+
+        except requests.exceptions.Timeout:
+            logger.error('Timeout ntfy: %s', topico)
+            erros += 1
+        except requests.exceptions.ConnectionError:
+            logger.error('Conexao recusada ntfy: %s', topico)
+            erros += 1
+        except Exception as e:
+            logger.error('Erro ntfy [%s]: %s', topico, e)
+            erros += 1
+
+    if enviados > 0 or erros > 0:
+        logger.info('ntfy resumo: %s enviados, %s erros de %s topicos', enviados, erros, len(topicos))
 
 
 # =========================================================
 # REGISTRAR NO LOG
 # =========================================================
 
-def registrar_log(conn, nr_parecer, nr_atendimento, especialidade, destinatarios, sucesso, resposta):
-    """Registra notificacao no log."""
+def registrar_log(conn, nr_parecer, nr_atendimento, especialidade, destinatarios, topicos, sucesso, resposta):
+    """Registra notificacao no log com detalhes de destinatarios e topicos."""
     cursor = conn.cursor()
     agora = datetime.now()
 
@@ -402,8 +379,7 @@ def registrar_log(conn, nr_parecer, nr_atendimento, especialidade, destinatarios
     # Verifica se ja foi notificado hoje
     cursor.execute("""
         SELECT id FROM notificacoes_log
-        WHERE chave_evento = %s
-          AND status = 'notificado'
+        WHERE chave_evento = %s AND status = 'notificado'
         LIMIT 1
     """, (chave,))
 
@@ -412,6 +388,13 @@ def registrar_log(conn, nr_parecer, nr_atendimento, especialidade, destinatarios
         return
 
     emails = ', '.join([d['email'] for d in destinatarios]) if destinatarios else 'nenhum'
+    topicos_str = ', '.join(topicos) if topicos else 'nenhum'
+
+    dados_extra = json.dumps({
+        'destinatarios_email': emails,
+        'topicos_ntfy': topicos_str,
+        'especialidade': especialidade or 'geral'
+    })
 
     cursor.execute("""
         INSERT INTO notificacoes_log
@@ -426,8 +409,8 @@ def registrar_log(conn, nr_parecer, nr_atendimento, especialidade, destinatarios
              %s, %s)
     """, (
         'parecer_email', chave, nr_atendimento, especialidade,
-        json.dumps({'destinatarios': emails}),
-        NTFY_TOPIC,
+        dados_extra,
+        topicos_str,
         'notificado' if sucesso else 'erro',
         agora,
         agora if sucesso else None,
@@ -446,15 +429,15 @@ def registrar_log(conn, nr_parecer, nr_atendimento, especialidade, destinatarios
 
 def verificar_pareceres():
     """
-    Detecta novos pareceres comparando pareceres_pendentes
-    com o snapshot anterior.
+    Detecta novos pareceres comparando com snapshot anterior.
 
     PRIMEIRA EXECUCAO (snapshot vazio):
-      Popula o snapshot SEM notificar ninguem.
+      Popula snapshot SEM notificar.
 
     EXECUCOES SEGUINTES:
-      Detecta novos pareceres (delta) com horas_pendente <= 0.5
-      (solicitados nos ultimos 30min) e notifica por email + ntfy.
+      Detecta delta com horas_pendente <= 0.5 (30min).
+      Envia email para destinatarios por especialidade.
+      Envia ntfy para todos os topicos configurados.
     """
     logger.info('=' * 50)
     logger.info('Verificando pareceres pendentes...')
@@ -466,17 +449,20 @@ def verificar_pareceres():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Busca pareceres atuais
+        # Busca topicos ntfy do banco (uma vez por ciclo)
+        topicos_ntfy = buscar_topicos_ntfy(conn)
+
+        # Busca pareceres atuais (motivo limpo via funcao PostgreSQL)
         cursor.execute("""
-                    SELECT nr_parecer, nr_atendimento, nm_paciente,
-                           nm_medico_solicitante, especialidade_destino,
-                           limpar_rtf(ds_motivo_consulta) AS ds_motivo_consulta,
-                           dt_solicitacao, horas_pendente,
-                           ds_convenio, nm_setor, cd_leito,
-                           ds_tipo_atendimento, status_parecer
-                    FROM pareceres_pendentes
-                    WHERE status_parecer = 'A' OR status_parecer IS NULL
-                """)
+            SELECT nr_parecer, nr_atendimento, nm_paciente,
+                   nm_medico_solicitante, especialidade_destino,
+                   limpar_rtf(ds_motivo_consulta) AS ds_motivo_consulta,
+                   dt_solicitacao, horas_pendente,
+                   ds_convenio, nm_setor, cd_leito,
+                   ds_tipo_atendimento, status_parecer
+            FROM pareceres_pendentes
+            WHERE status_parecer = 'A' OR status_parecer IS NULL
+        """)
 
         pareceres_atuais = cursor.fetchall()
         pareceres_map = {p['nr_parecer']: dict(p) for p in pareceres_atuais}
@@ -506,7 +492,7 @@ def verificar_pareceres():
 
             conn.commit()
             cursor.close()
-            logger.info('[pareceres] Snapshot populado. Proximos ciclos detectarao novos pareceres.')
+            logger.info('[pareceres] Snapshot populado. Proximos ciclos detectarao novos.')
             return
 
         # EXECUCOES SEGUINTES: detecta novos (delta)
@@ -517,24 +503,17 @@ def verificar_pareceres():
         for nr_parecer in novos:
             parecer = pareceres_map[nr_parecer]
 
-            # So notifica pareceres solicitados nos ultimos 30min
+            # So notifica pareceres dos ultimos 30min
             horas = parecer.get('horas_pendente') or 0
             if horas > 0.5:
                 ignorados += 1
-                logger.debug(
-                    '[pareceres] Parecer %s ignorado (%.1fh pendente, nao e recente)',
-                    nr_parecer, horas
-                )
+                logger.debug('[pareceres] %s ignorado (%.1fh)', nr_parecer, horas)
                 continue
 
             especialidade = parecer.get('especialidade_destino')
 
-            # Busca destinatarios para essa especialidade
-            destinatarios = buscar_destinatarios(conn, especialidade)
-
-            if not destinatarios:
-                logger.warning('Sem destinatarios para especialidade: %s', especialidade)
-                continue
+            # Busca destinatarios EMAIL para essa especialidade
+            destinatarios = buscar_destinatarios_email(conn, especialidade)
 
             # Monta titulo
             titulo = 'Parecer Pendente - {} - {}'.format(
@@ -542,24 +521,35 @@ def verificar_pareceres():
                 parecer.get('nm_setor', '-')
             )
 
-            # Envia email HTML
-            corpo_html = montar_email_html(parecer)
-            sucesso, resposta = enviar_email(destinatarios, titulo, corpo_html)
+            # Envia email (se houver destinatarios)
+            sucesso_email = False
+            resposta_email = 'Sem destinatarios email'
 
-            # Envia ntfy push (sem dados de paciente)
-            mensagem_ntfy = 'Novo parecer solicitado. Setor: {}, Leito: {}, Atend: {}'.format(
+            if destinatarios:
+                corpo_html = montar_email_html(parecer)
+                sucesso_email, resposta_email = enviar_email(destinatarios, titulo, corpo_html)
+            else:
+                logger.info('[pareceres] Sem destinatarios email para: %s', especialidade)
+
+            # Envia ntfy para TODOS os topicos (sem dados de paciente)
+            mensagem_ntfy = 'Novo parecer: {} | Setor: {} | Leito: {} | Atend: {}'.format(
+                especialidade or '-',
                 parecer.get('nm_setor', '-'),
                 parecer.get('cd_leito', '-'),
                 parecer.get('nr_atendimento', '-')
             )
-            enviar_ntfy(titulo, mensagem_ntfy)
+            enviar_ntfy_topicos(topicos_ntfy, titulo, mensagem_ntfy)
 
             # Registra no log
+            sucesso = sucesso_email or len(topicos_ntfy) > 0
+            resposta = resposta_email
+
             registrar_log(
                 conn, nr_parecer,
                 parecer.get('nr_atendimento'),
                 especialidade,
                 destinatarios,
+                topicos_ntfy,
                 sucesso, resposta
             )
 
@@ -579,11 +569,11 @@ def verificar_pareceres():
 
         # Log de resultado
         if notificados > 0:
-            logger.info('[pareceres] %s novos pareceres notificados por email', notificados)
+            logger.info('[pareceres] %s notificados (email + %s topicos ntfy)', notificados, len(topicos_ntfy))
         elif ignorados > 0:
-            logger.info('[pareceres] %s novos detectados mas ignorados (> 30min)', ignorados)
+            logger.info('[pareceres] %s novos ignorados (> 30min)', ignorados)
         else:
-            logger.info('[pareceres] Nenhum parecer novo detectado (%s ativos)', len(pareceres_atuais))
+            logger.info('[pareceres] Nenhum novo (%s ativos)', len(pareceres_atuais))
 
     except Exception as e:
         logger.error('[pareceres] Erro: %s', e)
@@ -600,19 +590,56 @@ def main():
     logger.info('=' * 60)
     logger.info('  NOTIFICADOR DE PARECERES - Email + ntfy')
     logger.info('  Intervalo: %s minutos', INTERVALO_VERIFICACAO)
-    logger.info('  SMTP: %s via %s:%s', SMTP_FROM, SMTP_HOST, SMTP_PORT)
-    logger.info('  ntfy: %s/%s', NTFY_URL, NTFY_TOPIC)
+    logger.info('  SMTP: %s via %s:%s', SMTP_FROM or '(usar SMTP_USER)', SMTP_HOST or '(nao configurado)', SMTP_PORT)
+    logger.info('  ntfy base: %s', NTFY_URL)
+    logger.info('  Topicos ntfy: lidos da tabela notificacoes_destinatarios')
     logger.info('  Banco: %s@%s:%s/%s',
                  DB_CONFIG['user'], DB_CONFIG['host'],
                  DB_CONFIG['port'], DB_CONFIG['database'])
     logger.info('=' * 60)
 
-    # Testa conexao
+    # Valida SMTP
+    if not SMTP_USER or not SMTP_PASS:
+        logger.error('SMTP_USER e/ou SMTP_PASS nao configurados no .env')
+        logger.error('Adicione ao .env: SMTP_USER=seu@email.com e SMTP_PASS=suasenha')
+        sys.exit(1)
+
+    if not SMTP_HOST:
+        logger.error('SMTP_HOST nao configurado no .env')
+        sys.exit(1)
+
+    # SMTP_FROM usa SMTP_USER se vazio
+    global SMTP_FROM
+    if not SMTP_FROM:
+        SMTP_FROM = SMTP_USER
+        logger.info('SMTP_FROM nao definido, usando SMTP_USER: %s', SMTP_USER)
+
+    # Testa conexao com banco
     conn = get_connection()
     if not conn:
         logger.error('Falha na conexao inicial. Encerrando.')
         sys.exit(1)
+
+    # Valida se existem destinatarios configurados
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("""
+        SELECT
+            COUNT(*) FILTER (WHERE canal = 'email') AS qt_email,
+            COUNT(*) FILTER (WHERE canal = 'ntfy') AS qt_ntfy
+        FROM notificacoes_destinatarios
+        WHERE tipo_evento = 'parecer_pendente' AND ativo = true
+    """)
+    dest_count = cursor.fetchone()
+    cursor.close()
     conn.close()
+
+    logger.info('Destinatarios ativos: %s email, %s ntfy',
+                 dest_count['qt_email'], dest_count['qt_ntfy'])
+
+    if dest_count['qt_email'] == 0 and dest_count['qt_ntfy'] == 0:
+        logger.warning('ATENCAO: Nenhum destinatario configurado no Painel 26!')
+        logger.warning('Cadastre destinatarios em: Central de Notificacoes > Novo')
+
     logger.info('Conexao com banco OK')
 
     # Primeiro ciclo imediato
