@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Evolucao Clinica - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+    <title>Evolucao Clinica - Anchieta Ceilandia</title>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel27/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <header class="painel-header" role="banner">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-heartbeat" aria-hidden="true"></i> Evolucao Clinica</h1>
+                        <span class="header-subtitle">Sinais vitais e exames laboratoriais</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button id="btn-toggle-filtros" class="btn-header btn-toggle-filtros" title="Filtros">
+                        <i class="fas fa-filter" aria-hidden="true"></i>
+                        <i class="fas fa-chevron-up toggle-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="header-controls" id="header-controls">
+                        <div class="filtro-container">
+                            <select id="filtro-setor" class="filtro-select" aria-label="Setor">
+                                <option value="">Todos Setores</option>
+                            </select>
+                        </div>
+                        <div class="filtro-container">
+                            <select id="filtro-status" class="filtro-select" aria-label="Status">
+                                <option value="">Todos</option>
+                                <option value="INTERNADO">Internados</option>
+                                <option value="ALTA">Alta 12h</option>
+                            </select>
+                        </div>
+                        <div class="filtro-container filtro-busca">
+                            <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar paciente/atend..." aria-label="Buscar">
+                        </div>
+                        <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros">
+                            <i class="fas fa-eraser" aria-hidden="true"></i>
+                        </button>
+                        <div class="header-status">
+                            <span class="filtro-stats"><strong id="total-pacientes">0</strong> pac.</span>
+                            <span class="status-indicator" id="status-indicator" title="Status"></span>
+                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header" title="Voltar">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="dashboard-resumo" aria-label="Resumo">
+            <div class="resumo-grid">
+                <article class="resumo-card card-internados">
+                    <div class="card-icon"><i class="fas fa-procedures" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-internados">-</span><span class="card-label">Internados</span></div>
+                </article>
+                <article class="resumo-card card-altas">
+                    <div class="card-icon"><i class="fas fa-door-open" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-altas">-</span><span class="card-label">Altas 12h</span></div>
+                </article>
+                <article class="resumo-card card-media-dias">
+                    <div class="card-icon"><i class="fas fa-calendar-day" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-media-dias">-</span><span class="card-label">Media Dias Int.</span></div>
+                </article>
+                <article class="resumo-card card-sinais">
+                    <div class="card-icon"><i class="fas fa-heartbeat" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-sinais">-</span><span class="card-label">Com Sinais Vitais</span></div>
+                </article>
+                <article class="resumo-card card-exames">
+                    <div class="card-icon"><i class="fas fa-vials" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-exames">-</span><span class="card-label">Com Exames Lab</span></div>
+                </article>
+                <article class="resumo-card card-setores">
+                    <div class="card-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+                    <div class="card-content"><span class="card-value" id="kpi-setores">-</span><span class="card-label">Setores</span></div>
+                </article>
+            </div>
+        </section>
+
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando evolucao clinica...</p>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Modal Historico -->
+    <div class="modal-overlay" id="modal-historico">
+        <div class="modal-content modal-historico-content">
+            <div class="modal-header">
+                <h3 id="modal-hist-titulo"><i class="fas fa-chart-line"></i> Evolucao</h3>
+                <button class="modal-fechar" id="modal-hist-fechar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="chart-tabs" id="chart-tabs">
+                    <button class="chart-tab ativo" data-tab="sinais">Sinais Vitais</button>
+                    <button class="chart-tab" data-tab="exames">Exames Lab</button>
+                </div>
+                <div class="chart-area" id="chart-area-sinais">
+                    <canvas id="chart-sinais" height="300"></canvas>
+                </div>
+                <div class="chart-area oculto" id="chart-area-exames">
+                    <div class="exame-selector" id="exame-selector"></div>
+                    <canvas id="chart-exames" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="/paineis/painel27/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
