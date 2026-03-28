@@ -609,9 +609,7 @@ def main():
         sys.exit(1)
 
     # SMTP_FROM usa SMTP_USER se vazio
-    global SMTP_FROM
     if not SMTP_FROM:
-        SMTP_FROM = SMTP_USER
         logger.info('SMTP_FROM nao definido, usando SMTP_USER: %s', SMTP_USER)
 
     # Testa conexao com banco

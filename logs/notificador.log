@@ -4837,3 +4837,406 @@
 2026-03-28 09:41:24 [INFO] [parecer_pendente] Nenhuma transicao
 2026-03-28 09:41:24 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
 2026-03-28 09:41:24 [INFO] Ciclo concluido
+2026-03-28 09:51:24 [INFO] ==================================================
+2026-03-28 09:51:24 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 09:51:24 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 09:51:24 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 09:51:24 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 09:51:24 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 09:51:24 [INFO] Ciclo concluido
+2026-03-28 10:01:24 [INFO] ==================================================
+2026-03-28 10:01:24 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 10:01:24 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 10:01:24 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 10:01:25 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 10:01:25 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-28 10:01:25 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 10:01:25 [INFO] Ciclo concluido
+2026-03-28 10:11:25 [INFO] ==================================================
+2026-03-28 10:11:25 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 10:11:26 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 10:11:26 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 10:11:26 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 10:11:26 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 10:11:26 [INFO] Ciclo concluido
+2026-03-28 10:21:26 [INFO] ==================================================
+2026-03-28 10:21:26 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 10:21:26 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 10:21:26 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 10:21:27 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 10:21:27 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-28 10:21:27 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 10:21:27 [INFO] Ciclo concluido
+2026-03-28 10:31:27 [INFO] ==================================================
+2026-03-28 10:31:27 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 10:31:27 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 10:31:27 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 10:31:28 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 10:31:29 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 10:31:29 [INFO] [prescricao] 1 notificacoes (novos: 1, exist: 0) -> 1 topicos
+2026-03-28 10:31:29 [INFO] Ciclo concluido
+2026-03-28 10:41:29 [INFO] ==================================================
+2026-03-28 10:41:29 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 10:41:29 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 10:41:29 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 10:41:29 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 10:41:29 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 10:41:29 [INFO] Ciclo concluido
+2026-03-28 10:51:29 [INFO] ==================================================
+2026-03-28 10:51:29 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 10:51:29 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 10:51:29 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 10:51:30 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 10:51:31 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Maternidade
+2026-03-28 10:51:31 [INFO] [parecer_pendente] 2 detectados -> 1 topicos
+2026-03-28 10:51:31 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 10:51:31 [INFO] Ciclo concluido
+2026-03-28 11:01:31 [INFO] ==================================================
+2026-03-28 11:01:31 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 11:01:31 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 11:01:31 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 11:01:32 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 11:01:32 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-28 11:01:33 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:34 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:35 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:36 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:37 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:38 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:39 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:40 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:41 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:41 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:42 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:43 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:44 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:45 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:46 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:47 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:47 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:48 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:49 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:50 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:51 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:52 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:53 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:54 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:54 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:55 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 11:01:56 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 11:01:57 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 11:01:58 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 11:01:59 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 11:02:00 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 11:02:01 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Pediátrica
+2026-03-28 11:02:01 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:02 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:03 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:04 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:05 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:06 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:06 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:07 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 11:02:08 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 01
+2026-03-28 11:02:09 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 11:02:10 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 11:02:11 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 11:02:12 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 11:02:12 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 11:02:13 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 11:02:13 [INFO] [prescricao] 47 notificacoes (novos: 0, exist: 47) -> 1 topicos
+2026-03-28 11:02:13 [INFO] Ciclo concluido
+2026-03-28 11:12:13 [INFO] ==================================================
+2026-03-28 11:12:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 11:12:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 11:12:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 11:12:14 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 11:12:14 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 11:12:14 [INFO] Ciclo concluido
+2026-03-28 11:22:14 [INFO] ==================================================
+2026-03-28 11:22:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 11:22:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 11:22:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 11:22:14 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 11:22:14 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 11:22:14 [INFO] Ciclo concluido
+2026-03-28 11:32:14 [INFO] ==================================================
+2026-03-28 11:32:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 11:32:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 11:32:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 11:32:15 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 11:32:15 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-28 11:32:16 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 11:32:16 [INFO] Ciclo concluido
+2026-03-28 11:42:16 [INFO] ==================================================
+2026-03-28 11:42:16 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 11:42:16 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 11:42:16 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 11:42:16 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 11:42:16 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 11:42:16 [INFO] Ciclo concluido
+2026-03-28 11:52:16 [INFO] ==================================================
+2026-03-28 11:52:16 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 11:52:16 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 11:52:16 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 11:52:17 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 11:52:18 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 11:52:19 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 11:52:19 [INFO] [parecer_pendente] 3 detectados -> 1 topicos
+2026-03-28 11:52:19 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 11:52:19 [INFO] Ciclo concluido
+2026-03-28 12:02:19 [INFO] ==================================================
+2026-03-28 12:02:19 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 12:02:19 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 12:02:19 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 12:02:20 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-28 12:02:20 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-28 12:02:21 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:22 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:23 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:23 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:24 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:25 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:26 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:27 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:28 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:28 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:29 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:30 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:31 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 12:02:32 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 12:02:33 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 12:02:34 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 12:02:34 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 12:02:35 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-28 12:02:36 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 12:02:37 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 12:02:38 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 12:02:39 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 12:02:40 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 12:02:41 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 12:02:41 [INFO] [prescricao] 24 notificacoes (novos: 0, exist: 24) -> 1 topicos
+2026-03-28 12:02:41 [INFO] Ciclo concluido
+2026-03-28 12:12:41 [INFO] ==================================================
+2026-03-28 12:12:41 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 12:12:41 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 12:12:41 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 12:12:41 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 12:12:41 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 12:12:41 [INFO] Ciclo concluido
+2026-03-28 12:22:41 [INFO] ==================================================
+2026-03-28 12:22:41 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 12:22:42 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 12:22:42 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 12:22:42 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 12:22:42 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 12:22:42 [INFO] Ciclo concluido
+2026-03-28 12:32:42 [INFO] ==================================================
+2026-03-28 12:32:42 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 12:32:42 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 12:32:42 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 12:32:42 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 12:32:42 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 12:32:42 [INFO] Ciclo concluido
+2026-03-28 12:42:42 [INFO] ==================================================
+2026-03-28 12:42:42 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 12:42:42 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 12:42:43 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 12:42:43 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 12:42:43 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 12:42:43 [INFO] Ciclo concluido
+2026-03-28 12:52:43 [INFO] ==================================================
+2026-03-28 12:52:43 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 12:52:43 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 12:52:43 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 12:52:43 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 12:52:43 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 12:52:43 [INFO] Ciclo concluido
+2026-03-28 13:02:43 [INFO] ==================================================
+2026-03-28 13:02:43 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 13:02:43 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 13:02:43 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 13:02:43 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 13:02:45 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:02:45 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:02:46 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:02:47 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:02:48 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:02:48 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:02:49 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 13:02:50 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 13:02:51 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 13:02:52 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 13:02:52 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 13:02:53 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 13:02:54 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 13:02:54 [INFO] [prescricao] 13 notificacoes (novos: 0, exist: 13) -> 1 topicos
+2026-03-28 13:02:54 [INFO] Ciclo concluido
+2026-03-28 13:12:54 [INFO] ==================================================
+2026-03-28 13:12:54 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 13:12:54 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 13:12:55 [INFO] ntfy OK: [hac-admissao2] Nova Admissao - Internação ALA D
+2026-03-28 13:12:55 [INFO] [admissao_nova] 1 notificadas -> 1 topicos
+2026-03-28 13:12:55 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 13:12:55 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 13:12:55 [INFO] Ciclo concluido
+2026-03-28 13:22:55 [INFO] ==================================================
+2026-03-28 13:22:55 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 13:22:55 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 13:22:55 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 13:22:56 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 13:22:57 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:22:57 [INFO] [prescricao] 1 notificacoes (novos: 1, exist: 0) -> 1 topicos
+2026-03-28 13:22:57 [INFO] Ciclo concluido
+2026-03-28 13:32:57 [INFO] ==================================================
+2026-03-28 13:32:57 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 13:32:57 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 13:32:57 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 13:32:57 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 13:32:57 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 13:32:57 [INFO] Ciclo concluido
+2026-03-28 13:42:57 [INFO] ==================================================
+2026-03-28 13:42:57 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 13:42:57 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 13:42:58 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 13:42:58 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 13:42:58 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 13:42:58 [INFO] Ciclo concluido
+2026-03-28 13:52:58 [INFO] ==================================================
+2026-03-28 13:52:58 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 13:52:58 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 13:52:58 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 13:52:58 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 13:52:59 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 13:52:59 [INFO] [prescricao] 1 notificacoes (novos: 1, exist: 0) -> 1 topicos
+2026-03-28 13:52:59 [INFO] Ciclo concluido
+2026-03-28 14:02:59 [INFO] ==================================================
+2026-03-28 14:02:59 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 14:02:59 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 14:02:59 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 14:03:00 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 14:03:00 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 14:03:01 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-28 14:03:02 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 14:03:03 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 14:03:04 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto 02
+2026-03-28 14:03:05 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 14:03:06 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-28 14:03:06 [INFO] [prescricao] 7 notificacoes (novos: 0, exist: 7) -> 1 topicos
+2026-03-28 14:03:06 [INFO] Ciclo concluido
+2026-03-28 14:13:06 [INFO] ==================================================
+2026-03-28 14:13:06 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 14:13:06 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 14:13:06 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 14:13:06 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 14:13:06 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 14:13:06 [INFO] Ciclo concluido
+2026-03-28 14:23:06 [INFO] ==================================================
+2026-03-28 14:23:06 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 14:23:06 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 14:23:06 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 14:23:06 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 14:23:07 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 14:23:07 [INFO] [prescricao] 1 notificacoes (novos: 0, exist: 1) -> 1 topicos
+2026-03-28 14:23:07 [INFO] Ciclo concluido
+2026-03-28 14:33:07 [INFO] ==================================================
+2026-03-28 14:33:07 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 14:33:07 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 14:33:08 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 14:33:08 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 14:33:08 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 14:33:08 [INFO] Ciclo concluido
+2026-03-28 14:43:08 [INFO] ==================================================
+2026-03-28 14:43:08 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 14:43:08 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 14:43:08 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 14:43:09 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação ALA D
+2026-03-28 14:43:09 [INFO] [parecer_pendente] 1 detectados -> 1 topicos
+2026-03-28 14:43:09 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 14:43:09 [INFO] Ciclo concluido
+2026-03-28 14:53:09 [INFO] ==================================================
+2026-03-28 14:53:09 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 14:53:09 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 14:53:09 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 14:53:09 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 14:53:09 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 14:53:09 [INFO] Ciclo concluido
+2026-03-28 15:03:10 [INFO] ==================================================
+2026-03-28 15:03:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 15:03:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 15:03:10 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 15:03:10 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 15:03:11 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação ALA D
+2026-03-28 15:03:11 [INFO] [prescricao] 1 notificacoes (novos: 1, exist: 0) -> 1 topicos
+2026-03-28 15:03:11 [INFO] Ciclo concluido
+2026-03-28 15:13:11 [INFO] ==================================================
+2026-03-28 15:13:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 15:13:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 15:13:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 15:13:11 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 15:13:11 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 15:13:11 [INFO] Ciclo concluido
+2026-03-28 15:23:11 [INFO] ==================================================
+2026-03-28 15:23:11 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 15:23:11 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 15:23:11 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 15:23:11 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 15:23:12 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 15:23:12 [INFO] [prescricao] 1 notificacoes (novos: 0, exist: 1) -> 1 topicos
+2026-03-28 15:23:12 [INFO] Ciclo concluido
+2026-03-28 15:33:12 [INFO] ==================================================
+2026-03-28 15:33:12 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 15:33:12 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 15:33:12 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 15:33:13 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 15:33:13 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 15:33:13 [INFO] Ciclo concluido
+2026-03-28 15:43:13 [INFO] ==================================================
+2026-03-28 15:43:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 15:43:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 15:43:13 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 15:43:13 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 15:43:13 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 15:43:13 [INFO] Ciclo concluido
+2026-03-28 15:53:13 [INFO] ==================================================
+2026-03-28 15:53:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 15:53:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 15:53:13 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 15:53:13 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 15:53:13 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 15:53:13 [INFO] Ciclo concluido
+2026-03-28 16:03:13 [INFO] ==================================================
+2026-03-28 16:03:13 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 16:03:13 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 16:03:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 16:03:14 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 16:03:14 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 16:03:14 [INFO] Ciclo concluido
+2026-03-28 16:13:15 [INFO] ==================================================
+2026-03-28 16:13:15 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 16:13:15 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 16:13:15 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 16:13:16 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 16:13:16 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-28 16:13:16 [INFO] [prescricao] 1 notificacoes (novos: 0, exist: 1) -> 1 topicos
+2026-03-28 16:13:16 [INFO] Ciclo concluido
+2026-03-28 16:14:22 [INFO] ============================================================
+2026-03-28 16:14:22 [INFO]   NOTIFICADOR ntfy - Hospital Anchieta
+2026-03-28 16:14:22 [INFO]   Intervalo: 10 minutos
+2026-03-28 16:14:22 [INFO]   ntfy base: https://ntfy.sh
+2026-03-28 16:14:22 [INFO]   Topicos: lidos da tabela notificacoes_destinatarios
+2026-03-28 16:14:22 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-03-28 16:14:22 [INFO] ============================================================
+2026-03-28 16:14:22 [INFO]   Topicos [admissao_nova]: 1 configurados
+2026-03-28 16:14:22 [INFO]   Topicos [parecer_pendente]: 1 configurados
+2026-03-28 16:14:22 [INFO]   Topicos [prescricao_pendente]: 1 configurados
+2026-03-28 16:14:22 [INFO] Conexao com banco OK
+2026-03-28 16:14:22 [INFO] ==================================================
+2026-03-28 16:14:22 [INFO] Iniciando ciclo de verificacao...
+2026-03-28 16:14:22 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-28 16:14:22 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-28 16:14:22 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-28 16:14:22 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-28 16:14:22 [INFO] Ciclo concluido
+2026-03-28 16:14:22 [INFO] Scheduler ativo. Proximo ciclo em 10 min...
+2026-03-28 16:14:25 [INFO] Encerrado pelo usuario (Ctrl+C)

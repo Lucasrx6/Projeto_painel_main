@@ -599,3 +599,160 @@ LINE 4:                    ds_motivo_consulta, dt_solicitacao, horas...
 2026-03-28 09:43:09 [INFO] ==================================================
 2026-03-28 09:43:09 [INFO] Verificando pareceres pendentes...
 2026-03-28 09:43:09 [INFO] [pareceres] Nenhum parecer novo detectado (125 ativos)
+2026-03-28 09:53:09 [INFO] ==================================================
+2026-03-28 09:53:09 [INFO] Verificando pareceres pendentes...
+2026-03-28 09:53:09 [INFO] [pareceres] Nenhum parecer novo detectado (125 ativos)
+2026-03-28 10:03:09 [INFO] ==================================================
+2026-03-28 10:03:09 [INFO] Verificando pareceres pendentes...
+2026-03-28 10:03:16 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 10:03:16 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Clínica
+2026-03-28 10:03:16 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 10:13:17 [INFO] ==================================================
+2026-03-28 10:13:17 [INFO] Verificando pareceres pendentes...
+2026-03-28 10:13:22 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 10:13:23 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Clínica
+2026-03-28 10:13:23 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 10:23:23 [INFO] ==================================================
+2026-03-28 10:23:23 [INFO] Verificando pareceres pendentes...
+2026-03-28 10:23:23 [INFO] [pareceres] Nenhum parecer novo detectado (126 ativos)
+2026-03-28 10:33:23 [INFO] ==================================================
+2026-03-28 10:33:23 [INFO] Verificando pareceres pendentes...
+2026-03-28 10:33:23 [INFO] [pareceres] Nenhum parecer novo detectado (126 ativos)
+2026-03-28 10:43:23 [INFO] ==================================================
+2026-03-28 10:43:23 [INFO] Verificando pareceres pendentes...
+2026-03-28 10:43:28 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 10:43:29 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Maternidade
+2026-03-28 10:43:34 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 10:43:35 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Clínica
+2026-03-28 10:43:35 [INFO] [pareceres] 2 novos pareceres notificados por email
+2026-03-28 10:53:35 [INFO] ==================================================
+2026-03-28 10:53:35 [INFO] Verificando pareceres pendentes...
+2026-03-28 10:53:35 [INFO] [pareceres] Nenhum parecer novo detectado (126 ativos)
+2026-03-28 11:03:35 [INFO] ==================================================
+2026-03-28 11:03:35 [INFO] Verificando pareceres pendentes...
+2026-03-28 11:03:40 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:03:41 [INFO] ntfy OK: Parecer Pendente - Ginecologia - Internação Clínica
+2026-03-28 11:03:41 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 11:13:41 [INFO] ==================================================
+2026-03-28 11:13:41 [INFO] Verificando pareceres pendentes...
+2026-03-28 11:13:41 [INFO] [pareceres] Nenhum parecer novo detectado (122 ativos)
+2026-03-28 11:23:41 [INFO] ==================================================
+2026-03-28 11:23:41 [INFO] Verificando pareceres pendentes...
+2026-03-28 11:23:42 [INFO] [pareceres] Nenhum parecer novo detectado (122 ativos)
+2026-03-28 11:33:42 [INFO] ==================================================
+2026-03-28 11:33:42 [INFO] Verificando pareceres pendentes...
+2026-03-28 11:33:47 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:33:48 [INFO] ntfy OK: Parecer Pendente - Infectologia - Internação Clínica
+2026-03-28 11:33:48 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 11:43:48 [INFO] ==================================================
+2026-03-28 11:43:48 [INFO] Verificando pareceres pendentes...
+2026-03-28 11:43:48 [INFO] [pareceres] Nenhum parecer novo detectado (123 ativos)
+2026-03-28 11:53:49 [INFO] ==================================================
+2026-03-28 11:53:49 [INFO] Verificando pareceres pendentes...
+2026-03-28 11:53:54 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:53:54 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Clínica
+2026-03-28 11:53:59 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:54:00 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Clínica
+2026-03-28 11:54:05 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:54:06 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - UTI Adulto
+2026-03-28 11:54:10 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:54:11 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Clínica
+2026-03-28 11:54:16 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:54:17 [INFO] ntfy OK: Parecer Pendente - Psicologia - UTI Adulto
+2026-03-28 11:54:22 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:54:23 [INFO] ntfy OK: Parecer Pendente - Psiquiatria - UTI Adulto
+2026-03-28 11:54:28 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:54:28 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - None
+2026-03-28 11:54:33 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 11:54:34 [INFO] ntfy OK: Parecer Pendente - Fisioterapia - Internação Clínica
+2026-03-28 11:54:34 [INFO] [pareceres] 8 novos pareceres notificados por email
+2026-03-28 12:04:34 [INFO] ==================================================
+2026-03-28 12:04:34 [INFO] Verificando pareceres pendentes...
+2026-03-28 12:04:39 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 12:04:39 [INFO] ntfy OK: Parecer Pendente - Ortopedia e Traumatologia - Internação Clínica
+2026-03-28 12:04:39 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 12:14:40 [INFO] ==================================================
+2026-03-28 12:14:40 [INFO] Verificando pareceres pendentes...
+2026-03-28 12:14:40 [INFO] [pareceres] Nenhum parecer novo detectado (130 ativos)
+2026-03-28 12:24:40 [INFO] ==================================================
+2026-03-28 12:24:40 [INFO] Verificando pareceres pendentes...
+2026-03-28 12:24:45 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 12:24:46 [INFO] ntfy OK: Parecer Pendente - Neuro Cirurgia - Internação Clínica
+2026-03-28 12:24:46 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 12:34:46 [INFO] ==================================================
+2026-03-28 12:34:46 [INFO] Verificando pareceres pendentes...
+2026-03-28 12:34:51 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 12:34:51 [INFO] ntfy OK: Parecer Pendente - Fonoaudiologia - Berçario Maternidade
+2026-03-28 12:34:51 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 12:44:52 [INFO] ==================================================
+2026-03-28 12:44:52 [INFO] Verificando pareceres pendentes...
+2026-03-28 12:44:57 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 12:44:57 [INFO] ntfy OK: Parecer Pendente - Cirurgia Geral - None
+2026-03-28 12:45:02 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 12:45:03 [INFO] ntfy OK: Parecer Pendente - Fonoaudiologia - UTI Pediátrica
+2026-03-28 12:45:03 [INFO] [pareceres] 2 novos pareceres notificados por email
+2026-03-28 12:55:03 [INFO] ==================================================
+2026-03-28 12:55:03 [INFO] Verificando pareceres pendentes...
+2026-03-28 12:55:09 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 12:55:10 [INFO] ntfy OK: Parecer Pendente - Clínica Médica - None
+2026-03-28 12:55:10 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 13:05:10 [INFO] ==================================================
+2026-03-28 13:05:10 [INFO] Verificando pareceres pendentes...
+2026-03-28 13:05:10 [INFO] [pareceres] Nenhum parecer novo detectado (132 ativos)
+2026-03-28 13:15:10 [INFO] ==================================================
+2026-03-28 13:15:10 [INFO] Verificando pareceres pendentes...
+2026-03-28 13:15:11 [INFO] [pareceres] Nenhum parecer novo detectado (130 ativos)
+2026-03-28 13:25:11 [INFO] ==================================================
+2026-03-28 13:25:11 [INFO] Verificando pareceres pendentes...
+2026-03-28 13:25:11 [INFO] [pareceres] Nenhum parecer novo detectado (129 ativos)
+2026-03-28 13:35:11 [INFO] ==================================================
+2026-03-28 13:35:11 [INFO] Verificando pareceres pendentes...
+2026-03-28 13:35:11 [INFO] [pareceres] Nenhum parecer novo detectado (129 ativos)
+2026-03-28 13:45:11 [INFO] ==================================================
+2026-03-28 13:45:11 [INFO] Verificando pareceres pendentes...
+2026-03-28 13:45:12 [INFO] [pareceres] Nenhum parecer novo detectado (128 ativos)
+2026-03-28 13:55:12 [INFO] ==================================================
+2026-03-28 13:55:12 [INFO] Verificando pareceres pendentes...
+2026-03-28 13:55:12 [INFO] [pareceres] Nenhum parecer novo detectado (127 ativos)
+2026-03-28 14:05:12 [INFO] ==================================================
+2026-03-28 14:05:12 [INFO] Verificando pareceres pendentes...
+2026-03-28 14:05:12 [INFO] [pareceres] Nenhum parecer novo detectado (127 ativos)
+2026-03-28 14:15:12 [INFO] ==================================================
+2026-03-28 14:15:12 [INFO] Verificando pareceres pendentes...
+2026-03-28 14:15:12 [INFO] [pareceres] Nenhum parecer novo detectado (125 ativos)
+2026-03-28 14:25:13 [INFO] ==================================================
+2026-03-28 14:25:13 [INFO] Verificando pareceres pendentes...
+2026-03-28 14:25:13 [INFO] [pareceres] Nenhum parecer novo detectado (124 ativos)
+2026-03-28 14:35:13 [INFO] ==================================================
+2026-03-28 14:35:13 [INFO] Verificando pareceres pendentes...
+2026-03-28 14:35:13 [INFO] [pareceres] Nenhum parecer novo detectado (121 ativos)
+2026-03-28 14:45:13 [INFO] ==================================================
+2026-03-28 14:45:13 [INFO] Verificando pareceres pendentes...
+2026-03-28 14:45:13 [INFO] [pareceres] Nenhum parecer novo detectado (121 ativos)
+2026-03-28 14:55:13 [INFO] ==================================================
+2026-03-28 14:55:13 [INFO] Verificando pareceres pendentes...
+2026-03-28 14:55:14 [INFO] [pareceres] Nenhum parecer novo detectado (121 ativos)
+2026-03-28 15:05:14 [INFO] ==================================================
+2026-03-28 15:05:14 [INFO] Verificando pareceres pendentes...
+2026-03-28 15:05:14 [INFO] [pareceres] Nenhum parecer novo detectado (121 ativos)
+2026-03-28 15:15:14 [INFO] ==================================================
+2026-03-28 15:15:14 [INFO] Verificando pareceres pendentes...
+2026-03-28 15:15:14 [INFO] [pareceres] Nenhum parecer novo detectado (121 ativos)
+2026-03-28 15:25:14 [INFO] ==================================================
+2026-03-28 15:25:14 [INFO] Verificando pareceres pendentes...
+2026-03-28 15:25:14 [INFO] [pareceres] Nenhum parecer novo detectado (121 ativos)
+2026-03-28 15:35:14 [INFO] ==================================================
+2026-03-28 15:35:14 [INFO] Verificando pareceres pendentes...
+2026-03-28 15:35:15 [INFO] [pareceres] Nenhum parecer novo detectado (120 ativos)
+2026-03-28 15:45:15 [INFO] ==================================================
+2026-03-28 15:45:15 [INFO] Verificando pareceres pendentes...
+2026-03-28 15:45:15 [INFO] [pareceres] Nenhum parecer novo detectado (120 ativos)
+2026-03-28 15:55:15 [INFO] ==================================================
+2026-03-28 15:55:15 [INFO] Verificando pareceres pendentes...
+2026-03-28 15:55:15 [INFO] [pareceres] Nenhum parecer novo detectado (120 ativos)
+2026-03-28 16:05:15 [INFO] ==================================================
+2026-03-28 16:05:15 [INFO] Verificando pareceres pendentes...
+2026-03-28 16:05:21 [WARNING] Falha ao enviar email para: cadastro.medico@saofranciscodf.med.br, hac-parecer
+2026-03-28 16:05:22 [INFO] ntfy OK: Parecer Pendente - Cirurgia Geral - None
+2026-03-28 16:05:22 [INFO] [pareceres] 1 novos pareceres notificados por email
+2026-03-28 16:14:13 [INFO] Encerrado pelo usuario (Ctrl+C)
