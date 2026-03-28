@@ -8,31 +8,18 @@
   Servico independente que monitora o PostgreSQL e envia
   notificacoes via ntfy quando detecta eventos clinicos.
 
+  NOVIDADE: Topicos ntfy sao lidos da tabela
+  notificacoes_destinatarios (canal='ntfy').
+  Suporta multiplos topicos por tipo de evento.
+
   Eventos monitorados:
-  1. ADMISSAO NOVA
-     - Detecta pacientes com dt_entrada_unid (data real de
-       entrada no hospital, nao movimentacao de setor)
-       nos ultimos 30 minutos
-     - Notifica uma unica vez por admissao
-
-  2. PARECER PENDENTE
-     - Detecta TRANSICAO de parecer_pendente: 'Nao' -> 'Sim'
-     - Compara estado atual vs snapshot anterior
-     - Sem renotificacao (pareceres podem demorar dias)
-
-  3. PRESCRICAO PENDENTE
-     - Paciente NOVO (2h-6h sem prescricao): notifica 1x
-     - Paciente EXISTENTE (>6h, apos 11h): renotificacao
-     - Usa dt_entrada_unid (data real de admissao)
-
-  Todas as mensagens sao carregadas da tabela notificacoes_config.
+  1. ADMISSAO NOVA - dt_entrada_unid nos ultimos 30min
+  2. PARECER PENDENTE - Transicao 'Nao' -> 'Sim'
+  3. PRESCRICAO PENDENTE - Cenarios novo (2h) e existente (11h)
 
   Execucao:
   - Standalone: python notificador.py
   - Servico Windows via NSSM
-
-  Dependencias:
-  - psycopg2, requests, schedule, python-dotenv
 ==============================================================
 """
 
@@ -84,7 +71,7 @@ logger.addHandler(console_handler)
 
 
 # =========================================================
-# CONFIGURACAO DO BANCO DE DADOS
+# CONFIGURACOES
 # =========================================================
 
 DB_CONFIG = {
@@ -95,6 +82,7 @@ DB_CONFIG = {
     'port': os.getenv('DB_PORT', '5432')
 }
 
+NTFY_URL = os.getenv('NTFY_URL', 'https://ntfy.sh')
 INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_INTERVALO_MIN', '15'))
 
 
@@ -103,7 +91,7 @@ INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_INTERVALO_MIN', '15'))
 # =========================================================
 
 def get_connection():
-    """Abre conexao com PostgreSQL. Retorna None em caso de erro."""
+    """Abre conexao com PostgreSQL."""
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         return conn
@@ -117,7 +105,7 @@ def get_connection():
 # =========================================================
 
 def carregar_configs():
-    """Carrega configs da tabela notificacoes_config. Retorna dict por tipo_evento."""
+    """Carrega configs da tabela notificacoes_config."""
     conn = get_connection()
     if not conn:
         return {}
@@ -144,114 +132,145 @@ def carregar_configs():
 
 
 # =========================================================
+# BUSCAR TOPICOS NTFY DO BANCO
+# =========================================================
+
+def buscar_topicos_ntfy(conn, tipo_evento):
+    """
+    Busca topicos ntfy da tabela notificacoes_destinatarios.
+    Retorna lista de topicos (strings) para o tipo de evento.
+    Ex: ['hac-admissao', 'hac-equipetal', 'hac-equipe-uti']
+    """
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    cursor.execute("""
+            SELECT email AS topico
+            FROM notificacoes_destinatarios
+            WHERE tipo_evento = %s
+              AND canal = 'ntfy'
+              AND ativo = true
+        """, (tipo_evento,))
+
+    topicos = [row['topico'] for row in cursor.fetchall() if row['topico']]
+    cursor.close()
+
+    return topicos
+
+
+# =========================================================
 # VERIFICAR HORARIO PERMITIDO
 # =========================================================
 
 def dentro_do_horario(config):
-    """Verifica se o horario atual esta dentro da janela de notificacao."""
+    """Verifica se o horario atual esta dentro da janela."""
     agora = datetime.now().time()
     return config['hora_inicio'] <= agora <= config['hora_fim']
 
 
 # =========================================================
-# ENVIAR NOTIFICACAO ntfy
+# ENVIAR NTFY - PARA MULTIPLOS TOPICOS
 # =========================================================
 
-def enviar_ntfy(config, titulo, mensagem):
+def enviar_ntfy_topicos(topicos, titulo, mensagem, prioridade='3'):
     """
-    Envia notificacao via HTTP POST para o servidor ntfy.
-    Returns: (sucesso: bool, resposta: str)
+    Envia notificacao para uma lista de topicos ntfy.
+    Cada topico recebe a mesma mensagem.
+
+    Args:
+        topicos: lista de strings (nomes dos topicos)
+        titulo: titulo da notificacao
+        mensagem: corpo da notificacao
+        prioridade: prioridade ntfy (1-5)
+
+    Returns:
+        (sucesso_total: bool, resposta: str)
     """
-    url = '{}/{}'.format(config['url_servidor'], config['topico_ntfy'])
+    if not topicos:
+        logger.debug('Nenhum topico ntfy configurado')
+        return True, 'Sem topicos ntfy'
 
-    headers = {
-        'Title': titulo.encode('utf-8'),
-        'Priority': str(config['prioridade_ntfy']),
-    }
+    enviados = 0
+    erros = 0
 
-    if config.get('tags_ntfy'):
-        headers['Tags'] = config['tags_ntfy']
+    for topico in topicos:
+        url = '{}/{}'.format(NTFY_URL, topico)
 
-    try:
-        resp = requests.post(
-            url,
-            data=mensagem.encode('utf-8'),
-            headers=headers,
-            timeout=10
-        )
+        headers = {
+            'Title': titulo.encode('utf-8'),
+            'Priority': str(prioridade),
+        }
 
-        if resp.status_code == 200:
-            logger.info('ntfy OK: [%s] %s', config['topico_ntfy'], titulo)
-            return True, resp.text
-        else:
-            logger.warning('ntfy status %s: %s', resp.status_code, resp.text)
-            return False, 'HTTP {}: {}'.format(resp.status_code, resp.text)
+        try:
+            resp = requests.post(
+                url,
+                data=mensagem.encode('utf-8'),
+                headers=headers,
+                timeout=10
+            )
 
-    except requests.exceptions.Timeout:
-        logger.error('Timeout ntfy: %s', url)
-        return False, 'Timeout'
-    except requests.exceptions.ConnectionError:
-        logger.error('Conexao recusada ntfy: %s', url)
-        return False, 'ConnectionError'
-    except Exception as e:
-        logger.error('Erro ntfy: %s', e)
-        return False, str(e)
+            if resp.status_code == 200:
+                logger.info('ntfy OK: [%s] %s', topico, titulo)
+                enviados += 1
+            else:
+                logger.warning('ntfy [%s] status %s', topico, resp.status_code)
+                erros += 1
+
+        except requests.exceptions.Timeout:
+            logger.error('Timeout ntfy: %s', topico)
+            erros += 1
+        except requests.exceptions.ConnectionError:
+            logger.error('Conexao recusada ntfy: %s', topico)
+            erros += 1
+        except Exception as e:
+            logger.error('Erro ntfy [%s]: %s', topico, e)
+            erros += 1
+
+    resposta = 'ntfy: {} enviados, {} erros de {} topicos'.format(enviados, erros, len(topicos))
+    return erros == 0, resposta
 
 
 # =========================================================
-# SUBSTITUIR PLACEHOLDERS NO TEMPLATE
+# SUBSTITUIR PLACEHOLDERS
 # =========================================================
 
 def montar_mensagem(template, dados):
-    """Substitui {setor}, {leito}, {paciente}, {atendimento} nos templates."""
+    """Substitui {setor}, {leito}, {paciente}, {atendimento}."""
     if not template:
         return ''
-
     resultado = template
     resultado = resultado.replace('{setor}', str(dados.get('nm_setor', '-')))
     resultado = resultado.replace('{leito}', str(dados.get('cd_unidade', '-')))
     resultado = resultado.replace('{paciente}', str(dados.get('nm_pessoa_fisica', '-')))
     resultado = resultado.replace('{atendimento}', str(dados.get('nr_atendimento', '-')))
-
     return resultado
 
 
 # =========================================================
-# VERIFICAR SE JA FOI NOTIFICADO (dedup)
+# DEDUP E LOG
 # =========================================================
 
 def ja_notificado(conn, chave_evento):
-    """Retorna True se ja existe registro notificado para essa chave."""
+    """Retorna True se ja existe registro notificado."""
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("""
-        SELECT id
-        FROM notificacoes_log
-        WHERE chave_evento = %s
-          AND status IN ('notificado', 'pendente')
+        SELECT id FROM notificacoes_log
+        WHERE chave_evento = %s AND status IN ('notificado', 'pendente')
         LIMIT 1
     """, (chave_evento,))
-
     existe = cursor.fetchone()
     cursor.close()
     return existe is not None
 
 
-# =========================================================
-# VERIFICAR RENOTIFICACAO (para prescricao)
-# =========================================================
-
 def precisa_renotificar(conn, chave_evento, config):
-    """Verifica se evento notificado precisa de renotificacao."""
+    """Verifica se precisa renotificar."""
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("""
         SELECT id, qt_notificacoes, dt_ultima_notificacao
         FROM notificacoes_log
-        WHERE chave_evento = %s
-          AND status = 'notificado'
-        ORDER BY dt_detectado DESC
-        LIMIT 1
+        WHERE chave_evento = %s AND status = 'notificado'
+        ORDER BY dt_detectado DESC LIMIT 1
     """, (chave_evento,))
-
     registro = cursor.fetchone()
     cursor.close()
 
@@ -263,32 +282,23 @@ def precisa_renotificar(conn, chave_evento, config):
 
     if max_renotif == 0 or intervalo_min == 0:
         return False
-
     if registro['qt_notificacoes'] >= (max_renotif + 1):
         return False
-
     if registro['dt_ultima_notificacao']:
         proxima = registro['dt_ultima_notificacao'] + timedelta(minutes=intervalo_min)
         if datetime.now() < proxima:
             return False
-
     return True
 
 
-# =========================================================
-# REGISTRAR NOTIFICACAO NO LOG
-# =========================================================
-
-def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topico, sucesso, resposta):
-    """Registra nova notificacao ou atualiza renotificacao."""
+def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topicos_str, sucesso, resposta):
+    """Registra notificacao no log."""
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     agora = datetime.now()
 
     cursor.execute("""
-        SELECT id, qt_notificacoes
-        FROM notificacoes_log
-        WHERE chave_evento = %s
-          AND status IN ('pendente', 'notificado')
+        SELECT id, qt_notificacoes FROM notificacoes_log
+        WHERE chave_evento = %s AND status IN ('pendente', 'notificado')
         LIMIT 1
     """, (chave_evento,))
 
@@ -298,10 +308,8 @@ def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topico, sucess
         novo_status = 'notificado' if sucesso else 'erro'
         cursor.execute("""
             UPDATE notificacoes_log
-            SET dt_ultima_notificacao = %s,
-                qt_notificacoes = qt_notificacoes + 1,
-                status = %s,
-                resposta_ntfy = %s
+            SET dt_ultima_notificacao = %s, qt_notificacoes = qt_notificacoes + 1,
+                status = %s, resposta_ntfy = %s
             WHERE id = %s
         """, (agora, novo_status, resposta, existente['id']))
     else:
@@ -315,19 +323,14 @@ def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topico, sucess
                  topico_ntfy, status, dt_detectado,
                  dt_primeira_notificacao, dt_ultima_notificacao,
                  qt_notificacoes, resposta_ntfy)
-            VALUES
-                (%s, %s, %s, %s,
-                 %s, %s, %s, %s,
-                 %s, %s, %s,
-                 %s, %s,
-                 %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             tipo_evento, chave_evento,
             dados.get('nr_atendimento'), dados.get('nm_pessoa_fisica'),
             dados.get('cd_setor_atendimento'), dados.get('nm_setor'),
             dados.get('cd_unidade'),
             json.dumps(dados_extra) if dados_extra else None,
-            topico, novo_status, agora,
+            topicos_str, novo_status, agora,
             agora if sucesso else None,
             agora if sucesso else None,
             1 if sucesso else 0, resposta
@@ -340,22 +343,12 @@ def registrar_notificacao(conn, tipo_evento, chave_evento, dados, topico, sucess
 # =========================================================
 # MODULO 1: ADMISSAO NOVA
 # =========================================================
-# Usa dt_entrada_unid = data real de entrada no hospital
-# (vem de ATENDIMENTO_PACIENTE_V.DT_ENTRADA via ETL)
-# Janela fixa de 35min (30min + 5min margem)
-# Nao confundir com dt_entrada_unidade que muda a cada
-# movimentacao de setor (UTI1 -> UTI2 etc)
-# =========================================================
 
 def verificar_admissao_nova(configs):
-    """
-    Detecta novas admissoes: dt_entrada_unid nos ultimos 30 minutos.
-    Notifica UMA vez por admissao. Mensagem via template do banco.
-    """
+    """Detecta novas admissoes e envia para TODOS os topicos ntfy configurados."""
     config = configs.get('admissao_nova')
     if not config:
         return
-
     if not dentro_do_horario(config):
         return
 
@@ -366,8 +359,8 @@ def verificar_admissao_nova(configs):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Janela fixa: 30min de deteccao + 5min de margem
-        janela_minutos = 35
+        # Busca topicos ntfy do banco
+        topicos = buscar_topicos_ntfy(conn, 'admissao_nova')
 
         cursor.execute("""
             SELECT nr_atendimento, nm_pessoa_fisica, cd_setor_atendimento,
@@ -377,8 +370,8 @@ def verificar_admissao_nova(configs):
             WHERE ie_status_unidade = 'P'
               AND nr_atendimento IS NOT NULL
               AND dt_entrada_unid IS NOT NULL
-              AND dt_entrada_unid::timestamp >= (NOW() - INTERVAL '%s minutes')
-        """ % janela_minutos)
+              AND dt_entrada_unid::timestamp >= (NOW() - INTERVAL '35 minutes')
+        """)
 
         pacientes_novos = cursor.fetchall()
         cursor.close()
@@ -392,16 +385,21 @@ def verificar_admissao_nova(configs):
                 titulo = montar_mensagem(config['titulo_template'], pac)
                 mensagem = montar_mensagem(config['mensagem_template'], pac)
 
-                sucesso, resposta = enviar_ntfy(config, titulo, mensagem)
+                sucesso, resposta = enviar_ntfy_topicos(
+                    topicos, titulo, mensagem,
+                    str(config.get('prioridade_ntfy', 3))
+                )
+
+                topicos_str = ','.join(topicos) if topicos else 'nenhum'
                 registrar_notificacao(
                     conn, 'admissao_nova', chave,
-                    dict(pac), config['topico_ntfy'],
+                    dict(pac), topicos_str,
                     sucesso, resposta
                 )
                 notificados += 1
 
         if notificados > 0:
-            logger.info('[admissao_nova] %s novas admissoes notificadas', notificados)
+            logger.info('[admissao_nova] %s notificadas -> %s topicos', notificados, len(topicos))
         else:
             logger.info('[admissao_nova] Nenhuma admissao recente')
 
@@ -416,15 +414,10 @@ def verificar_admissao_nova(configs):
 # =========================================================
 
 def verificar_parecer_pendente(configs):
-    """
-    Detecta TRANSICAO de parecer_pendente: 'Nao' -> 'Sim'.
-    Compara estado atual vs snapshot. Sem renotificacao.
-    Mensagem via template do banco.
-    """
+    """Detecta transicao de parecer e envia para topicos ntfy configurados."""
     config = configs.get('parecer_pendente')
     if not config:
         return
-
     if not dentro_do_horario(config):
         return
 
@@ -435,22 +428,21 @@ def verificar_parecer_pendente(configs):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
+        topicos = buscar_topicos_ntfy(conn, 'parecer_pendente')
+
         cursor.execute("""
             SELECT nr_atendimento, nm_pessoa_fisica, cd_setor_atendimento,
                    nm_setor, cd_unidade, cd_unidade_basica,
                    ds_convenio, nm_guerra, parecer_pendente
             FROM painel_enfermaria
-            WHERE ie_status_unidade = 'P'
-              AND nr_atendimento IS NOT NULL
+            WHERE ie_status_unidade = 'P' AND nr_atendimento IS NOT NULL
         """)
 
         pacientes_atuais = cursor.fetchall()
 
-        # Busca snapshot anterior
         cursor.execute("""
             SELECT nr_atendimento, dados_snapshot
-            FROM notificacoes_snapshot
-            WHERE tipo_snapshot = 'parecer_estado'
+            FROM notificacoes_snapshot WHERE tipo_snapshot = 'parecer_estado'
         """)
 
         snapshot_rows = cursor.fetchall()
@@ -466,42 +458,38 @@ def verificar_parecer_pendente(configs):
             parecer_atual = pac.get('parecer_pendente', 'Nao')
             parecer_anterior = estado_anterior.get(nr_atend, 'Nao')
 
-            # Transicao: era 'Nao' e agora e 'Sim'
             if parecer_atual == 'Sim' and parecer_anterior != 'Sim':
-                chave = 'parecer_{}_{}'.format(
-                    nr_atend,
-                    datetime.now().strftime('%Y%m%d_%H%M')
-                )
+                chave = 'parecer_{}_{}'.format(nr_atend, datetime.now().strftime('%Y%m%d_%H%M'))
 
                 titulo = montar_mensagem(config['titulo_template'], pac)
                 mensagem = montar_mensagem(config['mensagem_template'], pac)
 
-                sucesso, resposta = enviar_ntfy(config, titulo, mensagem)
+                sucesso, resposta = enviar_ntfy_topicos(
+                    topicos, titulo, mensagem,
+                    str(config.get('prioridade_ntfy', 3))
+                )
+
+                topicos_str = ','.join(topicos) if topicos else 'nenhum'
                 registrar_notificacao(
                     conn, 'parecer_pendente', chave,
-                    dict(pac), config['topico_ntfy'],
+                    dict(pac), topicos_str,
                     sucesso, resposta
                 )
                 notificados += 1
 
-        # Atualiza snapshot
         cursor.execute("DELETE FROM notificacoes_snapshot WHERE tipo_snapshot = 'parecer_estado'")
-
         for pac in pacientes_atuais:
             cursor.execute("""
                 INSERT INTO notificacoes_snapshot (tipo_snapshot, nr_atendimento, dados_snapshot)
                 VALUES ('parecer_estado', %s, %s)
-            """, (
-                pac['nr_atendimento'],
-                json.dumps({'parecer_pendente': pac.get('parecer_pendente', 'Nao')})
-            ))
+            """, (pac['nr_atendimento'], json.dumps({'parecer_pendente': pac.get('parecer_pendente', 'Nao')})))
 
         conn.commit()
 
         if notificados > 0:
-            logger.info('[parecer_pendente] %s novos pareceres detectados', notificados)
+            logger.info('[parecer_pendente] %s detectados -> %s topicos', notificados, len(topicos))
         else:
-            logger.info('[parecer_pendente] Nenhuma transicao detectada')
+            logger.info('[parecer_pendente] Nenhuma transicao')
 
     except Exception as e:
         logger.error('[parecer_pendente] Erro: %s', e)
@@ -512,30 +500,13 @@ def verificar_parecer_pendente(configs):
 # =========================================================
 # MODULO 3: PRESCRICAO PENDENTE
 # =========================================================
-# Usa dt_entrada_unid = data real de entrada no hospital
-# CENARIO A: Paciente novo (entrada entre 2h e 6h atras)
-# CENARIO B: Paciente existente (entrada >6h, apos 11h)
-# =========================================================
 
 def verificar_prescricao_pendente(configs):
-    """
-    Detecta pacientes sem prescricao medica.
-
-    CENARIO A - Paciente NOVO (entrada entre 2h e 6h atras):
-      Notifica 1x que esta sem prescricao apos 2h de admissao.
-
-    CENARIO B - Paciente EXISTENTE (entrada >6h, apos 11h):
-      Notifica + renotifica conforme config do banco.
-
-    Todas as mensagens via template do banco.
-    Usa dt_entrada_unid (data real de admissao hospitalar).
-    """
+    """Detecta pacientes sem prescricao e envia para topicos ntfy."""
     config = configs.get('prescricao_pendente')
     if not config:
         return
-
     if not dentro_do_horario(config):
-        logger.debug('[prescricao_pendente] Fora do horario')
         return
 
     conn = get_connection()
@@ -547,10 +518,9 @@ def verificar_prescricao_pendente(configs):
         agora = datetime.now()
         hoje = agora.strftime('%Y-%m-%d')
 
-        # -------------------------------------------------------
-        # CENARIO A: Pacientes NOVOS sem prescricao apos 2h
-        # Entrada real no hospital entre 2h e 6h atras
-        # -------------------------------------------------------
+        topicos = buscar_topicos_ntfy(conn, 'prescricao_pendente')
+
+        # CENARIO A: Novos sem prescricao (2h-6h)
         cursor.execute("""
             SELECT nr_atendimento, nm_pessoa_fisica, cd_setor_atendimento,
                    nm_setor, cd_unidade, cd_unidade_basica,
@@ -564,29 +534,21 @@ def verificar_prescricao_pendente(configs):
               AND dt_entrada_unid::timestamp <= (NOW() - INTERVAL '2 hours')
         """)
 
-        novos_sem_prescricao = cursor.fetchall()
+        novos_sem = cursor.fetchall()
         notificados_novos = 0
 
-        for pac in novos_sem_prescricao:
+        for pac in novos_sem:
             chave = 'prescricao_novo_{}_{}'.format(hoje, pac['nr_atendimento'])
-
             if not ja_notificado(conn, chave):
                 titulo = montar_mensagem(config['titulo_template'], pac)
                 mensagem = montar_mensagem(config['mensagem_template'], pac)
-
-                sucesso, resposta = enviar_ntfy(config, titulo, mensagem)
-                registrar_notificacao(
-                    conn, 'prescricao_pendente', chave,
-                    dict(pac), config['topico_ntfy'],
-                    sucesso, resposta
-                )
+                sucesso, resposta = enviar_ntfy_topicos(topicos, titulo, mensagem, str(config.get('prioridade_ntfy', 4)))
+                topicos_str = ','.join(topicos) if topicos else 'nenhum'
+                registrar_notificacao(conn, 'prescricao_pendente', chave, dict(pac), topicos_str, sucesso, resposta)
                 notificados_novos += 1
 
-        # -------------------------------------------------------
-        # CENARIO B: Pacientes EXISTENTES sem prescricao apos 11h
-        # Entrada real no hospital ha mais de 6h
-        # -------------------------------------------------------
-        notificados_existentes = 0
+        # CENARIO B: Existentes sem prescricao (apos 11h)
+        notificados_exist = 0
 
         if agora.hour >= 11:
             cursor.execute("""
@@ -601,43 +563,30 @@ def verificar_prescricao_pendente(configs):
                   AND dt_entrada_unid::timestamp < (NOW() - INTERVAL '6 hours')
             """)
 
-            existentes_sem_prescricao = cursor.fetchall()
+            existentes_sem = cursor.fetchall()
 
-            for pac in existentes_sem_prescricao:
+            for pac in existentes_sem:
                 chave = 'prescricao_dia_{}_{}'.format(hoje, pac['nr_atendimento'])
+                titulo = montar_mensagem(config['titulo_template'], pac)
+                mensagem = montar_mensagem(config['mensagem_template'], pac)
 
                 if not ja_notificado(conn, chave):
-                    titulo = montar_mensagem(config['titulo_template'], pac)
-                    mensagem = montar_mensagem(config['mensagem_template'], pac)
-
-                    sucesso, resposta = enviar_ntfy(config, titulo, mensagem)
-                    registrar_notificacao(
-                        conn, 'prescricao_pendente', chave,
-                        dict(pac), config['topico_ntfy'],
-                        sucesso, resposta
-                    )
-                    notificados_existentes += 1
-
+                    sucesso, resposta = enviar_ntfy_topicos(topicos, titulo, mensagem, str(config.get('prioridade_ntfy', 4)))
+                    topicos_str = ','.join(topicos) if topicos else 'nenhum'
+                    registrar_notificacao(conn, 'prescricao_pendente', chave, dict(pac), topicos_str, sucesso, resposta)
+                    notificados_exist += 1
                 elif precisa_renotificar(conn, chave, config):
-                    titulo = montar_mensagem(config['titulo_template'], pac)
-                    mensagem = montar_mensagem(config['mensagem_template'], pac)
-
-                    sucesso, resposta = enviar_ntfy(config, titulo, mensagem)
-                    registrar_notificacao(
-                        conn, 'prescricao_pendente', chave,
-                        dict(pac), config['topico_ntfy'],
-                        sucesso, resposta
-                    )
-                    notificados_existentes += 1
+                    sucesso, resposta = enviar_ntfy_topicos(topicos, titulo, mensagem, str(config.get('prioridade_ntfy', 4)))
+                    topicos_str = ','.join(topicos) if topicos else 'nenhum'
+                    registrar_notificacao(conn, 'prescricao_pendente', chave, dict(pac), topicos_str, sucesso, resposta)
+                    notificados_exist += 1
 
         cursor.close()
 
-        total = notificados_novos + notificados_existentes
+        total = notificados_novos + notificados_exist
         if total > 0:
-            logger.info(
-                '[prescricao_pendente] %s notificacoes (novos: %s, existentes: %s)',
-                total, notificados_novos, notificados_existentes
-            )
+            logger.info('[prescricao] %s notificacoes (novos: %s, exist: %s) -> %s topicos',
+                         total, notificados_novos, notificados_exist, len(topicos))
         else:
             logger.info('[prescricao_pendente] Nenhuma notificacao necessaria')
 
@@ -652,14 +601,14 @@ def verificar_prescricao_pendente(configs):
 # =========================================================
 
 def ciclo_verificacao():
-    """Executa todos os modulos de verificacao."""
+    """Executa todos os modulos."""
     logger.info('=' * 50)
     logger.info('Iniciando ciclo de verificacao...')
 
     try:
         configs = carregar_configs()
         if not configs:
-            logger.warning('Nenhuma configuracao ativa encontrada')
+            logger.warning('Nenhuma configuracao ativa')
             return
 
         verificar_admissao_nova(configs)
@@ -677,7 +626,7 @@ def ciclo_verificacao():
 # =========================================================
 
 def limpeza_diaria():
-    """Remove registros antigos e expira prescricoes do dia anterior."""
+    """Remove registros antigos."""
     conn = get_connection()
     if not conn:
         return
@@ -687,12 +636,11 @@ def limpeza_diaria():
         hoje = datetime.now().strftime('%Y-%m-%d')
 
         cursor.execute("""
-            UPDATE notificacoes_log
-            SET status = 'expirado'
+            UPDATE notificacoes_log SET status = 'expirado'
             WHERE tipo_evento = 'prescricao_pendente'
               AND status IN ('pendente', 'notificado')
               AND chave_evento NOT LIKE %s
-        """, ('%{}%'.format(hoje),))
+        """, ('%%{}%%'.format(hoje),))
         expirados = cursor.rowcount
 
         cursor.execute("""
@@ -704,7 +652,6 @@ def limpeza_diaria():
 
         conn.commit()
         cursor.close()
-
         logger.info('[limpeza] Expirados: %s, Removidos: %s', expirados, removidos)
 
     except Exception as e:
@@ -713,11 +660,17 @@ def limpeza_diaria():
         conn.close()
 
 
+# =========================================================
+# MAIN
+# =========================================================
+
 def main():
-    """Ponto de entrada do servico notificador."""
+    """Ponto de entrada."""
     logger.info('=' * 60)
     logger.info('  NOTIFICADOR ntfy - Hospital Anchieta')
     logger.info('  Intervalo: %s minutos', INTERVALO_VERIFICACAO)
+    logger.info('  ntfy base: %s', NTFY_URL)
+    logger.info('  Topicos: lidos da tabela notificacoes_destinatarios')
     logger.info('  Banco: %s@%s:%s/%s',
                  DB_CONFIG['user'], DB_CONFIG['host'],
                  DB_CONFIG['port'], DB_CONFIG['database'])

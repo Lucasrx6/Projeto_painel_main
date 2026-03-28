@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Central de Notificacoes - Hospital Anchieta">
+    <meta name="theme-color" content="#dc3545">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+    <title>Central de Notificacoes - Anchieta Ceilandia</title>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel26/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <header class="painel-header" role="banner">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-bell" aria-hidden="true"></i> Central de Notificacoes</h1>
+                        <span class="header-subtitle">Configuracao de destinatarios e regras de envio</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-status">
+                        <span class="status-indicator" id="status-indicator" title="Status"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <button id="btn-voltar" class="btn-header btn-voltar" title="Voltar ao Dashboard">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="dashboard-resumo" aria-label="Resumo de Notificacoes">
+            <div class="resumo-grid">
+                <article class="resumo-card card-destinatarios">
+                    <div class="card-icon"><i class="fas fa-users" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-destinatarios">-</span>
+                        <span class="card-label">Destinatarios Ativos</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-tipos">
+                    <div class="card-icon"><i class="fas fa-tags" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-tipos">-</span>
+                        <span class="card-label">Tipos de Evento</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-enviados">
+                    <div class="card-icon"><i class="fas fa-paper-plane" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-enviados-hoje">-</span>
+                        <span class="card-label">Envios Hoje</span>
+                    </div>
+                </article>
+                <article class="resumo-card card-erros">
+                    <div class="card-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="kpi-erros-hoje">-</span>
+                        <span class="card-label">Erros Hoje</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <main class="painel-main" id="painel-main" role="main">
+
+            <div class="secao-analise">
+                <div class="secao-header">
+                    <div class="secao-titulo">
+                        <i class="fas fa-address-book"></i>
+                        <h2>Destinatarios</h2>
+                    </div>
+                    <div class="secao-acoes">
+                        <select id="filtro-tipo" class="filtro-select-interno" aria-label="Filtrar tipo">
+                            <option value="">Todos os tipos</option>
+                        </select>
+                        <select id="filtro-especialidade" class="filtro-select-interno" aria-label="Filtrar especialidade">
+                            <option value="">Todas especialidades</option>
+                        </select>
+                        <select id="filtro-ativo" class="filtro-select-interno" aria-label="Filtrar status">
+                            <option value="">Todos</option>
+                            <option value="true">Ativos</option>
+                            <option value="false">Inativos</option>
+                        </select>
+                        <button class="btn-acao-primario" id="btn-novo" title="Novo destinatario">
+                            <i class="fas fa-plus"></i> Novo
+                        </button>
+                    </div>
+                </div>
+                <div class="secao-content">
+                    <div class="tabela-wrapper" id="tabela-destinatarios">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p>Carregando destinatarios...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="secao-analise">
+<div class="secao-header secao-toggle" id="toggle-historico">
+    <div class="secao-titulo">
+        <i class="fas fa-history"></i>
+        <h2>Historico de Envios</h2>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <span class="secao-contador" id="contador-historico">-</span>
+        <i class="fas fa-chevron-up toggle-icon"></i>
+    </div>
+</div>
+                <div class="secao-content">
+                    <div class="timeline-wrapper" id="timeline-historico">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p>Carregando historico...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-titulo"><i class="fas fa-user-plus"></i> Novo Destinatario</h3>
+                <button class="modal-fechar" id="modal-fechar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="campo-grupo">
+                    <label for="campo-tipo">Tipo de Evento *</label>
+                    <select id="campo-tipo" class="campo-input"><option value="">Selecione...</option></select>
+                </div>
+                <div class="campo-grupo">
+                    <label for="campo-nome">Nome *</label>
+                    <input type="text" id="campo-nome" class="campo-input" placeholder="Ex: Dr. Silva ou Equipe Cardiologia">
+                </div>
+                <div class="campo-grupo">
+                    <label for="campo-email">Email *</label>
+                    <input type="email" id="campo-email" class="campo-input" placeholder="email@saofranciscodf.med.br">
+                </div>
+                <div class="campo-grupo">
+                    <label for="campo-especialidade">Especialidade (filtro)</label>
+                    <select id="campo-especialidade" class="campo-input"><option value="">Todas (recebe de todas)</option></select>
+                </div>
+                <div class="campo-grupo">
+                    <label for="campo-setor">Setor (filtro)</label>
+                    <input type="text" id="campo-setor" class="campo-input" placeholder="Ex: UTI Adulto 01 (vazio = todos)">
+                </div>
+                <div class="campo-grupo">
+                    <label for="campo-canal">Canal</label>
+                    <select id="campo-canal" class="campo-input">
+                        <option value="email">Email</option>
+                        <option value="ntfy">ntfy (push)</option>
+                    </select>
+                </div>
+                <div class="campo-grupo">
+                    <label for="campo-descricao">Descricao</label>
+                    <input type="text" id="campo-descricao" class="campo-input" placeholder="Observacao opcional">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancelar" id="btn-cancelar">Cancelar</button>
+                <button class="btn-acao-primario" id="btn-salvar"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/paineis/painel26/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

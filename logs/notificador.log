@@ -3973,3 +3973,115 @@
 2026-03-26 12:39:41 [INFO] [parecer_pendente] Nenhuma transicao detectada
 2026-03-26 12:39:41 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
 2026-03-26 12:39:41 [INFO] Ciclo concluido
+2026-03-27 13:28:14 [INFO] ============================================================
+2026-03-27 13:28:14 [INFO]   NOTIFICADOR ntfy - Hospital Anchieta
+2026-03-27 13:28:14 [INFO]   Intervalo: 10 minutos
+2026-03-27 13:28:14 [INFO]   ntfy base: https://ntfy.sh
+2026-03-27 13:28:14 [INFO]   Topicos: lidos da tabela notificacoes_destinatarios
+2026-03-27 13:28:14 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-03-27 13:28:14 [INFO] ============================================================
+2026-03-27 13:28:14 [INFO] Conexao com banco OK
+2026-03-27 13:28:14 [INFO] ==================================================
+2026-03-27 13:28:14 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 13:28:14 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 13:28:14 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 13:28:15 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:16 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:17 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:18 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:19 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:19 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:20 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:46 [INFO] ============================================================
+2026-03-27 13:28:46 [INFO]   NOTIFICADOR ntfy - Hospital Anchieta
+2026-03-27 13:28:46 [INFO]   Intervalo: 10 minutos
+2026-03-27 13:28:46 [INFO]   ntfy base: https://ntfy.sh
+2026-03-27 13:28:46 [INFO]   Topicos: lidos da tabela notificacoes_destinatarios
+2026-03-27 13:28:46 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-03-27 13:28:46 [INFO] ============================================================
+2026-03-27 13:28:46 [INFO] Conexao com banco OK
+2026-03-27 13:28:46 [INFO] ==================================================
+2026-03-27 13:28:46 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 13:28:46 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 13:28:46 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 13:28:47 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:48 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:49 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:49 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - Internação Clínica
+2026-03-27 13:28:50 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:51 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:52 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:53 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:54 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto
+2026-03-27 13:28:54 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto 01
+2026-03-27 13:28:55 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto 01
+2026-03-27 13:28:56 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto 01
+2026-03-27 13:28:57 [INFO] ntfy OK: [hac-parecer] Parecer Pendente - UTI Adulto 02
+2026-03-27 13:28:57 [INFO] [parecer_pendente] 13 detectados -> 1 topicos
+2026-03-27 13:28:58 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-27 13:28:59 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-27 13:29:00 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Clínica
+2026-03-27 13:29:01 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-27 13:29:02 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Maternidade
+2026-03-27 13:29:02 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Pediátrica
+2026-03-27 13:29:03 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Pediátrica
+2026-03-27 13:29:04 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - Internação Pediátrica
+2026-03-27 13:29:05 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Adulto
+2026-03-27 13:29:06 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 13:29:07 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 13:29:08 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 13:29:09 [INFO] ntfy OK: [hac-prescricao] Prescricao Pendente - UTI Neo
+2026-03-27 13:29:09 [INFO] [prescricao] 13 notificacoes (novos: 2, exist: 11) -> 1 topicos
+2026-03-27 13:29:09 [INFO] Ciclo concluido
+2026-03-27 13:29:09 [INFO] Scheduler ativo. Proximo ciclo em 10 min...
+2026-03-27 13:32:08 [INFO] Encerrado pelo usuario (Ctrl+C)
+2026-03-27 13:32:10 [INFO] ============================================================
+2026-03-27 13:32:10 [INFO]   NOTIFICADOR ntfy - Hospital Anchieta
+2026-03-27 13:32:10 [INFO]   Intervalo: 10 minutos
+2026-03-27 13:32:10 [INFO]   ntfy base: https://ntfy.sh
+2026-03-27 13:32:10 [INFO]   Topicos: lidos da tabela notificacoes_destinatarios
+2026-03-27 13:32:10 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-03-27 13:32:10 [INFO] ============================================================
+2026-03-27 13:32:10 [INFO] Conexao com banco OK
+2026-03-27 13:32:10 [INFO] ==================================================
+2026-03-27 13:32:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 13:32:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 13:32:10 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 13:32:10 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 13:32:10 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 13:32:10 [INFO] Ciclo concluido
+2026-03-27 13:32:10 [INFO] Scheduler ativo. Proximo ciclo em 10 min...
+2026-03-27 13:32:36 [INFO] Encerrado pelo usuario (Ctrl+C)
+2026-03-27 13:32:38 [INFO] ============================================================
+2026-03-27 13:32:38 [INFO]   NOTIFICADOR ntfy - Hospital Anchieta
+2026-03-27 13:32:38 [INFO]   Intervalo: 10 minutos
+2026-03-27 13:32:38 [INFO]   ntfy base: https://ntfy.sh
+2026-03-27 13:32:38 [INFO]   Topicos: lidos da tabela notificacoes_destinatarios
+2026-03-27 13:32:38 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-03-27 13:32:38 [INFO] ============================================================
+2026-03-27 13:32:38 [INFO] Conexao com banco OK
+2026-03-27 13:32:38 [INFO] ==================================================
+2026-03-27 13:32:38 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 13:32:38 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 13:32:38 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 13:32:38 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 13:32:38 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 13:32:38 [INFO] Ciclo concluido
+2026-03-27 13:32:38 [INFO] Scheduler ativo. Proximo ciclo em 10 min...
+2026-03-27 13:40:09 [INFO] Encerrado pelo usuario (Ctrl+C)
+2026-03-27 13:40:10 [INFO] ============================================================
+2026-03-27 13:40:10 [INFO]   NOTIFICADOR ntfy - Hospital Anchieta
+2026-03-27 13:40:10 [INFO]   Intervalo: 10 minutos
+2026-03-27 13:40:10 [INFO]   ntfy base: https://ntfy.sh
+2026-03-27 13:40:10 [INFO]   Topicos: lidos da tabela notificacoes_destinatarios
+2026-03-27 13:40:10 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-03-27 13:40:10 [INFO] ============================================================
+2026-03-27 13:40:10 [INFO] Conexao com banco OK
+2026-03-27 13:40:10 [INFO] ==================================================
+2026-03-27 13:40:10 [INFO] Iniciando ciclo de verificacao...
+2026-03-27 13:40:10 [INFO] Configuracoes carregadas: 3 tipos ativos
+2026-03-27 13:40:10 [INFO] [admissao_nova] Nenhuma admissao recente
+2026-03-27 13:40:10 [INFO] [parecer_pendente] Nenhuma transicao
+2026-03-27 13:40:10 [INFO] [prescricao_pendente] Nenhuma notificacao necessaria
+2026-03-27 13:40:10 [INFO] Ciclo concluido
+2026-03-27 13:40:10 [INFO] Scheduler ativo. Proximo ciclo em 10 min...

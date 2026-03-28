@@ -47,6 +47,8 @@ from backend.routes.painel22_routes import painel22_bp
 from backend.routes.painel23_routes import painel23_bp
 from backend.routes.painel24_routes import painel24_bp
 from backend.routes.painel25_routes import painel25_bp
+from backend.routes.painel26_routes import painel26_bp
+from backend.routes.painel27_routes import painel27_bp
 
 # =========================================================
 # CONFIGURAÇÃO INICIAL
@@ -112,7 +114,8 @@ paineis = [
     painel10_bp, painel11_bp, painel12_bp, painel13_bp,
     painel14_bp, painel15_bp, painel16_bp, painel17_bp,
     painel18_bp, painel19_bp, painel20_bp, painel21_bp,
-    painel22_bp, painel23_bp, painel24_bp, painel25_bp
+    painel22_bp, painel23_bp, painel24_bp, painel25_bp,
+    painel26_bp, painel27_bp
 ]
 
 for painel in paineis:
