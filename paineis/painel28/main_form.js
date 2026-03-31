@@ -45,15 +45,65 @@
         configurarModais();
         configurarUpload();
         configurarContadores();
+        configurarMascaraData();
+        configurarGerenciarDuplas();
         carregarDadosIniciais();
 
-        // Data padrao: hoje
+        // Data padrao: hoje em dd/mm/aaaa
         var inputData = document.getElementById('input-data-ronda');
         if (inputData) {
-            inputData.value = dataHoje();
+            var hoje = new Date();
+            inputData.value = String(hoje.getDate()).padStart(2, '0') + '/' +
+                String(hoje.getMonth() + 1).padStart(2, '0') + '/' +
+                hoje.getFullYear();
         }
 
         console.log('Formulario inicializado');
+    }
+
+    // ========================================
+    // MASCARA DE DATA DD/MM/AAAA
+    // ========================================
+
+    function configurarMascaraData() {
+        var input = document.getElementById('input-data-ronda');
+        if (!input) return;
+
+        input.addEventListener('input', function () {
+            var val = this.value.replace(/\D/g, '');
+            if (val.length > 8) val = val.substring(0, 8);
+
+            var formatado = '';
+            if (val.length > 0) formatado = val.substring(0, Math.min(2, val.length));
+            if (val.length > 2) formatado += '/' + val.substring(2, Math.min(4, val.length));
+            if (val.length > 4) formatado += '/' + val.substring(4, 8);
+
+            this.value = formatado;
+        });
+
+        input.addEventListener('keydown', function (e) {
+            // Permitir backspace, delete, tab, escape, setas
+            var permitidas = [8, 9, 27, 46, 37, 38, 39, 40];
+            if (permitidas.indexOf(e.keyCode) !== -1) return;
+            // Permitir Ctrl+A, Ctrl+C, Ctrl+V
+            if ((e.ctrlKey || e.metaKey) && [65, 67, 86].indexOf(e.keyCode) !== -1) return;
+            // Permitir numeros
+            if ((e.keyCode >= 48 && e.keyCode <= 57) || (e.keyCode >= 96 && e.keyCode <= 105)) return;
+            e.preventDefault();
+        });
+    }
+
+    function converterDataParaISO(dataBR) {
+        // dd/mm/aaaa -> aaaa-mm-dd
+        if (!dataBR || dataBR.length !== 10) return null;
+        var partes = dataBR.split('/');
+        if (partes.length !== 3) return null;
+        var dia = parseInt(partes[0], 10);
+        var mes = parseInt(partes[1], 10);
+        var ano = parseInt(partes[2], 10);
+        if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
+        if (dia < 1 || dia > 31 || mes < 1 || mes > 12 || ano < 2020) return null;
+        return ano + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
     }
 
     // ========================================
@@ -117,6 +167,172 @@
         var maxImg = estado.configServidor.max_imagens_por_visita || '5';
         var limitEl = document.getElementById('upload-limite');
         if (limitEl) limitEl.textContent = 'Maximo: ' + maxImg + ' imagens';
+    }
+
+    // ========================================
+    // GERENCIAR DUPLAS (CRUD)
+    // ========================================
+
+    function configurarGerenciarDuplas() {
+        var btnAbrir = document.getElementById('btn-gerenciar-duplas');
+        if (btnAbrir) {
+            btnAbrir.addEventListener('click', function () {
+                abrirModal('modal-duplas');
+                carregarDuplasGerenciar();
+            });
+        }
+
+        var btnFechar = document.getElementById('btn-modal-fechar-duplas');
+        if (btnFechar) btnFechar.addEventListener('click', function () { fecharModal('modal-duplas'); });
+
+        var btnFecharBottom = document.getElementById('btn-fechar-duplas');
+        if (btnFecharBottom) btnFecharBottom.addEventListener('click', function () { fecharModal('modal-duplas'); });
+
+        var btnAdd = document.getElementById('btn-add-dupla');
+        if (btnAdd) {
+            btnAdd.addEventListener('click', function () {
+                var nome1 = (document.getElementById('g-dupla-nome1').value || '').trim();
+                var nome2 = (document.getElementById('g-dupla-nome2').value || '').trim();
+                if (!nome1 || !nome2) {
+                    mostrarToast('Informe os dois nomes', 'erro');
+                    return;
+                }
+                fetch(CONFIG.apiDuplas, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome_visitante_1: nome1, nome_visitante_2: nome2 })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.success) {
+                        mostrarToast('Dupla adicionada', 'sucesso');
+                        document.getElementById('g-dupla-nome1').value = '';
+                        document.getElementById('g-dupla-nome2').value = '';
+                        carregarDuplasGerenciar();
+                        recarregarDuplas();
+                    } else {
+                        mostrarToast(d.error || 'Erro', 'erro');
+                    }
+                })
+                .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+            });
+        }
+    }
+
+    function carregarDuplasGerenciar() {
+        var lista = document.getElementById('duplas-lista');
+        if (!lista) return;
+        lista.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+        fetch(CONFIG.apiDuplas + '?todas=1')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    renderizarDuplasGerenciar(d.data || []);
+                }
+            })
+            .catch(function () {
+                lista.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Erro ao carregar</p>';
+            });
+    }
+
+    function renderizarDuplasGerenciar(duplas) {
+        var lista = document.getElementById('duplas-lista');
+        if (!lista) return;
+
+        if (duplas.length === 0) {
+            lista.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Nenhuma dupla cadastrada</p>';
+            return;
+        }
+
+        lista.innerHTML = duplas.map(function (d) {
+            var cls = d.ativo ? 'dupla-item' : 'dupla-item dupla-inativa';
+            var html = '<div class="' + cls + '" data-id="' + d.id + '">';
+            html += '<div class="dupla-info">';
+            html += '  <strong>' + escapeHtml(d.nome_visitante_1) + '</strong>';
+            html += '  <span class="dupla-e">e</span>';
+            html += '  <strong>' + escapeHtml(d.nome_visitante_2) + '</strong>';
+            if (!d.ativo) html += ' <span class="dupla-tag-inativa">inativa</span>';
+            html += '</div>';
+            html += '<div class="dupla-acoes">';
+            html += '  <button class="g-btn g-btn-editar" onclick="window.FORM.editarDupla(' + d.id + ',\'' + escapeAttr(d.nome_visitante_1) + '\',\'' + escapeAttr(d.nome_visitante_2) + '\')"><i class="fas fa-edit"></i></button>';
+            html += '  <button class="g-btn g-btn-toggle ' + (d.ativo ? 'ativo' : '') + '" onclick="window.FORM.toggleDupla(' + d.id + ')" title="' + (d.ativo ? 'Desativar' : 'Reativar') + '"><i class="fas fa-' + (d.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
+            html += '</div></div>';
+            return html;
+        }).join('');
+    }
+
+    function editarDupla(id, nome1, nome2) {
+        var item = document.querySelector('.dupla-item[data-id="' + id + '"]');
+        if (!item) return;
+
+        var infoDiv = item.querySelector('.dupla-info');
+        var acoesDiv = item.querySelector('.dupla-acoes');
+        if (!infoDiv || !acoesDiv) return;
+
+        infoDiv.innerHTML =
+            '<input type="text" value="' + escapeAttr(nome1) + '" id="ge-nome1-' + id + '" placeholder="Visitante 1" style="flex:1;padding:4px 8px;border:2px solid #ffc107;border-radius:4px;font-size:0.78rem;">' +
+            '<span class="dupla-e">e</span>' +
+            '<input type="text" value="' + escapeAttr(nome2) + '" id="ge-nome2-' + id + '" placeholder="Visitante 2" style="flex:1;padding:4px 8px;border:2px solid #ffc107;border-radius:4px;font-size:0.78rem;">';
+
+        acoesDiv.innerHTML =
+            '<button class="g-btn g-btn-salvar" onclick="window.FORM.salvarDupla(' + id + ')"><i class="fas fa-check"></i></button>' +
+            '<button class="g-btn g-btn-cancelar-edit" onclick="window.FORM.carregarDuplasG()"><i class="fas fa-times"></i></button>';
+    }
+
+    function salvarDupla(id) {
+        var nome1 = (document.getElementById('ge-nome1-' + id).value || '').trim();
+        var nome2 = (document.getElementById('ge-nome2-' + id).value || '').trim();
+        if (!nome1 || !nome2) {
+            mostrarToast('Informe os dois nomes', 'erro');
+            return;
+        }
+
+        fetch(CONFIG.apiDuplas + '/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome_visitante_1: nome1, nome_visitante_2: nome2 })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.success) {
+                mostrarToast('Dupla atualizada', 'sucesso');
+                carregarDuplasGerenciar();
+                recarregarDuplas();
+            } else {
+                mostrarToast(d.error || 'Erro', 'erro');
+            }
+        })
+        .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    function toggleDupla(id) {
+        fetch(CONFIG.apiDuplas + '/' + id + '/toggle', {
+            method: 'PUT'
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.success) {
+                mostrarToast(d.message || 'Status alterado', 'sucesso');
+                carregarDuplasGerenciar();
+                recarregarDuplas();
+            } else {
+                mostrarToast(d.error || 'Erro', 'erro');
+            }
+        })
+        .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    function recarregarDuplas() {
+        fetch(CONFIG.apiDuplas)
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    estado.duplas = d.data || [];
+                    popularDuplas();
+                }
+            })
+            .catch(function () {});
     }
 
     // ========================================
@@ -198,7 +414,6 @@
     // ========================================
 
     function configurarNavegacao() {
-        // Voltar para o Hub (rota generica do dashboard)
         var btnVoltar = document.getElementById('btn-voltar');
         if (btnVoltar) {
             btnVoltar.addEventListener('click', function () {
@@ -206,11 +421,10 @@
             });
         }
 
-        // Ir para Gestao (P29 - futuro)
         var btnGestao = document.getElementById('btn-gestao');
         if (btnGestao) {
             btnGestao.addEventListener('click', function () {
-                window.location.href = '/painel/painel29';
+                mostrarToast('Painel de Gestao em desenvolvimento', 'info');
             });
         }
     }
@@ -258,14 +472,20 @@
 
     function iniciarRonda() {
         var duplaId = document.getElementById('select-dupla').value;
-        var dataRonda = document.getElementById('input-data-ronda').value;
+        var dataBR = document.getElementById('input-data-ronda').value;
 
         if (!duplaId) {
             mostrarToast('Selecione a dupla de visitantes', 'erro');
             return;
         }
-        if (!dataRonda) {
-            mostrarToast('Informe a data da ronda', 'erro');
+        if (!dataBR || dataBR.length !== 10) {
+            mostrarToast('Informe a data no formato dd/mm/aaaa', 'erro');
+            return;
+        }
+
+        var dataISO = converterDataParaISO(dataBR);
+        if (!dataISO) {
+            mostrarToast('Data invalida', 'erro');
             return;
         }
 
@@ -278,14 +498,14 @@
         fetch(CONFIG.apiRondas, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dupla_id: parseInt(duplaId), data_ronda: dataRonda })
+            body: JSON.stringify({ dupla_id: parseInt(duplaId), data_ronda: dataISO })
         })
         .then(function (res) { return res.json(); })
         .then(function (data) {
             if (data.success) {
                 estado.rondaId = data.data.id;
                 estado.duplaId = parseInt(duplaId);
-                estado.dataRonda = dataRonda;
+                estado.dataRonda = dataISO;
 
                 var badge = document.getElementById('ronda-info-badge');
                 if (badge) {
@@ -335,7 +555,6 @@
         if (!leito) erros.push('Informe o leito');
         if (!estado.avaliacaoFinal) erros.push('Selecione a avaliacao final');
 
-        // Coletar avaliacoes
         var avaliacoes = [];
         var todosItens = document.querySelectorAll('.item-avaliacao');
         var itensSemResposta = [];
@@ -405,7 +624,6 @@
         .then(function (data) {
             if (data.success) {
                 var visitaId = data.data.id;
-
                 if (estado.imagensParaEnviar.length > 0) {
                     enviarImagensSequencial(visitaId, 0, function () {
                         exibirConfirmacao(visitaId, setorTexto, leito, avaliacoes);
@@ -440,32 +658,24 @@
         var inputImagem = document.getElementById('input-imagem');
 
         if (btnUpload && inputImagem) {
-            btnUpload.addEventListener('click', function () {
-                inputImagem.click();
-            });
-
+            btnUpload.addEventListener('click', function () { inputImagem.click(); });
             inputImagem.addEventListener('change', function () {
                 var arquivos = this.files;
                 if (!arquivos || arquivos.length === 0) return;
-
                 var maxImg = parseInt(estado.configServidor.max_imagens_por_visita || '5');
                 var maxMb = parseFloat(estado.configServidor.tamanho_max_imagem_mb || '10');
-
                 for (var i = 0; i < arquivos.length; i++) {
                     if (estado.imagensParaEnviar.length >= maxImg) {
                         mostrarToast('Limite de ' + maxImg + ' imagens atingido', 'erro');
                         break;
                     }
-
                     var arquivo = arquivos[i];
                     if (arquivo.size > maxMb * 1024 * 1024) {
                         mostrarToast('Imagem ' + arquivo.name + ' excede ' + maxMb + 'MB', 'erro');
                         continue;
                     }
-
                     estado.imagensParaEnviar.push(arquivo);
                 }
-
                 renderizarPreviews();
                 this.value = '';
             });
@@ -475,58 +685,37 @@
     function renderizarPreviews() {
         var container = document.getElementById('preview-imagens');
         if (!container) return;
-
         container.innerHTML = '';
         estado.imagensParaEnviar.forEach(function (arquivo, index) {
             var div = document.createElement('div');
             div.className = 'preview-item';
-
             var img = document.createElement('img');
             img.src = URL.createObjectURL(arquivo);
             img.alt = arquivo.name;
             div.appendChild(img);
-
             var btnRemover = document.createElement('button');
             btnRemover.type = 'button';
             btnRemover.className = 'preview-remover';
             btnRemover.innerHTML = '<i class="fas fa-times"></i>';
             btnRemover.setAttribute('data-index', index);
             btnRemover.addEventListener('click', function () {
-                var idx = parseInt(this.getAttribute('data-index'));
-                estado.imagensParaEnviar.splice(idx, 1);
+                estado.imagensParaEnviar.splice(parseInt(this.getAttribute('data-index')), 1);
                 renderizarPreviews();
             });
             div.appendChild(btnRemover);
-
             container.appendChild(div);
         });
     }
 
     function enviarImagensSequencial(visitaId, index, callback) {
-        if (index >= estado.imagensParaEnviar.length) {
-            callback();
-            return;
-        }
-
+        if (index >= estado.imagensParaEnviar.length) { callback(); return; }
         var formData = new FormData();
         formData.append('visita_id', visitaId);
         formData.append('arquivo', estado.imagensParaEnviar[index]);
-
-        fetch(CONFIG.apiImagens, {
-            method: 'POST',
-            body: formData
-        })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-            if (!data.success) {
-                console.warn('Erro ao enviar imagem ' + index + ':', data.error);
-            }
-            enviarImagensSequencial(visitaId, index + 1, callback);
-        })
-        .catch(function (err) {
-            console.warn('Erro ao enviar imagem ' + index + ':', err);
-            enviarImagensSequencial(visitaId, index + 1, callback);
-        });
+        fetch(CONFIG.apiImagens, { method: 'POST', body: formData })
+            .then(function (r) { return r.json(); })
+            .then(function () { enviarImagensSequencial(visitaId, index + 1, callback); })
+            .catch(function () { enviarImagensSequencial(visitaId, index + 1, callback); });
     }
 
     // ========================================
@@ -539,18 +728,12 @@
             btnNovoLeito.addEventListener('click', function () {
                 limparFormularioVisita();
                 mostrarTela('formulario');
-                var telaForm = document.getElementById('tela-formulario');
-                if (telaForm) telaForm.scrollTop = 0;
             });
         }
-
         var btnConcluir = document.getElementById('btn-concluir-ronda');
         if (btnConcluir) {
-            btnConcluir.addEventListener('click', function () {
-                abrirModalConcluir();
-            });
+            btnConcluir.addEventListener('click', function () { abrirModalConcluir(); });
         }
-
         var btnVerResumo = document.getElementById('btn-ver-resumo');
         if (btnVerResumo) {
             btnVerResumo.addEventListener('click', function () {
@@ -563,24 +746,22 @@
     function exibirConfirmacao(visitaId, setor, leito, avaliacoes) {
         var detalhes = document.getElementById('confirmacao-detalhes');
         if (detalhes) {
-            var qtdCritico = 0, qtdAtencao = 0, qtdAdequado = 0;
+            var qtdC = 0, qtdA = 0, qtdAd = 0;
             avaliacoes.forEach(function (a) {
-                if (a.resultado === 'critico') qtdCritico++;
-                else if (a.resultado === 'atencao') qtdAtencao++;
-                else if (a.resultado === 'adequado') qtdAdequado++;
+                if (a.resultado === 'critico') qtdC++;
+                else if (a.resultado === 'atencao') qtdA++;
+                else if (a.resultado === 'adequado') qtdAd++;
             });
-
             detalhes.innerHTML =
                 '<strong>Leito:</strong> ' + escapeHtml(leito) + '<br>' +
                 '<strong>Setor:</strong> ' + escapeHtml(setor) + '<br>' +
                 '<strong>Avaliacao Final:</strong> ' + escapeHtml(formatarResultado(estado.avaliacaoFinal)) + '<br>' +
                 '<strong>Itens avaliados:</strong> ' + avaliacoes.length + '<br>' +
-                '<span style="color:#dc3545;">&#9679;</span> Criticos: ' + qtdCritico +
-                ' | <span style="color:#ffc107;">&#9679;</span> Atencao: ' + qtdAtencao +
-                ' | <span style="color:#28a745;">&#9679;</span> Adequados: ' + qtdAdequado +
+                '<span style="color:#dc3545;">&#9679;</span> Criticos: ' + qtdC +
+                ' | <span style="color:#ffc107;">&#9679;</span> Atencao: ' + qtdA +
+                ' | <span style="color:#28a745;">&#9679;</span> Adequados: ' + qtdAd +
                 (estado.imagensParaEnviar.length > 0 ? '<br><strong>Imagens:</strong> ' + estado.imagensParaEnviar.length : '');
         }
-
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         mostrarTela('confirmacao');
     }
@@ -591,48 +772,21 @@
 
     function configurarResumo() {
         var btnVoltarResumo = document.getElementById('btn-voltar-resumo');
-        if (btnVoltarResumo) {
-            btnVoltarResumo.addEventListener('click', function () {
-                mostrarTela('formulario');
-            });
-        }
-
+        if (btnVoltarResumo) btnVoltarResumo.addEventListener('click', function () { mostrarTela('formulario'); });
         var btnRefresh = document.getElementById('btn-refresh-resumo');
-        if (btnRefresh) {
-            btnRefresh.addEventListener('click', function () {
-                carregarResumo();
-                mostrarToast('Atualizado', 'info');
-            });
-        }
-
+        if (btnRefresh) btnRefresh.addEventListener('click', function () { carregarResumo(); mostrarToast('Atualizado', 'info'); });
         var btnAdicionar = document.getElementById('btn-adicionar-leito');
-        if (btnAdicionar) {
-            btnAdicionar.addEventListener('click', function () {
-                limparFormularioVisita();
-                mostrarTela('formulario');
-            });
-        }
-
+        if (btnAdicionar) btnAdicionar.addEventListener('click', function () { limparFormularioVisita(); mostrarTela('formulario'); });
         var btnConcluirResumo = document.getElementById('btn-concluir-ronda-resumo');
-        if (btnConcluirResumo) {
-            btnConcluirResumo.addEventListener('click', function () {
-                abrirModalConcluir();
-            });
-        }
+        if (btnConcluirResumo) btnConcluirResumo.addEventListener('click', function () { abrirModalConcluir(); });
     }
 
     function carregarResumo() {
         if (!estado.rondaId) return;
-
         fetch(CONFIG.apiRondas + '/' + estado.rondaId + '/visitas')
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.success) {
-                    renderizarResumo(data.data || []);
-                }
-            })
-            .catch(function (err) {
-                console.error('Erro:', err);
+            .then(function (r) { return r.json(); })
+            .then(function (d) { if (d.success) renderizarResumo(d.data || []); })
+            .catch(function () {
                 var lista = document.getElementById('resumo-lista');
                 if (lista) lista.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Erro ao carregar</p>';
             });
@@ -640,14 +794,9 @@
 
     function carregarVisitasRonda() {
         if (!estado.rondaId) return;
-
         fetch(CONFIG.apiRondas + '/' + estado.rondaId + '/visitas')
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.success && data.data && data.data.length > 0) {
-                    renderizarVisitasMiniResumo(data.data);
-                }
-            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { if (d.success && d.data && d.data.length > 0) renderizarVisitasMiniResumo(d.data); })
             .catch(function () {});
     }
 
@@ -655,59 +804,42 @@
         var resumoEl = document.getElementById('visitas-resumo');
         var listaEl = document.getElementById('visitas-resumo-lista');
         var badgeEl = document.getElementById('badge-total-visitas');
-
         if (!resumoEl || !listaEl) return;
-
         resumoEl.style.display = 'block';
         if (badgeEl) badgeEl.textContent = visitas.length;
-
         listaEl.innerHTML = visitas.map(function (v) {
-            var cls = 'visita-mini-card mini-' + v.avaliacao_final;
-            return '<div class="' + cls + '">' +
+            return '<div class="visita-mini-card mini-' + v.avaliacao_final + '">' +
                 '<span><strong>' + escapeHtml(v.setor_sigla || v.setor_nome) + ' - ' + escapeHtml(v.leito) + '</strong></span>' +
-                '<span>' + escapeHtml(formatarResultado(v.avaliacao_final)) + '</span>' +
-                '</div>';
+                '<span>' + escapeHtml(formatarResultado(v.avaliacao_final)) + '</span></div>';
         }).join('');
     }
 
     function renderizarResumo(visitas) {
         var lista = document.getElementById('resumo-lista');
         var vazio = document.getElementById('resumo-vazio');
-
-        var total = visitas.length;
-        var criticos = 0, atencao = 0, adequados = 0;
+        var total = visitas.length, criticos = 0, atencao = 0, adequados = 0;
         visitas.forEach(function (v) {
             if (v.avaliacao_final === 'critico') criticos++;
             else if (v.avaliacao_final === 'atencao') atencao++;
             else if (v.avaliacao_final === 'adequado') adequados++;
         });
-
         setTexto('kpi-total', total);
         setTexto('kpi-criticos', criticos);
         setTexto('kpi-atencao', atencao);
         setTexto('kpi-adequados', adequados);
-
         if (!lista) return;
-
-        if (total === 0) {
-            lista.innerHTML = '';
-            if (vazio) vazio.style.display = 'block';
-            return;
-        }
-
+        if (total === 0) { lista.innerHTML = ''; if (vazio) vazio.style.display = 'block'; return; }
         if (vazio) vazio.style.display = 'none';
-
         lista.innerHTML = visitas.map(function (v) {
             var html = '<div class="resumo-card avaliacao-' + v.avaliacao_final + '" onclick="window.FORM.abrirDetalhe(' + v.id + ')">';
             html += '<div class="resumo-card-header">';
             html += '  <span class="resumo-card-leito"><i class="fas fa-bed"></i> ' + escapeHtml(v.setor_sigla || v.setor_nome) + ' - ' + escapeHtml(v.leito) + '</span>';
             html += '  <span class="resumo-card-badge badge-' + v.avaliacao_final + '">' + escapeHtml(formatarResultado(v.avaliacao_final)) + '</span>';
-            html += '</div>';
-            html += '<div class="resumo-card-body">';
-            if (v.qtd_critico > 0) html += '<span class="resumo-card-stat stat-critico"><i class="fas fa-circle"></i> ' + v.qtd_critico + ' critico(s)</span>';
-            if (v.qtd_atencao > 0) html += '<span class="resumo-card-stat stat-atencao"><i class="fas fa-circle"></i> ' + v.qtd_atencao + ' atencao</span>';
-            if (v.qtd_adequado > 0) html += '<span class="resumo-card-stat stat-adequado"><i class="fas fa-circle"></i> ' + v.qtd_adequado + ' adequado(s)</span>';
-            if (v.qtd_imagens > 0) html += '<span class="resumo-card-stat stat-imagens"><i class="fas fa-camera"></i> ' + v.qtd_imagens + ' img</span>';
+            html += '</div><div class="resumo-card-body">';
+            if (v.qtd_critico > 0) html += '<span class="resumo-card-stat stat-critico"><i class="fas fa-circle"></i> ' + v.qtd_critico + '</span>';
+            if (v.qtd_atencao > 0) html += '<span class="resumo-card-stat stat-atencao"><i class="fas fa-circle"></i> ' + v.qtd_atencao + '</span>';
+            if (v.qtd_adequado > 0) html += '<span class="resumo-card-stat stat-adequado"><i class="fas fa-circle"></i> ' + v.qtd_adequado + '</span>';
+            if (v.qtd_imagens > 0) html += '<span class="resumo-card-stat stat-imagens"><i class="fas fa-camera"></i> ' + v.qtd_imagens + '</span>';
             html += '</div></div>';
             return html;
         }).join('');
@@ -721,69 +853,41 @@
         var body = document.getElementById('modal-detalhe-body');
         if (body) body.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>';
         abrirModal('modal-detalhe');
-
         fetch(CONFIG.apiVisitas + '/' + visitaId)
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.success) {
-                    renderizarDetalhe(data.data);
-                } else {
-                    if (body) body.innerHTML = '<p style="color:#dc3545;">Erro ao carregar</p>';
-                }
-            })
-            .catch(function () {
-                if (body) body.innerHTML = '<p style="color:#dc3545;">Erro de comunicacao</p>';
-            });
+            .then(function (r) { return r.json(); })
+            .then(function (d) { if (d.success) renderizarDetalhe(d.data); else if (body) body.innerHTML = '<p style="color:#dc3545;">Erro ao carregar</p>'; })
+            .catch(function () { if (body) body.innerHTML = '<p style="color:#dc3545;">Erro de comunicacao</p>'; });
     }
 
     function renderizarDetalhe(visita) {
         var body = document.getElementById('modal-detalhe-body');
         if (!body) return;
-
-        var html = '';
-
-        html += '<div style="margin-bottom:14px;">';
+        var html = '<div style="margin-bottom:14px;">';
         html += '<strong>' + escapeHtml(visita.setor_nome) + ' - Leito ' + escapeHtml(visita.leito) + '</strong><br>';
         html += '<span style="font-size:0.78rem;color:#666;">' + escapeHtml(visita.dupla_nome) + ' | ' + formatarData(visita.data_ronda) + '</span>';
-        if (visita.nr_atendimento) {
-            html += '<br><span style="font-size:0.78rem;color:#666;">Atendimento: ' + escapeHtml(visita.nr_atendimento) + '</span>';
-        }
-        html += '<br><span class="detalhe-resultado resultado-' + visita.avaliacao_final + '">' + escapeHtml(formatarResultado(visita.avaliacao_final)) + '</span>';
-        html += '</div>';
-
+        if (visita.nr_atendimento) html += '<br><span style="font-size:0.78rem;color:#666;">Atendimento: ' + escapeHtml(visita.nr_atendimento) + '</span>';
+        html += '<br><span class="detalhe-resultado resultado-' + visita.avaliacao_final + '">' + escapeHtml(formatarResultado(visita.avaliacao_final)) + '</span></div>';
         if (visita.categorias) {
             visita.categorias.forEach(function (cat) {
-                html += '<div class="detalhe-categoria">';
-                html += '<div class="detalhe-cat-nome">' + escapeHtml(cat.icone || '') + ' ' + escapeHtml(cat.nome) + '</div>';
+                html += '<div class="detalhe-categoria"><div class="detalhe-cat-nome">' + escapeHtml(cat.icone || '') + ' ' + escapeHtml(cat.nome) + '</div>';
                 cat.itens.forEach(function (item) {
-                    html += '<div class="detalhe-item">';
-                    html += '  <span class="detalhe-item-desc">' + escapeHtml(item.descricao) + '</span>';
-                    html += '  <span class="detalhe-resultado resultado-' + item.resultado + '">' + escapeHtml(formatarResultado(item.resultado)) + '</span>';
-                    html += '</div>';
+                    html += '<div class="detalhe-item"><span class="detalhe-item-desc">' + escapeHtml(item.descricao) + '</span>';
+                    html += '<span class="detalhe-resultado resultado-' + item.resultado + '">' + escapeHtml(formatarResultado(item.resultado)) + '</span></div>';
                 });
                 html += '</div>';
             });
         }
-
         if (visita.observacoes) {
-            html += '<div class="detalhe-secao">';
-            html += '<div class="detalhe-secao-titulo"><i class="fas fa-comment-dots"></i> Observacoes</div>';
-            html += '<div class="detalhe-obs">' + escapeHtml(visita.observacoes) + '</div>';
-            html += '</div>';
+            html += '<div class="detalhe-secao"><div class="detalhe-secao-titulo"><i class="fas fa-comment-dots"></i> Observacoes</div>';
+            html += '<div class="detalhe-obs">' + escapeHtml(visita.observacoes) + '</div></div>';
         }
-
         if (visita.imagens && visita.imagens.length > 0) {
-            html += '<div class="detalhe-secao">';
-            html += '<div class="detalhe-secao-titulo"><i class="fas fa-camera"></i> Imagens (' + visita.imagens.length + ')</div>';
-            html += '<div class="detalhe-imagens">';
+            html += '<div class="detalhe-secao"><div class="detalhe-secao-titulo"><i class="fas fa-camera"></i> Imagens (' + visita.imagens.length + ')</div><div class="detalhe-imagens">';
             visita.imagens.forEach(function (img) {
-                html += '<div class="detalhe-img" onclick="window.open(\'' + escapeAttr(img.url) + '\', \'_blank\')">';
-                html += '  <img src="' + escapeAttr(img.url) + '" alt="' + escapeAttr(img.nome_original || 'Imagem') + '">';
-                html += '</div>';
+                html += '<div class="detalhe-img" onclick="window.open(\'' + escapeAttr(img.url) + '\', \'_blank\')"><img src="' + escapeAttr(img.url) + '" alt="' + escapeAttr(img.nome_original || 'Imagem') + '"></div>';
             });
             html += '</div></div>';
         }
-
         body.innerHTML = html;
     }
 
@@ -798,7 +902,6 @@
         if (btnCancelarConcluir) btnCancelarConcluir.addEventListener('click', function () { fecharModal('modal-concluir'); });
         var btnConfirmarConcluir = document.getElementById('btn-confirmar-concluir');
         if (btnConfirmarConcluir) btnConfirmarConcluir.addEventListener('click', function () { concluirRonda(); });
-
         var btnFecharDetalhe = document.getElementById('btn-modal-fechar-detalhe');
         if (btnFecharDetalhe) btnFecharDetalhe.addEventListener('click', function () { fecharModal('modal-detalhe'); });
         var btnFecharDetalheBottom = document.getElementById('btn-fechar-detalhe');
@@ -806,50 +909,36 @@
 
         var modais = document.querySelectorAll('.modal-overlay');
         for (var i = 0; i < modais.length; i++) {
-            modais[i].addEventListener('click', function (e) {
-                if (e.target === this) this.classList.remove('ativo');
-            });
+            modais[i].addEventListener('click', function (e) { if (e.target === this) this.classList.remove('ativo'); });
         }
-
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 var ativos = document.querySelectorAll('.modal-overlay.ativo');
-                for (var j = 0; j < ativos.length; j++) {
-                    ativos[j].classList.remove('ativo');
-                }
+                for (var j = 0; j < ativos.length; j++) ativos[j].classList.remove('ativo');
             }
         });
     }
 
     function abrirModalConcluir() {
         var resumo = document.getElementById('modal-concluir-resumo');
-        if (resumo) {
-            resumo.innerHTML = '<strong>Ronda #' + estado.rondaId + '</strong> | Data: ' + formatarData(estado.dataRonda);
-        }
+        if (resumo) resumo.innerHTML = '<strong>Ronda #' + estado.rondaId + '</strong> | Data: ' + formatarData(estado.dataRonda);
         abrirModal('modal-concluir');
     }
 
     function concluirRonda() {
-        fetch(CONFIG.apiRondas + '/' + estado.rondaId + '/concluir', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-            if (data.success) {
-                mostrarToast('Ronda concluida com sucesso!', 'sucesso');
-                fecharModal('modal-concluir');
-                estado.rondaId = null;
-                mostrarTela('ronda');
-                var resumoEl = document.getElementById('visitas-resumo');
-                if (resumoEl) resumoEl.style.display = 'none';
-            } else {
-                mostrarToast(data.error || 'Erro ao concluir', 'erro');
-            }
-        })
-        .catch(function () {
-            mostrarToast('Erro de comunicacao', 'erro');
-        });
+        fetch(CONFIG.apiRondas + '/' + estado.rondaId + '/concluir', { method: 'PUT', headers: { 'Content-Type': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    mostrarToast('Ronda concluida com sucesso!', 'sucesso');
+                    fecharModal('modal-concluir');
+                    estado.rondaId = null;
+                    mostrarTela('ronda');
+                    var resumoEl = document.getElementById('visitas-resumo');
+                    if (resumoEl) resumoEl.style.display = 'none';
+                } else { mostrarToast(d.error || 'Erro ao concluir', 'erro'); }
+            })
+            .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
     }
 
     // ========================================
@@ -857,28 +946,13 @@
     // ========================================
 
     function limparFormularioVisita() {
-        var selectSetor = document.getElementById('select-setor');
-        if (selectSetor) selectSetor.value = '';
-        var inputLeito = document.getElementById('input-leito');
-        if (inputLeito) inputLeito.value = '';
-        var inputAtend = document.getElementById('input-atendimento');
-        if (inputAtend) inputAtend.value = '';
-        var inputObs = document.getElementById('input-observacoes');
-        if (inputObs) inputObs.value = '';
+        var els = { 'select-setor': '', 'input-leito': '', 'input-atendimento': '', 'input-observacoes': '' };
+        for (var id in els) { var el = document.getElementById(id); if (el) el.value = els[id]; }
         var countObs = document.getElementById('count-obs');
         if (countObs) countObs.textContent = '0';
-
-        var selecionados = document.querySelectorAll('.btn-semaforo.selecionado');
-        for (var i = 0; i < selecionados.length; i++) {
-            selecionados[i].classList.remove('selecionado');
-        }
-
+        var selecionados = document.querySelectorAll('.btn-semaforo.selecionado, .btn-semaforo-final.selecionado');
+        for (var i = 0; i < selecionados.length; i++) selecionados[i].classList.remove('selecionado');
         estado.avaliacaoFinal = null;
-        var finais = document.querySelectorAll('.btn-semaforo-final.selecionado');
-        for (var j = 0; j < finais.length; j++) {
-            finais[j].classList.remove('selecionado');
-        }
-
         estado.imagensParaEnviar = [];
         renderizarPreviews();
     }
@@ -889,88 +963,43 @@
 
     function configurarContadores() {
         var obsInput = document.getElementById('input-observacoes');
-        if (obsInput) {
-            obsInput.addEventListener('input', function () {
-                var countEl = document.getElementById('count-obs');
-                if (countEl) countEl.textContent = this.value.length;
-            });
-        }
+        if (obsInput) obsInput.addEventListener('input', function () {
+            var c = document.getElementById('count-obs');
+            if (c) c.textContent = this.value.length;
+        });
     }
 
     // ========================================
     // UTILITARIOS
     // ========================================
 
-    function abrirModal(id) {
-        var m = document.getElementById(id);
-        if (m) m.classList.add('ativo');
-    }
-
-    function fecharModal(id) {
-        var m = document.getElementById(id);
-        if (m) m.classList.remove('ativo');
-    }
-
-    function setTexto(id, texto) {
-        var el = document.getElementById(id);
-        if (el) el.textContent = texto;
-    }
-
-    function dataHoje() {
-        var d = new Date();
-        return d.getFullYear() + '-' +
-            String(d.getMonth() + 1).padStart(2, '0') + '-' +
-            String(d.getDate()).padStart(2, '0');
-    }
+    function abrirModal(id) { var m = document.getElementById(id); if (m) m.classList.add('ativo'); }
+    function fecharModal(id) { var m = document.getElementById(id); if (m) m.classList.remove('ativo'); }
+    function setTexto(id, texto) { var el = document.getElementById(id); if (el) el.textContent = texto; }
 
     function formatarData(dataStr) {
         if (!dataStr) return '--';
         var partes = dataStr.split('-');
-        if (partes.length === 3) {
-            return partes[2] + '/' + partes[1] + '/' + partes[0];
-        }
+        if (partes.length === 3) return partes[2] + '/' + partes[1] + '/' + partes[0];
         return dataStr;
     }
 
     function formatarResultado(resultado) {
-        var mapa = {
-            'critico': 'Critico',
-            'atencao': 'Atencao',
-            'adequado': 'Adequado',
-            'nao_aplica': 'N/A'
-        };
-        return mapa[resultado] || resultado;
+        return { 'critico': 'Critico', 'atencao': 'Atencao', 'adequado': 'Adequado', 'nao_aplica': 'N/A' }[resultado] || resultado;
     }
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        var div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function escapeAttr(text) {
-        if (!text) return '';
-        return text.replace(/&/g, '&amp;').replace(/'/g, '&#39;')
-            .replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+    function escapeHtml(t) { if (!t) return ''; var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function escapeAttr(t) { if (!t) return ''; return t.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
     function mostrarToast(msg, tipo) {
         var c = document.getElementById('toast-container');
         if (!c) return;
         var t = document.createElement('div');
         t.className = 'toast toast-' + (tipo || 'info');
-        var icone = '';
-        switch (tipo) {
-            case 'sucesso': icone = '<i class="fas fa-check-circle"></i>'; break;
-            case 'erro': icone = '<i class="fas fa-times-circle"></i>'; break;
-            default: icone = '<i class="fas fa-info-circle"></i>';
-        }
+        var icone = tipo === 'sucesso' ? '<i class="fas fa-check-circle"></i>' : tipo === 'erro' ? '<i class="fas fa-times-circle"></i>' : '<i class="fas fa-info-circle"></i>';
         t.innerHTML = icone + ' ' + escapeHtml(msg);
         c.appendChild(t);
-        setTimeout(function () {
-            if (t.parentNode) t.parentNode.removeChild(t);
-        }, 4000);
+        setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
     }
 
     // ========================================
@@ -979,7 +1008,11 @@
 
     window.FORM = {
         selecionarSemaforo: selecionarSemaforo,
-        abrirDetalhe: abrirDetalhe
+        abrirDetalhe: abrirDetalhe,
+        editarDupla: editarDupla,
+        salvarDupla: salvarDupla,
+        toggleDupla: toggleDupla,
+        carregarDuplasG: carregarDuplasGerenciar
     };
 
     // ========================================
