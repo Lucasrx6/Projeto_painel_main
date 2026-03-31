@@ -482,7 +482,7 @@ Dedup via constraint UNIQUE no banco
 
 ## Licença
 
-**Uso interno — Hospital Anchieta Ceilândia**
+**Uso interno**
 
 Desenvolvido exclusivamente para uso interno. Proibida redistribuição ou uso comercial sem autorização.
 
