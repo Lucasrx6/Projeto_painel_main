@@ -424,7 +424,7 @@
         var btnGestao = document.getElementById('btn-gestao');
         if (btnGestao) {
             btnGestao.addEventListener('click', function () {
-                mostrarToast('Painel de Gestao em desenvolvimento', 'info');
+                window.location.href = '/painel/painel29';
             });
         }
     }
