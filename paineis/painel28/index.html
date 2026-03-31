@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Central de Serviços - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel28/style_hub.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#dc3545">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-th-large"></i> Central de Servicos</h1>
+                </div>
+                <div class="header-right">
+                    <button id="btn-voltar" class="btn-header" title="Voltar ao Dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteudo Principal -->
+        <div class="main-content">
+
+            <!-- Saudacao -->
+            <div class="saudacao">
+                <h2 id="saudacao-texto">Bem-vindo!</h2>
+                <p class="saudacao-sub">Selecione o servico desejado</p>
+            </div>
+
+            <!-- Grid de Servicos -->
+            <div class="servicos-grid" id="servicos-grid">
+                <div class="loading" id="loading-servicos">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando servicos...</p>
+                </div>
+            </div>
+
+            <!-- Vazio -->
+            <div class="servicos-vazio" id="servicos-vazio" style="display:none;">
+                <i class="fas fa-box-open"></i>
+                <p>Nenhum servico disponivel no momento</p>
+                <small>Servicos serao adicionados em breve</small>
+            </div>
+
+        </div>
+
+        <!-- Rodape -->
+        <div class="hub-footer">
+            <span>Hospital Anchieta Ceilandia</span>
+            <span class="footer-sep">|</span>
+        </div>
+
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel28/main_hub.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

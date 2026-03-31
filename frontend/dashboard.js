@@ -46,7 +46,7 @@ var Estado = {
         'painel8', 'painel9', 'painel10', 'painel11', 'painel12', 'painel13',
         'painel14', 'painel15', 'painel16', 'painel17', 'painel18', 'painel19',
         'painel20', 'painel21', 'painel22', 'painel23', 'painel24', 'painel25',
-        'painel26', 'painel27'
+        'painel26', 'painel27', 'painel28'
     ]
 };
 
