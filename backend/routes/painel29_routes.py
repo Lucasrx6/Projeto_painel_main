@@ -17,8 +17,6 @@ from backend.user_management import verificar_permissao_painel
 
 painel29_bp = Blueprint('painel29', __name__)
 
-PAINEL_DIR = os.path.join(os.path.dirname(__file__))
-
 
 # ============================================================
 # HELPERS
@@ -147,13 +145,13 @@ def painel29():
     if not is_admin:
         if not verificar_permissao_painel(usuario_id, 'painel29'):
             return send_from_directory('frontend', 'acesso-negado.html')
-    return send_from_directory(PAINEL_DIR, 'index.html')
+    return send_from_directory('paineis/painel29', 'index.html')
 
 
 @painel29_bp.route('/paineis/painel29/<path:filename>')
 @login_required
 def painel29_static(filename):
-    return send_from_directory(PAINEL_DIR, filename)
+    return send_from_directory('paineis/painel29', filename)
 
 
 # ============================================================

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestao Sentir e Agir - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel29/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-chart-bar"></i> Gestao Sentir e Agir</h1>
+                </div>
+                <div class="header-right">
+                    <!-- Filtros toggle -->
+                    <button id="btn-toggle-filtros" class="btn-header" title="Filtros">
+                        <i class="fas fa-filter"></i> <span class="btn-text">Filtros</span>
+                    </button>
+                    <!-- Exportar -->
+                    <button id="btn-exportar" class="btn-header btn-exportar" title="Exportar Excel">
+                        <i class="fas fa-file-excel"></i> <span class="btn-text">Exportar</span>
+                    </button>
+                    <!-- Formulario -->
+                    <button id="btn-formulario" class="btn-header" title="Ir para Formulario">
+                        <i class="fas fa-heart-pulse"></i> <span class="btn-text">Formulario</span>
+                    </button>
+                    <!-- Refresh -->
+                    <button id="btn-refresh" class="btn-header" title="Atualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <!-- Voltar -->
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i> <span class="btn-text">Voltar</span>
+                    </button>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de Filtros -->
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <div class="filtro-grupo">
+                    <label>Periodo:</label>
+                    <select id="filtro-dias">
+                        <option value="">Todos</option>
+                        <option value="7" selected>Ultimos 7 dias</option>
+                        <option value="15">Ultimos 15 dias</option>
+                        <option value="30">Ultimos 30 dias</option>
+                        <option value="60">Ultimos 60 dias</option>
+                        <option value="90">Ultimos 90 dias</option>
+                        <option value="custom">Personalizado</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo filtro-datas" id="filtro-datas" style="display:none;">
+                    <input type="date" id="filtro-dt-inicio" title="Data inicio">
+                    <span>a</span>
+                    <input type="date" id="filtro-dt-fim" title="Data fim">
+                </div>
+                <div class="filtro-grupo">
+                    <label>Setor:</label>
+                    <select id="filtro-setor">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Dupla:</label>
+                    <select id="filtro-dupla">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Avaliacao:</label>
+                    <select id="filtro-avaliacao">
+                        <option value="">Todas</option>
+                        <option value="critico">Critico</option>
+                        <option value="atencao">Atencao</option>
+                        <option value="adequado">Adequado</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Status:</label>
+                    <select id="filtro-status">
+                        <option value="">Todos</option>
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="concluida">Concluida</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo filtro-busca">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="filtro-busca" placeholder="Buscar leito, atendimento, observacao...">
+                </div>
+                <button class="btn-limpar-filtros" id="btn-limpar-filtros">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+
+            <!-- KPIs -->
+            <div class="stats-row" id="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon icon-visitas"><i class="fas fa-clipboard-list"></i></div>
+                    <h3 id="stat-visitas">0</h3>
+                    <p>Visitas</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-rondas"><i class="fas fa-route"></i></div>
+                    <h3 id="stat-rondas">0</h3>
+                    <p>Rondas</p>
+                </div>
+                <div class="stat-card stat-card-critico">
+                    <div class="stat-icon icon-criticos"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3 id="stat-criticos">0</h3>
+                    <p>Criticos</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-atencao"><i class="fas fa-exclamation-triangle"></i></div>
+                    <h3 id="stat-atencao">0</h3>
+                    <p>Atencao</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-adequados"><i class="fas fa-check-circle"></i></div>
+                    <h3 id="stat-adequados">0</h3>
+                    <p>Adequados</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-leitos"><i class="fas fa-bed"></i></div>
+                    <h3 id="stat-leitos">0</h3>
+                    <p>Leitos</p>
+                </div>
+            </div>
+
+            <!-- Tabela de Visitas -->
+            <div class="tabela-container">
+                <div class="tabela-header">
+                    <h3><i class="fas fa-table"></i> Visitas Registradas</h3>
+                    <span class="tabela-total" id="tabela-total">0 registros</span>
+                </div>
+                <div class="tabela-wrapper">
+                    <table class="tabela-dados" id="tabela-dados">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Dupla</th>
+                                <th>Setor</th>
+                                <th>Leito</th>
+                                <th>Atend.</th>
+                                <th>Avaliacao</th>
+                                <th class="col-semaforos">
+                                    <span class="th-dot dot-critico" title="Criticos"></span>
+                                    <span class="th-dot dot-atencao" title="Atencao"></span>
+                                    <span class="th-dot dot-adequado" title="Adequados"></span>
+                                </th>
+                                <th>Img</th>
+                                <th>Status</th>
+                                <th>Acoes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-body">
+                            <tr><td colspan="10" class="tabela-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tabela-vazia" id="tabela-vazia" style="display:none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhuma visita encontrada</p>
+                    <small>Ajuste os filtros ou registre novas visitas</small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal: Detalhe / Edicao da Visita -->
+    <div class="modal-overlay" id="modal-detalhe">
+        <div class="modal modal-xl">
+            <div class="modal-header">
+                <h2><i class="fas fa-eye"></i> <span id="modal-titulo">Detalhe da Visita</span></h2>
+                <div class="modal-header-acoes">
+                    <button class="btn-modal-editar" id="btn-ativar-edicao" style="display:none;" title="Editar">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="modal-fechar" id="btn-fechar-detalhe">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body" id="modal-detalhe-body">
+                <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-cancelar-detalhe">Fechar</button>
+                <button class="btn-salvar-edicao" id="btn-salvar-edicao" style="display:none;">
+                    <i class="fas fa-save"></i> Salvar Alteracoes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel29/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
