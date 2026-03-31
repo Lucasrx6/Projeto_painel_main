@@ -1,0 +1,445 @@
+/* ========================================
+   PAINEL 28 - HUB CENTRALIZADOR
+   Hospital Anchieta Ceilandia
+   Mobile-First
+   ======================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --cor-primaria: #dc3545;
+    --cor-primaria-dark: #c82333;
+    --cor-primaria-light: #fde8ea;
+    --cor-sucesso: #28a745;
+    --cor-info: #17a2b8;
+    --cor-alerta: #ffc107;
+    --cor-laranja: #fd7e14;
+    --cor-roxo: #6f42c1;
+    --cor-fundo: #f0f2f5;
+    --cor-card: #ffffff;
+    --cor-texto: #333333;
+    --cor-texto-sec: #666666;
+    --cor-borda: #e0e0e0;
+    --sombra: 0 2px 12px rgba(0, 0, 0, 0.08);
+    --sombra-hover: 0 8px 28px rgba(0, 0, 0, 0.15);
+    --radius: 12px;
+    --header-height: 48px;
+}
+
+html { height: 100%; }
+
+body {
+    background: var(--cor-fundo);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%; height: 100dvh;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    top: 0; left: 0;
+    color: var(--cor-texto);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.painel-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   CABECALHO
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+    color: white;
+    padding: 8px 16px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    min-height: var(--header-height);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-left img {
+    max-height: 28px;
+    padding: 3px 5px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.painel-header h1 {
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.painel-header h1 i { font-size: 0.9rem; }
+
+.btn-header {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-header:hover,
+.btn-header:active {
+    background: white;
+    color: var(--cor-primaria);
+}
+
+/* ========================================
+   CONTEUDO PRINCIPAL
+   ======================================== */
+
+.main-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.main-content::-webkit-scrollbar { width: 5px; }
+.main-content::-webkit-scrollbar-track { background: transparent; }
+.main-content::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: 3px; }
+
+/* ========================================
+   SAUDACAO
+   ======================================== */
+
+.saudacao {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.saudacao h2 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--cor-texto);
+    margin-bottom: 4px;
+}
+
+.saudacao-sub {
+    font-size: 0.88rem;
+    color: var(--cor-texto-sec);
+    font-weight: 400;
+}
+
+/* ========================================
+   GRID DE SERVICOS
+   ======================================== */
+
+.servicos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    padding-bottom: 16px;
+}
+
+/* Card de Servico */
+.servico-card {
+    background: var(--cor-card);
+    border-radius: var(--radius);
+    box-shadow: var(--sombra);
+    padding: 22px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    color: var(--cor-texto);
+    min-height: 150px;
+    justify-content: center;
+}
+
+.servico-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--servico-cor, var(--cor-primaria));
+    transition: height 0.3s ease;
+}
+
+.servico-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--sombra-hover);
+    border-color: var(--servico-cor, var(--cor-primaria));
+}
+
+.servico-card:hover::before {
+    height: 6px;
+}
+
+.servico-card:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+.servico-icone {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--servico-cor, var(--cor-primaria));
+    color: white;
+    font-size: 1.4rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s ease;
+}
+
+.servico-card:hover .servico-icone {
+    transform: scale(1.1);
+}
+
+.servico-nome {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.3;
+}
+
+.servico-descricao {
+    font-size: 0.72rem;
+    color: var(--cor-texto-sec);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ========================================
+   ESTADOS VAZIOS / LOADING
+   ======================================== */
+
+.loading {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--cor-texto-sec);
+    grid-column: 1 / -1;
+}
+
+.loading-spinner {
+    width: 36px; height: 36px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--cor-primaria);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading p { font-size: 0.85rem; }
+
+.servicos-vazio {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--cor-texto-sec);
+}
+
+.servicos-vazio i {
+    font-size: 3.5rem;
+    margin-bottom: 14px;
+    display: block;
+    color: var(--cor-borda);
+}
+
+.servicos-vazio p {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.servicos-vazio small {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+/* ========================================
+   RODAPE
+   ======================================== */
+
+.hub-footer {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--cor-texto-sec);
+    background: var(--cor-card);
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.footer-sep { opacity: 0.4; }
+
+/* ========================================
+   TOAST
+   ======================================== */
+
+.toast-container {
+    position: fixed;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: calc(100% - 32px);
+    max-width: 400px;
+}
+
+.toast {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    animation: toastEntrar 0.4s ease, toastSair 0.4s ease 3.6s forwards;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    justify-content: center;
+}
+
+.toast-sucesso { background: var(--cor-sucesso); }
+.toast-erro { background: var(--cor-primaria); }
+.toast-info { background: var(--cor-info); }
+
+@keyframes toastEntrar {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+@keyframes toastSair {
+    from { opacity: 1; }
+    to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* ========================================
+   RESPONSIVIDADE
+   ======================================== */
+
+@media (min-width: 480px) {
+    .servicos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 16px;
+    }
+    .servico-card { padding: 26px 18px; min-height: 160px; }
+    .servico-icone { width: 62px; height: 62px; font-size: 1.5rem; }
+    .servico-nome { font-size: 0.92rem; }
+}
+
+@media (min-width: 768px) {
+    .main-content { padding: 24px 32px; }
+    .saudacao h2 { font-size: 1.6rem; }
+    .servicos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 18px;
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    .servico-card { padding: 28px 20px; min-height: 170px; }
+    .servico-icone { width: 68px; height: 68px; font-size: 1.6rem; }
+    .servico-nome { font-size: 0.95rem; }
+    .servico-descricao { font-size: 0.76rem; }
+}
+
+@media (min-width: 1100px) {
+    .servicos-grid {
+        grid-template-columns: repeat(4, 1fr);
+        max-width: 1000px;
+    }
+}
+
+@media (max-width: 380px) {
+    .painel-header { padding: 6px 10px; }
+    .painel-header h1 { font-size: 0.85rem; }
+    .header-left img { max-height: 24px; }
+    .main-content { padding: 14px 10px; gap: 14px; }
+    .saudacao h2 { font-size: 1.2rem; }
+    .servicos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .servico-card { padding: 16px 10px; min-height: 130px; }
+    .servico-icone { width: 46px; height: 46px; font-size: 1.2rem; }
+    .servico-nome { font-size: 0.8rem; }
+    .servico-descricao { font-size: 0.68rem; }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .painel-header { padding: 4px 12px; min-height: 36px; }
+    .painel-header h1 { font-size: 0.8rem; }
+    .main-content { padding: 10px 16px; gap: 10px; }
+    .saudacao { padding: 0; }
+    .saudacao h2 { font-size: 1rem; }
+    .servicos-grid { gap: 10px; }
+    .servico-card { padding: 14px 10px; min-height: 110px; }
+    .servico-icone { width: 40px; height: 40px; font-size: 1rem; }
+    .hub-footer { padding: 6px 10px; }
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+    .painel-header {
+        padding-top: max(6px, env(safe-area-inset-top));
+        padding-left: max(10px, env(safe-area-inset-left));
+        padding-right: max(10px, env(safe-area-inset-right));
+    }
+    .main-content {
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+    .hub-footer {
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

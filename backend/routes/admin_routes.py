@@ -43,7 +43,7 @@ def api_minhas_permissoes():
                     'painel14', 'painel15', 'painel16', 'painel17',
                     'painel18', 'painel19', 'painel20', 'painel21',
                     'painel22', 'painel23', 'painel24', 'painel25',
-                    'painel26', 'painel27'
+                    'painel26', 'painel27', 'painel28'
                 ],
                 'is_admin': True
             })
@@ -370,6 +370,8 @@ def api_listar_paineis():
              'descricao': 'Gerencia de Notificações', 'ativo': True},
             {'nome': 'painel27', 'titulo': 'Deteriorização Pacientes',
              'descricao': 'Deteriorização Pacientes', 'ativo': True},
+            {'nome': 'painel28', 'titulo': 'Hub de Solicitações',
+             'descricao': 'Hub de Solicitações', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

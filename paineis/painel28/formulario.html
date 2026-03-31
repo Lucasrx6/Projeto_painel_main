@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sentir e Agir - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel28/style_form.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#dc3545">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-heart-pulse"></i> Sentir e Agir</h1>
+                </div>
+                <div class="header-right">
+                    <button id="btn-gestao" class="btn-header" title="Painel de Gestao">
+                        <i class="fas fa-chart-bar"></i> <span class="btn-text">Gestao</span>
+                    </button>
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteudo Principal -->
+        <div class="main-content">
+
+            <!-- ================================ -->
+            <!-- TELA 1: INICIAR RONDA            -->
+            <!-- ================================ -->
+            <div class="tela" id="tela-ronda">
+
+                <div class="tela-titulo">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h2>Iniciar Ronda</h2>
+                    <p>Selecione a dupla e a data para iniciar</p>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="select-dupla">
+                            <i class="fas fa-user-friends"></i> Dupla de Visitantes *
+                        </label>
+                        <select id="select-dupla" required>
+                            <option value="">Selecione a dupla...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-data-ronda">
+                            <i class="fas fa-calendar-alt"></i> Data da Ronda *
+                        </label>
+                        <input type="date" id="input-data-ronda" required>
+                    </div>
+                </div>
+
+                <button class="btn-principal" id="btn-iniciar-ronda">
+                    <i class="fas fa-play-circle"></i> Iniciar Ronda
+                </button>
+
+                <!-- Resumo de visitas ja feitas (se ronda existente) -->
+                <div class="visitas-resumo" id="visitas-resumo" style="display:none;">
+                    <div class="visitas-resumo-header">
+                        <h3><i class="fas fa-list-check"></i> Visitas desta ronda</h3>
+                        <span class="badge-visitas" id="badge-total-visitas">0</span>
+                    </div>
+                    <div class="visitas-resumo-lista" id="visitas-resumo-lista"></div>
+                </div>
+
+            </div>
+
+            <!-- ================================ -->
+            <!-- TELA 2: FORMULARIO DE VISITA     -->
+            <!-- ================================ -->
+            <div class="tela" id="tela-formulario" style="display:none;">
+
+                <div class="formulario-header">
+                    <button class="btn-voltar-form" id="btn-voltar-ronda">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-bed"></i> Registrar Visita</h2>
+                    <span class="ronda-info" id="ronda-info-badge">--</span>
+                </div>
+
+                <form class="formulario" id="form-visita" autocomplete="off">
+
+                    <!-- Dados do Leito -->
+                    <div class="form-card">
+                        <div class="form-card-header">
+                            <i class="fas fa-bed"></i> Identificacao do Leito
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-row">
+                                <div class="form-group form-group-flex">
+                                    <label for="select-setor">
+                                        <i class="fas fa-building"></i> Setor *
+                                    </label>
+                                    <select id="select-setor" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group form-group-flex">
+                                    <label for="input-leito">
+                                        <i class="fas fa-hashtag"></i> Leito *
+                                    </label>
+                                    <input type="text" id="input-leito" placeholder="Ex: 301-A" maxlength="30" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-atendimento">
+                                    <i class="fas fa-file-medical"></i> Nr Atendimento Tasy <small>(opcional)</small>
+                                </label>
+                                <input type="text" id="input-atendimento" placeholder="Ex: 123456" maxlength="30">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Categorias de Avaliacao (renderizadas dinamicamente) -->
+                    <div id="categorias-container"></div>
+
+                    <!-- Observacoes -->
+                    <div class="form-card">
+                        <div class="form-card-header">
+                            <i class="fas fa-comment-dots"></i> Observacoes da Visita
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-group">
+                                <textarea id="input-observacoes" placeholder="Detalhamento de problemas identificados, comentarios do paciente, situacoes relevantes..." rows="4" maxlength="2000"></textarea>
+                                <span class="char-count"><span id="count-obs">0</span>/2000</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload de Imagens -->
+                    <div class="form-card">
+                        <div class="form-card-header">
+                            <i class="fas fa-camera"></i> Imagens de Problemas <small>(opcional)</small>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="upload-area" id="upload-area">
+                                <input type="file" id="input-imagem" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+                                <button type="button" class="btn-upload" id="btn-upload">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Adicionar Imagens</span>
+                                    <small id="upload-limite">Maximo: 5 imagens</small>
+                                </button>
+                                <div class="preview-imagens" id="preview-imagens"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Avaliacao Final -->
+                    <div class="form-card form-card-final">
+                        <div class="form-card-header">
+                            <i class="fas fa-star"></i> Avaliacao Final da Visita *
+                        </div>
+                        <div class="form-card-body">
+                            <div class="semaforo-final" id="semaforo-final">
+                                <button type="button" class="btn-semaforo-final critico" data-valor="critico">
+                                    <i class="fas fa-circle"></i> Critico
+                                </button>
+                                <button type="button" class="btn-semaforo-final atencao" data-valor="atencao">
+                                    <i class="fas fa-circle"></i> Atencao
+                                </button>
+                                <button type="button" class="btn-semaforo-final adequado" data-valor="adequado">
+                                    <i class="fas fa-circle"></i> Adequado
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botao Enviar -->
+                    <button type="submit" class="btn-principal btn-enviar-visita" id="btn-enviar-visita">
+                        <i class="fas fa-paper-plane"></i> Registrar Visita
+                    </button>
+
+                </form>
+            </div>
+
+            <!-- ================================ -->
+            <!-- TELA 3: CONFIRMACAO              -->
+            <!-- ================================ -->
+            <div class="tela" id="tela-confirmacao" style="display:none;">
+                <div class="confirmacao-container">
+                    <div class="confirmacao-icone">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 class="confirmacao-titulo">Visita Registrada!</h2>
+                    <p class="confirmacao-mensagem">A avaliacao do leito foi salva com sucesso.</p>
+                    <div class="confirmacao-detalhes" id="confirmacao-detalhes"></div>
+                    <div class="confirmacao-acoes">
+                        <button class="btn-confirmacao btn-novo-leito" id="btn-novo-leito">
+                            <i class="fas fa-plus"></i> Novo Leito
+                        </button>
+                        <button class="btn-confirmacao btn-concluir-ronda" id="btn-concluir-ronda">
+                            <i class="fas fa-flag-checkered"></i> Concluir Ronda
+                        </button>
+                        <button class="btn-confirmacao btn-ver-resumo" id="btn-ver-resumo">
+                            <i class="fas fa-list"></i> Ver Resumo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================ -->
+            <!-- TELA 4: RESUMO DA RONDA          -->
+            <!-- ================================ -->
+            <div class="tela" id="tela-resumo" style="display:none;">
+
+                <div class="formulario-header">
+                    <button class="btn-voltar-form" id="btn-voltar-resumo">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-clipboard-check"></i> Resumo da Ronda</h2>
+                    <button class="btn-refresh-resumo" id="btn-refresh-resumo">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+
+                <!-- KPIs da Ronda -->
+                <div class="resumo-kpis" id="resumo-kpis">
+                    <div class="kpi-card kpi-total">
+                        <div class="kpi-valor" id="kpi-total">0</div>
+                        <div class="kpi-label">Visitas</div>
+                    </div>
+                    <div class="kpi-card kpi-critico">
+                        <div class="kpi-valor" id="kpi-criticos">0</div>
+                        <div class="kpi-label">Criticos</div>
+                    </div>
+                    <div class="kpi-card kpi-atencao">
+                        <div class="kpi-valor" id="kpi-atencao">0</div>
+                        <div class="kpi-label">Atencao</div>
+                    </div>
+                    <div class="kpi-card kpi-adequado">
+                        <div class="kpi-valor" id="kpi-adequados">0</div>
+                        <div class="kpi-label">Adequados</div>
+                    </div>
+                </div>
+
+                <!-- Lista de visitas -->
+                <div class="resumo-lista" id="resumo-lista">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
+
+                <div class="resumo-vazio" id="resumo-vazio" style="display:none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhuma visita registrada nesta ronda</p>
+                </div>
+
+                <!-- Acoes do Resumo -->
+                <div class="resumo-acoes">
+                    <button class="btn-principal" id="btn-adicionar-leito">
+                        <i class="fas fa-plus"></i> Adicionar Leito
+                    </button>
+                    <button class="btn-secundario" id="btn-concluir-ronda-resumo">
+                        <i class="fas fa-flag-checkered"></i> Concluir Ronda
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal: Confirmacao de Conclusao -->
+    <div class="modal-overlay" id="modal-concluir">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-flag-checkered"></i> Concluir Ronda</h2>
+                <button class="modal-fechar" id="btn-modal-fechar-concluir">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Deseja concluir esta ronda? Apos concluir, nao sera possivel adicionar novas visitas.</p>
+                <div class="modal-resumo" id="modal-concluir-resumo"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-cancelar-concluir">Cancelar</button>
+                <button class="btn-confirmar-concluir" id="btn-confirmar-concluir">
+                    <i class="fas fa-check"></i> Confirmar Conclusao
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detalhe de Visita -->
+    <div class="modal-overlay" id="modal-detalhe">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-eye"></i> Detalhe da Visita</h2>
+                <button class="modal-fechar" id="btn-modal-fechar-detalhe">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-detalhe-body">
+                <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-fechar-detalhe">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel28/main_form.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
