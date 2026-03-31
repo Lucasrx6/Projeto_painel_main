@@ -140,17 +140,25 @@ def listar_servicos():
 @painel28_bp.route('/duplas', methods=['GET'])
 @login_required
 def listar_duplas():
-    """Lista duplas de visitantes ativas."""
+    """Lista duplas de visitantes. ?todas=1 retorna ativas e inativas."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        cursor.execute("""
-            SELECT id, nome_visitante_1, nome_visitante_2, ordem
-            FROM sentir_agir_duplas
-            WHERE ativo = TRUE
-            ORDER BY ordem, nome_visitante_1
-        """)
+        todas = request.args.get('todas', '0')
+        if todas == '1':
+            cursor.execute("""
+                SELECT id, nome_visitante_1, nome_visitante_2, ordem, ativo
+                FROM sentir_agir_duplas
+                ORDER BY ordem, nome_visitante_1
+            """)
+        else:
+            cursor.execute("""
+                SELECT id, nome_visitante_1, nome_visitante_2, ordem
+                FROM sentir_agir_duplas
+                WHERE ativo = TRUE
+                ORDER BY ordem, nome_visitante_1
+            """)
         duplas = cursor.fetchall()
 
         cursor.close()
@@ -160,6 +168,151 @@ def listar_duplas():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/duplas', methods=['POST'])
+@login_required
+def criar_dupla():
+    """Cria uma nova dupla de visitantes."""
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+        nome1 = (dados.get('nome_visitante_1') or '').strip()
+        nome2 = (dados.get('nome_visitante_2') or '').strip()
+
+        if not nome1 or not nome2:
+            return jsonify({'success': False, 'error': 'Informe os dois nomes'}), 400
+
+        usuario = _get_usuario()
+        ip = _get_ip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Buscar proxima ordem
+        cursor.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS prox FROM sentir_agir_duplas")
+        prox_ordem = cursor.fetchone()['prox']
+
+        cursor.execute("""
+            INSERT INTO sentir_agir_duplas (nome_visitante_1, nome_visitante_2, ordem, ativo)
+            VALUES (%s, %s, %s, TRUE)
+            RETURNING id
+        """, (nome1, nome2, prox_ordem))
+        dupla_id = cursor.fetchone()['id']
+
+        _registrar_log(cursor, 'dupla', dupla_id, 'criacao', usuario, ip_origem=ip)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'data': {'id': dupla_id}, 'message': 'Dupla criada'}), 201
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/duplas/<int:dupla_id>', methods=['PUT'])
+@login_required
+def editar_dupla(dupla_id):
+    """Edita nomes de uma dupla existente."""
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+        nome1 = (dados.get('nome_visitante_1') or '').strip()
+        nome2 = (dados.get('nome_visitante_2') or '').strip()
+
+        if not nome1 or not nome2:
+            return jsonify({'success': False, 'error': 'Informe os dois nomes'}), 400
+
+        usuario = _get_usuario()
+        ip = _get_ip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("SELECT id, nome_visitante_1, nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s",
+                       (dupla_id,))
+        dupla = cursor.fetchone()
+        if not dupla:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
+
+        cursor.execute("""
+            UPDATE sentir_agir_duplas
+            SET nome_visitante_1 = %s, nome_visitante_2 = %s, atualizado_em = NOW()
+            WHERE id = %s
+        """, (nome1, nome2, dupla_id))
+
+        _registrar_log(
+            cursor, 'dupla', dupla_id, 'edicao', usuario,
+            campo_alterado='nomes',
+            valor_anterior=dupla['nome_visitante_1'] + ' e ' + dupla['nome_visitante_2'],
+            valor_novo=nome1 + ' e ' + nome2,
+            ip_origem=ip
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Dupla atualizada'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/duplas/<int:dupla_id>/toggle', methods=['PUT'])
+@login_required
+def toggle_dupla(dupla_id):
+    """Ativa/desativa uma dupla."""
+    try:
+        usuario = _get_usuario()
+        ip = _get_ip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("SELECT id, ativo FROM sentir_agir_duplas WHERE id = %s", (dupla_id,))
+        dupla = cursor.fetchone()
+        if not dupla:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
+
+        novo_status = not dupla['ativo']
+
+        cursor.execute("""
+            UPDATE sentir_agir_duplas
+            SET ativo = %s, atualizado_em = NOW()
+            WHERE id = %s
+        """, (novo_status, dupla_id))
+
+        _registrar_log(
+            cursor, 'dupla', dupla_id, 'alteracao_status', usuario,
+            campo_alterado='ativo',
+            valor_anterior=str(dupla['ativo']),
+            valor_novo=str(novo_status),
+            ip_origem=ip
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        msg = 'Dupla ativada' if novo_status else 'Dupla desativada'
+        return jsonify({'success': True, 'message': msg})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
 
 
 @painel28_bp.route('/setores', methods=['GET'])

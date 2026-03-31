@@ -51,16 +51,21 @@
                         <label for="select-dupla">
                             <i class="fas fa-user-friends"></i> Dupla de Visitantes *
                         </label>
-                        <select id="select-dupla" required>
-                            <option value="">Selecione a dupla...</option>
-                        </select>
+                        <div class="select-com-acao">
+                            <select id="select-dupla" required>
+                                <option value="">Selecione a dupla...</option>
+                            </select>
+                            <button type="button" class="btn-gerenciar-inline" id="btn-gerenciar-duplas" title="Gerenciar Duplas">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label for="input-data-ronda">
                             <i class="fas fa-calendar-alt"></i> Data da Ronda *
                         </label>
-                        <input type="date" id="input-data-ronda" required>
+                        <input type="text" id="input-data-ronda" placeholder="dd/mm/aaaa" maxlength="10" inputmode="numeric" required>
                     </div>
                 </div>
 
@@ -227,7 +232,6 @@
                     </button>
                 </div>
 
-                <!-- KPIs da Ronda -->
                 <div class="resumo-kpis" id="resumo-kpis">
                     <div class="kpi-card kpi-total">
                         <div class="kpi-valor" id="kpi-total">0</div>
@@ -247,7 +251,6 @@
                     </div>
                 </div>
 
-                <!-- Lista de visitas -->
                 <div class="resumo-lista" id="resumo-lista">
                     <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
                 </div>
@@ -257,7 +260,6 @@
                     <p>Nenhuma visita registrada nesta ronda</p>
                 </div>
 
-                <!-- Acoes do Resumo -->
                 <div class="resumo-acoes">
                     <button class="btn-principal" id="btn-adicionar-leito">
                         <i class="fas fa-plus"></i> Adicionar Leito
@@ -304,6 +306,33 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancelar" id="btn-fechar-detalhe">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gerenciar Duplas -->
+    <div class="modal-overlay" id="modal-duplas">
+        <div class="modal modal-lg">
+            <div class="modal-header modal-header-gerenciar">
+                <h2><i class="fas fa-user-friends"></i> Gerenciar Duplas</h2>
+                <button class="modal-fechar" id="btn-modal-fechar-duplas">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario de adicionar -->
+                <div class="duplas-form-inline">
+                    <input type="text" id="g-dupla-nome1" placeholder="Nome visitante 1" maxlength="150">
+                    <input type="text" id="g-dupla-nome2" placeholder="Nome visitante 2" maxlength="150">
+                    <button class="btn-confirmar-concluir" id="btn-add-dupla">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+                <!-- Lista de duplas -->
+                <div class="duplas-lista" id="duplas-lista">
+                    <div class="loading"><div class="loading-spinner"></div></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-fechar-duplas">Fechar</button>
             </div>
         </div>
     </div>
