@@ -12,6 +12,7 @@ from flask import Blueprint, request, jsonify, send_from_directory
 from backend.database import get_db_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from psycopg2.extras import RealDictCursor
 
 painel28_bp = Blueprint(
     'painel28',
@@ -113,7 +114,7 @@ def listar_servicos():
     """Lista serviços ativos do hub centralizador."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
             SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem
@@ -142,7 +143,7 @@ def listar_duplas():
     """Lista duplas de visitantes ativas."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
             SELECT id, nome_visitante_1, nome_visitante_2, ordem
@@ -167,7 +168,7 @@ def listar_setores():
     """Lista setores ativos."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
             SELECT id, nome, sigla, icone, ordem
@@ -192,7 +193,7 @@ def listar_categorias_itens():
     """Lista categorias com seus itens de avaliação (estrutura aninhada)."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # Buscar categorias
         cursor.execute("""
@@ -251,7 +252,7 @@ def obter_config():
     """Retorna configurações relevantes para o frontend."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
             SELECT chave, valor
@@ -302,7 +303,7 @@ def criar_ronda():
         ip = _get_ip()
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # Verificar se a dupla existe e está ativa
         cursor.execute(
@@ -365,7 +366,7 @@ def concluir_ronda(ronda_id):
         ip = _get_ip()
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute(
             "SELECT id, status FROM sentir_agir_rondas WHERE id = %s",
@@ -473,7 +474,7 @@ def registrar_visita():
         ip = _get_ip()
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # Verificar se a ronda existe e está em andamento
         cursor.execute(
@@ -567,7 +568,7 @@ def upload_imagem():
         ip = _get_ip()
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # Verificar se a visita existe
         cursor.execute(
@@ -690,7 +691,7 @@ def servir_imagem(imagem_id):
     """Serve uma imagem pelo ID (para visualização)."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute(
             "SELECT caminho_arquivo, tipo_mime FROM sentir_agir_imagens WHERE id = %s",
@@ -734,7 +735,7 @@ def listar_visitas_ronda(ronda_id):
     """Lista visitas já registradas em uma ronda (resumo)."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
             SELECT
@@ -789,7 +790,8 @@ def detalhe_visita(visita_id):
     """Retorna detalhes completos de uma visita com avaliações e imagens."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
 
         # Dados da visita
         cursor.execute("""
@@ -904,7 +906,7 @@ def deletar_imagem(imagem_id):
         ip = _get_ip()
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute(
             "SELECT id, caminho_arquivo, nome_original FROM sentir_agir_imagens WHERE id = %s",
