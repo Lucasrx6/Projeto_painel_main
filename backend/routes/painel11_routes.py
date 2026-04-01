@@ -209,24 +209,27 @@ def api_painel11_dashboard():
                     AND minutos_aguardando >= 240
                 ) AS total_criticos
             FROM vw_painel_ps_alta_internacao
-            {where_sql}
-        """.format(where_sql=where_sql)
+            """ + where_sql
 
         cursor.execute(query_contagens, params)
         contagens = cursor.fetchone()
 
         # Query 2: Tempos individuais dos internados para mediana (Python)
         # Busca dt_alta e dt_internacao dos pacientes que JA internaram
+        where_tempos = (
+            "WHERE status_internacao = 'INTERNADO'"
+            " AND dt_alta IS NOT NULL AND dt_alta <> ''"
+            " AND dt_internacao IS NOT NULL AND dt_internacao <> ''"
+        )
+        if where_clauses:
+            where_tempos += ' AND ' + ' AND '.join(where_clauses)
+
         query_tempos = """
             SELECT
                 dt_alta,
                 dt_internacao
             FROM vw_painel_ps_alta_internacao
-            {where_sql}
-        """.format(
-            where_sql=('WHERE status_internacao = \'INTERNADO\' AND dt_alta IS NOT NULL AND dt_alta <> \'\' AND dt_internacao IS NOT NULL AND dt_internacao <> \'\''
-                        + (' AND ' + ' AND '.join(where_clauses) if where_clauses else ''))
-        )
+            """ + where_tempos
 
         cursor.execute(query_tempos, params)
         registros_tempo = cursor.fetchall()
@@ -332,7 +335,7 @@ def api_painel11_lista():
                 dt_internacao,
                 minutos_aguardando
             FROM vw_painel_ps_alta_internacao
-            {where_sql}
+            """ + where_sql + """
             ORDER BY
                 CASE status_internacao
                     WHEN 'AGUARDANDO_VAGA' THEN 1
@@ -346,7 +349,7 @@ def api_painel11_lista():
                 END,
                 minutos_aguardando DESC NULLS LAST,
                 dt_alta ASC
-        """.format(where_sql=where_sql)
+        """
 
         cursor.execute(query, params)
         registros = cursor.fetchall()

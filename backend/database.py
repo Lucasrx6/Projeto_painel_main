@@ -390,14 +390,25 @@ def init_db():
         admin_exists = cursor.fetchone()[0] > 0
 
         if not admin_exists:
-            # Cria usuario admin padrao
+            # Cria usuario admin com senha aleatoria gerada na primeira execucao
             import bcrypt
-            senha_hash = bcrypt.hashpw('postgres'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            import secrets
+            import string
+            _alphabet = string.ascii_letters + string.digits + '!@#$%&*'
+            senha_inicial = ''.join(secrets.choice(_alphabet) for _ in range(16))
+            senha_hash = bcrypt.hashpw(senha_inicial.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             cursor.execute("""
                 INSERT INTO usuarios (usuario, senha_hash, email, is_admin, nome_completo)
                 VALUES (%s, %s, %s, %s, %s)
             """, ('postgres', senha_hash, 'admin@sistema.com', True, 'Administrador'))
-            logger.info("Usuario admin criado: postgres/postgres")
+            logger.warning(
+                "=" * 60 + "\n"
+                "USUARIO ADMIN CRIADO — SALVE ESTA SENHA (exibida uma unica vez):\n"
+                f"  Usuario: postgres\n"
+                f"  Senha:   {senha_inicial}\n"
+                "Altere a senha apos o primeiro login!\n"
+                + "=" * 60
+            )
 
         # Cria tabela de permissoes (se nao existir)
         cursor.execute("""
