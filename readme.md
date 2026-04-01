@@ -1,4 +1,4 @@
-# Sistema de Painéis Hospitalares — Hospital Anchieta Ceilândia
+# Sistema de Painéis Hospitalares
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
@@ -482,7 +482,7 @@ Dedup via constraint UNIQUE no banco
 
 ## Licença
 
-**Uso interno — Hospital Anchieta Ceilândia**
+**Uso interno**
 
 Desenvolvido exclusivamente para uso interno. Proibida redistribuição ou uso comercial sem autorização.
 

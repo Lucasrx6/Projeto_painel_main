@@ -84,9 +84,10 @@ print(config_class.info())
 # Configura logging
 setup_logging(app)
 
-# Configura CORS
+# Configura CORS usando as origens permitidas definidas por ambiente
+allowed_origins = app.config.get('ALLOWED_ORIGINS', ['*'])
 CORS(app,
-     resources={r"/*": {"origins": "*"}},
+     resources={r"/*": {"origins": allowed_origins}},
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
