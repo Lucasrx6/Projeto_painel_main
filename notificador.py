@@ -93,6 +93,13 @@ NTFY_URL = os.getenv('NTFY_URL', 'https://ntfy.sh')
 # Intervalo de verificacao
 INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_INTERVALO_MIN', '15'))
 
+# Janelas de tempo para deteccao de eventos clinicos
+JANELA_ADMISSAO_MINUTOS = 35          # Janela de admissao nova
+JANELA_PRESCRICAO_NOVA_MAX_HORAS = 6  # Paciente novo: no banco ha no max 6h
+JANELA_PRESCRICAO_NOVA_MIN_HORAS = 2  # Paciente novo: aguarda 2h antes de alertar
+HORA_INICIO_CENARIO_EXISTENTE = 11    # Cenario B: verificar apenas apos 11h
+RETENCAO_LOG_DIAS = 30                # Retencao de registros no log
+
 
 # =========================================================
 # CONEXAO COM BANCO
@@ -381,7 +388,7 @@ def verificar_admissao_nova(configs):
             WHERE ie_status_unidade = 'P'
               AND nr_atendimento IS NOT NULL
               AND dt_entrada_unid IS NOT NULL
-              AND dt_entrada_unid::timestamp >= (NOW() - INTERVAL '35 minutes')
+              AND dt_entrada_unid::timestamp >= (NOW() - INTERVAL '35 minutes')  -- JANELA_ADMISSAO_MINUTOS
         """)
 
         pacientes_novos = cursor.fetchall()
@@ -539,8 +546,8 @@ def verificar_prescricao_pendente(configs):
               AND nr_atendimento IS NOT NULL
               AND (nr_prescricao IS NULL OR dt_liberacao_medico IS NULL)
               AND dt_entrada_unid IS NOT NULL
-              AND dt_entrada_unid::timestamp >= (NOW() - INTERVAL '6 hours')
-              AND dt_entrada_unid::timestamp <= (NOW() - INTERVAL '2 hours')
+              AND dt_entrada_unid::timestamp >= (NOW() - INTERVAL '6 hours')   -- JANELA_PRESCRICAO_NOVA_MAX_HORAS
+              AND dt_entrada_unid::timestamp <= (NOW() - INTERVAL '2 hours')   -- JANELA_PRESCRICAO_NOVA_MIN_HORAS
         """)
 
         novos_sem = cursor.fetchall()
@@ -559,7 +566,7 @@ def verificar_prescricao_pendente(configs):
         # CENARIO B: Existentes sem prescricao (apos 11h)
         notificados_exist = 0
 
-        if agora.hour >= 11:
+        if agora.hour >= HORA_INICIO_CENARIO_EXISTENTE:
             cursor.execute("""
                 SELECT nr_atendimento, nm_pessoa_fisica, cd_setor_atendimento,
                        nm_setor, cd_unidade, cd_unidade_basica,
@@ -569,7 +576,7 @@ def verificar_prescricao_pendente(configs):
                   AND nr_atendimento IS NOT NULL
                   AND (nr_prescricao IS NULL OR dt_liberacao_medico IS NULL)
                   AND dt_entrada_unid IS NOT NULL
-                  AND dt_entrada_unid::timestamp < (NOW() - INTERVAL '6 hours')
+                  AND dt_entrada_unid::timestamp < (NOW() - INTERVAL '6 hours')  -- JANELA_PRESCRICAO_NOVA_MAX_HORAS
             """)
 
             existentes_sem = cursor.fetchall()
@@ -655,7 +662,7 @@ def limpeza_diaria():
         cursor.execute("""
             DELETE FROM notificacoes_log
             WHERE status IN ('resolvido', 'expirado')
-              AND dt_criacao < CURRENT_TIMESTAMP - INTERVAL '30 days'
+              AND dt_criacao < CURRENT_TIMESTAMP - INTERVAL '30 days'  -- RETENCAO_LOG_DIAS
         """)
         removidos = cursor.rowcount
 

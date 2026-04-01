@@ -2,146 +2,24 @@
 Ponto de entrada da aplicação
 Hospital Management Dashboard System
 """
-from flask import Flask, jsonify
-from flask_cors import CORS
 from dotenv import load_dotenv
-import sys
-import io
 import os
-from datetime import datetime
+import socket
 
-from backend.routes.painel21_routes import painel21_bp
-# Configurações e middleware
-from config import get_config, validate_production_config
-from backend.logging_config import setup_logging
-from backend.middleware.security import setup_security_headers
-from backend.middleware.error_handlers import register_error_handlers
-from backend.database import get_db_connection, init_db
-
-# Blueprints
-from backend.routes.auth_routes import auth_bp
-from backend.routes.main_routes import main_bp
-from backend.routes.pwa_routes import pwa_bp
-from backend.routes.admin_routes import admin_bp
-from backend.routes.painel2_routes import painel2_bp
-from backend.routes.painel3_routes import painel3_bp
-from backend.routes.painel4_routes import painel4_bp
-from backend.routes.painel5_routes import painel5_bp
-from backend.routes.painel6_routes import painel6_bp
-from backend.routes.painel7_routes import painel7_bp
-from backend.routes.painel8_routes import painel8_bp
-from backend.routes.painel9_routes import painel9_bp
-from backend.routes.painel10_routes import painel10_bp
-from backend.routes.painel11_routes import painel11_bp
-from backend.routes.painel12_routes import painel12_bp
-from backend.routes.painel13_routes import painel13_bp
-from backend.routes.painel14_routes import painel14_bp
-from backend.routes.painel15_routes import painel15_bp
-from backend.routes.painel16_routes import painel16_bp
-from backend.routes.painel17_routes import painel17_bp
-from backend.routes.painel18_routes import painel18_bp
-from backend.routes.painel19_routes import painel19_bp
-from backend.routes.painel20_routes import painel20_bp
-from backend.routes.painel21_routes import painel21_bp
-from backend.routes.painel22_routes import painel22_bp
-from backend.routes.painel23_routes import painel23_bp
-from backend.routes.painel24_routes import painel24_bp
-from backend.routes.painel25_routes import painel25_bp
-from backend.routes.painel26_routes import painel26_bp
-from backend.routes.painel27_routes import painel27_bp
-from backend.routes.painel28_routes import painel28_bp
-from backend.routes.painel29_routes import painel29_bp
-
-
-# =========================================================
-# CONFIGURAÇÃO INICIAL
-# =========================================================
+from backend.app_factory import create_app
 
 # Carrega variáveis de ambiente
 load_dotenv()
 
-# Configura encoding UTF-8
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-
-# Cria aplicação Flask
-app = Flask(__name__)
-
-# Carrega configuração
-config_class = get_config()
-app.config.from_object(config_class)
-
-# Valida configuração
-validate_production_config()
-
-# Exibe informações da configuração
-print(config_class.info())
+# Cria aplicação via factory (configuração, blueprints, middlewares, DB)
+app = create_app()
 
 # =========================================================
-# MIDDLEWARE E CONFIGURAÇÕES
-# =========================================================
-
-# Configura logging
-setup_logging(app)
-
-# Configura CORS usando as origens permitidas definidas por ambiente
-allowed_origins = app.config.get('ALLOWED_ORIGINS', ['*'])
-CORS(app,
-     resources={r"/*": {"origins": allowed_origins}},
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-
-# Configura security headers
-setup_security_headers(app)
-
-# Registra error handlers
-register_error_handlers(app)
-
-# Inicializa banco de dados
-init_db()
-
-# =========================================================
-# REGISTRO DE BLUEPRINTS
-# =========================================================
-
-# Blueprints Core
-app.register_blueprint(auth_bp)
-app.register_blueprint(main_bp)
-app.register_blueprint(pwa_bp)
-app.register_blueprint(admin_bp)
-
-# Blueprints de Painéis
-paineis = [
-    painel2_bp, painel3_bp, painel4_bp, painel5_bp,
-    painel6_bp, painel7_bp, painel8_bp, painel9_bp,
-    painel10_bp, painel11_bp, painel12_bp, painel13_bp,
-    painel14_bp, painel15_bp, painel16_bp, painel17_bp,
-    painel18_bp, painel19_bp, painel20_bp, painel21_bp,
-    painel22_bp, painel23_bp, painel24_bp, painel25_bp,
-    painel26_bp, painel27_bp, painel28_bp, painel29_bp
-]
-
-for painel in paineis:
-    app.register_blueprint(painel)
-
-app.logger.info(f' {len(paineis) + 4} Blueprints registrados com sucesso')
-
-# =========================================================
-# ROTAS DE DESENVOLVIMENTO (Remover em produção)
+# ROTAS DE DESENVOLVIMENTO (definidas aqui pois precisam do app)
 # =========================================================
 
 if app.config.get('DEBUG', False):
-    @app.route('/debug/routes')
-    def show_routes():
-        """Mostra todas as rotas registradas - APENAS EM DEV"""
-        output = ['<h2>Rotas Registradas:</h2><ul>']
-        for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
-            methods = ','.join([m for m in rule.methods if m not in ['HEAD', 'OPTIONS']])
-            output.append(f'<li><b>{rule.rule}</b> [{methods}] → {rule.endpoint}</li>')
-        output.append('</ul>')
-        return ''.join(output)
-
+    from flask import jsonify
 
     @app.route('/debug/check-files')
     def debug_check_files():
@@ -152,32 +30,23 @@ if app.config.get('DEBUG', False):
             'frontend/admin-usuarios.html',
             'frontend/acesso-negado.html'
         ]
-
         results = {}
         for filepath in files_to_check:
-            exists = os.path.exists(filepath)
-            absolute_path = os.path.abspath(filepath)
             results[filepath] = {
-                'exists': exists,
-                'absolute_path': absolute_path
+                'exists': os.path.exists(filepath),
+                'absolute_path': os.path.abspath(filepath)
             }
+        return jsonify({'current_directory': os.getcwd(), 'files': results})
 
-        return jsonify({
-            'current_directory': os.getcwd(),
-            'files': results
-        })
 
 # =========================================================
 # INICIALIZAÇÃO DO SERVIDOR
 # =========================================================
 
 if __name__ == '__main__':
-    import socket
-
     hostname = socket.gethostname()
     local_ip = socket.gethostbyname(hostname)
 
-    # Banner de inicialização
     print("\n" + "=" * 60)
     print("HOSPITAL MANAGEMENT DASHBOARD - SERVIDOR INICIADO")
     print("=" * 60)
@@ -212,7 +81,6 @@ if __name__ == '__main__':
     print(f"   • VPN/Remoto:            http://<IP-VPN>:5000")
     print("=" * 60 + "\n")
 
-    # Inicia servidor
     app.run(
         debug=app.config.get('DEBUG', False),
         host='0.0.0.0',

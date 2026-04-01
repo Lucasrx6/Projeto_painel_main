@@ -5,6 +5,7 @@ from functools import wraps
 from urllib.parse import quote
 from flask import session, jsonify, request, redirect, current_app
 from backend.user_management import verificar_permissao_painel
+from backend.constants import SESSION_USUARIO_ID, SESSION_IS_ADMIN, SESSION_USUARIO
 
 
 def _e_requisicao_de_pagina():
@@ -41,7 +42,7 @@ def login_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'usuario_id' not in session:
+        if SESSION_USUARIO_ID not in session:
             current_app.logger.warning(f'Acesso não autorizado: {request.url}')
             if _e_requisicao_de_pagina():
                 return _redirecionar_para_login()
@@ -66,7 +67,7 @@ def admin_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'usuario_id' not in session:
+        if SESSION_USUARIO_ID not in session:
             current_app.logger.warning(f'Acesso não autorizado (admin): {request.url}')
             if _e_requisicao_de_pagina():
                 return _redirecionar_para_login()
@@ -76,8 +77,8 @@ def admin_required(f):
                 'redirect': '/login.html'
             }), 401
 
-        if not session.get('is_admin', False):
-            current_app.logger.warning(f'Acesso negado (não admin): {session.get("usuario")}')
+        if not session.get(SESSION_IS_ADMIN, False):
+            current_app.logger.warning(f'Acesso negado (não admin): {session.get(SESSION_USUARIO)}')
             return jsonify({
                 'success': False,
                 'error': 'Sem permissão de administrador'
@@ -105,7 +106,7 @@ def panel_permission_required(panel_name):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if 'usuario_id' not in session:
+            if SESSION_USUARIO_ID not in session:
                 current_app.logger.warning(f'Acesso não autorizado ao {panel_name}: {request.url}')
                 if _e_requisicao_de_pagina():
                     return _redirecionar_para_login()
@@ -115,8 +116,8 @@ def panel_permission_required(panel_name):
                     'redirect': '/login.html'
                 }), 401
 
-            usuario_id = session.get('usuario_id')
-            is_admin = session.get('is_admin', False)
+            usuario_id = session.get(SESSION_USUARIO_ID)
+            is_admin = session.get(SESSION_IS_ADMIN, False)
 
             # Admin tem acesso a tudo
             if is_admin:
@@ -125,7 +126,7 @@ def panel_permission_required(panel_name):
             # Verifica permissão específica do painel
             if not verificar_permissao_painel(usuario_id, panel_name):
                 current_app.logger.warning(
-                    f'Acesso negado ao {panel_name}: {session.get("usuario")}'
+                    f'Acesso negado ao {panel_name}: {session.get(SESSION_USUARIO)}'
                 )
                 return jsonify({
                     'success': False,
