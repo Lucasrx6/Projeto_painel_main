@@ -4,6 +4,7 @@ Cria e configura a aplicação Flask de forma modular e testável
 """
 from flask import Flask
 from flask_cors import CORS
+import os
 import sys
 import io
 
@@ -71,18 +72,16 @@ def create_app(config_name=None):
     # Registra Blueprints
     register_blueprints(app)
 
-    @app.route('/debug/routes')
-    def show_routes():
-        """Mostra todas as rotas registradas"""
-        output = ['<h2>Rotas Registradas:</h2><ul>']
-        for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
-            methods = ','.join([m for m in rule.methods if m not in ['HEAD', 'OPTIONS']])
-            output.append(f'<li><b>{rule.rule}</b> [{methods}] → {rule.endpoint}</li>')
-        output.append('</ul>')
-        return ''.join(output)
-
-    return app
-
+    if app.config.get('DEBUG', False):
+        @app.route('/debug/routes')
+        def show_routes():
+            """Mostra todas as rotas registradas — APENAS EM DEV"""
+            output = ['<h2>Rotas Registradas:</h2><ul>']
+            for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
+                methods = ','.join([m for m in rule.methods if m not in ['HEAD', 'OPTIONS']])
+                output.append(f'<li><b>{rule.rule}</b> [{methods}] → {rule.endpoint}</li>')
+            output.append('</ul>')
+            return ''.join(output)
 
     app.logger.info('Aplicação Flask criada e configurada com sucesso')
 
@@ -152,6 +151,7 @@ def register_blueprints(app):
     from backend.routes.painel26_routes import painel26_bp
     from backend.routes.painel27_routes import painel27_bp
     from backend.routes.painel28_routes import painel28_bp
+    from backend.routes.painel29_routes import painel29_bp
 
     # Registra Blueprints Core
     app.register_blueprint(auth_bp)
@@ -167,7 +167,7 @@ def register_blueprints(app):
         painel14_bp, painel15_bp, painel16_bp, painel17_bp,
         painel18_bp, painel19_bp, painel20_bp, painel21_bp,
         painel22_bp, painel23_bp, painel24_bp, painel25_bp,
-        painel26_bp, painel27_bp, painel28_bp
+        painel26_bp, painel27_bp, painel28_bp, painel29_bp
     ]
 
     for painel in paineis:
