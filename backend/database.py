@@ -75,6 +75,9 @@ POOL_MIN_CONNECTIONS = int(os.getenv('DB_POOL_MIN', '2'))
 POOL_MAX_CONNECTIONS = int(os.getenv('DB_POOL_MAX', '10'))
 USE_CONNECTION_POOL = os.getenv('DB_USE_POOL', 'true').lower() == 'true'
 
+# Limite em ms para logar queries lentas (configurável via env)
+SLOW_QUERY_THRESHOLD_MS = float(os.getenv('DB_SLOW_QUERY_MS', '1000'))
+
 
 def init_connection_pool():
     """
@@ -224,6 +227,21 @@ def get_db_cursor(use_dict_cursor=True, commit=True):
             raise Exception("Nao foi possivel obter conexao com o banco")
 
         cursor = conn.cursor()
+
+        # Instrumenta cursor.execute para detectar queries lentas
+        _orig_execute = cursor.execute
+
+        def _timed_execute(query, params=None):
+            _t0 = time.monotonic()
+            result = _orig_execute(query, params)
+            elapsed_ms = (time.monotonic() - _t0) * 1000
+            if elapsed_ms > SLOW_QUERY_THRESHOLD_MS:
+                query_resumida = str(query).replace('\n', ' ').strip()[:300]
+                logger.warning('Query lenta (%.0fms): %s', elapsed_ms, query_resumida)
+            return result
+
+        cursor.execute = _timed_execute
+
         yield cursor
 
         if commit:
@@ -442,6 +460,26 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_historico_usuario ON historico_usuarios(usuario_id);
             CREATE INDEX IF NOT EXISTS idx_historico_criado ON historico_usuarios(criado_em);
         """)
+
+        # Indices de notificacoes_log (tabela gerenciada pelo notificador)
+        # Usa savepoint para nao abortar a transacao se a tabela ainda nao existir
+        try:
+            cursor.execute("SAVEPOINT sp_notif_indexes")
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_notif_log_chave
+                    ON notificacoes_log(chave_evento);
+                CREATE INDEX IF NOT EXISTS idx_notif_log_status
+                    ON notificacoes_log(status);
+                CREATE INDEX IF NOT EXISTS idx_notif_log_tipo
+                    ON notificacoes_log(tipo_evento);
+                CREATE INDEX IF NOT EXISTS idx_notif_log_detectado
+                    ON notificacoes_log(dt_detectado);
+            """)
+            cursor.execute("RELEASE SAVEPOINT sp_notif_indexes")
+            logger.info("Indices de notificacoes_log verificados")
+        except Exception:
+            cursor.execute("ROLLBACK TO SAVEPOINT sp_notif_indexes")
+            logger.debug("Indices de notificacoes_log adiados (tabela ainda nao existe)")
 
         conn.commit()
         cursor.close()

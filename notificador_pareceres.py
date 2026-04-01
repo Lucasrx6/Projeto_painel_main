@@ -103,6 +103,9 @@ NTFY_URL = os.getenv('NTFY_URL', 'https://ntfy.sh')
 # Intervalo de verificacao
 INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_PARECER_INTERVALO_MIN', '15'))
 
+# Janelas de tempo para filtragem de pareceres
+LIMITE_HORAS_PARECER_RECENTE = 0.5  # 30 minutos: ignora pareceres mais antigos que isso
+
 
 # =========================================================
 # CONEXAO COM BANCO
@@ -505,7 +508,7 @@ def verificar_pareceres():
 
             # So notifica pareceres dos ultimos 30min
             horas = parecer.get('horas_pendente') or 0
-            if horas > 0.5:
+            if horas > LIMITE_HORAS_PARECER_RECENTE:
                 ignorados += 1
                 logger.debug('[pareceres] %s ignorado (%.1fh)', nr_parecer, horas)
                 continue
