@@ -144,7 +144,7 @@ function renderizarClinicas(clinicas) {
         html += '    <span class="clinica-nome">' + escapeHtml(clinica.clinica) + '</span>';
         if (clinica.medicos_atendendo > 0) {
             html += '    <span class="clinica-medicos">';
-            html += '      <i class="fas fa-user-md"></i> ' + clinica.medicos_atendendo;
+            html += '    <i class="fas fa-user-md"></i> ' + clinica.medicos_atendendo + ' Medico' + (clinica.medicos_atendendo !== 1 ? 's' : '');
             html += '    </span>';
         }
         html += '  </div>';

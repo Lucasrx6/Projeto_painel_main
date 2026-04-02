@@ -58,40 +58,6 @@
             </div>
         </header>
 
-        <!-- Mini Dashboard -->
-        <section class="dashboard-resumo" aria-label="Resumo de Exames">
-            <div class="resumo-grid">
-                <article class="resumo-card card-pacientes">
-                    <div class="card-icon"><i class="fas fa-users"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-pacientes">-</span>
-                        <span class="card-label">Pacientes</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-pendentes">
-                    <div class="card-icon"><i class="fas fa-clock"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-pendentes">-</span>
-                        <span class="card-label">Pendentes</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-andamento">
-                    <div class="card-icon"><i class="fas fa-spinner"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-andamento">-</span>
-                        <span class="card-label">Em Andamento</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-concluidos">
-                    <div class="card-icon"><i class="fas fa-check-circle"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-concluidos">-</span>
-                        <span class="card-label">Concluídos</span>
-                    </div>
-                </article>
-            </div>
-        </section>
-
         <!-- Conteúdo Principal: Tabela -->
         <main class="painel-main" id="painel-main" role="main">
             <div class="loading-container" id="loading-container">
@@ -124,7 +90,6 @@
             document.body.appendChild(s);
         }
 
-        // Oculta botão Voltar no modo público (paciente não precisa)
         if (isPublico) {
             document.addEventListener('DOMContentLoaded', function() {
                 var btnVoltar = document.getElementById('btn-voltar');

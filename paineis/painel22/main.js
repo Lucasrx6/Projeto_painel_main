@@ -1,32 +1,29 @@
 /**
  * PAINEL 22 - Acompanhamento de Exames PS
  *
- * Colunas: Atend. | Paciente (nome+idade+convênio) | Tempo PS | Lab | Radio
- * Ícones: Vermelho (pendente), Amarelo (andamento), Verde (concluído)
- * Sem nomes de exames — apenas quantidades por status/tipo
+ * Colunas: Atend. | Paciente (nome+clinica+medico) | Lab | Tempo Lab | Radio | Tempo Rad
+ * Badges: Aguardando (vermelho), Em andamento (amarelo), Concluido (verde)
+ * Status predominante por tipo de exame (maioria vence, empate = pior status)
  *
- * Suporte a rota pública (/publico/painel22) para acesso
- * de pacientes via ngrok sem autenticação.
+ * Suporte a rota publica (/publico/painel22) para acesso
+ * de pacientes via rede sem autenticacao.
  */
 
 (function() {
     'use strict';
 
     // =========================================================
-    // DETECÇÃO DE MODO PÚBLICO
+    // DETECCAO DE MODO PUBLICO
     // =========================================================
 
     var IS_PUBLICO = window.location.pathname.indexOf('/publico/') !== -1;
 
     // =========================================================
-    // CONFIGURAÇÃO
+    // CONFIGURACAO
     // =========================================================
 
     var CONFIG = {
         api: {
-            dashboard: IS_PUBLICO
-                ? '/api/publico/painel22/dashboard'
-                : '/api/paineis/painel22/dashboard',
             dados: IS_PUBLICO
                 ? '/api/publico/painel22/dados'
                 : '/api/paineis/painel22/dados'
@@ -60,17 +57,13 @@
         DOM.painelMain = document.getElementById('painel-main');
         DOM.statusIndicator = document.getElementById('status-indicator');
         DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
-        DOM.totalPacientes = document.getElementById('total-pacientes');
-        DOM.totalPendentes = document.getElementById('total-pendentes');
-        DOM.totalAndamento = document.getElementById('total-andamento');
-        DOM.totalConcluidos = document.getElementById('total-concluidos');
         DOM.btnVoltar = document.getElementById('btn-voltar');
         DOM.btnRefresh = document.getElementById('btn-refresh');
         DOM.btnAutoScroll = document.getElementById('btn-auto-scroll');
     }
 
     // =========================================================
-    // UTILITÁRIOS
+    // UTILITARIOS
     // =========================================================
 
     function escapeHtml(texto) {
@@ -94,20 +87,21 @@
     function formatarTempo(horas) {
         if (horas === null || horas === undefined) return '-';
         horas = parseFloat(horas);
-        if (isNaN(horas)) return '-';
+        if (isNaN(horas) || horas < 0) return '-';
         var totalMinutos = Math.round(horas * 60);
+        if (totalMinutos < 1) return '<1min';
         if (totalMinutos < 60) return totalMinutos + 'min';
         var h = Math.floor(totalMinutos / 60);
         var m = totalMinutos % 60;
         if (h < 24) {
-            return m > 0 ? h + 'h' + (m < 10 ? '0' : '') + m + 'min' : h + 'h';
+            return m > 0 ? h + 'h' + (m < 10 ? '0' : '') + m : h + 'h';
         }
         var d = Math.floor(h / 24);
         var hResto = h % 24;
         var partes = d + 'd ';
         if (hResto > 0 || m > 0) {
             partes += hResto + 'h';
-            if (m > 0) partes += (m < 10 ? '0' : '') + m + 'min';
+            if (m > 0) partes += (m < 10 ? '0' : '') + m;
         }
         return partes;
     }
@@ -115,14 +109,9 @@
     function classeTempo(horas) {
         if (horas === null || horas === undefined) return 'tempo-normal';
         horas = parseFloat(horas);
-        if (horas >= 8) return 'tempo-critico';
-        if (horas >= 4) return 'tempo-alerta';
+        if (horas >= 4) return 'tempo-critico';
+        if (horas >= 2) return 'tempo-alerta';
         return 'tempo-normal';
-    }
-
-    function formatarNumero(val) {
-        if (val === null || val === undefined || isNaN(val)) return '-';
-        return new Intl.NumberFormat('pt-BR').format(val);
     }
 
     function atualizarStatus(status) {
@@ -140,20 +129,62 @@
         });
     }
 
-    function contarStatusExames(exames) {
-        var result = { pendentes: 0, andamento: 0, concluidos: 0 };
-        if (!exames) return result;
+    // =========================================================
+    // LOGICA DE STATUS PREDOMINANTE
+    // =========================================================
+
+    /**
+     * Determina o status predominante de um grupo de exames.
+     * Regra: maioria vence. Em empate, o pior status prevalece.
+     * Hierarquia (pior para melhor): pendente > andamento > concluido
+     */
+    function determinarStatusPredominante(exames) {
+        if (!exames || exames.length === 0) return null;
+
+        var contagem = { pendente: 0, andamento: 0, concluido: 0 };
+
         for (var i = 0; i < exames.length; i++) {
-            var s = exames[i].status_exame || '';
+            var s = (exames[i].status_exame || '').toUpperCase();
             if (s === 'LAUDADO' || s === 'LIBERADO') {
-                result.concluidos++;
+                contagem.concluido++;
             } else if (s === 'EXECUTADO' || s === 'COLETADO' || s === 'EM_ANALISE' || s === 'RESULTADO_PARCIAL') {
-                result.andamento++;
+                contagem.andamento++;
             } else {
-                result.pendentes++;
+                contagem.pendente++;
             }
         }
-        return result;
+
+        // Maioria vence; empate = pior status (pendente > andamento > concluido)
+        if (contagem.pendente >= contagem.andamento && contagem.pendente >= contagem.concluido) {
+            return 'pendente';
+        }
+        if (contagem.andamento >= contagem.concluido) {
+            return 'andamento';
+        }
+        return 'concluido';
+    }
+
+    // =========================================================
+    // CALCULO DE TEMPO POR TIPO
+    // =========================================================
+
+    /**
+     * Retorna o maior horas_espera positivo do grupo de exames.
+     * Representa o tempo do exame que esta esperando ha mais tempo.
+     */
+    function calcularTempoTipo(exames) {
+        if (!exames || exames.length === 0) return null;
+
+        var maxHoras = null;
+        for (var i = 0; i < exames.length; i++) {
+            var h = parseFloat(exames[i].horas_espera);
+            if (!isNaN(h) && h > 0) {
+                if (maxHoras === null || h > maxHoras) {
+                    maxHoras = h;
+                }
+            }
+        }
+        return maxHoras;
     }
 
     // =========================================================
@@ -195,54 +226,36 @@
         var scrollEstaAtivo = Estado.autoScrollAtivo;
         if (scrollEstaAtivo) pararAutoScroll();
 
-        return Promise.all([
-            fetchComRetry(CONFIG.api.dashboard),
-            fetchComRetry(CONFIG.api.dados)
-        ]).then(function(results) {
-            var dashResp = results[0];
-            var dadosResp = results[1];
+        return fetchComRetry(CONFIG.api.dados)
+            .then(function(dadosResp) {
+                if (dadosResp.success) {
+                    Estado.pacientes = dadosResp.data || [];
+                    renderizarTabela();
+                }
 
-            if (dashResp.success && dashResp.data) atualizarDashboard(dashResp.data);
+                atualizarHorario();
+                atualizarStatus('online');
+                Estado.errosConsecutivos = 0;
 
-            if (dadosResp.success) {
-                Estado.pacientes = dadosResp.data || [];
-                renderizarTabela();
-            }
+                if (scrollEstaAtivo) {
+                    setTimeout(function() {
+                        Estado.autoScrollAtivo = true;
+                        atualizarBotaoScroll();
+                        iniciarAutoScroll();
+                    }, 500);
+                }
 
-            atualizarHorario();
-            atualizarStatus('online');
-            Estado.errosConsecutivos = 0;
-
-            if (scrollEstaAtivo) {
-                setTimeout(function() {
-                    Estado.autoScrollAtivo = true;
-                    atualizarBotaoScroll();
-                    iniciarAutoScroll();
-                }, 500);
-            }
-
-            if (!Estado.autoScrollIniciado && !scrollEstaAtivo) agendarAutoScrollInicial();
-
-        }).catch(function(err) {
-            console.error('[P22] Erro:', err);
-            Estado.errosConsecutivos++;
-            atualizarStatus('offline');
-            if (Estado.errosConsecutivos >= 3) mostrarErro('Falha na conexão.');
-        }).finally(function() {
-            Estado.carregando = false;
-        });
-    }
-
-    function atualizarDashboard(dados) {
-        var cards = document.querySelectorAll('.resumo-card');
-        for (var i = 0; i < cards.length; i++) {
-            cards[i].classList.add('atualizando');
-            (function(c) { setTimeout(function() { c.classList.remove('atualizando'); }, 300); })(cards[i]);
-        }
-        DOM.totalPacientes.textContent = formatarNumero(dados.total_pacientes);
-        DOM.totalPendentes.textContent = formatarNumero(dados.qt_pendentes);
-        DOM.totalAndamento.textContent = formatarNumero(dados.qt_em_andamento);
-        DOM.totalConcluidos.textContent = formatarNumero(dados.qt_concluidos);
+                if (!Estado.autoScrollIniciado && !scrollEstaAtivo) agendarAutoScrollInicial();
+            })
+            .catch(function(err) {
+                console.error('[P22] Erro:', err);
+                Estado.errosConsecutivos++;
+                atualizarStatus('offline');
+                if (Estado.errosConsecutivos >= 3) mostrarErro('Falha na conexao.');
+            })
+            .finally(function() {
+                Estado.carregando = false;
+            });
     }
 
     // =========================================================
@@ -257,7 +270,7 @@
                 '<div class="mensagem-vazia">' +
                 '<i class="fas fa-check-circle"></i>' +
                 '<h3>Nenhum exame pendente</h3>' +
-                '<p>Todos os pacientes do PS estão com exames concluídos</p>' +
+                '<p>Todos os pacientes do PS estao com exames concluidos</p>' +
                 '</div>';
             return;
         }
@@ -273,9 +286,10 @@
             '<thead><tr>' +
             '<th class="col-atendimento"><i class="fas fa-hashtag"></i> Atend.</th>' +
             '<th class="col-paciente"><i class="fas fa-user"></i> Paciente</th>' +
-            '<th class="col-tempo-ps"><i class="fas fa-clock"></i> Tempo PS</th>' +
             '<th class="col-lab"><i class="fas fa-flask"></i> Lab</th>' +
+            '<th class="col-tempo-lab"><i class="fas fa-clock"></i> Tempo</th>' +
             '<th class="col-radio"><i class="fas fa-x-ray"></i> Radio</th>' +
+            '<th class="col-tempo-rad"><i class="fas fa-clock"></i> Tempo</th>' +
             '</tr></thead>' +
             '<tbody id="tabela-body">' + linhasHtml + '</tbody>' +
             '</table></div>';
@@ -297,67 +311,97 @@
             classeLinha = 'linha-andamento';
         }
 
-        var statusLab = contarStatusExames(pac.exames_lab);
-        var statusRadio = contarStatusExames(pac.exames_radio);
+        // Status predominante por tipo
+        var statusLab = determinarStatusPredominante(pac.exames_lab);
+        var statusRadio = determinarStatusPredominante(pac.exames_radio);
 
-        var horasPS = pac.horas_no_ps;
-        var classeTempoPS = classeTempo(horasPS);
+        // Tempo por tipo
+        var tempoLab = calcularTempoTipo(pac.exames_lab);
+        var tempoRadio = calcularTempoTipo(pac.exames_radio);
 
         var html = '<tr class="' + classeLinha + '">';
 
         // Atendimento
         html += '<td class="col-atendimento"><span class="atendimento-valor">' + escapeHtml(pac.nr_atendimento) + '</span></td>';
 
-        // Paciente (nome + idade + convênio agrupados)
+        // Paciente (nome + clinica + medico)
         html += '<td class="col-paciente"><div class="paciente-grupo">';
         html += '<span class="paciente-nome" title="' + escapeHtml(pac.nm_pessoa_fisica) + '">' + escapeHtml(nomeFormatado) + '</span>';
-        html += '<div class="paciente-subinfo">';
-        if (pac.idade !== null && pac.idade !== undefined) {
-            html += '<span><i class="fas fa-user"></i> ' + pac.idade + ' anos</span>';
-        }
-        if (pac.ds_convenio) {
-            html += '<span><i class="fas fa-id-card"></i> ' + escapeHtml(pac.ds_convenio) + '</span>';
-        }
-        html += '</div></div></td>';
 
-        // Tempo PS
-        html += '<td class="col-tempo-ps">';
-        if (horasPS !== null && horasPS !== undefined) {
-            html += '<span class="tempo-ps-badge ' + classeTempoPS + '">' + formatarTempo(horasPS) + '</span>';
-        } else {
-            html += '-';
+        var temSubinfo = (pac.ds_clinica || pac.nm_medico);
+        if (temSubinfo) {
+            html += '<div class="paciente-subinfo">';
+            if (pac.ds_clinica) {
+                html += '<span title="' + escapeHtml(pac.ds_clinica) + '"><i class="fas fa-clinic-medical"></i> ' + escapeHtml(pac.ds_clinica) + '</span>';
+            }
+            if (pac.nm_medico) {
+                html += '<span title="' + escapeHtml(pac.nm_medico) + '"><i class="fas fa-user-md"></i> ' + escapeHtml(formatarNomeMedico(pac.nm_medico)) + '</span>';
+            }
+            html += '</div>';
         }
-        html += '</td>';
+        html += '</div></td>';
 
-        // Laboratório
-        html += '<td class="col-lab">' + renderStatusDots(statusLab, pac.exames_lab ? pac.exames_lab.length : 0) + '</td>';
+        // Lab - badge
+        html += '<td class="col-lab">' + renderBadge(statusLab) + '</td>';
 
-        // Radiologia
-        html += '<td class="col-radio">' + renderStatusDots(statusRadio, pac.exames_radio ? pac.exames_radio.length : 0) + '</td>';
+        // Tempo Lab
+        html += '<td class="col-tempo-lab">' + renderTempoTipo(tempoLab) + '</td>';
+
+        // Radio - badge
+        html += '<td class="col-radio">' + renderBadge(statusRadio) + '</td>';
+
+        // Tempo Rad
+        html += '<td class="col-tempo-rad">' + renderTempoTipo(tempoRadio) + '</td>';
 
         html += '</tr>';
         return html;
     }
 
-    function renderStatusDots(status, total) {
-        if (total === 0) {
+    /**
+     * Formata nome do medico: primeiro nome + sobrenome
+     */
+    function formatarNomeMedico(nome) {
+        if (!nome || nome.trim() === '') return '-';
+        var partes = nome.trim().split(/\s+/);
+        if (partes.length <= 2) return nome.trim();
+        return partes[0] + ' ' + partes[partes.length - 1];
+    }
+
+    /**
+     * Renderiza badge de status predominante
+     */
+    function renderBadge(status) {
+        if (!status) {
             return '<span class="status-sem-exame">-</span>';
         }
 
-        var html = '<div class="status-exame-cell">';
+        var classe = '';
+        var texto = '';
 
-        if (status.pendentes > 0) {
-            html += '<span class="status-dot dot-pendente" title="Aguardando: ' + status.pendentes + '">' + status.pendentes + '</span>';
-        }
-        if (status.andamento > 0) {
-            html += '<span class="status-dot dot-andamento" title="Em andamento: ' + status.andamento + '">' + status.andamento + '</span>';
-        }
-        if (status.concluidos > 0) {
-            html += '<span class="status-dot dot-concluido" title="Concluído: ' + status.concluidos + '">' + status.concluidos + '</span>';
+        if (status === 'pendente') {
+            classe = 'badge-pendente';
+            texto = 'Aguardando';
+        } else if (status === 'andamento') {
+            classe = 'badge-andamento';
+            texto = 'Em andamento';
+        } else {
+            classe = 'badge-concluido';
+            texto = 'Concluido';
         }
 
-        html += '</div>';
-        return html;
+        return '<span class="status-badge ' + classe + '">' + texto + '</span>';
+    }
+
+    /**
+     * Renderiza tempo por tipo de exame
+     */
+    function renderTempoTipo(horas) {
+        if (horas === null || horas === undefined) {
+            return '<span class="status-sem-exame">-</span>';
+        }
+
+        var classeT = classeTempo(horas);
+        return '<span class="tempo-tipo-badge ' + classeT + '">' + formatarTempo(horas) + '</span>';
     }
 
     function mostrarErro(msg) {
@@ -547,7 +591,7 @@
     }
 
     // =========================================================
-    // INICIALIZAÇÃO
+    // INICIALIZACAO
     // =========================================================
 
     function inicializar() {
