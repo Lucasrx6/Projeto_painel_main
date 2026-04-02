@@ -392,6 +392,50 @@ body {
     background: linear-gradient(135deg, #495057, #343a40);
 }
 
+/* Campo preenchido automaticamente */
+.campo-auto {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.92rem;
+    color: #343a40;
+    font-weight: 500;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+}
+
+/* Botoes Sim/Nao */
+.item-simnao {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-simnao {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 12px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #e9ecef;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-simnao.sim { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+.btn-simnao.nao { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
+.btn-simnao.selecionado.sim { background: #28a745; color: #fff; border-color: #28a745; }
+.btn-simnao.selecionado.nao { background: #ffc107; color: #343a40; border-color: #ffc107; }
+
 /* Cores das categorias (definidas por inline style via JS) */
 
 /* ========================================
