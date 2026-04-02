@@ -10,9 +10,6 @@ var CONFIG = {
     intervaloRefresh: 60000
 };
 
-// Ordem de exibicao (por volume de atendimentos)
-var ORDEM_CLINICAS = [1, 4, 10, 7, 3, 6];
-
 // =============================================================================
 // INICIALIZACAO
 // =============================================================================
@@ -83,7 +80,7 @@ function carregarDados() {
 }
 
 // =============================================================================
-// RENDERIZACAO - CLINICAS
+// RENDERIZACAO - CLINICAS (ordem alfabetica vem do backend)
 // =============================================================================
 
 function renderizarClinicas(clinicas) {
@@ -95,30 +92,9 @@ function renderizarClinicas(clinicas) {
         return;
     }
 
-    // Ordenar conforme ORDEM_CLINICAS, depois o resto
-    var ordenadas = [];
-    var restantes = [];
-
-    clinicas.forEach(function(c) {
-        var idx = ORDEM_CLINICAS.indexOf(c.cd_clinica);
-        if (idx >= 0) {
-            ordenadas[idx] = c;
-        } else {
-            restantes.push(c);
-        }
-    });
-
-    var lista = [];
-    ORDEM_CLINICAS.forEach(function(cd, idx) {
-        if (ordenadas[idx]) {
-            lista.push(ordenadas[idx]);
-        }
-    });
-    lista = lista.concat(restantes);
-
     var html = '';
 
-    lista.forEach(function(clinica) {
+    clinicas.forEach(function(clinica) {
         var temDados = clinica.mediana !== null && clinica.mediana !== undefined;
 
         // Nivel de espera
@@ -158,25 +134,12 @@ function renderizarClinicas(clinicas) {
         if (clinica.fila > 0) {
             filaHtml = '<span class="footer-item"><i class="fas fa-users"></i> <strong class="fila-destaque">' + clinica.fila + '</strong> aguardando</span>';
         } else {
-            filaHtml = '<span class="footer-item"></span>';
-        }
-
-        // Ultimo chamado
-        var ultimoTexto = '-';
-        if (clinica.ultimo_chamado_min !== null && clinica.ultimo_chamado_min !== undefined) {
-            if (clinica.ultimo_chamado_min < 1) {
-                ultimoTexto = 'Agora';
-            } else if (clinica.ultimo_chamado_min < 60) {
-                ultimoTexto = 'ha ' + clinica.ultimo_chamado_min + ' min';
-            } else {
-                var horas = Math.floor(clinica.ultimo_chamado_min / 60);
-                ultimoTexto = 'ha ' + horas + 'h';
-            }
+            filaHtml = '<span class="footer-item"><i class="fas fa-check-circle"></i> Sem fila</span>';
         }
 
         html += '<div class="clinica-card">';
 
-        // Header: nome + medicos (sem icone)
+        // Header: nome + medicos
         html += '  <div class="clinica-card-header">';
         html += '    <span class="clinica-nome">' + escapeHtml(clinica.clinica) + '</span>';
         if (clinica.medicos_atendendo > 0) {
@@ -199,10 +162,9 @@ function renderizarClinicas(clinicas) {
         }
         html += '  </div>';
 
-        // Footer
+        // Footer: apenas fila
         html += '  <div class="clinica-card-footer">';
         html += '    ' + filaHtml;
-        html += '    <span class="footer-item"><i class="fas fa-bell"></i> Ultimo: ' + escapeHtml(ultimoTexto) + '</span>';
         html += '  </div>';
 
         html += '</div>';

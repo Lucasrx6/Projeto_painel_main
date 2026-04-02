@@ -8,13 +8,15 @@ from dotenv import load_dotenv
 import sys
 import io
 import os
+from datetime import datetime
 
+from backend.routes.painel21_routes import painel21_bp
 # Configurações e middleware
 from config import get_config, validate_production_config
 from backend.logging_config import setup_logging
 from backend.middleware.security import setup_security_headers
 from backend.middleware.error_handlers import register_error_handlers
-from backend.database import init_db
+from backend.database import get_db_connection, init_db
 
 # Blueprints
 from backend.routes.auth_routes import auth_bp

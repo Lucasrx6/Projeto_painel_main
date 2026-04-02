@@ -23,18 +23,21 @@ MAX_ESPERA_MINUTOS = 300
 SPREAD_MAX = 5
 SPREAD_MIN = 3
 
+# Clinicas a excluir da exibicao
+CLINICAS_EXCLUIR = ['emergencista']
+
 
 # =============================================================================
 # FUNCOES AUXILIARES
 # =============================================================================
 
-def _calcular_tempo_espera_minutos(row):
+def _calcular_tempo_espera_minutos(row, campo_fim='dt_inicio_atendimento_med'):
     """
     Calcula tempo de espera em minutos.
     Ponto de partida: retirada_senha (preferencial) ou dt_entrada (fallback)
-    Ponto final: dt_inicio_atendimento_med
+    Ponto final: campo_fim (dt_inicio_atendimento_med ou dt_inicio_atendimento)
     """
-    fim = row.get('dt_inicio_atendimento_med')
+    fim = row.get(campo_fim)
     if not fim:
         return None
 
@@ -50,13 +53,14 @@ def _calcular_tempo_espera_minutos(row):
     return round(diff, 1)
 
 
-def _calcular_metricas_clinica(atendimentos_recentes, atendimentos_1h_atras):
+def _calcular_metricas_clinica(atendimentos_recentes, atendimentos_1h_atras, campo_fim='dt_inicio_atendimento_med'):
     """
     Calcula mediana e faixa estreita (spread max 5 min) para uma clinica.
+    campo_fim: coluna de referencia para o fim da espera.
     """
     tempos = []
     for row in atendimentos_recentes:
-        t = _calcular_tempo_espera_minutos(row)
+        t = _calcular_tempo_espera_minutos(row, campo_fim)
         if t is not None:
             tempos.append(t)
 
@@ -66,10 +70,8 @@ def _calcular_metricas_clinica(atendimentos_recentes, atendimentos_1h_atras):
     mediana = statistics.median(tempos)
 
     # Faixa estreita centrada na mediana
-    # Calcula dispersao real dos dados (P40-P60 ou similar)
     if len(tempos) >= 3:
         tempos_sorted = sorted(tempos)
-        # Pega valores proximos da mediana para definir spread natural
         idx_low = max(0, int(len(tempos_sorted) * 0.35))
         idx_high = min(len(tempos_sorted) - 1, int(len(tempos_sorted) * 0.65))
         spread_natural = tempos_sorted[idx_high] - tempos_sorted[idx_low]
@@ -91,7 +93,7 @@ def _calcular_metricas_clinica(atendimentos_recentes, atendimentos_1h_atras):
     tendencia = 'estavel'
     tempos_1h = []
     for row in atendimentos_1h_atras:
-        t = _calcular_tempo_espera_minutos(row)
+        t = _calcular_tempo_espera_minutos(row, campo_fim)
         if t is not None:
             tempos_1h.append(t)
 
@@ -142,7 +144,7 @@ def painel17():
 @login_required
 def api_painel17_tempos():
     """
-    Retorna tempo estimado de espera por clinica.
+    Retorna tempo estimado de espera por clinica + card de Acolhimento.
     """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -167,7 +169,10 @@ def api_painel17_tempos():
         uma_hora_atras = agora - timedelta(hours=1)
         duas_horas_atras = agora - timedelta(hours=2)
 
-        # Clinicas ativas
+        # =====================================================================
+        # CLINICAS
+        # =====================================================================
+
         cursor.execute("""
             SELECT DISTINCT cd_clinica, clinica
             FROM painel17_atendimentos_ps
@@ -181,6 +186,10 @@ def api_painel17_tempos():
         for clin in clinicas:
             cd = clin['cd_clinica']
             nome = clin['clinica']
+
+            # Filtrar clinicas excluidas (ex: Emergencista)
+            if nome and nome.strip().lower() in CLINICAS_EXCLUIR:
+                continue
 
             # Ultimos N atendidos
             cursor.execute("""
@@ -217,21 +226,6 @@ def api_painel17_tempos():
             fila_row = cursor.fetchone()
             fila = fila_row['total'] if fila_row else 0
 
-            # Ultimo chamado
-            cursor.execute("""
-                SELECT dt_inicio_atendimento_med
-                FROM painel17_atendimentos_ps
-                WHERE cd_clinica = %s
-                  AND dt_inicio_atendimento_med IS NOT NULL
-                ORDER BY dt_inicio_atendimento_med DESC
-                LIMIT 1
-            """, (cd,))
-            ultimo_row = cursor.fetchone()
-            ultimo_chamado_min = None
-            if ultimo_row and ultimo_row['dt_inicio_atendimento_med']:
-                diff = (agora - ultimo_row['dt_inicio_atendimento_med']).total_seconds() / 60
-                ultimo_chamado_min = round(diff)
-
             # Medicos atendendo
             cursor.execute("""
                 SELECT COUNT(DISTINCT nm_medico) AS total
@@ -252,7 +246,6 @@ def api_painel17_tempos():
                 'cd_clinica': cd,
                 'clinica': nome,
                 'fila': fila,
-                'ultimo_chamado_min': ultimo_chamado_min,
                 'medicos_atendendo': medicos
             }
 
@@ -269,7 +262,83 @@ def api_painel17_tempos():
 
             resultado.append(clinica_data)
 
-        # Totais
+        # =====================================================================
+        # ACOLHIMENTO (card virtual)
+        # Tempo: retirada_senha/dt_entrada -> dt_inicio_atendimento
+        # Filtro: apenas onde dt_inicio_atendimento < dt_inicio_atendimento_med
+        # =====================================================================
+
+        # Recentes para Acolhimento
+        cursor.execute("""
+            SELECT dt_entrada, retirada_senha, dt_inicio_atendimento
+            FROM painel17_atendimentos_ps
+            WHERE dt_inicio_atendimento IS NOT NULL
+              AND dt_inicio_atendimento_med IS NOT NULL
+              AND dt_inicio_atendimento < dt_inicio_atendimento_med
+            ORDER BY dt_inicio_atendimento DESC
+            LIMIT %s
+        """, (JANELA_RECENTES,))
+        acolhimento_recentes = cursor.fetchall()
+
+        # Tendencia Acolhimento (1-2h atras)
+        cursor.execute("""
+            SELECT dt_entrada, retirada_senha, dt_inicio_atendimento
+            FROM painel17_atendimentos_ps
+            WHERE dt_inicio_atendimento IS NOT NULL
+              AND dt_inicio_atendimento_med IS NOT NULL
+              AND dt_inicio_atendimento < dt_inicio_atendimento_med
+              AND dt_inicio_atendimento BETWEEN %s AND %s
+            ORDER BY dt_inicio_atendimento DESC
+            LIMIT %s
+        """, (duas_horas_atras, uma_hora_atras, JANELA_RECENTES))
+        acolhimento_1h = cursor.fetchall()
+
+        # Fila Acolhimento: pacientes que chegaram mas ainda nao iniciaram acolhimento
+        cursor.execute("""
+            SELECT COUNT(*) AS total
+            FROM painel17_atendimentos_ps
+            WHERE dt_inicio_atendimento IS NULL
+              AND dt_inicio_atendimento_med IS NULL
+              AND dt_alta IS NULL
+              AND dt_entrada >= NOW() - INTERVAL '24 hours'
+        """)
+        fila_acolhimento_row = cursor.fetchone()
+        fila_acolhimento = fila_acolhimento_row['total'] if fila_acolhimento_row else 0
+
+        metricas_acolhimento = _calcular_metricas_clinica(
+            acolhimento_recentes, acolhimento_1h,
+            campo_fim='dt_inicio_atendimento'
+        )
+
+        acolhimento_data = {
+            'cd_clinica': None,
+            'clinica': 'Acolhimento',
+            'fila': fila_acolhimento,
+            'medicos_atendendo': 0
+        }
+
+        if metricas_acolhimento:
+            acolhimento_data.update(metricas_acolhimento)
+        else:
+            acolhimento_data.update({
+                'mediana': None,
+                'faixa_min': None,
+                'faixa_max': None,
+                'tendencia': 'sem_dados',
+                'amostra': 0
+            })
+
+        resultado.append(acolhimento_data)
+
+        # =====================================================================
+        # ORDENACAO ALFABETICA
+        # =====================================================================
+        resultado.sort(key=lambda x: (x.get('clinica') or '').strip().lower())
+
+        # =====================================================================
+        # TOTAIS
+        # =====================================================================
+
         cursor.execute("""
             SELECT
                 COUNT(*) FILTER (
