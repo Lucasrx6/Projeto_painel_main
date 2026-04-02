@@ -99,33 +99,47 @@
 
                 <form class="formulario" id="form-visita" autocomplete="off">
 
-                    <!-- Dados do Leito -->
+                    <!-- Dados do Paciente (preenchimento automático) -->
                     <div class="form-card">
                         <div class="form-card-header">
-                            <i class="fas fa-bed"></i> Identificacao do Leito
+                            <i class="fas fa-bed"></i> Identificação do Paciente
                         </div>
                         <div class="form-card-body">
-                            <div class="form-row">
-                                <div class="form-group form-group-flex">
-                                    <label for="select-setor">
-                                        <i class="fas fa-building"></i> Setor *
-                                    </label>
-                                    <select id="select-setor" required>
-                                        <option value="">Selecione...</option>
-                                    </select>
-                                </div>
-                                <div class="form-group form-group-flex">
-                                    <label for="input-leito">
-                                        <i class="fas fa-hashtag"></i> Leito *
-                                    </label>
-                                    <input type="text" id="input-leito" placeholder="Ex: 301-A" maxlength="30" required>
-                                </div>
+                            <!-- Estado: carregando -->
+                            <div id="paciente-loading" style="display:none; text-align:center; padding:16px;">
+                                <div class="loading-spinner" style="margin:0 auto 8px;"></div>
+                                <p style="color:#666; font-size:0.85rem;">Buscando próximo paciente...</p>
                             </div>
-                            <div class="form-group">
-                                <label for="input-atendimento">
-                                    <i class="fas fa-file-medical"></i> Nr Atendimento Tasy <small>(opcional)</small>
-                                </label>
-                                <input type="text" id="input-atendimento" placeholder="Ex: 123456" maxlength="30">
+                            <!-- Estado: nenhum paciente elegível -->
+                            <div id="paciente-vazio" style="display:none; text-align:center; padding:16px;">
+                                <i class="fas fa-check-circle" style="font-size:2rem; color:#28a745; margin-bottom:8px; display:block;"></i>
+                                <p style="color:#28a745; font-weight:600;">Todos os pacientes foram visitados nas últimas 48h!</p>
+                                <p style="color:#666; font-size:0.82rem;">Não há pacientes elegíveis no momento.</p>
+                            </div>
+                            <!-- Dados do paciente -->
+                            <div id="paciente-dados" style="display:none;">
+                                <!-- Inputs hidden para envio do formulário -->
+                                <input type="hidden" id="input-setor-id">
+                                <input type="hidden" id="input-leito">
+                                <input type="hidden" id="input-atendimento">
+                                <div class="form-row">
+                                    <div class="form-group form-group-flex">
+                                        <label><i class="fas fa-building"></i> Setor</label>
+                                        <div class="campo-auto" id="display-setor">--</div>
+                                    </div>
+                                    <div class="form-group form-group-flex">
+                                        <label><i class="fas fa-hashtag"></i> Leito</label>
+                                        <div class="campo-auto" id="display-leito">--</div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-user"></i> Paciente</label>
+                                    <div class="campo-auto" id="display-paciente">--</div>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-file-medical"></i> Nr Atendimento</label>
+                                    <div class="campo-auto" id="display-atendimento">--</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -164,22 +178,20 @@
                         </div>
                     </div>
 
-                    <!-- Avaliacao Final -->
+                    <!-- Avaliacao Final (calculada automaticamente) -->
                     <div class="form-card form-card-final">
                         <div class="form-card-header">
-                            <i class="fas fa-star"></i> Avaliacao Final da Visita *
+                            <i class="fas fa-star"></i> Avaliacao Final da Visita
                         </div>
                         <div class="form-card-body">
-                            <div class="semaforo-final" id="semaforo-final">
-                                <button type="button" class="btn-semaforo-final critico" data-valor="critico">
-                                    <i class="fas fa-circle"></i> Critico
-                                </button>
-                                <button type="button" class="btn-semaforo-final atencao" data-valor="atencao">
-                                    <i class="fas fa-circle"></i> Atencao
-                                </button>
-                                <button type="button" class="btn-semaforo-final adequado" data-valor="adequado">
-                                    <i class="fas fa-circle"></i> Adequado
-                                </button>
+                            <div id="avaliacao-final-auto" style="text-align:center; padding:8px 0;">
+                                <div id="avaliacao-auto-pendente" style="color:#999; font-size:0.88rem;">
+                                    <i class="fas fa-clock"></i> Avalie todos os itens para calcular automaticamente
+                                </div>
+                                <div id="avaliacao-auto-resultado" style="display:none;">
+                                    <span id="avaliacao-auto-badge" class="btn-semaforo-final" style="cursor:default; display:inline-block; pointer-events:none;"></span>
+                                    <div style="font-size:0.75rem; color:#999; margin-top:4px;">Calculado automaticamente</div>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -359,7 +359,8 @@ def listar_categorias_itens():
 
         # Buscar todos os itens ativos
         cursor.execute("""
-            SELECT id, categoria_id, descricao, ordem
+            SELECT id, categoria_id, descricao, ordem,
+                   COALESCE(tipo_resposta, 'semaforo') AS tipo_resposta
             FROM sentir_agir_itens
             WHERE ativo = TRUE
             ORDER BY ordem
@@ -378,7 +379,8 @@ def listar_categorias_itens():
             itens_por_categoria[cat_id].append({
                 'id': item['id'],
                 'descricao': item['descricao'],
-                'ordem': item['ordem']
+                'ordem': item['ordem'],
+                'tipo_resposta': item['tipo_resposta']
             })
 
         resultado = []
@@ -421,6 +423,85 @@ def obter_config():
             config[row['chave']] = row['valor']
 
         return jsonify({'success': True, 'data': config})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: FILA AUTOMÁTICA DE PACIENTES
+# ============================================================
+
+@painel28_bp.route('/proximo-paciente', methods=['GET'])
+@login_required
+def proximo_paciente():
+    """
+    Retorna o próximo paciente elegível para ronda:
+    - Internado em ocupacao_hospitalar (nr_atendimento não nulo)
+    - Não visitado nas últimas 48h (sentir_agir_visitas)
+    - Ordenado por dt_entrada_unid ASC (maior tempo de internação primeiro)
+    Também garante que o setor do paciente existe em sentir_agir_setores.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT
+                o.nr_atendimento,
+                o.nm_paciente,
+                o.cd_leito,
+                o.nm_setor,
+                o.dt_entrada_unid
+            FROM ocupacao_hospitalar o
+            WHERE o.nr_atendimento IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sentir_agir_visitas v
+                  WHERE v.nr_atendimento = o.nr_atendimento::text
+                    AND v.criado_em > NOW() - INTERVAL '48 hours'
+              )
+            ORDER BY o.dt_entrada_unid ASC
+            LIMIT 1
+        """)
+        paciente = cursor.fetchone()
+
+        if not paciente:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': True, 'data': None, 'message': 'Nenhum paciente elegível'})
+
+        nm_setor = paciente['nm_setor'] or 'Sem Setor'
+
+        # Garantir que o setor existe em sentir_agir_setores
+        cursor.execute(
+            "SELECT id FROM sentir_agir_setores WHERE LOWER(nome) = LOWER(%s)",
+            (nm_setor,)
+        )
+        setor_row = cursor.fetchone()
+        if setor_row:
+            setor_id = setor_row['id']
+        else:
+            cursor.execute("""
+                INSERT INTO sentir_agir_setores (nome, sigla, icone, ordem, ativo)
+                VALUES (%s, %s, NULL, 999, TRUE)
+                RETURNING id
+            """, (nm_setor, nm_setor[:10]))
+            setor_id = cursor.fetchone()['id']
+            conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'nr_atendimento': str(paciente['nr_atendimento']),
+                'nm_paciente': paciente['nm_paciente'] or '',
+                'cd_leito': paciente['cd_leito'] or '',
+                'nm_setor': nm_setor,
+                'setor_id': setor_id
+            }
+        })
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -787,7 +868,7 @@ def upload_imagem():
         # Montar caminho de destino
         caminho_base = _get_config(
             cursor, 'caminho_imagens',
-            os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir')
+            r'C:\imagens'
         )
 
         # Subpasta por ano/mês para organização
@@ -859,7 +940,7 @@ def servir_imagem(imagem_id):
 
         caminho_base = _get_config(
             cursor, 'caminho_imagens',
-            os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir')
+            r'C:\imagens'
         )
 
         cursor.close()
@@ -1074,7 +1155,7 @@ def deletar_imagem(imagem_id):
         # Tentar remover arquivo físico
         caminho_base = _get_config(
             cursor, 'caminho_imagens',
-            os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir')
+            r'C:\imagens'
         )
         caminho_completo = os.path.join(caminho_base, imagem['caminho_arquivo'])
         try:

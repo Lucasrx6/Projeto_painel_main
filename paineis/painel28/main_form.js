@@ -15,7 +15,8 @@
         apiConfig: BASE_URL + '/api/paineis/painel28/config',
         apiRondas: BASE_URL + '/api/paineis/painel28/rondas',
         apiVisitas: BASE_URL + '/api/paineis/painel28/visitas',
-        apiImagens: BASE_URL + '/api/paineis/painel28/imagens'
+        apiImagens: BASE_URL + '/api/paineis/painel28/imagens',
+        apiProximoPaciente: BASE_URL + '/api/paineis/painel28/proximo-paciente'
     };
 
     var estado = {
@@ -113,7 +114,6 @@
     function carregarDadosIniciais() {
         Promise.all([
             fetch(CONFIG.apiDuplas).then(function (r) { return r.json(); }),
-            fetch(CONFIG.apiSetores).then(function (r) { return r.json(); }),
             fetch(CONFIG.apiCategorias).then(function (r) { return r.json(); }),
             fetch(CONFIG.apiConfig).then(function (r) { return r.json(); })
         ]).then(function (resultados) {
@@ -122,21 +122,72 @@
                 popularDuplas();
             }
             if (resultados[1].success) {
-                estado.setores = resultados[1].data || [];
-                popularSetores();
-            }
-            if (resultados[2].success) {
-                estado.categorias = resultados[2].data || [];
+                estado.categorias = resultados[1].data || [];
                 renderizarCategorias();
             }
-            if (resultados[3].success) {
-                estado.configServidor = resultados[3].data || {};
+            if (resultados[2].success) {
+                estado.configServidor = resultados[2].data || {};
                 aplicarConfig();
             }
         }).catch(function (err) {
             console.error('Erro ao carregar dados iniciais:', err);
             mostrarToast('Erro ao carregar dados', 'erro');
         });
+    }
+
+    // ========================================
+    // FILA AUTOMATICA DE PACIENTES
+    // ========================================
+
+    function carregarProximoPaciente() {
+        var loadingEl = document.getElementById('paciente-loading');
+        var dadosEl = document.getElementById('paciente-dados');
+        var vazioEl = document.getElementById('paciente-vazio');
+
+        if (loadingEl) loadingEl.style.display = '';
+        if (dadosEl) dadosEl.style.display = 'none';
+        if (vazioEl) vazioEl.style.display = 'none';
+
+        fetch(CONFIG.apiProximoPaciente)
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (!d.success) {
+                    mostrarToast(d.error || 'Erro ao buscar paciente', 'erro');
+                    return;
+                }
+                if (!d.data) {
+                    if (vazioEl) vazioEl.style.display = '';
+                    return;
+                }
+                var pac = d.data;
+
+                // Preencher inputs hidden para envio
+                var elSetorId = document.getElementById('input-setor-id');
+                var elLeito = document.getElementById('input-leito');
+                var elAtend = document.getElementById('input-atendimento');
+                if (elSetorId) elSetorId.value = pac.setor_id || '';
+                if (elLeito) elLeito.value = pac.cd_leito || '';
+                if (elAtend) elAtend.value = pac.nr_atendimento || '';
+
+                // Preencher displays
+                var setDisplay = function (id, val) { var el = document.getElementById(id); if (el) el.textContent = val || '--'; };
+                setDisplay('display-setor', pac.nm_setor);
+                setDisplay('display-leito', pac.cd_leito);
+                setDisplay('display-paciente', pac.nm_paciente);
+                setDisplay('display-atendimento', pac.nr_atendimento);
+
+                if (dadosEl) dadosEl.style.display = '';
+            })
+            .catch(function (err) {
+                console.error('Erro ao buscar próximo paciente:', err);
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (vazioEl) {
+                    vazioEl.style.display = '';
+                    vazioEl.querySelector('p') && (vazioEl.querySelector('p').textContent = 'Erro ao buscar paciente. Tente novamente.');
+                }
+                mostrarToast('Erro ao buscar próximo paciente', 'erro');
+            });
     }
 
     function popularDuplas() {
@@ -354,24 +405,36 @@
             cat.itens.forEach(function (item) {
                 html += '<div class="item-avaliacao" data-item-id="' + item.id + '">';
                 html += '  <div class="item-descricao">' + escapeHtml(item.descricao) + '</div>';
-                html += '  <div class="item-semaforo">';
-                html += '    <button type="button" class="btn-semaforo critico" data-item="' + item.id + '" data-valor="critico" onclick="window.FORM.selecionarSemaforo(this)">';
-                html += '      <i class="fas fa-circle"></i> Critico';
-                html += '    </button>';
-                html += '    <button type="button" class="btn-semaforo atencao" data-item="' + item.id + '" data-valor="atencao" onclick="window.FORM.selecionarSemaforo(this)">';
-                html += '      <i class="fas fa-circle"></i> Atencao';
-                html += '    </button>';
-                html += '    <button type="button" class="btn-semaforo adequado" data-item="' + item.id + '" data-valor="adequado" onclick="window.FORM.selecionarSemaforo(this)">';
-                html += '      <i class="fas fa-circle"></i> Adequado';
-                html += '    </button>';
 
-                if (cat.permite_nao_aplica) {
-                    html += '    <button type="button" class="btn-semaforo nao-aplica" data-item="' + item.id + '" data-valor="nao_aplica" onclick="window.FORM.selecionarSemaforo(this)">';
-                    html += '      <i class="fas fa-minus"></i> N/A';
+                if (item.tipo_resposta === 'sim_nao') {
+                    // Botoes Sim/Nao: SIM = adequado, NAO = atencao
+                    html += '  <div class="item-semaforo item-simnao">';
+                    html += '    <button type="button" class="btn-semaforo btn-simnao sim" data-item="' + item.id + '" data-valor="adequado" onclick="window.FORM.selecionarSemaforo(this)">';
+                    html += '      <i class="fas fa-check"></i> Sim';
                     html += '    </button>';
+                    html += '    <button type="button" class="btn-semaforo btn-simnao nao" data-item="' + item.id + '" data-valor="atencao" onclick="window.FORM.selecionarSemaforo(this)">';
+                    html += '      <i class="fas fa-times"></i> Não';
+                    html += '    </button>';
+                    html += '  </div>';
+                } else {
+                    html += '  <div class="item-semaforo">';
+                    html += '    <button type="button" class="btn-semaforo critico" data-item="' + item.id + '" data-valor="critico" onclick="window.FORM.selecionarSemaforo(this)">';
+                    html += '      <i class="fas fa-circle"></i> Critico';
+                    html += '    </button>';
+                    html += '    <button type="button" class="btn-semaforo atencao" data-item="' + item.id + '" data-valor="atencao" onclick="window.FORM.selecionarSemaforo(this)">';
+                    html += '      <i class="fas fa-circle"></i> Atencao';
+                    html += '    </button>';
+                    html += '    <button type="button" class="btn-semaforo adequado" data-item="' + item.id + '" data-valor="adequado" onclick="window.FORM.selecionarSemaforo(this)">';
+                    html += '      <i class="fas fa-circle"></i> Adequado';
+                    html += '    </button>';
+                    if (cat.permite_nao_aplica) {
+                        html += '    <button type="button" class="btn-semaforo nao-aplica" data-item="' + item.id + '" data-valor="nao_aplica" onclick="window.FORM.selecionarSemaforo(this)">';
+                        html += '      <i class="fas fa-minus"></i> N/A';
+                        html += '    </button>';
+                    }
+                    html += '  </div>';
                 }
 
-                html += '  </div>';
                 html += '</div>';
             });
 
@@ -387,25 +450,49 @@
             botoes[i].classList.remove('selecionado');
         }
         btn.classList.add('selecionado');
+        calcularAvaliacaoFinal();
     }
 
     // ========================================
-    // SEMAFORO FINAL
+    // AVALIACAO FINAL AUTOMATICA
     // ========================================
 
-    function configurarSemaforoFinal() {
-        var container = document.getElementById('semaforo-final');
-        if (!container) return;
+    function calcularAvaliacaoFinal() {
+        var itens = document.querySelectorAll('.item-avaliacao');
+        var temCritico = false, temAtencao = false, todosRespondidos = (itens.length > 0);
 
-        var botoes = container.querySelectorAll('.btn-semaforo-final');
-        for (var i = 0; i < botoes.length; i++) {
-            botoes[i].addEventListener('click', function () {
-                for (var j = 0; j < botoes.length; j++) {
-                    botoes[j].classList.remove('selecionado');
-                }
-                this.classList.add('selecionado');
-                estado.avaliacaoFinal = this.getAttribute('data-valor');
-            });
+        for (var i = 0; i < itens.length; i++) {
+            var sel = itens[i].querySelector('.btn-semaforo.selecionado');
+            if (!sel) { todosRespondidos = false; continue; }
+            var val = sel.getAttribute('data-valor');
+            if (val === 'critico') temCritico = true;
+            else if (val === 'atencao') temAtencao = true;
+        }
+
+        var pendente = document.getElementById('avaliacao-auto-pendente');
+        var resultado = document.getElementById('avaliacao-auto-resultado');
+        var badge = document.getElementById('avaliacao-auto-badge');
+
+        if (!todosRespondidos) {
+            estado.avaliacaoFinal = null;
+            if (pendente) pendente.style.display = '';
+            if (resultado) resultado.style.display = 'none';
+            return;
+        }
+
+        if (temCritico) {
+            estado.avaliacaoFinal = 'critico';
+        } else if (temAtencao) {
+            estado.avaliacaoFinal = 'atencao';
+        } else {
+            estado.avaliacaoFinal = 'adequado';
+        }
+
+        if (pendente) pendente.style.display = 'none';
+        if (resultado) resultado.style.display = '';
+        if (badge) {
+            badge.className = 'btn-semaforo-final ' + estado.avaliacaoFinal;
+            badge.innerHTML = '<i class="fas fa-circle"></i> ' + formatarResultado(estado.avaliacaoFinal);
         }
     }
 
@@ -466,8 +553,6 @@
                 enviarVisita();
             });
         }
-
-        configurarSemaforoFinal();
     }
 
     function iniciarRonda() {
@@ -521,6 +606,7 @@
 
                 limparFormularioVisita();
                 mostrarTela('formulario');
+                carregarProximoPaciente();
             } else {
                 var msg = data.error || (data.errors ? data.errors[0] : 'Erro ao criar ronda');
                 mostrarToast(msg, 'erro');
@@ -545,15 +631,15 @@
     function enviarVisita() {
         if (estado.enviando) return;
 
-        var setorId = document.getElementById('select-setor').value;
+        var setorId = document.getElementById('input-setor-id').value;
         var leito = (document.getElementById('input-leito').value || '').trim();
         var nrAtendimento = (document.getElementById('input-atendimento').value || '').trim();
         var observacoes = (document.getElementById('input-observacoes').value || '').trim();
 
         var erros = [];
-        if (!setorId) erros.push('Selecione o setor');
-        if (!leito) erros.push('Informe o leito');
-        if (!estado.avaliacaoFinal) erros.push('Selecione a avaliacao final');
+        if (!setorId) erros.push('Dados do paciente não carregados. Aguarde o preenchimento automático.');
+        if (!leito) erros.push('Leito não disponível. Aguarde o preenchimento automático.');
+        if (!estado.avaliacaoFinal) erros.push('Avalie todos os itens para calcular a nota final automaticamente');
 
         var avaliacoes = [];
         var todosItens = document.querySelectorAll('.item-avaliacao');
@@ -613,7 +699,7 @@
             avaliacoes: avaliacoes
         };
 
-        var setorTexto = document.getElementById('select-setor').selectedOptions[0].textContent;
+        var setorTexto = (document.getElementById('display-setor').textContent || '').trim();
 
         fetch(CONFIG.apiVisitas, {
             method: 'POST',
@@ -728,6 +814,7 @@
             btnNovoLeito.addEventListener('click', function () {
                 limparFormularioVisita();
                 mostrarTela('formulario');
+                carregarProximoPaciente();
             });
         }
         var btnConcluir = document.getElementById('btn-concluir-ronda');
@@ -776,7 +863,7 @@
         var btnRefresh = document.getElementById('btn-refresh-resumo');
         if (btnRefresh) btnRefresh.addEventListener('click', function () { carregarResumo(); mostrarToast('Atualizado', 'info'); });
         var btnAdicionar = document.getElementById('btn-adicionar-leito');
-        if (btnAdicionar) btnAdicionar.addEventListener('click', function () { limparFormularioVisita(); mostrarTela('formulario'); });
+        if (btnAdicionar) btnAdicionar.addEventListener('click', function () { limparFormularioVisita(); mostrarTela('formulario'); carregarProximoPaciente(); });
         var btnConcluirResumo = document.getElementById('btn-concluir-ronda-resumo');
         if (btnConcluirResumo) btnConcluirResumo.addEventListener('click', function () { abrirModalConcluir(); });
     }
@@ -946,13 +1033,39 @@
     // ========================================
 
     function limparFormularioVisita() {
-        var els = { 'select-setor': '', 'input-leito': '', 'input-atendimento': '', 'input-observacoes': '' };
-        for (var id in els) { var el = document.getElementById(id); if (el) el.value = els[id]; }
+        // Limpar inputs hidden de identificação
+        var hiddenIds = ['input-setor-id', 'input-leito', 'input-atendimento'];
+        hiddenIds.forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+
+        // Limpar displays de identificação
+        var displayIds = ['display-setor', 'display-leito', 'display-paciente', 'display-atendimento'];
+        displayIds.forEach(function (id) { var el = document.getElementById(id); if (el) el.textContent = '--'; });
+
+        // Esconder dados do paciente até o próximo carregamento
+        var dadosEl = document.getElementById('paciente-dados');
+        var loadingEl = document.getElementById('paciente-loading');
+        var vazioEl = document.getElementById('paciente-vazio');
+        if (dadosEl) dadosEl.style.display = 'none';
+        if (loadingEl) loadingEl.style.display = '';
+        if (vazioEl) vazioEl.style.display = 'none';
+
+        // Limpar observações
+        var obsEl = document.getElementById('input-observacoes');
+        if (obsEl) obsEl.value = '';
         var countObs = document.getElementById('count-obs');
         if (countObs) countObs.textContent = '0';
-        var selecionados = document.querySelectorAll('.btn-semaforo.selecionado, .btn-semaforo-final.selecionado');
+
+        // Limpar seleções de semáforo
+        var selecionados = document.querySelectorAll('.btn-semaforo.selecionado');
         for (var i = 0; i < selecionados.length; i++) selecionados[i].classList.remove('selecionado');
+
+        // Resetar avaliação final automática
         estado.avaliacaoFinal = null;
+        var pendente = document.getElementById('avaliacao-auto-pendente');
+        var resultado = document.getElementById('avaliacao-auto-resultado');
+        if (pendente) pendente.style.display = '';
+        if (resultado) resultado.style.display = 'none';
+
         estado.imagensParaEnviar = [];
         renderizarPreviews();
     }

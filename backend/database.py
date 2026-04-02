@@ -481,6 +481,67 @@ def init_db():
             cursor.execute("ROLLBACK TO SAVEPOINT sp_notif_indexes")
             logger.debug("Indices de notificacoes_log adiados (tabela ainda nao existe)")
 
+        # Migração: adicionar tipo_resposta em sentir_agir_itens
+        try:
+            cursor.execute("SAVEPOINT sp_sa_tipo_resposta")
+            cursor.execute("""
+                ALTER TABLE sentir_agir_itens
+                ADD COLUMN IF NOT EXISTS tipo_resposta VARCHAR(10) DEFAULT 'semaforo'
+            """)
+            cursor.execute("RELEASE SAVEPOINT sp_sa_tipo_resposta")
+            logger.info("Coluna tipo_resposta verificada em sentir_agir_itens")
+        except Exception:
+            cursor.execute("ROLLBACK TO SAVEPOINT sp_sa_tipo_resposta")
+            logger.debug("Migracao sentir_agir_itens adiada (tabela ainda nao existe)")
+
+        # Migração: inserir categoria e itens Sim/Não se ainda não existirem
+        try:
+            cursor.execute("SAVEPOINT sp_sa_simnao")
+            cursor.execute("""
+                SELECT id FROM sentir_agir_categorias
+                WHERE nome = 'Processos e Orientações'
+            """)
+            cat_row = cursor.fetchone()
+            if not cat_row:
+                cursor.execute("""
+                    INSERT INTO sentir_agir_categorias
+                        (nome, icone, cor, ordem, ativo, permite_nao_aplica)
+                    VALUES ('Processos e Orientações', 'fas fa-tasks', '#6c757d', 99, TRUE, FALSE)
+                    RETURNING id
+                """)
+                cat_id = cursor.fetchone()[0]
+                itens_simnao = [
+                    'Realização de exames durante a internação',
+                    'Clareza nas orientações recebidas',
+                    'Adequação do transporte para o exame',
+                    'Registro de dúvidas ou queixas durante o processo'
+                ]
+                for i, desc in enumerate(itens_simnao, start=1):
+                    cursor.execute("""
+                        INSERT INTO sentir_agir_itens
+                            (categoria_id, descricao, ordem, ativo, tipo_resposta)
+                        VALUES (%s, %s, %s, TRUE, 'sim_nao')
+                    """, (cat_id, desc, i))
+                logger.info("Categoria e itens Sim/Não criados em sentir_agir")
+            cursor.execute("RELEASE SAVEPOINT sp_sa_simnao")
+        except Exception:
+            cursor.execute("ROLLBACK TO SAVEPOINT sp_sa_simnao")
+            logger.debug("Migracao itens sim/nao adiada (tabela ainda nao existe)")
+
+        # Migração: inserir caminho_imagens padrão em sentir_agir_config
+        try:
+            cursor.execute("SAVEPOINT sp_sa_config")
+            cursor.execute("""
+                INSERT INTO sentir_agir_config (chave, valor)
+                VALUES ('caminho_imagens', 'C:\\imagens')
+                ON CONFLICT (chave) DO NOTHING
+            """)
+            cursor.execute("RELEASE SAVEPOINT sp_sa_config")
+            logger.info("Config caminho_imagens verificada em sentir_agir_config")
+        except Exception:
+            cursor.execute("ROLLBACK TO SAVEPOINT sp_sa_config")
+            logger.debug("Migracao sentir_agir_config adiada (tabela ainda nao existe)")
+
         conn.commit()
         cursor.close()
         conn.close()
