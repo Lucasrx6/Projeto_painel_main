@@ -18,7 +18,6 @@
     --cor-header: #dc3545;
     --cor-header-dark: #c82333;
 
-    /* Status */
     --cor-pendente: #dc3545;
     --cor-pendente-light: #f8d7da;
     --cor-andamento: #f0ad4e;
@@ -26,7 +25,6 @@
     --cor-concluido: #28a745;
     --cor-concluido-light: #d4edda;
 
-    /* Neutras */
     --cor-texto: #2c3e50;
     --cor-texto-secundario: #5a6c7d;
     --cor-texto-muted: #95a5a6;
@@ -35,19 +33,16 @@
     --cor-borda: #e1e8ef;
     --cor-borda-light: #f0f0f0;
 
-    /* Sombras */
     --sombra-sm: 0 1px 3px rgba(0,0,0,0.06);
     --sombra-card: 0 2px 12px rgba(0,0,0,0.08);
     --sombra-card-hover: 0 6px 20px rgba(0,0,0,0.12);
 
-    /* Espaçamentos */
     --espacamento-xs: 4px;
     --espacamento-sm: 8px;
     --espacamento-md: 16px;
     --espacamento-lg: 24px;
     --espacamento-xl: 32px;
 
-    /* Bordas */
     --raio-sm: 4px;
     --raio-md: 8px;
     --raio-lg: 12px;
@@ -231,7 +226,6 @@ body {
     white-space: nowrap;
 }
 
-/* Larguras das colunas */
 .col-atendimento { width: 110px; }
 .col-paciente    { width: auto; }
 .col-lab         { width: 150px; text-align: center; }
@@ -239,7 +233,6 @@ body {
 .col-radio       { width: 150px; text-align: center; }
 .col-tempo-rad   { width: 120px; text-align: center; }
 
-/* TBODY com scroll */
 .tabela-exames tbody {
     display: block;
     overflow-y: auto;
@@ -276,7 +269,6 @@ body {
     vertical-align: middle;
 }
 
-/* Borda esquerda por estado do paciente */
 .tabela-exames tbody tr.linha-concluida {
     background: linear-gradient(90deg, rgba(40,167,69,0.06) 0%, transparent 100%);
     border-left: 5px solid var(--cor-concluido);
@@ -292,14 +284,12 @@ body {
     background: linear-gradient(90deg, rgba(240,173,78,0.04) 0%, transparent 100%);
 }
 
-/* Atendimento */
 .atendimento-valor {
     font-weight: 700;
     font-size: 1.05rem;
     color: var(--cor-texto-secundario);
 }
 
-/* Paciente: nome + subinfo (clinica/medico) */
 .paciente-grupo {
     display: flex;
     flex-direction: column;
@@ -338,7 +328,9 @@ body {
    ========================================================= */
 
 .status-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 0.78rem;
@@ -363,6 +355,10 @@ body {
     color: var(--cor-concluido);
 }
 
+.badge-concluido i {
+    font-size: 0.7rem;
+}
+
 .status-sem-exame {
     color: var(--cor-texto-muted);
     font-size: 0.9rem;
@@ -370,7 +366,9 @@ body {
 
 /* Tempo Lab / Tempo Rad */
 .tempo-tipo-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 10px;
     border-radius: 12px;
     font-size: 0.85rem;
@@ -380,6 +378,28 @@ body {
 .tempo-normal  { background: #e8f5e9; color: #2e7d32; }
 .tempo-alerta  { background: #fff3cd; color: #856404; }
 .tempo-critico { background: #f8d7da; color: #721c24; }
+
+/* Tempo concluido - tempo fixo, parou de contar */
+.tempo-concluido-final {
+    background: #d4edda;
+    color: #155724;
+}
+
+.tempo-concluido-final i {
+    font-size: 0.75rem;
+    color: var(--cor-concluido);
+}
+
+/* Icone de relogio animado - tempo ainda contando */
+.tempo-contando {
+    font-size: 0.75rem;
+    animation: pulsar-relogio 2s ease-in-out infinite;
+}
+
+@keyframes pulsar-relogio {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
 
 /* =========================================================
    9. LEGENDA FOOTER

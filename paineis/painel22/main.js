@@ -5,6 +5,9 @@
  * Badges: Aguardando (vermelho), Em andamento (amarelo), Concluido (verde)
  * Status predominante por tipo de exame (maioria vence, empate = pior status)
  *
+ * Tempo para de contar quando exame e concluido (calculado no backend).
+ * Indicador visual diferencia tempo "parado" (concluido) de "contando" (pendente/andamento).
+ *
  * Suporte a rota publica (/publico/painel22) para acesso
  * de pacientes via rede sem autenticacao.
  */
@@ -98,12 +101,12 @@
         }
         var d = Math.floor(h / 24);
         var hResto = h % 24;
-        var partes = d + 'd ';
+        var result = d + 'd ';
         if (hResto > 0 || m > 0) {
-            partes += hResto + 'h';
-            if (m > 0) partes += (m < 10 ? '0' : '') + m;
+            result += hResto + 'h';
+            if (m > 0) result += (m < 10 ? '0' : '') + m;
         }
-        return partes;
+        return result;
     }
 
     function classeTempo(horas) {
@@ -133,11 +136,6 @@
     // LOGICA DE STATUS PREDOMINANTE
     // =========================================================
 
-    /**
-     * Determina o status predominante de um grupo de exames.
-     * Regra: maioria vence. Em empate, o pior status prevalece.
-     * Hierarquia (pior para melhor): pendente > andamento > concluido
-     */
     function determinarStatusPredominante(exames) {
         if (!exames || exames.length === 0) return null;
 
@@ -154,7 +152,6 @@
             }
         }
 
-        // Maioria vence; empate = pior status (pendente > andamento > concluido)
         if (contagem.pendente >= contagem.andamento && contagem.pendente >= contagem.concluido) {
             return 'pendente';
         }
@@ -168,10 +165,6 @@
     // CALCULO DE TEMPO POR TIPO
     // =========================================================
 
-    /**
-     * Retorna o maior horas_espera positivo do grupo de exames.
-     * Representa o tempo do exame que esta esperando ha mais tempo.
-     */
     function calcularTempoTipo(exames) {
         if (!exames || exames.length === 0) return null;
 
@@ -344,14 +337,14 @@
         // Lab - badge
         html += '<td class="col-lab">' + renderBadge(statusLab) + '</td>';
 
-        // Tempo Lab
-        html += '<td class="col-tempo-lab">' + renderTempoTipo(tempoLab) + '</td>';
+        // Tempo Lab - com indicador de concluido/contando
+        html += '<td class="col-tempo-lab">' + renderTempoTipo(tempoLab, statusLab) + '</td>';
 
         // Radio - badge
         html += '<td class="col-radio">' + renderBadge(statusRadio) + '</td>';
 
-        // Tempo Rad
-        html += '<td class="col-tempo-rad">' + renderTempoTipo(tempoRadio) + '</td>';
+        // Tempo Rad - com indicador de concluido/contando
+        html += '<td class="col-tempo-rad">' + renderTempoTipo(tempoRadio, statusRadio) + '</td>';
 
         html += '</tr>';
         return html;
@@ -386,22 +379,37 @@
             texto = 'Em andamento';
         } else {
             classe = 'badge-concluido';
-            texto = 'Concluido';
+            texto = '<i class="fas fa-check"></i> Concluido';
         }
 
         return '<span class="status-badge ' + classe + '">' + texto + '</span>';
     }
 
     /**
-     * Renderiza tempo por tipo de exame
+     * Renderiza tempo por tipo de exame.
+     * Concluido: icone de check (tempo fixo, parou de contar)
+     * Pendente/andamento: icone de relogio (ainda contando)
      */
-    function renderTempoTipo(horas) {
+    function renderTempoTipo(horas, statusTipo) {
         if (horas === null || horas === undefined) {
             return '<span class="status-sem-exame">-</span>';
         }
 
         var classeT = classeTempo(horas);
-        return '<span class="tempo-tipo-badge ' + classeT + '">' + formatarTempo(horas) + '</span>';
+        var tempoStr = formatarTempo(horas);
+        var icone = '';
+
+        if (statusTipo === 'concluido') {
+            // Tempo final — parou de contar
+            return '<span class="tempo-tipo-badge tempo-concluido-final" title="Tempo total do exame">' +
+                '<i class="fas fa-check-circle"></i> ' + tempoStr +
+            '</span>';
+        }
+
+        // Ainda contando
+        return '<span class="tempo-tipo-badge ' + classeT + '" title="Tempo em espera">' +
+            '<i class="fas fa-hourglass-half tempo-contando"></i> ' + tempoStr +
+        '</span>';
     }
 
     function mostrarErro(msg) {

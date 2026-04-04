@@ -47,6 +47,20 @@ def serializar_dict(d):
     return resultado
 
 
+def _parse_datetime(val):
+    """Converte string ISO ou datetime para datetime. Retorna None se falhar."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val
+    if isinstance(val, str):
+        try:
+            return datetime.fromisoformat(val)
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
 # =========================================================
 # LÓGICA INTERNA (compartilhada entre rotas internas e públicas)
 # =========================================================
@@ -88,10 +102,35 @@ def _buscar_dashboard():
         return None, str(e)
 
 
+def _recalcular_horas_espera(exame, agora):
+    """
+    Recalcula horas_espera de um exame de acordo com o status:
+    - Concluído (LAUDADO/LIBERADO): tempo = dt_resultado - dt_pedido (fixo)
+    - Em andamento/pendente: tempo = agora - dt_pedido (continua contando)
+    Retorna float ou None.
+    """
+    dt_pedido = _parse_datetime(exame.get('dt_pedido'))
+    if not dt_pedido:
+        return None
+
+    status = (exame.get('status_exame') or '').upper()
+
+    if status in ('LAUDADO', 'LIBERADO'):
+        dt_resultado = _parse_datetime(exame.get('dt_resultado'))
+        if dt_resultado:
+            diff = (dt_resultado - dt_pedido).total_seconds()
+            return round(max(diff, 0) / 3600.0, 2)
+
+    # Pendente ou em andamento: conta até agora
+    diff = (agora - dt_pedido).total_seconds()
+    return round(max(diff, 0) / 3600.0, 2)
+
+
 def _buscar_dados():
     """
     Busca pacientes do PS com exames agrupados por tipo (Lab/Radio).
     Regra de ocultação: pacientes 100% concluídos há mais de 1h.
+    Tempo de espera: para de contar ao concluir o exame.
     Retorna tuple (lista_pacientes, erro_string).
     """
     conn = get_db_connection()
@@ -117,6 +156,8 @@ def _buscar_dados():
         cursor.close()
         conn.close()
 
+        agora = datetime.now()
+
         # Agrupar por paciente
         pacientes = {}
         ordem = []
@@ -124,6 +165,9 @@ def _buscar_dados():
         for row in rows:
             exame = serializar_dict(row)
             nr_atend = exame['nr_atendimento']
+
+            # Recalcula horas_espera: para de contar ao concluir
+            exame['horas_espera'] = _recalcular_horas_espera(exame, agora)
 
             if nr_atend not in pacientes:
                 pacientes[nr_atend] = {
@@ -133,6 +177,8 @@ def _buscar_dados():
                     'nm_pessoa_fisica': exame.get('nm_pessoa_fisica'),
                     'idade': exame.get('idade'),
                     'ds_convenio': exame.get('ds_convenio'),
+                    'ds_clinica': exame.get('ds_clinica'),
+                    'nm_medico': exame.get('nm_medico'),
                     'exames_lab': [],
                     'exames_radio': [],
                     'qt_total': 0,
@@ -166,7 +212,7 @@ def _buscar_dados():
                 pac['exames_radio'].append(exame)
 
         # Regra de 1h: ocultar pacientes 100% concluídos há mais de 1h
-        limite = datetime.now() - timedelta(hours=1)
+        limite = agora - timedelta(hours=1)
         resultado = []
 
         for nr_atend in ordem:
@@ -174,14 +220,9 @@ def _buscar_dados():
 
             if pac['qt_total'] > 0 and pac['qt_concluidos'] == pac['qt_total']:
                 dt_ult = pac['dt_ultimo_resultado']
-                if dt_ult:
-                    if isinstance(dt_ult, str):
-                        try:
-                            dt_ult = datetime.fromisoformat(dt_ult)
-                        except (ValueError, TypeError):
-                            dt_ult = None
-                    if dt_ult and dt_ult < limite:
-                        continue
+                dt_ult_parsed = _parse_datetime(dt_ult)
+                if dt_ult_parsed and dt_ult_parsed < limite:
+                    continue
 
             pac['pct_concluido'] = round(
                 (pac['qt_concluidos'] / pac['qt_total'] * 100)
@@ -190,6 +231,16 @@ def _buscar_dados():
 
             pac.pop('dt_ultimo_resultado', None)
             resultado.append(pac)
+
+        # Ordenação: pendentes primeiro, depois em andamento, concluídos por último
+        def _ordenar_paciente(p):
+            if p['qt_pendentes'] > 0:
+                return (0, -p['qt_pendentes'])
+            if p['qt_em_andamento'] > 0:
+                return (1, -p['qt_em_andamento'])
+            return (2, 0)
+
+        resultado.sort(key=_ordenar_paciente)
 
         return resultado, None
 
