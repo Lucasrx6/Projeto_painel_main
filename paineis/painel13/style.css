@@ -13,7 +13,7 @@
  * 8. Indicador de Paginacao
  * 9. Conteudo Principal
  * 10. Tabela de Nutricao
- * 11. Linhas e Detalhes
+ * 11. Linhas e Detalhes (com blocos alternados)
  * 12. Badges e Icones
  * 13. Estados e Feedback
  * 14. Animacoes
@@ -25,17 +25,14 @@
    ========================================================= */
 
 :root {
-    /* Cores Principais - Vermelho Hospital Anchieta */
     --cor-primaria: #dc3545;
     --cor-primaria-hover: #c82333;
     --cor-primaria-light: #f8d7da;
     --cor-primaria-dark: #bd2130;
 
-    /* Cores Secundarias */
     --cor-header: #dc3545;
     --cor-header-dark: #c82333;
 
-    /* Cores de Status */
     --cor-sucesso: #28a745;
     --cor-sucesso-light: #d4edda;
     --cor-alerta: #ffc107;
@@ -45,7 +42,6 @@
     --cor-info: #17a2b8;
     --cor-info-light: #d1ecf1;
 
-    /* Cores Neutras */
     --cor-texto: #333333;
     --cor-texto-secundario: #666666;
     --cor-texto-muted: #999999;
@@ -54,42 +50,39 @@
     --cor-borda: #e9ecef;
     --cor-borda-light: #f0f0f0;
 
-    /* Gradientes dos Cards */
+    /* Fundo alternado para blocos impares */
+    --cor-bloco-impar: #f7f8fa;
+    --cor-bloco-impar-detalhe: #f0f2f5;
+
     --grad-setor: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --grad-total: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
     --grad-com-prescricao: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     --grad-sem-prescricao: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
     --grad-desatualizado: linear-gradient(135deg, #fd7e14 0%, #dc3545 100%);
 
-    /* Sombras */
     --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.1);
     --sombra-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
     --sombra-card: 0 2px 8px rgba(0, 0, 0, 0.08);
     --sombra-card-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
 
-    /* Espacamentos */
     --espacamento-xs: 4px;
     --espacamento-sm: 8px;
     --espacamento-md: 16px;
     --espacamento-lg: 24px;
     --espacamento-xl: 32px;
 
-    /* Bordas */
     --raio-sm: 4px;
     --raio-md: 8px;
     --raio-lg: 12px;
     --raio-full: 50%;
 
-    /* Tipografia */
     --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-    /* Transicoes */
     --transicao-rapida: 150ms ease;
     --transicao-normal: 250ms ease;
     --transicao-lenta: 350ms ease;
 
-    /* Z-Index */
     --z-header: 100;
     --z-dropdown: 200;
 }
@@ -672,7 +665,6 @@ body {
     height: 100%;
 }
 
-/* THEAD */
 .tabela-nutricao thead {
     display: table;
     width: 100%;
@@ -697,7 +689,6 @@ body {
     white-space: nowrap;
 }
 
-/* Larguras das colunas */
 .col-leito { width: 70px; }
 .col-atendimento { width: 80px; }
 .col-paciente { width: 22%; }
@@ -706,7 +697,6 @@ body {
 .col-medico { width: 18%; }
 .col-alergia { width: 60px; text-align: center; }
 
-/* TBODY com scroll */
 .tabela-nutricao tbody {
     display: block;
     overflow-y: auto;
@@ -715,12 +705,10 @@ body {
     scroll-behavior: smooth;
 }
 
-/* Transicao para modo paginado */
 .tabela-nutricao tbody.pagina-transicao {
     scroll-behavior: smooth;
 }
 
-/* Scrollbar customizada */
 .tabela-nutricao tbody::-webkit-scrollbar {
     width: 6px;
 }
@@ -740,10 +728,10 @@ body {
 }
 
 /* =========================================================
-   11. LINHAS E DETALHES
+   11. LINHAS E DETALHES (COM BLOCOS ALTERNADOS)
    ========================================================= */
 
-/* Linha Principal */
+/* ---- Linha Principal ---- */
 .tabela-nutricao tbody tr.linha-principal {
     display: table;
     width: 100%;
@@ -764,19 +752,72 @@ body {
     border-bottom: 1px solid var(--cor-borda-light);
 }
 
-/* Linha sem prescricao */
+/* ---- BLOCOS ALTERNADOS (zebra por paciente) ---- */
+
+/* Bloco impar: fundo levemente diferente */
+.tabela-nutricao tbody tr.bloco-impar.linha-principal {
+    background: var(--cor-bloco-impar);
+}
+
+.tabela-nutricao tbody tr.bloco-impar.linha-principal:hover {
+    background: #eef0f4;
+}
+
+/* Detalhes do bloco impar */
+.tabela-nutricao tbody tr.bloco-impar.linha-detalhes {
+    background: var(--cor-bloco-impar-detalhe);
+}
+
+/* Prescricao do bloco impar */
+.tabela-nutricao tbody tr.bloco-impar.linha-prescricao {
+    background: linear-gradient(90deg, rgba(40, 167, 69, 0.06) 0%, var(--cor-bloco-impar-detalhe) 100%);
+}
+
+/* Alerta do bloco impar */
+.tabela-nutricao tbody tr.bloco-impar.linha-alerta {
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.08) 0%, var(--cor-bloco-impar-detalhe) 100%);
+}
+
+/* ---- SEPARADOR FORTE ENTRE BLOCOS DE PACIENTES ---- */
+
+/* Borda inferior grossa na ultima linha de cada bloco */
+.tabela-nutricao tbody tr.ultima-linha td {
+    border-bottom: none;
+    padding-bottom: var(--espacamento-md);
+}
+
+/* Separador visual entre blocos: borda superior + padding extra */
+.tabela-nutricao tbody tr.ultima-linha + tr.linha-principal {
+    border-top: 2px solid #d0d4da;
+}
+
+.tabela-nutricao tbody tr.ultima-linha + tr.linha-principal td {
+    padding-top: var(--espacamento-md);
+}
+
+/* ---- Estados especiais (sem prescricao / desatualizada) ---- */
+
+/* Sem prescricao - aplica sobre qualquer bloco */
 .tabela-nutricao tbody tr.linha-principal.sem-prescricao {
     border-left: 4px solid var(--cor-alerta);
     background: linear-gradient(90deg, rgba(255, 193, 7, 0.08) 0%, transparent 100%);
 }
 
-/* Linha com prescricao desatualizada */
+.tabela-nutricao tbody tr.bloco-impar.linha-principal.sem-prescricao {
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.1) 0%, var(--cor-bloco-impar) 100%);
+}
+
+/* Prescricao desatualizada - aplica sobre qualquer bloco */
 .tabela-nutricao tbody tr.linha-principal.prescricao-desatualizada {
     border-left: 4px solid #fd7e14;
     background: linear-gradient(90deg, rgba(253, 126, 20, 0.08) 0%, transparent 100%);
 }
 
-/* Leito Badge */
+.tabela-nutricao tbody tr.bloco-impar.linha-principal.prescricao-desatualizada {
+    background: linear-gradient(90deg, rgba(253, 126, 20, 0.1) 0%, var(--cor-bloco-impar) 100%);
+}
+
+/* ---- Leito Badge ---- */
 .leito-badge {
     display: inline-block;
     padding: 4px 8px;
@@ -787,7 +828,7 @@ body {
     font-size: 0.75rem;
 }
 
-/* Paciente Info */
+/* ---- Paciente Info ---- */
 .paciente-info {
     display: flex;
     flex-direction: column;
@@ -804,7 +845,7 @@ body {
     color: var(--cor-texto-muted);
 }
 
-/* Prescritor Info */
+/* ---- Prescritor Info ---- */
 .prescritor-info {
     display: flex;
     align-items: center;
@@ -815,23 +856,20 @@ body {
     font-size: 0.95rem;
 }
 
-/* Nutricionista: verde com icone de maca */
 .prescritor-nutricionista i {
     color: var(--cor-sucesso);
 }
 
-/* Medico: azul com estetoscopio */
 .prescritor-medico i {
     color: #2980b9;
     font-size: 1rem;
 }
 
-/* Outro: cinza */
 .prescritor-outro i {
     color: var(--cor-texto-muted);
 }
 
-/* Linhas de Detalhes */
+/* ---- Linhas de Detalhes ---- */
 .tabela-nutricao tbody tr.linha-detalhes {
     display: table;
     width: 100%;
@@ -846,7 +884,7 @@ body {
     line-height: 1.4;
 }
 
-/* Linha de Prescricao */
+/* Linha de Prescricao (bloco par) */
 .tabela-nutricao tbody tr.linha-prescricao {
     background: linear-gradient(90deg, rgba(40, 167, 69, 0.08) 0%, var(--cor-fundo) 100%);
 }
@@ -883,7 +921,7 @@ body {
     margin-top: 2px;
 }
 
-/* Linha de Alerta */
+/* Linha de Alerta (bloco par) */
 .linha-alerta {
     background: linear-gradient(90deg, rgba(255, 193, 7, 0.1) 0%, var(--cor-fundo) 100%);
 }
@@ -901,20 +939,6 @@ body {
 .alerta-sem-prescricao i {
     color: var(--cor-alerta);
     font-size: 1rem;
-}
-
-/* Ultima linha - separador */
-.tabela-nutricao tbody tr.ultima-linha td {
-    border-bottom: none;
-    padding-bottom: var(--espacamento-md);
-}
-
-.tabela-nutricao tbody tr.ultima-linha + tr.linha-principal {
-    border-top: 2px solid var(--cor-borda);
-}
-
-.tabela-nutricao tbody tr.ultima-linha + tr.linha-principal td {
-    padding-top: var(--espacamento-md);
 }
 
 /* =========================================================
@@ -949,7 +973,6 @@ body {
     color: #e67e22;
 }
 
-/* Icones de Acompanhante */
 .icone-acompanhante-sim {
     color: var(--cor-sucesso);
     font-size: 1.1rem;
@@ -959,7 +982,6 @@ body {
     display: none;
 }
 
-/* Icones de Alergia */
 .icone-alergia-sim {
     color: var(--cor-perigo);
     font-size: 1.1rem;
@@ -983,7 +1005,6 @@ body {
    13. ESTADOS E FEEDBACK
    ========================================================= */
 
-/* Loading */
 .loading-container {
     display: flex;
     flex-direction: column;
@@ -1007,7 +1028,6 @@ body {
     font-size: 0.9rem;
 }
 
-/* Mensagens */
 .mensagem-vazia,
 .mensagem-erro {
     display: flex;
@@ -1251,7 +1271,6 @@ body {
     }
 }
 
-/* Telas grandes (TV/Monitor) */
 @media (min-width: 1600px) {
     :root {
         --espacamento-md: 20px;
@@ -1280,7 +1299,6 @@ body {
     }
 }
 
-/* Print */
 @media print {
     .painel-header,
     .btn-header,

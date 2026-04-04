@@ -10,6 +10,7 @@
  * - Destaque para pacientes sem prescricao
  * - Alerta para prescricoes desatualizadas (dia anterior)
  * - Watchdog robusto para deteccao de travamento
+ * - Blocos visuais alternados para separacao clara entre pacientes
  */
 
 (function() {
@@ -38,8 +39,8 @@
         watchdogMaxTravamentos: 3,
 
         // Modo paginado
-        paginadoTempo: 12000,           // tempo por pagina (ms)
-        paginadoTransicao: 600,         // duracao da transicao (ms)
+        paginadoTempo: 12000,
+        paginadoTransicao: 600,
 
         // Limites
         maxTentativasConexao: 3,
@@ -57,31 +58,25 @@
     // =========================================================
 
     var Estado = {
-        // Dados
         dadosNutricao: [],
         dadosFiltrados: [],
         setores: [],
         setoresSelecionados: [],
 
-        // Filtros de status
         filtroSemPrescricao: false,
         filtroDesatualizadas: false,
 
-        // Controle
         carregando: false,
         ultimaAtualizacao: null,
         errosConsecutivos: 0,
         autoScrollAtivo: false,
         autoScrollIniciado: false,
 
-        // Modo de scroll: 'rolar' ou 'paginar'
         modoScroll: 'rolar',
 
-        // Paginacao
         paginaAtual: 0,
         totalPaginas: 0,
 
-        // Intervalos e Timeouts
         intervalos: {
             refresh: null,
             scroll: null,
@@ -92,14 +87,12 @@
             autoScrollInicial: null
         },
 
-        // Watchdog do Scroll
         watchdog: {
             ultimaPosicao: 0,
             contadorTravamento: 0,
             ultimoTimestamp: 0
         },
 
-        // Multi-select aberto
         dropdownAberto: false
     };
 
@@ -115,7 +108,6 @@
         DOM.statusIndicator = document.getElementById('status-indicator');
         DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
 
-        // Multi-select setor
         DOM.multiSelectContainer = document.getElementById('multi-select-setor');
         DOM.btnMultiSetor = document.getElementById('btn-multi-setor');
         DOM.dropdownSetor = document.getElementById('dropdown-setor');
@@ -124,23 +116,19 @@
         DOM.btnSelectAll = document.getElementById('btn-select-all');
         DOM.btnSelectNone = document.getElementById('btn-select-none');
 
-        // Filtros de status
         DOM.btnFiltroSemPrescricao = document.getElementById('btn-filtro-sem-prescricao');
         DOM.btnFiltroDesatualizadas = document.getElementById('btn-filtro-desatualizadas');
 
-        // Cards do resumo
         DOM.nomeSetor = document.getElementById('nome-setor');
         DOM.totalPacientes = document.getElementById('total-pacientes');
         DOM.comPrescricao = document.getElementById('com-prescricao');
         DOM.semPrescricao = document.getElementById('sem-prescricao');
         DOM.desatualizadas = document.getElementById('desatualizadas');
 
-        // Paginacao
         DOM.paginacaoIndicator = document.getElementById('paginacao-indicator');
         DOM.paginacaoTexto = document.getElementById('paginacao-texto');
         DOM.paginacaoDots = document.getElementById('paginacao-dots');
 
-        // Botoes
         DOM.btnVoltar = document.getElementById('btn-voltar');
         DOM.btnRefresh = document.getElementById('btn-refresh');
         DOM.btnAutoScroll = document.getElementById('btn-auto-scroll');
@@ -283,9 +271,7 @@
         try {
             var raw = localStorage.getItem(CONFIG.storageKeySetores);
             if (raw) return JSON.parse(raw);
-        } catch (e) {
-            // fallback
-        }
+        } catch (e) {}
         return [];
     }
 
@@ -348,7 +334,6 @@
             Estado.setoresSelecionados.splice(idx, 1);
         }
 
-        // Atualiza visual do item
         var label = checkbox.closest('.multi-select-item');
         if (label) {
             if (checkbox.checked) {
@@ -454,7 +439,6 @@
             var semPresc = !reg.dieta_limpa || reg.dieta_limpa.trim() === '';
             var desatual = reg.dieta_limpa && verificarDesatualizada(reg.dt_prescricao);
 
-            // Se ambos filtros ativos: mostra quem atende qualquer um (OR)
             if (Estado.filtroSemPrescricao && Estado.filtroDesatualizadas) {
                 return semPresc || desatual;
             }
@@ -468,7 +452,6 @@
         Estado.dadosFiltrados = aplicarFiltrosStatus(Estado.dadosNutricao);
         renderizarTabela();
 
-        // Reinicia scroll/paginacao se ativo
         if (Estado.autoScrollAtivo) {
             pararAutoScroll();
             setTimeout(function() {
@@ -484,7 +467,6 @@
     // =========================================================
 
     function onFiltroAlterado() {
-        // Cancela auto-scroll inicial se estiver agendado
         if (Estado.timeouts.autoScrollInicial) {
             clearTimeout(Estado.timeouts.autoScrollInicial);
             Estado.timeouts.autoScrollInicial = null;
@@ -528,7 +510,6 @@
             pararAutoScroll();
         }
 
-        // Monta parametro de setores (virgula-separado)
         var urlNutricao = CONFIG.api.nutricao;
         var urlStats = CONFIG.api.stats;
 
@@ -656,13 +637,13 @@
                     '<p>Nao ha dados para os filtros selecionados</p>' +
                 '</div>';
 
-            // Esconde paginacao
             if (DOM.paginacaoIndicator) DOM.paginacaoIndicator.style.display = 'none';
             return;
         }
 
-        var linhasHtml = dados.map(function(registro) {
-            return criarLinhasPaciente(registro);
+        // Passa indice para alternar blocos visuais par/impar
+        var linhasHtml = dados.map(function(registro, indice) {
+            return criarLinhasPaciente(registro, indice);
         }).join('');
 
         var html =
@@ -687,7 +668,6 @@
 
         DOM.painelMain.innerHTML = html;
 
-        // Atualiza paginacao se modo paginado
         if (Estado.modoScroll === 'paginar') {
             calcularPaginas();
             mostrarPagina(0);
@@ -696,12 +676,15 @@
         }
     }
 
-    function criarLinhasPaciente(registro) {
+    function criarLinhasPaciente(registro, indice) {
         var nomeFormatado = formatarNome(registro.nm_paciente);
         var temPrescricao = registro.dieta_limpa && registro.dieta_limpa.trim() !== '';
         var ehDesatualizada = temPrescricao && verificarDesatualizada(registro.dt_prescricao);
 
-        var classesLinha = 'linha-principal';
+        // Classe do bloco alternado (par/impar) para separacao visual
+        var classeBloco = (indice % 2 === 0) ? 'bloco-par' : 'bloco-impar';
+
+        var classesLinha = 'linha-principal ' + classeBloco;
         if (!temPrescricao) {
             classesLinha += ' sem-prescricao';
         } else if (ehDesatualizada) {
@@ -732,13 +715,16 @@
                 '</td>' +
             '</tr>';
 
+        // Classe do bloco para linhas de detalhe tambem
+        var classeDetalheBloco = 'linha-detalhes ' + classeBloco;
+
         if (temPrescricao) {
             var dataFormatada = formatarDataPrescricao(registro.dt_prescricao);
             var classeBadgeData = ehDesatualizada ? 'badge-data desatualizada' : 'badge-data';
             var iconeData = ehDesatualizada ? 'fa-calendar-times' : 'fa-calendar-check';
 
             html +=
-                '<tr class="linha-detalhes linha-prescricao">' +
+                '<tr class="' + classeDetalheBloco + ' linha-prescricao">' +
                     '<td colspan="7">' +
                         '<div class="prescricao-content">' +
                             '<span class="' + classeBadgeData + '">' +
@@ -757,7 +743,7 @@
             var obsLimpa = registro.obs_limpa ? registro.obs_limpa.trim() : '';
             if (obsLimpa && obsLimpa !== '' && obsLimpa !== '-') {
                 html +=
-                    '<tr class="linha-detalhes linha-observacao ultima-linha">' +
+                    '<tr class="' + classeDetalheBloco + ' linha-observacao ultima-linha">' +
                         '<td colspan="7">' +
                             '<div class="observacao-content">' +
                                 '<i class="fas fa-comment-medical"></i> ' +
@@ -766,12 +752,15 @@
                         '</td>' +
                     '</tr>';
             } else {
-                // Marca prescricao como ultima linha
-                html = html.replace('linha-prescricao">', 'linha-prescricao ultima-linha">');
+                // Marca prescricao como ultima linha - adiciona a classe diretamente
+                html = html.replace(
+                    classeDetalheBloco + ' linha-prescricao">',
+                    classeDetalheBloco + ' linha-prescricao ultima-linha">'
+                );
             }
         } else {
             html +=
-                '<tr class="linha-detalhes linha-alerta ultima-linha">' +
+                '<tr class="' + classeDetalheBloco + ' linha-alerta ultima-linha">' +
                     '<td colspan="7">' +
                         '<div class="alerta-sem-prescricao">' +
                             '<i class="fas fa-exclamation-triangle"></i> ' +
@@ -798,7 +787,6 @@
         return '<span class="icone-alergia-nao" title="Sem alergia registrada">-</span>';
     }
 
-    // Melhoria 4: Icones diferenciados para prescritor
     function renderizarPrescritor(registro) {
         if (!registro.nm_prescritor || registro.nm_prescritor.trim() === '') {
             return '<span class="texto-muted">-</span>';
@@ -865,7 +853,6 @@
         salvarModoScroll(Estado.modoScroll);
         atualizarBotaoModoScroll();
 
-        // Re-renderiza para aplicar modo correto
         renderizarTabela();
 
         if (scrollEstaAtivo) {
@@ -1013,7 +1000,6 @@
 
         if (targetScroll > scrollMax) targetScroll = scrollMax;
 
-        // Transicao suave com classe de animacao
         tbody.classList.add('pagina-transicao');
         tbody.scrollTop = targetScroll;
 
@@ -1083,14 +1069,12 @@
             }
             DOM.paginacaoDots.innerHTML = dotsHtml;
 
-            // Clique nos dots
             var dots = DOM.paginacaoDots.querySelectorAll('.paginacao-dot');
             dots.forEach(function(dot) {
                 dot.addEventListener('click', function() {
                     var pag = parseInt(this.getAttribute('data-pagina'), 10);
                     mostrarPagina(pag);
 
-                    // Reinicia timer se paginado automatico
                     if (Estado.intervalos.paginado) {
                         pararPaginado();
                         Estado.intervalos.paginado = setInterval(function() {
@@ -1191,7 +1175,6 @@
     // =========================================================
 
     function configurarEventos() {
-        // Multi-select: abrir/fechar dropdown
         if (DOM.btnMultiSetor) {
             DOM.btnMultiSetor.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -1199,7 +1182,6 @@
             });
         }
 
-        // Selecionar todos / limpar
         if (DOM.btnSelectAll) {
             DOM.btnSelectAll.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -1213,14 +1195,12 @@
             });
         }
 
-        // Fechar dropdown ao clicar fora
         document.addEventListener('click', function(e) {
             if (Estado.dropdownAberto && DOM.multiSelectContainer && !DOM.multiSelectContainer.contains(e.target)) {
                 fecharDropdown();
             }
         });
 
-        // Filtros de status
         if (DOM.btnFiltroSemPrescricao) {
             DOM.btnFiltroSemPrescricao.addEventListener('click', toggleFiltroSemPrescricao);
         }
@@ -1228,19 +1208,16 @@
             DOM.btnFiltroDesatualizadas.addEventListener('click', toggleFiltroDesatualizadas);
         }
 
-        // Botao modo scroll
         if (DOM.btnModoScroll) {
             DOM.btnModoScroll.addEventListener('click', alternarModoScroll);
         }
 
-        // Botao voltar
         if (DOM.btnVoltar) {
             DOM.btnVoltar.addEventListener('click', function() {
                 window.location.href = '/frontend/dashboard.html';
             });
         }
 
-        // Botao refresh
         if (DOM.btnRefresh) {
             DOM.btnRefresh.addEventListener('click', function() {
                 DOM.btnRefresh.classList.add('girando');
@@ -1252,7 +1229,6 @@
             });
         }
 
-        // Botao auto scroll
         if (DOM.btnAutoScroll) {
             DOM.btnAutoScroll.addEventListener('click', function() {
                 Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
@@ -1267,7 +1243,6 @@
             });
         }
 
-        // Teclas de atalho
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 if (Estado.dropdownAberto) {
@@ -1296,7 +1271,6 @@
                 }
             }
 
-            // Setas para navegacao manual de pagina
             if (Estado.modoScroll === 'paginar') {
                 if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -1311,7 +1285,6 @@
             }
         });
 
-        // Visibilidade da pagina
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 if (Estado.autoScrollAtivo) {
@@ -1336,13 +1309,11 @@
 
         cachearElementos();
 
-        // Recupera estados salvos
         Estado.setoresSelecionados = recuperarSetoresSelecionados();
         Estado.modoScroll = recuperarModoScroll();
         Estado.filtroSemPrescricao = recuperarFiltroStatus(CONFIG.storageKeyFiltroSemPresc);
         Estado.filtroDesatualizadas = recuperarFiltroStatus(CONFIG.storageKeyFiltroDesatual);
 
-        // Aplica estados visuais
         atualizarBotaoModoScroll();
         atualizarBotaoFiltroStatus(DOM.btnFiltroSemPrescricao, Estado.filtroSemPrescricao);
         atualizarBotaoFiltroStatus(DOM.btnFiltroDesatualizadas, Estado.filtroDesatualizadas);
