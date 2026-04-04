@@ -97,12 +97,12 @@ function renderizarClinicas(clinicas) {
     clinicas.forEach(function(clinica) {
         var temDados = clinica.mediana !== null && clinica.mediana !== undefined;
 
-        // Nivel de espera
+        // Nivel de espera baseado no teto (faixa_max)
         var nivelClasse = 'nivel-baixo';
         if (temDados) {
-            if (clinica.mediana > 40) {
+            if (clinica.faixa_max > 40) {
                 nivelClasse = 'nivel-alto';
-            } else if (clinica.mediana > 20) {
+            } else if (clinica.faixa_max > 20) {
                 nivelClasse = 'nivel-medio';
             }
         }
@@ -129,7 +129,7 @@ function renderizarClinicas(clinicas) {
             tendenciaHtml += '</span>';
         }
 
-        // Fila (so mostra se > 0)
+        // Fila
         var filaHtml = '';
         if (clinica.fila > 0) {
             filaHtml = '<span class="footer-item"><i class="fas fa-users"></i> <strong class="fila-destaque">' + clinica.fila + '</strong> aguardando</span>';
@@ -149,11 +149,12 @@ function renderizarClinicas(clinicas) {
         }
         html += '  </div>';
 
-        // Body: tempo
+        // Body: tempo - agora mostra apenas o teto (faixa_max)
         html += '  <div class="clinica-card-body">';
         if (temDados) {
-            html += '    <div class="tempo-faixa ' + nivelClasse + '">';
-            html += '      ' + clinica.faixa_min + ' - ' + clinica.faixa_max + ' min';
+            html += '    <div class="tempo-display">';
+            html += '      <span class="tempo-valor ' + nivelClasse + '">' + clinica.faixa_max + '</span>';
+            html += '      <span class="tempo-sufixo ' + nivelClasse + '">min</span>';
             html += '    </div>';
             html += '    <span class="tempo-unidade">tempo estimado de espera</span>';
             html += '    ' + tendenciaHtml;
@@ -162,7 +163,7 @@ function renderizarClinicas(clinicas) {
         }
         html += '  </div>';
 
-        // Footer: apenas fila
+        // Footer: fila
         html += '  <div class="clinica-card-footer">';
         html += '    ' + filaHtml;
         html += '  </div>';

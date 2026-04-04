@@ -235,7 +235,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* Header: nome da clinica + medicos */
+/* Header */
 .clinica-card-header {
     display: flex;
     align-items: center;
@@ -265,7 +265,7 @@ body {
     font-size: 0.65rem;
 }
 
-/* Centro: tempo estimado */
+/* Body: tempo estimado */
 .clinica-card-body {
     flex: 1;
     display: flex;
@@ -277,17 +277,33 @@ body {
     min-height: 0;
 }
 
-.tempo-faixa {
-    font-size: 2.4rem;
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.5px;
+/* Display do tempo: numero + sufixo "min" lado a lado */
+.tempo-display {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
     margin-bottom: 4px;
 }
 
-.tempo-faixa.nivel-baixo { color: var(--cor-espera-baixa); }
-.tempo-faixa.nivel-medio { color: var(--cor-espera-media); }
-.tempo-faixa.nivel-alto { color: var(--cor-espera-alta); }
+.tempo-valor {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+.tempo-sufixo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    opacity: 0.8;
+}
+
+.tempo-valor.nivel-baixo,
+.tempo-sufixo.nivel-baixo { color: var(--cor-espera-baixa); }
+.tempo-valor.nivel-medio,
+.tempo-sufixo.nivel-medio { color: var(--cor-espera-media); }
+.tempo-valor.nivel-alto,
+.tempo-sufixo.nivel-alto  { color: var(--cor-espera-alta); }
 
 .tempo-unidade {
     font-size: 0.75rem;
@@ -329,7 +345,7 @@ body {
     font-weight: 500;
 }
 
-/* Footer: fila aguardando */
+/* Footer */
 .clinica-card-footer {
     display: flex;
     justify-content: center;
@@ -482,8 +498,12 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .tempo-faixa {
-        font-size: 2rem;
+    .tempo-valor {
+        font-size: 2.6rem;
+    }
+
+    .tempo-sufixo {
+        font-size: 1.1rem;
     }
 }
 
@@ -525,8 +545,12 @@ body {
         padding: 14px;
     }
 
-    .tempo-faixa {
-        font-size: 1.6rem;
+    .tempo-valor {
+        font-size: 2rem;
+    }
+
+    .tempo-sufixo {
+        font-size: 0.9rem;
     }
 }
 
@@ -558,8 +582,12 @@ body {
         font-size: 1.35rem;
     }
 
-    .tempo-faixa {
-        font-size: 3rem;
+    .tempo-valor {
+        font-size: 4rem;
+    }
+
+    .tempo-sufixo {
+        font-size: 1.6rem;
     }
 
     .tempo-unidade {
