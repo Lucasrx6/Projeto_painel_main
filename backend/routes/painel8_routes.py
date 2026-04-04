@@ -91,7 +91,7 @@ def api_painel8_enfermaria():
                     cd_setor_atendimento,
                     ie_status_unidade,
                     ds_tipo_acomodacao,
-                    dt_previsto_alta,
+                    dt_entrada_unid,
                     especialidade
                 FROM painel_enfermaria
                 WHERE nm_setor = %s
@@ -121,7 +121,7 @@ def api_painel8_enfermaria():
                     cd_setor_atendimento,
                     ie_status_unidade,
                     ds_tipo_acomodacao,
-                    dt_previsto_alta,
+                    dt_entrada_unid,
                     especialidade
                 FROM painel_enfermaria
                 ORDER BY nm_setor, cd_unidade

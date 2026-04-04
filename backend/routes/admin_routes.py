@@ -372,7 +372,7 @@ def api_listar_paineis():
              'descricao': 'Deteriorização Pacientes', 'ativo': True},
             {'nome': 'painel28', 'titulo': 'Hub de Solicitações',
              'descricao': 'Hub de Solicitações', 'ativo': True},
-            {'nome': 'painel28', 'titulo': 'Gestão de Formulários',
+            {'nome': 'painel29', 'titulo': 'Gestão de Formulários',
              'descricao': 'Gestão de Formulários', 'ativo': True},
         ]
 

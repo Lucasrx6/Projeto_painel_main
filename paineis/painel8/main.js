@@ -1,15 +1,14 @@
 // ========================================
 // PAINEL 8 - ENFERMARIA COM AUTO-SCROLL ROBUSTO
-// Versao com Watchdog Funcional e Compatibilidade Cross-Browser
-// Correcao: Acentuacao nos icones Lab/Imagem (3 estados)
+// Versao com Data Internacao + Alerta Sem Prescricao > 1h
 // ========================================
 
-const BASE_URL = window.location.origin;
+var BASE_URL = window.location.origin;
 
-const CONFIG = {
-    apiEnfermaria: `${BASE_URL}/api/paineis/painel8/enfermaria`,
-    apiSetores: `${BASE_URL}/api/paineis/painel8/setores`,
-    apiStats: `${BASE_URL}/api/paineis/painel8/stats`,
+var CONFIG = {
+    apiEnfermaria: BASE_URL + '/api/paineis/painel8/enfermaria',
+    apiSetores: BASE_URL + '/api/paineis/painel8/setores',
+    apiStats: BASE_URL + '/api/paineis/painel8/stats',
     intervaloRefresh: 95000,
     velocidadeScroll: 1,
     delayInicioAutoScroll: 10000,
@@ -17,14 +16,16 @@ const CONFIG = {
     pausaAposReset: 8000,
     watchdogInterval: 3000,
     watchdogTolerancia: 3,
-    scrollInterval: 30
+    scrollInterval: 30,
+    limiteHorasSemPrescricao: 1,
+    maxHorasSemPrescricao: 6
 };
 
 // ========================================
 // ESTADO GLOBAL
 // ========================================
 
-const Estado = {
+var Estado = {
     dadosEnfermaria: [],
     setores: [],
     setorSelecionado: localStorage.getItem('painel8_setor') || '',
@@ -592,93 +593,111 @@ function mostrarErro(mensagem) {
 // FORMATACAO DE DATAS
 // ========================================
 
-function parseOracleDate(dataString) {
+/**
+ * Converte string DD/MM/YYYY HH:MM:SS em objeto Date
+ */
+function parseDataInternacao(dataString) {
     if (!dataString || dataString.trim() === '') return null;
 
     dataString = dataString.trim();
 
-    if (dataString.includes('-') && (dataString.includes(' ') || dataString.split('-').length === 3)) {
-        var dataParsed = new Date(dataString);
-        if (!isNaN(dataParsed.getTime())) {
-            return dataParsed;
-        }
-    }
+    // Formato esperado: DD/MM/YYYY HH:MM:SS
+    var partes = dataString.split(' ');
+    if (partes.length < 2) return null;
 
-    var meses = {
-        'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
-        'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
-    };
+    var dataParts = partes[0].split('/');
+    var horaParts = partes[1].split(':');
 
-    var partes = dataString.split('-');
+    if (dataParts.length !== 3 || horaParts.length < 2) return null;
 
-    if (partes.length === 3 && partes[1].length === 3) {
-        var dia = parseInt(partes[0]);
-        var mes = meses[partes[1].toUpperCase()];
-        var ano = parseInt('20' + partes[2]);
+    var dia = parseInt(dataParts[0], 10);
+    var mes = parseInt(dataParts[1], 10) - 1;
+    var ano = parseInt(dataParts[2], 10);
+    var hora = parseInt(horaParts[0], 10);
+    var minuto = parseInt(horaParts[1], 10);
+    var segundo = horaParts[2] ? parseInt(horaParts[2], 10) : 0;
 
-        if (!isNaN(dia) && mes !== undefined && !isNaN(ano)) {
-            return new Date(ano, mes, dia);
-        }
-    }
+    var d = new Date(ano, mes, dia, hora, minuto, segundo);
+    if (isNaN(d.getTime())) return null;
 
-    return null;
+    return d;
 }
 
-function formatarData(dataString) {
-    var data = parseOracleDate(dataString);
-    if (!data) return 'Nao informado';
-
-    var dia = String(data.getDate()).padStart(2, '0');
-    var mes = String(data.getMonth() + 1).padStart(2, '0');
-    var ano = data.getFullYear();
-
-    return dia + '/' + mes + '/' + ano;
-}
-
-function getBadgeDataAlta(dataString) {
+/**
+ * Retorna badge com data de internacao formatada
+ * Formato compacto: DD/MM HH:MM
+ */
+function getBadgeDataInternacao(dataString) {
     if (!dataString || dataString.trim() === '') {
-        return '<span class="badge-alta badge-sem-info">Nao informado</span>';
+        return '<span class="badge-internacao badge-sem-info">-</span>';
     }
 
-    var dataAlta = parseOracleDate(dataString);
-    if (!dataAlta) {
-        return '<span class="badge-alta badge-sem-info">Data invalida</span>';
+    var dataInternacao = parseDataInternacao(dataString);
+    if (!dataInternacao) {
+        return '<span class="badge-internacao badge-sem-info">-</span>';
     }
 
-    var hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    dataAlta.setHours(0, 0, 0, 0);
+    var dia = String(dataInternacao.getDate()).padStart(2, '0');
+    var mes = String(dataInternacao.getMonth() + 1).padStart(2, '0');
+    var hora = String(dataInternacao.getHours()).padStart(2, '0');
+    var minuto = String(dataInternacao.getMinutes()).padStart(2, '0');
 
-    var diffTime = dataAlta - hoje;
-    var diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    var dataFormatada = dia + '/' + mes + ' ' + hora + ':' + minuto;
 
-    var dataFormatada = formatarData(dataString);
+    return '<span class="badge-internacao" title="Entrada: ' + dataString + '">' +
+        '<i class="fas fa-sign-in-alt"></i> ' + dataFormatada +
+    '</span>';
+}
 
-    if (diffDias <= 1 && diffDias >= 0) {
-        return '<span class="badge-alta badge-verde" title="Alta prevista: ' + dataFormatada + '">' +
-            '<i class="fas fa-calendar-check"></i> ' + (diffDias === 0 ? 'Hoje' : 'Amanha') +
-        '</span>';
+/**
+ * Verifica se paciente esta sem prescricao dentro da janela relevante
+ * Retorna true se:
+ *   - tem atendimento
+ *   - sem prescricao no dia
+ *   - internado ha mais de limiteHorasSemPrescricao (1h)
+ *   - internado ha menos de maxHorasSemPrescricao (6h)
+ * Pacientes internados ha mais de 6h nao exibem alerta especial
+ * pois a query Oracle so busca prescricoes do dia atual
+ */
+function verificarSemPrescricao(registro) {
+    // Leito vazio nao se aplica
+    if (!registro.atendimento) return false;
+
+    // Se tem prescricao, nao alerta
+    if (registro.nr_prescricao) return false;
+
+    // Sem data de entrada, nao consegue calcular
+    if (!registro.dt_entrada_unid || registro.dt_entrada_unid.trim() === '') return false;
+
+    var dataEntrada = parseDataInternacao(registro.dt_entrada_unid);
+    if (!dataEntrada) return false;
+
+    var agora = new Date();
+    var diffMs = agora.getTime() - dataEntrada.getTime();
+    var diffHoras = diffMs / (1000 * 60 * 60);
+
+    // Somente entre 1h e 6h de internacao
+    return diffHoras >= CONFIG.limiteHorasSemPrescricao && diffHoras <= CONFIG.maxHorasSemPrescricao;
+}
+
+/**
+ * Retorna texto do tempo sem prescricao para tooltip
+ */
+function getTempoSemPrescricao(registro) {
+    if (!registro.dt_entrada_unid) return '';
+
+    var dataEntrada = parseDataInternacao(registro.dt_entrada_unid);
+    if (!dataEntrada) return '';
+
+    var agora = new Date();
+    var diffMs = agora.getTime() - dataEntrada.getTime();
+    var diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
+    var diffMinutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (diffHoras > 0) {
+        return diffHoras + 'h' + diffMinutos + 'min sem prescricao';
     }
-
-    if (diffDias >= 2 && diffDias <= 4) {
-        return '<span class="badge-alta badge-amarelo" title="Alta prevista: ' + dataFormatada + '">' +
-            '<i class="fas fa-calendar-day"></i> ' + diffDias + ' dias' +
-        '</span>';
-    }
-
-    if (diffDias >= 5) {
-        return '<span class="badge-alta badge-vermelho" title="Alta prevista: ' + dataFormatada + '">' +
-            '<i class="fas fa-calendar-alt"></i> ' + diffDias + ' dias' +
-        '</span>';
-    }
-
-    if (diffDias < 0) {
-        return '<span class="badge-alta badge-atrasado" title="Alta prevista: ' + dataFormatada + '">' +
-            '<i class="fas fa-exclamation-triangle"></i> Atrasada (' + Math.abs(diffDias) + ' dias)' +
-        '</span>';
-    }
-
-    return '<span class="badge-alta badge-sem-info">' + dataFormatada + '</span>';
+    return diffMinutos + 'min sem prescricao';
 }
 
 function formatarEspecialidade(especialidade) {
@@ -716,7 +735,7 @@ function renderizarTabela(dados) {
             '<table class="enfermaria-table">' +
                 '<thead>' +
                     '<tr>' +
-                        '<th>Alta Prevista</th>' +
+                        '<th>Internacao</th>' +
                         '<th>Leito</th>' +
                         '<th>Atendimento</th>' +
                         '<th>Paciente</th>' +
@@ -744,15 +763,24 @@ function renderizarTabela(dados) {
 function criarLinhaTabela(registro) {
     var isVazio = !registro.atendimento;
     var scoreNews = registro.score_news || 0;
+    var semPrescricao = verificarSemPrescricao(registro);
 
-    var rowClass = '';
+    // Monta classes da linha
+    var rowClasses = [];
     if (isVazio) {
-        rowClass = 'leito-vazio';
+        rowClasses.push('leito-vazio');
     } else if (scoreNews >= 7) {
-        rowClass = 'news-alto-risco';
+        rowClasses.push('news-alto-risco');
     } else if (scoreNews >= 5) {
-        rowClass = 'news-medio-risco';
+        rowClasses.push('news-medio-risco');
     }
+
+    // Alerta sem prescricao (so se nao for leito vazio e nao tiver alerta NEWS critico)
+    if (semPrescricao && !isVazio) {
+        rowClasses.push('sem-prescricao');
+    }
+
+    var rowClass = rowClasses.join(' ');
 
     var nomeFormatado = formatarNome(registro.paciente);
     var idadeFormatada = registro.idade ? registro.idade + ' anos' : '-';
@@ -776,15 +804,24 @@ function criarLinhaTabela(registro) {
         '</tr>';
     }
 
+    // Icone de prescricao: se sem prescricao > 1h, mostra alerta especial
+    var iconePrescricao;
+    if (semPrescricao) {
+        var tempoTitulo = getTempoSemPrescricao(registro);
+        iconePrescricao = '<i class="fas fa-clock icone-laranja sem-prescricao-icon" title="' + tempoTitulo + '"></i>';
+    } else {
+        iconePrescricao = getIconePrescricao(registro.nr_prescricao);
+    }
+
     return '<tr class="' + rowClass + '">' +
-        '<td>' + getBadgeDataAlta(registro.dt_previsto_alta) + '</td>' +
+        '<td>' + getBadgeDataInternacao(registro.dt_entrada_unid) + '</td>' +
         '<td><strong>' + registro.leito + '</strong></td>' +
         '<td>' + (registro.atendimento || '-') + '</td>' +
         '<td>' + nomeFormatado + '</td>' +
         '<td>' + formatarEspecialidade(registro.especialidade) + '</td>' +
         '<td>' + idadeFormatada + '</td>' +
         '<td>' + (registro.dias_internado || '-') + '</td>' +
-        '<td>' + getIconePrescricao(registro.nr_prescricao) + '</td>' +
+        '<td>' + iconePrescricao + '</td>' +
         '<td>' + getIconeLab(registro.prescrito_lab_dia) + '</td>' +
         '<td>' + getIconeImagem(registro.prescrito_proc_dia) + '</td>' +
         '<td>' + getIconeEvolucao(registro.evol_medico) + '</td>' +
@@ -806,10 +843,6 @@ function formatarNome(nomeCompleto) {
 // ========================================
 // ICONES COLORIDOS - 3 ESTADOS
 // ========================================
-// NULL  -> Sem prescricao     -> traço neutro (-)
-// "Não" -> Prescrito/Pendente -> icone vermelho (aguardando resultado)
-// "Sim" -> Resultado liberado -> icone verde (concluido)
-// ========================================
 
 function getIconePrescricao(nr_prescricao) {
     if (!nr_prescricao) {
@@ -820,8 +853,8 @@ function getIconePrescricao(nr_prescricao) {
 
 /**
  * Icone de Laboratorio - 3 estados
- * NULL -> sem exame prescrito -> traço neutro
- * "Não" -> exame prescrito, resultado pendente -> icone vermelho
+ * NULL -> sem exame prescrito -> traco neutro
+ * "Nao" -> exame prescrito, resultado pendente -> icone vermelho
  * "Sim" -> exame prescrito, resultado liberado -> icone verde
  */
 function getIconeLab(valor) {
@@ -831,8 +864,7 @@ function getIconeLab(valor) {
     if (valor === 'Sim') {
         return '<i class="fas fa-flask icone-verde" title="Resultado liberado"></i>';
     }
-    // "Não" (com ou sem acento)
-    if (valor === 'Não' || valor === 'Nao' || valor === 'N\u00e3o') {
+    if (valor === 'N\u00e3o' || valor === 'Nao' || valor === 'Não') {
         return '<i class="fas fa-flask icone-vermelho" title="Resultado pendente"></i>';
     }
     return '<span class="texto-neutro">-</span>';
@@ -840,8 +872,8 @@ function getIconeLab(valor) {
 
 /**
  * Icone de Imagem - 3 estados
- * NULL -> sem exame prescrito -> traço neutro
- * "Não" -> exame prescrito, laudo pendente -> icone vermelho
+ * NULL -> sem exame prescrito -> traco neutro
+ * "Nao" -> exame prescrito, laudo pendente -> icone vermelho
  * "Sim" -> exame prescrito, laudo liberado -> icone verde
  */
 function getIconeImagem(valor) {
@@ -851,8 +883,7 @@ function getIconeImagem(valor) {
     if (valor === 'Sim') {
         return '<i class="fas fa-x-ray icone-verde" title="Laudo liberado"></i>';
     }
-    // "Não" (com ou sem acento)
-    if (valor === 'Não' || valor === 'Nao' || valor === 'N\u00e3o') {
+    if (valor === 'N\u00e3o' || valor === 'Nao' || valor === 'Não') {
         return '<i class="fas fa-x-ray icone-vermelho" title="Laudo pendente"></i>';
     }
     return '<span class="texto-neutro">-</span>';

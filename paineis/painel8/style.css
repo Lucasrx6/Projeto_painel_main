@@ -1,5 +1,6 @@
 /* ========================================
-   🎨 PAINEL 8: ENFERMARIA - PADRÃO PAINEL 5
+   PAINEL 8: ENFERMARIA
+   Data Internacao + Alerta Sem Prescricao
    ======================================== */
 
 * {
@@ -18,7 +19,7 @@ body {
 }
 
 /* ========================================
-   📦 CONTAINER - SEM SCROLL
+   CONTAINER
    ======================================== */
 
 .painel-container {
@@ -30,7 +31,7 @@ body {
 }
 
 /* ========================================
-   🎯 CABEÇALHO ULTRA COMPACTO
+   CABECALHO ULTRA COMPACTO
    ======================================== */
 
 .painel-header {
@@ -100,7 +101,7 @@ body {
     background: white;
 }
 
-/* Botões do Header */
+/* Botoes do Header */
 .btn-voltar,
 .btn-refresh,
 .btn-auto-scroll {
@@ -133,7 +134,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* Botão Auto-Scroll Ativo */
+/* Botao Auto-Scroll Ativo */
 .btn-auto-scroll.active {
     background: #28a745;
     border-color: #28a745;
@@ -155,7 +156,7 @@ body {
 }
 
 /* ========================================
-   📊 MINI DASHBOARD COMPACTO - 1 LINHA
+   MINI DASHBOARD COMPACTO
    ======================================== */
 
 .mini-dashboard {
@@ -199,7 +200,6 @@ body {
     color: white;
 }
 
-/* Cores dos ícones */
 .icon-setor {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
@@ -235,7 +235,7 @@ body {
 }
 
 /* ========================================
-   📋 CONTEÚDO - SEM SCROLL, DINÂMICO
+   CONTEUDO
    ======================================== */
 
 .enfermaria-content {
@@ -245,7 +245,7 @@ body {
 }
 
 /* ========================================
-   📊 TABELA - ALINHAMENTO PERFEITO
+   TABELA
    ======================================== */
 
 .enfermaria-table-wrapper {
@@ -265,7 +265,7 @@ body {
     flex-direction: column;
 }
 
-/* THEAD: Larguras fixas */
+/* THEAD */
 .enfermaria-table thead {
     display: table;
     width: 100%;
@@ -290,28 +290,28 @@ body {
     white-space: nowrap;
 }
 
-/* Larguras das colunas - ATUALIZADO COM NOVAS COLUNAS */
-.enfermaria-table thead th:nth-child(1) { width: 120px; }  /* Alta Prevista */
+/* Larguras das colunas */
+.enfermaria-table thead th:nth-child(1) { width: 110px; }  /* Internacao */
 .enfermaria-table thead th:nth-child(2) { width: 70px; }   /* Leito */
 .enfermaria-table thead th:nth-child(3) { width: 90px; }   /* Atendimento */
 .enfermaria-table thead th:nth-child(4) { width: 12%; }    /* Paciente */
 .enfermaria-table thead th:nth-child(5) { width: 12%; }    /* Especialidade */
 .enfermaria-table thead th:nth-child(6) { width: 60px; }   /* Idade */
 .enfermaria-table thead th:nth-child(7) { width: 50px; }   /* Dias */
-.enfermaria-table thead th:nth-child(8) { width: 80px; }   /* Prescrição */
+.enfermaria-table thead th:nth-child(8) { width: 80px; }   /* Prescricao */
 .enfermaria-table thead th:nth-child(9) { width: 70px; }   /* Lab */
 .enfermaria-table thead th:nth-child(10) { width: 70px; }  /* Imagem */
-.enfermaria-table thead th:nth-child(11) { width: 80px; }  /* Evolução */
+.enfermaria-table thead th:nth-child(11) { width: 80px; }  /* Evolucao */
 .enfermaria-table thead th:nth-child(12) { width: 70px; }  /* Parecer */
 .enfermaria-table thead th:nth-child(13) { width: 70px; }  /* Alergia */
 .enfermaria-table thead th:nth-child(14) { width: 60px; }  /* NEWS */
 
-/* Centraliza colunas de badges (a partir da coluna 8 agora) */
+/* Centraliza colunas de badges (a partir da coluna 8) */
 .enfermaria-table thead th:nth-child(n+8) {
     text-align: center;
 }
 
-/* TBODY: Mesmas larguras + scroll */
+/* TBODY */
 .enfermaria-table tbody {
     display: block;
     overflow-y: auto;
@@ -343,10 +343,54 @@ body {
 }
 
 /* ========================================
-   ⚠️ ALERTAS NEWS - ERGONÔMICOS
+   ALERTA SEM PRESCRICAO > 1H (DISCRETO)
+   Borda esquerda laranja + fundo sutil
    ======================================== */
 
-/* Médio Risco: Amarelo suave + borda esquerda */
+.enfermaria-table tbody tr.sem-prescricao {
+    border-left: 3px solid #fd7e14;
+    background: #fff9f0;
+}
+
+.enfermaria-table tbody tr.sem-prescricao:hover {
+    background: #fff3e0;
+}
+
+/* Quando tem NEWS alto E sem prescricao, NEWS tem prioridade visual */
+.enfermaria-table tbody tr.news-alto-risco.sem-prescricao {
+    border-left: 4px solid #dc3545;
+}
+
+.enfermaria-table tbody tr.news-medio-risco.sem-prescricao {
+    border-left: 4px solid #ffc107;
+}
+
+/* Icone laranja pulsante discreto na coluna prescricao */
+.icone-laranja {
+    color: #fd7e14;
+    font-size: 1.2rem;
+}
+
+.sem-prescricao-icon {
+    animation: pulso-laranja 3s ease-in-out infinite;
+}
+
+@keyframes pulso-laranja {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.08);
+    }
+}
+
+/* ========================================
+   ALERTAS NEWS
+   ======================================== */
+
+/* Medio Risco */
 .enfermaria-table tbody tr.news-medio-risco {
     background: #fffbf0 !important;
     border-left: 4px solid #ffc107;
@@ -368,7 +412,7 @@ body {
     }
 }
 
-/* Alto Risco: Vermelho suave + borda esquerda */
+/* Alto Risco */
 .enfermaria-table tbody tr.news-alto-risco {
     background: #fff5f5 !important;
     border-left: 4px solid #dc3545;
@@ -390,7 +434,7 @@ body {
     }
 }
 
-/* Ícones NEWS na coluna */
+/* Icones NEWS */
 .news-icon-medio {
     color: #ffc107;
     font-size: 1.3rem;
@@ -426,7 +470,7 @@ body {
 }
 
 /* ========================================
-   🔧 CÉLULAS DA TABELA - COM CORREÇÃO DE TRUNCAMENTO
+   CELULAS DA TABELA
    ======================================== */
 
 .enfermaria-table tbody td {
@@ -436,8 +480,8 @@ body {
     vertical-align: middle;
 }
 
-/* Mesmas larguras do THEAD - ATUALIZADO */
-.enfermaria-table tbody td:nth-child(1) { width: 120px; }
+/* Mesmas larguras do THEAD */
+.enfermaria-table tbody td:nth-child(1) { width: 110px; }
 .enfermaria-table tbody td:nth-child(2) { width: 70px; }
 .enfermaria-table tbody td:nth-child(3) { width: 90px; }
 .enfermaria-table tbody td:nth-child(4) { width: 12%; }
@@ -452,12 +496,12 @@ body {
 .enfermaria-table tbody td:nth-child(13) { width: 70px; }
 .enfermaria-table tbody td:nth-child(14) { width: 60px; }
 
-/* Centraliza colunas de badges (a partir da coluna 8 agora) */
+/* Centraliza colunas de badges */
 .enfermaria-table tbody td:nth-child(n+8) {
     text-align: center;
 }
 
-/* ✅ CORREÇÃO: Colunas Paciente e Especialidade - SEM truncamento */
+/* Colunas Paciente e Especialidade - sem truncamento */
 .enfermaria-table tbody td:nth-child(4),
 .enfermaria-table tbody td:nth-child(5) {
     white-space: normal !important;
@@ -481,83 +525,34 @@ body {
 }
 
 /* ========================================
-   📅 BADGES DE DATA DE ALTA
+   BADGE DATA INTERNACAO
    ======================================== */
 
-.badge-alta {
+.badge-internacao {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 10px;
-    border-radius: 12px;
+    padding: 3px 8px;
+    border-radius: 10px;
     font-size: 0.7rem;
     font-weight: 600;
     white-space: nowrap;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1565c0;
+    border: 1px solid #90caf9;
     transition: all 0.3s ease;
 }
 
-.badge-alta i {
-    font-size: 0.75rem;
-}
-
-/* Verde: Alta em 1 dia ou menos */
-.badge-verde {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
-    border: 1px solid #b1dfbb;
-}
-
-.badge-verde:hover {
-    background: linear-gradient(135deg, #c3e6cb 0%, #b1dfbb 100%);
+.badge-internacao:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+    box-shadow: 0 2px 8px rgba(21, 101, 192, 0.2);
 }
 
-/* Amarelo: Alta em 2-4 dias */
-.badge-amarelo {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-    color: #856404;
-    border: 1px solid #ffeaa7;
+.badge-internacao i {
+    font-size: 0.7rem;
 }
 
-.badge-amarelo:hover {
-    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
-}
-
-/* Vermelho: Alta em 5+ dias */
-.badge-vermelho {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.badge-vermelho:hover {
-    background: linear-gradient(135deg, #f5c6cb 0%, #f1b0b7 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
-}
-
-/* Alta atrasada */
-.badge-atrasado {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-    color: white;
-    border: 1px solid #c0392b;
-    animation: pulso-atrasado 2s ease-in-out infinite;
-}
-
-@keyframes pulso-atrasado {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
-    }
-    50% {
-        box-shadow: 0 0 0 6px rgba(220, 53, 69, 0);
-    }
-}
-
-/* Sem informação */
-.badge-sem-info {
+.badge-internacao.badge-sem-info {
     background: #f8f9fa;
     color: #6c757d;
     border: 1px solid #dee2e6;
@@ -565,7 +560,7 @@ body {
 }
 
 /* ========================================
-   👨‍⚕️ ESPECIALIDADE
+   ESPECIALIDADE
    ======================================== */
 
 .especialidade {
@@ -580,7 +575,7 @@ body {
 }
 
 /* ========================================
-   🎯 ÍCONES COLORIDOS
+   ICONES COLORIDOS
    ======================================== */
 
 .icone-verde {
@@ -605,7 +600,7 @@ body {
 }
 
 /* ========================================
-   ⏳ LOADING
+   LOADING
    ======================================== */
 
 .loading-container {
@@ -639,7 +634,7 @@ body {
 }
 
 /* ========================================
-   ❌ MENSAGEM VAZIA
+   MENSAGEM VAZIA
    ======================================== */
 
 .empty-message {
@@ -667,7 +662,7 @@ body {
 }
 
 /* ========================================
-   📱 RESPONSIVIDADE
+   RESPONSIVIDADE
    ======================================== */
 
 @media (max-width: 1400px) {
