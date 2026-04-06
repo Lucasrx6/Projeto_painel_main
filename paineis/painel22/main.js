@@ -1,29 +1,16 @@
 /**
  * PAINEL 22 - Acompanhamento de Exames PS
  *
- * Colunas: Atend. | Paciente (nome+clinica+medico) | Lab | Tempo Lab | Radio | Tempo Rad
- * Badges: Aguardando (vermelho), Em andamento (amarelo), Concluido (verde)
- * Status predominante por tipo de exame (maioria vence, empate = pior status)
- *
- * Tempo para de contar quando exame e concluido (calculado no backend).
- * Indicador visual diferencia tempo "parado" (concluido) de "contando" (pendente/andamento).
- *
- * Suporte a rota publica (/publico/painel22) para acesso
- * de pacientes via rede sem autenticacao.
+ * 7 colunas: Atend | Paciente(+clinica) | Lab | Tempo || Radio | Tempo | Medico
+ * Separador visual entre Lab/Tempo e Radio/Tempo
+ * Concluido: mostra "Liberado ha Xmin"
+ * Paciente some 1h apos ultimo exame liberado
  */
 
 (function() {
     'use strict';
 
-    // =========================================================
-    // DETECCAO DE MODO PUBLICO
-    // =========================================================
-
     var IS_PUBLICO = window.location.pathname.indexOf('/publico/') !== -1;
-
-    // =========================================================
-    // CONFIGURACAO
-    // =========================================================
 
     var CONFIG = {
         api: {
@@ -87,6 +74,13 @@
         return iniciais.join(' ') + ' ' + partes[partes.length - 1];
     }
 
+    function formatarNomeMedico(nome) {
+        if (!nome || nome.trim() === '') return '-';
+        var partes = nome.trim().split(/\s+/);
+        if (partes.length <= 2) return nome.trim();
+        return partes[0] + ' ' + partes[partes.length - 1];
+    }
+
     function formatarTempo(horas) {
         if (horas === null || horas === undefined) return '-';
         horas = parseFloat(horas);
@@ -107,6 +101,18 @@
             if (m > 0) result += (m < 10 ? '0' : '') + m;
         }
         return result;
+    }
+
+    function formatarTempoDesde(horas) {
+        if (horas === null || horas === undefined) return '';
+        horas = parseFloat(horas);
+        if (isNaN(horas) || horas < 0) return '';
+        var totalMinutos = Math.round(horas * 60);
+        if (totalMinutos < 1) return 'ha <1min';
+        if (totalMinutos < 60) return 'ha ' + totalMinutos + 'min';
+        var h = Math.floor(totalMinutos / 60);
+        var m = totalMinutos % 60;
+        return m > 0 ? 'ha ' + h + 'h' + (m < 10 ? '0' : '') + m : 'ha ' + h + 'h';
     }
 
     function classeTempo(horas) {
@@ -133,44 +139,48 @@
     }
 
     // =========================================================
-    // LOGICA DE STATUS PREDOMINANTE
+    // STATUS PREDOMINANTE
     // =========================================================
 
     function determinarStatusPredominante(exames) {
         if (!exames || exames.length === 0) return null;
-
         var contagem = { pendente: 0, andamento: 0, concluido: 0 };
-
         for (var i = 0; i < exames.length; i++) {
             var s = (exames[i].status_exame || '').toUpperCase();
-            if (s === 'LAUDADO' || s === 'LIBERADO') {
-                contagem.concluido++;
-            } else if (s === 'EXECUTADO' || s === 'COLETADO' || s === 'EM_ANALISE' || s === 'RESULTADO_PARCIAL') {
-                contagem.andamento++;
-            } else {
-                contagem.pendente++;
-            }
+            if (s === 'LAUDADO' || s === 'LIBERADO') contagem.concluido++;
+            else if (s === 'EXECUTADO' || s === 'COLETADO' || s === 'EM_ANALISE' || s === 'RESULTADO_PARCIAL') contagem.andamento++;
+            else contagem.pendente++;
         }
-
-        if (contagem.pendente >= contagem.andamento && contagem.pendente >= contagem.concluido) {
-            return 'pendente';
-        }
-        if (contagem.andamento >= contagem.concluido) {
-            return 'andamento';
-        }
+        if (contagem.pendente >= contagem.andamento && contagem.pendente >= contagem.concluido) return 'pendente';
+        if (contagem.andamento >= contagem.concluido) return 'andamento';
         return 'concluido';
     }
 
     // =========================================================
-    // CALCULO DE TEMPO POR TIPO
+    // TEMPO POR TIPO
     // =========================================================
 
-    function calcularTempoTipo(exames) {
+    function calcularTempoTipo(exames, statusTipo) {
         if (!exames || exames.length === 0) return null;
 
+        if (statusTipo === 'concluido') {
+            // Mostra tempo desde a liberacao mais recente (menor horas_desde_liberacao)
+            var minDesde = null;
+            for (var i = 0; i < exames.length; i++) {
+                var hd = parseFloat(exames[i].horas_desde_liberacao);
+                if (!isNaN(hd) && hd >= 0) {
+                    if (minDesde === null || hd < minDesde) {
+                        minDesde = hd;
+                    }
+                }
+            }
+            return minDesde;
+        }
+
+        // Pendente ou andamento: maior horas_espera
         var maxHoras = null;
-        for (var i = 0; i < exames.length; i++) {
-            var h = parseFloat(exames[i].horas_espera);
+        for (var j = 0; j < exames.length; j++) {
+            var h = parseFloat(exames[j].horas_espera);
             if (!isNaN(h) && h > 0) {
                 if (maxHoras === null || h > maxHoras) {
                     maxHoras = h;
@@ -225,7 +235,6 @@
                     Estado.pacientes = dadosResp.data || [];
                     renderizarTabela();
                 }
-
                 atualizarHorario();
                 atualizarStatus('online');
                 Estado.errosConsecutivos = 0;
@@ -237,7 +246,6 @@
                         iniciarAutoScroll();
                     }, 500);
                 }
-
                 if (!Estado.autoScrollIniciado && !scrollEstaAtivo) agendarAutoScrollInicial();
             })
             .catch(function(err) {
@@ -279,10 +287,11 @@
             '<thead><tr>' +
             '<th class="col-atendimento"><i class="fas fa-hashtag"></i> Atend.</th>' +
             '<th class="col-paciente"><i class="fas fa-user"></i> Paciente</th>' +
-            '<th class="col-lab"><i class="fas fa-flask"></i> Lab</th>' +
-            '<th class="col-tempo-lab"><i class="fas fa-clock"></i> Tempo</th>' +
-            '<th class="col-radio"><i class="fas fa-x-ray"></i> Radio</th>' +
-            '<th class="col-tempo-rad"><i class="fas fa-clock"></i> Tempo</th>' +
+            '<th class="col-lab col-grupo-inicio"><i class="fas fa-flask"></i> Lab</th>' +
+            '<th class="col-tempo-lab">Tempo</th>' +
+            '<th class="col-radio col-grupo-inicio"><i class="fas fa-x-ray"></i> Radio</th>' +
+            '<th class="col-tempo-rad">Tempo</th>' +
+            '<th class="col-medico"><i class="fas fa-user-md"></i> Medico</th>' +
             '</tr></thead>' +
             '<tbody id="tabela-body">' + linhasHtml + '</tbody>' +
             '</table></div>';
@@ -296,119 +305,69 @@
         var todosConcluidos = (pct === 100);
 
         var classeLinha = '';
-        if (todosConcluidos) {
-            classeLinha = 'linha-concluida';
-        } else if (pac.qt_pendentes > 0) {
-            classeLinha = 'linha-pendente';
-        } else {
-            classeLinha = 'linha-andamento';
-        }
+        if (todosConcluidos) classeLinha = 'linha-concluida';
+        else if (pac.qt_pendentes > 0) classeLinha = 'linha-pendente';
+        else classeLinha = 'linha-andamento';
 
-        // Status predominante por tipo
         var statusLab = determinarStatusPredominante(pac.exames_lab);
         var statusRadio = determinarStatusPredominante(pac.exames_radio);
-
-        // Tempo por tipo
-        var tempoLab = calcularTempoTipo(pac.exames_lab);
-        var tempoRadio = calcularTempoTipo(pac.exames_radio);
+        var tempoLab = calcularTempoTipo(pac.exames_lab, statusLab);
+        var tempoRadio = calcularTempoTipo(pac.exames_radio, statusRadio);
 
         var html = '<tr class="' + classeLinha + '">';
 
         // Atendimento
         html += '<td class="col-atendimento"><span class="atendimento-valor">' + escapeHtml(pac.nr_atendimento) + '</span></td>';
 
-        // Paciente (nome + clinica + medico)
+        // Paciente (nome + clinica como subinfo)
         html += '<td class="col-paciente"><div class="paciente-grupo">';
         html += '<span class="paciente-nome" title="' + escapeHtml(pac.nm_pessoa_fisica) + '">' + escapeHtml(nomeFormatado) + '</span>';
-
-        var temSubinfo = (pac.ds_clinica || pac.nm_medico);
-        if (temSubinfo) {
-            html += '<div class="paciente-subinfo">';
-            if (pac.ds_clinica) {
-                html += '<span title="' + escapeHtml(pac.ds_clinica) + '"><i class="fas fa-clinic-medical"></i> ' + escapeHtml(pac.ds_clinica) + '</span>';
-            }
-            if (pac.nm_medico) {
-                html += '<span title="' + escapeHtml(pac.nm_medico) + '"><i class="fas fa-user-md"></i> ' + escapeHtml(formatarNomeMedico(pac.nm_medico)) + '</span>';
-            }
-            html += '</div>';
+        if (pac.ds_clinica) {
+            html += '<span class="paciente-subinfo"><i class="fas fa-clinic-medical"></i> ' + escapeHtml(pac.ds_clinica) + '</span>';
         }
         html += '</div></td>';
 
-        // Lab - badge
-        html += '<td class="col-lab">' + renderBadge(statusLab) + '</td>';
-
-        // Tempo Lab - com indicador de concluido/contando
+        // Lab - badge | Tempo (com separador esquerdo)
+        html += '<td class="col-lab col-grupo-inicio">' + renderBadge(statusLab) + '</td>';
         html += '<td class="col-tempo-lab">' + renderTempoTipo(tempoLab, statusLab) + '</td>';
 
-        // Radio - badge
-        html += '<td class="col-radio">' + renderBadge(statusRadio) + '</td>';
-
-        // Tempo Rad - com indicador de concluido/contando
+        // Radio - badge | Tempo (com separador esquerdo)
+        html += '<td class="col-radio col-grupo-inicio">' + renderBadge(statusRadio) + '</td>';
         html += '<td class="col-tempo-rad">' + renderTempoTipo(tempoRadio, statusRadio) + '</td>';
+
+        // Medico (ultimo coluna, primeiro + ultimo nome)
+        html += '<td class="col-medico"><span class="medico-valor">' + escapeHtml(formatarNomeMedico(pac.nm_medico)) + '</span></td>';
 
         html += '</tr>';
         return html;
     }
 
-    /**
-     * Formata nome do medico: primeiro nome + sobrenome
-     */
-    function formatarNomeMedico(nome) {
-        if (!nome || nome.trim() === '') return '-';
-        var partes = nome.trim().split(/\s+/);
-        if (partes.length <= 2) return nome.trim();
-        return partes[0] + ' ' + partes[partes.length - 1];
-    }
+    // =========================================================
+    // BADGES E TEMPO
+    // =========================================================
 
-    /**
-     * Renderiza badge de status predominante
-     */
     function renderBadge(status) {
-        if (!status) {
-            return '<span class="status-sem-exame">-</span>';
-        }
-
-        var classe = '';
-        var texto = '';
-
-        if (status === 'pendente') {
-            classe = 'badge-pendente';
-            texto = 'Aguardando';
-        } else if (status === 'andamento') {
-            classe = 'badge-andamento';
-            texto = 'Em andamento';
-        } else {
-            classe = 'badge-concluido';
-            texto = '<i class="fas fa-check"></i> Concluido';
-        }
-
-        return '<span class="status-badge ' + classe + '">' + texto + '</span>';
+        if (!status) return '<span class="status-sem-exame">-</span>';
+        if (status === 'pendente') return '<span class="status-badge badge-pendente">Aguardando</span>';
+        if (status === 'andamento') return '<span class="status-badge badge-andamento">Em andamento</span>';
+        return '<span class="status-badge badge-concluido"><i class="fas fa-check"></i> Concluido</span>';
     }
 
-    /**
-     * Renderiza tempo por tipo de exame.
-     * Concluido: icone de check (tempo fixo, parou de contar)
-     * Pendente/andamento: icone de relogio (ainda contando)
-     */
     function renderTempoTipo(horas, statusTipo) {
         if (horas === null || horas === undefined) {
             return '<span class="status-sem-exame">-</span>';
         }
 
-        var classeT = classeTempo(horas);
-        var tempoStr = formatarTempo(horas);
-        var icone = '';
-
         if (statusTipo === 'concluido') {
-            // Tempo final — parou de contar
-            return '<span class="tempo-tipo-badge tempo-concluido-final" title="Tempo total do exame">' +
-                '<i class="fas fa-check-circle"></i> ' + tempoStr +
+            var textoDesde = formatarTempoDesde(horas);
+            return '<span class="tempo-tipo-badge tempo-liberado" title="Liberado">' +
+                '<i class="fas fa-check-circle"></i> ' + textoDesde +
             '</span>';
         }
 
-        // Ainda contando
+        var classeT = classeTempo(horas);
         return '<span class="tempo-tipo-badge ' + classeT + '" title="Tempo em espera">' +
-            '<i class="fas fa-hourglass-half tempo-contando"></i> ' + tempoStr +
+            '<i class="fas fa-hourglass-half tempo-contando"></i> ' + formatarTempo(horas) +
         '</span>';
     }
 
@@ -427,27 +386,21 @@
     // AUTO-SCROLL COM WATCHDOG
     // =========================================================
 
-    function getElementoScroll() {
-        return document.getElementById('tabela-body');
-    }
+    function getElementoScroll() { return document.getElementById('tabela-body'); }
 
     function iniciarAutoScroll() {
         pararAutoScroll();
         var elem = getElementoScroll();
         if (!elem) return;
-
-        var scrollMax = elem.scrollHeight - elem.clientHeight;
-        if (scrollMax <= 5) return;
+        if (elem.scrollHeight - elem.clientHeight <= 5) return;
 
         Estado.watchdog = { ultimaPosicao: elem.scrollTop, contadorTravamento: 0 };
         iniciarWatchdog();
 
         Estado.intervalos.scroll = setInterval(function() {
             if (!Estado.autoScrollAtivo) { pararAutoScroll(); return; }
-
             var el = getElementoScroll();
             if (!el) { pararAutoScroll(); return; }
-
             var sMax = el.scrollHeight - el.clientHeight;
 
             if (el.scrollTop >= sMax - 2) {
@@ -464,16 +417,12 @@
                 }, CONFIG.pausaNoFinal);
                 return;
             }
-
             el.scrollTop += CONFIG.velocidadeScroll;
         }, CONFIG.intervaloScroll);
     }
 
     function pararAutoScroll() {
-        if (Estado.intervalos.scroll) {
-            clearInterval(Estado.intervalos.scroll);
-            Estado.intervalos.scroll = null;
-        }
+        if (Estado.intervalos.scroll) { clearInterval(Estado.intervalos.scroll); Estado.intervalos.scroll = null; }
         pararWatchdog();
     }
 
@@ -483,36 +432,22 @@
             if (!Estado.autoScrollAtivo) { pararWatchdog(); return; }
             var el = getElementoScroll();
             if (!el) return;
-
             var pos = el.scrollTop;
             var sMax = el.scrollHeight - el.clientHeight;
-            var noMeio = pos > 5 && pos < sMax - 5;
-            var naoMoveu = Math.abs(pos - Estado.watchdog.ultimaPosicao) < 1;
-
-            if (noMeio && naoMoveu && Estado.intervalos.scroll !== null) {
+            if (pos > 5 && pos < sMax - 5 && Math.abs(pos - Estado.watchdog.ultimaPosicao) < 1 && Estado.intervalos.scroll !== null) {
                 Estado.watchdog.contadorTravamento++;
                 if (Estado.watchdog.contadorTravamento >= CONFIG.watchdogMaxTravamentos) {
                     pararAutoScroll();
-                    setTimeout(function() {
-                        if (Estado.autoScrollAtivo) {
-                            Estado.watchdog.contadorTravamento = 0;
-                            iniciarAutoScroll();
-                        }
-                    }, 1000);
+                    setTimeout(function() { if (Estado.autoScrollAtivo) { Estado.watchdog.contadorTravamento = 0; iniciarAutoScroll(); } }, 1000);
                     return;
                 }
-            } else {
-                Estado.watchdog.contadorTravamento = 0;
-            }
+            } else { Estado.watchdog.contadorTravamento = 0; }
             Estado.watchdog.ultimaPosicao = pos;
         }, CONFIG.watchdogInterval);
     }
 
     function pararWatchdog() {
-        if (Estado.intervalos.watchdog) {
-            clearInterval(Estado.intervalos.watchdog);
-            Estado.intervalos.watchdog = null;
-        }
+        if (Estado.intervalos.watchdog) { clearInterval(Estado.intervalos.watchdog); Estado.intervalos.watchdog = null; }
     }
 
     function atualizarBotaoScroll() {
@@ -543,79 +478,47 @@
     // =========================================================
 
     function configurarEventos() {
-        if (DOM.btnVoltar) {
-            DOM.btnVoltar.addEventListener('click', function() {
-                window.location.href = '/frontend/dashboard.html';
-            });
-        }
+        if (DOM.btnVoltar) DOM.btnVoltar.addEventListener('click', function() { window.location.href = '/frontend/dashboard.html'; });
 
-        if (DOM.btnRefresh) {
-            DOM.btnRefresh.addEventListener('click', function() {
-                DOM.btnRefresh.classList.add('girando');
-                carregarDados().finally(function() {
-                    setTimeout(function() { DOM.btnRefresh.classList.remove('girando'); }, 500);
-                });
-            });
-        }
+        if (DOM.btnRefresh) DOM.btnRefresh.addEventListener('click', function() {
+            DOM.btnRefresh.classList.add('girando');
+            carregarDados().finally(function() { setTimeout(function() { DOM.btnRefresh.classList.remove('girando'); }, 500); });
+        });
 
-        if (DOM.btnAutoScroll) {
-            DOM.btnAutoScroll.addEventListener('click', function() {
-                Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
-                Estado.autoScrollIniciado = true;
-                atualizarBotaoScroll();
-                if (Estado.autoScrollAtivo) iniciarAutoScroll();
-                else pararAutoScroll();
-            });
-        }
+        if (DOM.btnAutoScroll) DOM.btnAutoScroll.addEventListener('click', function() {
+            Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
+            Estado.autoScrollIniciado = true;
+            atualizarBotaoScroll();
+            if (Estado.autoScrollAtivo) iniciarAutoScroll(); else pararAutoScroll();
+        });
 
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && Estado.autoScrollAtivo) {
-                Estado.autoScrollAtivo = false;
-                atualizarBotaoScroll();
-                pararAutoScroll();
-            }
+            if (e.key === 'Escape' && Estado.autoScrollAtivo) { Estado.autoScrollAtivo = false; atualizarBotaoScroll(); pararAutoScroll(); }
             if (e.key === 'F5') { e.preventDefault(); carregarDados(); }
             if (e.key === ' ' && e.target === document.body) {
                 e.preventDefault();
                 Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
                 Estado.autoScrollIniciado = true;
                 atualizarBotaoScroll();
-                if (Estado.autoScrollAtivo) iniciarAutoScroll();
-                else pararAutoScroll();
+                if (Estado.autoScrollAtivo) iniciarAutoScroll(); else pararAutoScroll();
             }
         });
 
         document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                if (Estado.autoScrollAtivo && Estado.intervalos.scroll) {
-                    pararAutoScroll();
-                    Estado.autoScrollAtivo = true;
-                }
-            } else {
-                if (Estado.autoScrollAtivo && !Estado.intervalos.scroll) iniciarAutoScroll();
-                carregarDados();
-            }
+            if (document.hidden) { if (Estado.autoScrollAtivo && Estado.intervalos.scroll) { pararAutoScroll(); Estado.autoScrollAtivo = true; } }
+            else { if (Estado.autoScrollAtivo && !Estado.intervalos.scroll) iniciarAutoScroll(); carregarDados(); }
         });
     }
 
-    // =========================================================
-    // INICIALIZACAO
-    // =========================================================
-
     function inicializar() {
-        console.log('[P22] Inicializando Painel Acompanhamento Exames PS...');
-        console.log('[P22] Modo: ' + (IS_PUBLICO ? 'PUBLICO' : 'INTERNO'));
+        console.log('[P22] Inicializando...');
         cachearElementos();
         configurarEventos();
         carregarDados();
         Estado.intervalos.refresh = setInterval(function() { carregarDados(); }, CONFIG.intervaloRefresh);
-        console.log('[P22] Painel inicializado');
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', inicializar);
-    } else {
-        inicializar();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);
+    else inicializar();
 
 })();
