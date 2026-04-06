@@ -1287,7 +1287,10 @@ body {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
 
+/* ========================================
+   ADICIONAR ao final do style_form.css
 
     /* ========================================
    ADICIONAR ao final do style_form.css
@@ -1551,7 +1554,7 @@ body {
 
 .pac-campo strong { color: var(--cor-texto); }
 
-/* Botoes Sim/Nao */
+/* Botoes Sim/Nao
 .btn-sim {
     border-color: var(--cor-adequado) !important;
     color: var(--cor-adequado);
@@ -1581,6 +1584,49 @@ body {
 .btn-nao:not(.selecionado):hover {
     background: var(--cor-critico-bg);
 }
+*/
+
+/* Botoes Sim/Nao */
+.btn-semaforo.btn-sim {
+    border-color: var(--cor-adequado);
+    color: var(--cor-adequado);
+    background: var(--cor-card);
+}
+
+.btn-semaforo.btn-nao {
+    border-color: var(--cor-critico);
+    color: var(--cor-critico);
+    background: var(--cor-card);
+}
+
+.btn-semaforo.btn-sim:hover {
+    background: var(--cor-adequado-bg);
+    color: var(--cor-adequado);
+    border-color: var(--cor-adequado);
+    transform: scale(1.03);
+}
+
+.btn-semaforo.btn-nao:hover {
+    background: var(--cor-critico-bg);
+    color: var(--cor-critico);
+    border-color: var(--cor-critico);
+    transform: scale(1.03);
+}
+
+.btn-semaforo.btn-sim.selecionado {
+    background: var(--cor-adequado);
+    border-color: var(--cor-adequado);
+    color: white;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+}
+
+.btn-semaforo.btn-nao.selecionado {
+    background: var(--cor-critico);
+    border-color: var(--cor-critico);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+}
+
 
 /* Avaliacao Final Automatica */
 .avaliacao-auto {
