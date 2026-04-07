@@ -65,16 +65,30 @@ def _buscar_dashboard():
         return None, str(e)
 
 
+def _eh_data_sem_hora(dt):
+    """
+    Detecta datas Oracle 'apenas data' (hora 00:00:00).
+    Comum em exames de radiologia onde dt_pedido/dt_resultado nao tem hora real.
+    Nesses casos, calcular 'agora - dt' produz valores irreais (ex: 12h).
+    """
+    if dt is None:
+        return False
+    return dt.hour == 0 and dt.minute == 0 and dt.second == 0
+
+
 def _calcular_tempos_exame(exame, agora):
     """
     Calcula campos de tempo para cada exame:
     - horas_espera: tempo total (pedido -> resultado ou pedido -> agora)
-    - horas_desde_liberacao: tempo desde a liberação (só concluídos)
+    - horas_desde_liberacao: tempo desde a liberação (só concluídos, com hora real)
+    - liberacao_apenas_data: True quando dt_resultado nao tem hora (Oracle date-only)
+    - liberacao_dias_atras: dias desde a data de liberacao (quando apenas_data)
     """
     dt_pedido = _parse_datetime(exame.get('dt_pedido'))
     status = (exame.get('status_exame') or '').upper()
     concluido = status in ('LAUDADO', 'LIBERADO')
 
+    # horas_espera (tempo total do exame)
     if dt_pedido:
         if concluido:
             dt_resultado = _parse_datetime(exame.get('dt_resultado'))
@@ -87,14 +101,21 @@ def _calcular_tempos_exame(exame, agora):
     else:
         exame['horas_espera'] = None
 
+    # Tempo desde liberacao - com tratamento especial para datas sem hora
+    exame['liberacao_apenas_data'] = False
+    exame['liberacao_dias_atras'] = None
+    exame['horas_desde_liberacao'] = None
+
     if concluido:
         dt_resultado = _parse_datetime(exame.get('dt_resultado'))
         if dt_resultado:
-            exame['horas_desde_liberacao'] = round(max((agora - dt_resultado).total_seconds(), 0) / 3600.0, 2)
-        else:
-            exame['horas_desde_liberacao'] = None
-    else:
-        exame['horas_desde_liberacao'] = None
+            if _eh_data_sem_hora(dt_resultado):
+                # Data sem hora real (radiologia) - usa diferenca em dias
+                exame['liberacao_apenas_data'] = True
+                exame['liberacao_dias_atras'] = (agora.date() - dt_resultado.date()).days
+            else:
+                # Data com hora real - calcula horas normalmente
+                exame['horas_desde_liberacao'] = round(max((agora - dt_resultado).total_seconds(), 0) / 3600.0, 2)
 
 
 def _buscar_dados():

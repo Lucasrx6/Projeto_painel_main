@@ -160,21 +160,46 @@
     // TEMPO POR TIPO
     // =========================================================
 
+    /**
+     * Calcula tempo a ser exibido para um grupo de exames de um tipo.
+     * Retorna objeto: { tipo: 'horas'|'data'|null, valor: number }
+     * - 'horas': numero de horas (com fracoes)
+     * - 'data':  numero de dias (0=hoje, 1=ontem, ...) para datas sem hora
+     */
     function calcularTempoTipo(exames, statusTipo) {
         if (!exames || exames.length === 0) return null;
 
         if (statusTipo === 'concluido') {
-            // Mostra tempo desde a liberacao mais recente (menor horas_desde_liberacao)
-            var minDesde = null;
+            // Procura primeiro tempo confiavel (com hora real)
+            var minHoras = null;
+            var minDias = null;
+
             for (var i = 0; i < exames.length; i++) {
+                var apenasData = exames[i].liberacao_apenas_data;
                 var hd = parseFloat(exames[i].horas_desde_liberacao);
-                if (!isNaN(hd) && hd >= 0) {
-                    if (minDesde === null || hd < minDesde) {
-                        minDesde = hd;
+                var dias = exames[i].liberacao_dias_atras;
+
+                if (!apenasData && !isNaN(hd) && hd >= 0) {
+                    // Tempo confiavel - pega o menor (liberacao mais recente)
+                    if (minHoras === null || hd < minHoras) {
+                        minHoras = hd;
+                    }
+                } else if (apenasData && dias !== null && dias !== undefined) {
+                    // Apenas data - pega o menor (mais recente)
+                    if (minDias === null || dias < minDias) {
+                        minDias = dias;
                     }
                 }
             }
-            return minDesde;
+
+            // Prefere tempo confiavel se existir
+            if (minHoras !== null) {
+                return { tipo: 'horas', valor: minHoras };
+            }
+            if (minDias !== null) {
+                return { tipo: 'data', valor: minDias };
+            }
+            return null;
         }
 
         // Pendente ou andamento: maior horas_espera
@@ -187,7 +212,8 @@
                 }
             }
         }
-        return maxHoras;
+        if (maxHoras === null) return null;
+        return { tipo: 'horas', valor: maxHoras };
     }
 
     // =========================================================
@@ -353,21 +379,34 @@
         return '<span class="status-badge badge-concluido"><i class="fas fa-check"></i> Concluido</span>';
     }
 
-    function renderTempoTipo(horas, statusTipo) {
-        if (horas === null || horas === undefined) {
+    function renderTempoTipo(tempo, statusTipo) {
+        if (tempo === null || tempo === undefined) {
             return '<span class="status-sem-exame">-</span>';
         }
 
         if (statusTipo === 'concluido') {
-            var textoDesde = formatarTempoDesde(horas);
+            if (tempo.tipo === 'horas') {
+                // Tempo confiavel - mostra "ha Xmin"
+                var textoDesde = formatarTempoDesde(tempo.valor);
+                return '<span class="tempo-tipo-badge tempo-liberado" title="Liberado">' +
+                    '<i class="fas fa-check-circle"></i> ' + textoDesde +
+                '</span>';
+            }
+            // tipo === 'data' - data sem hora real (radiologia)
+            var textoData;
+            if (tempo.valor === 0) textoData = 'hoje';
+            else if (tempo.valor === 1) textoData = 'ontem';
+            else textoData = 'ha ' + tempo.valor + ' dias';
+
             return '<span class="tempo-tipo-badge tempo-liberado" title="Liberado">' +
-                '<i class="fas fa-check-circle"></i> ' + textoDesde +
+                '<i class="fas fa-check-circle"></i> Liberado ' + textoData +
             '</span>';
         }
 
-        var classeT = classeTempo(horas);
+        // Pendente ou andamento
+        var classeT = classeTempo(tempo.valor);
         return '<span class="tempo-tipo-badge ' + classeT + '" title="Tempo em espera">' +
-            '<i class="fas fa-hourglass-half tempo-contando"></i> ' + formatarTempo(horas) +
+            '<i class="fas fa-hourglass-half tempo-contando"></i> ' + formatarTempo(tempo.valor) +
         '</span>';
     }
 
