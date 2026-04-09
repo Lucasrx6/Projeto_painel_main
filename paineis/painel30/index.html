@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Tratativas - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel30/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-tasks"></i> Central de Tratativas</h1>
+                </div>
+                <div class="header-right">
+                    <button id="btn-toggle-filtros" class="btn-header" title="Filtros">
+                        <i class="fas fa-filter"></i> <span class="btn-text">Filtros</span>
+                    </button>
+                    <button id="btn-responsaveis" class="btn-header" title="Gerenciar Responsaveis">
+                        <i class="fas fa-users-cog"></i> <span class="btn-text">Responsaveis</span>
+                    </button>
+                    <button id="btn-gestao" class="btn-header" title="Painel de Gestao">
+                        <i class="fas fa-chart-bar"></i> <span class="btn-text">Gestao</span>
+                    </button>
+                    <button id="btn-refresh" class="btn-header" title="Atualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i> <span class="btn-text">Voltar</span>
+                    </button>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <div class="filtro-grupo">
+                    <label>Status:</label>
+                    <select id="filtro-status">
+                        <option value="">Todos</option>
+                        <option value="pendente" selected>Pendente</option>
+                        <option value="em_tratativa">Em Tratativa</option>
+                        <option value="regularizado">Regularizado</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Categoria:</label>
+                    <select id="filtro-categoria">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Setor:</label>
+                    <select id="filtro-setor">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Responsavel:</label>
+                    <select id="filtro-responsavel">
+                        <option value="">Todos</option>
+                        <option value="sem">Sem responsavel</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Periodo:</label>
+                    <select id="filtro-dias">
+                        <option value="">Todos</option>
+                        <option value="7">Ultimos 7 dias</option>
+                        <option value="15">Ultimos 15 dias</option>
+                        <option value="30" selected>Ultimos 30 dias</option>
+                        <option value="60">Ultimos 60 dias</option>
+                        <option value="90">Ultimos 90 dias</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo filtro-busca">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="filtro-busca" placeholder="Buscar paciente, leito, item, plano de acao...">
+                </div>
+                <button class="btn-limpar-filtros" id="btn-limpar-filtros">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+            </div>
+        </div>
+
+        <!-- Conteudo Principal -->
+        <div class="dashboard-content">
+
+            <!-- KPIs -->
+            <div class="stats-row">
+                <div class="stat-card stat-card-clickable" data-status="">
+                    <div class="stat-icon icon-total"><i class="fas fa-clipboard-list"></i></div>
+                    <h3 id="stat-total">0</h3>
+                    <p>Total</p>
+                </div>
+                <div class="stat-card stat-card-clickable stat-card-pendente" data-status="pendente">
+                    <div class="stat-icon icon-pendente"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3 id="stat-pendentes">0</h3>
+                    <p>Pendentes</p>
+                </div>
+                <div class="stat-card stat-card-clickable" data-status="em_tratativa">
+                    <div class="stat-icon icon-tratativa"><i class="fas fa-spinner"></i></div>
+                    <h3 id="stat-em-tratativa">0</h3>
+                    <p>Em Tratativa</p>
+                </div>
+                <div class="stat-card stat-card-clickable" data-status="regularizado">
+                    <div class="stat-icon icon-regularizado"><i class="fas fa-check-circle"></i></div>
+                    <h3 id="stat-regularizadas">0</h3>
+                    <p>Regularizadas</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-sem-resp"><i class="fas fa-user-slash"></i></div>
+                    <h3 id="stat-sem-responsavel">0</h3>
+                    <p>Sem Responsavel</p>
+                </div>
+                <div class="stat-card stat-card-alerta">
+                    <div class="stat-icon icon-atrasada"><i class="fas fa-clock"></i></div>
+                    <h3 id="stat-atrasadas">0</h3>
+                    <p>Atrasadas (3d+)</p>
+                </div>
+            </div>
+
+            <!-- Lista de Tratativas (cards) -->
+            <div class="tratativas-container">
+                <div class="tratativas-header">
+                    <h3><i class="fas fa-list"></i> Tratativas</h3>
+                    <span class="tratativas-total" id="tratativas-total">0 registros</span>
+                </div>
+                <div class="tratativas-lista" id="tratativas-lista">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
+                <div class="tratativas-vazia" id="tratativas-vazia" style="display:none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhuma tratativa encontrada</p>
+                    <small>Ajuste os filtros ou aguarde novos itens criticos</small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal: Detalhe / Edicao da Tratativa -->
+    <div class="modal-overlay" id="modal-tratativa">
+        <div class="modal modal-xl">
+            <div class="modal-header">
+                <h2><i class="fas fa-clipboard-check"></i> <span id="modal-titulo">Detalhe da Tratativa</span></h2>
+                <button class="modal-fechar" id="btn-fechar-tratativa">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-tratativa-body">
+                <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-cancelar-tratativa">Fechar</button>
+                <button class="btn-salvar-tratativa" id="btn-salvar-tratativa" style="display:none;">
+                    <i class="fas fa-save"></i> Salvar Alteracoes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gerenciar Responsaveis -->
+    <div class="modal-overlay" id="modal-responsaveis">
+        <div class="modal modal-xl">
+            <div class="modal-header modal-header-gerenciar">
+                <h2><i class="fas fa-users-cog"></i> Gerenciar Responsaveis</h2>
+                <button class="modal-fechar" id="btn-fechar-responsaveis">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario de adicionar -->
+                <div class="resp-form">
+                    <h4><i class="fas fa-plus-circle"></i> Adicionar Responsavel</h4>
+                    <div class="resp-form-row">
+                        <input type="text" id="resp-nome" placeholder="Nome *" maxlength="200">
+                        <input type="text" id="resp-cargo" placeholder="Cargo" maxlength="150">
+                    </div>
+                    <div class="resp-form-row">
+                        <input type="email" id="resp-email" placeholder="Email" maxlength="200">
+                        <input type="text" id="resp-telefone" placeholder="Telefone" maxlength="50">
+                    </div>
+                    <div class="resp-form-row">
+                        <select id="resp-categoria">
+                            <option value="">Categoria (opcional)</option>
+                        </select>
+                        <select id="resp-setor">
+                            <option value="">Setor (opcional)</option>
+                        </select>
+                    </div>
+                    <button class="btn-add-resp" id="btn-add-resp">
+                        <i class="fas fa-plus"></i> Adicionar Responsavel
+                    </button>
+                </div>
+
+                <!-- Lista -->
+                <div class="resp-lista-titulo">
+                    <i class="fas fa-list"></i> Responsaveis Cadastrados
+                </div>
+                <div class="resp-lista" id="resp-lista">
+                    <div class="loading"><div class="loading-spinner"></div></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-fechar-responsaveis-bottom">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel30/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

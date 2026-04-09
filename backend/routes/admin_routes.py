@@ -43,7 +43,8 @@ def api_minhas_permissoes():
                     'painel14', 'painel15', 'painel16', 'painel17',
                     'painel18', 'painel19', 'painel20', 'painel21',
                     'painel22', 'painel23', 'painel24', 'painel25',
-                    'painel26', 'painel27', 'painel28', 'painel29'
+                    'painel26', 'painel27', 'painel28', 'painel29',
+                    'painel30'
                 ],
                 'is_admin': True
             })
@@ -373,6 +374,8 @@ def api_listar_paineis():
             {'nome': 'painel28', 'titulo': 'Hub de Solicitações',
              'descricao': 'Hub de Solicitações', 'ativo': True},
             {'nome': 'painel29', 'titulo': 'Gestão de Formulários',
+             'descricao': 'Gestão de Formulários', 'ativo': True},
+            {'nome': 'painel30', 'titulo': 'Gestão de Criticos',
              'descricao': 'Gestão de Formulários', 'ativo': True},
         ]
 

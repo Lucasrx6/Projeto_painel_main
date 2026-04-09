@@ -526,6 +526,8 @@ def concluir_ronda(ronda_id):
 # API: VISITAS - REGISTRAR (V2 com campos expandidos + sim/nao)
 # ============================================================
 
+
+
 @painel28_bp.route('/visitas', methods=['POST'])
 @login_required
 def registrar_visita():
@@ -574,6 +576,7 @@ def registrar_visita():
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
+        # Verificar ronda
         cursor.execute("SELECT id, status FROM sentir_agir_rondas WHERE id = %s", (ronda_id,))
         ronda = cursor.fetchone()
         if not ronda:
@@ -585,35 +588,131 @@ def registrar_visita():
             conn.close()
             return jsonify({'success': False, 'error': 'Ronda esta cancelada'}), 400
 
+        # Verificar setor
         cursor.execute("SELECT id FROM sentir_agir_setores WHERE id = %s AND ativo = TRUE", (setor_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'error': 'Setor nao encontrado ou inativo'}), 404
 
+        # Inserir visita
         cursor.execute("""
             INSERT INTO sentir_agir_visitas
                 (ronda_id, setor_id, leito, nr_atendimento,
                  nm_paciente, setor_ocupacao, qt_dias_internacao,
-                 observacoes, avaliacao_final)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 observacoes, avaliacao_final, status_tratativa)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'sem_pendencia')
             RETURNING id
         """, (ronda_id, setor_id, leito, nr_atendimento,
               nm_paciente, setor_ocupacao, qt_dias_internacao,
               observacoes, avaliacao_final))
         visita_id = cursor.fetchone()['id']
 
+        # Inserir avaliações e detectar items críticos
+        avaliacoes_criticas = []  # lista de (avaliacao_id, item_id)
+
         for av in avaliacoes:
             cursor.execute("""
                 INSERT INTO sentir_agir_avaliacoes (visita_id, item_id, resultado)
                 VALUES (%s, %s, %s)
+                RETURNING id
             """, (visita_id, av['item_id'], av['resultado']))
+            avaliacao_id = cursor.fetchone()['id']
+
+            # Se for critico ou nao, marcar pra criar tratativa
+            if av['resultado'] in ('critico', 'nao'):
+                avaliacoes_criticas.append((avaliacao_id, av['item_id']))
+
+        # Verificar se criação automática está ativa
+        auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
+        tratativas_criadas = 0
+
+        if auto_criar == 'true' and avaliacoes_criticas:
+            for avaliacao_id, item_id in avaliacoes_criticas:
+                # Buscar dados do item e categoria
+                cursor.execute("""
+                    SELECT i.id AS item_id, i.descricao AS item_descricao,
+                           c.id AS categoria_id, c.nome AS categoria_nome
+                    FROM sentir_agir_itens i
+                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                    WHERE i.id = %s
+                """, (item_id,))
+                item_info = cursor.fetchone()
+
+                if not item_info:
+                    continue
+
+                # Tentar encontrar responsável: primeiro por categoria, depois por setor
+                responsavel_id = None
+                cursor.execute("""
+                    SELECT id FROM sentir_agir_responsaveis
+                    WHERE categoria_id = %s AND ativo = TRUE
+                    ORDER BY id LIMIT 1
+                """, (item_info['categoria_id'],))
+                resp = cursor.fetchone()
+                if resp:
+                    responsavel_id = resp['id']
+                else:
+                    # Fallback: por setor
+                    cursor.execute("""
+                        SELECT id FROM sentir_agir_responsaveis
+                        WHERE setor_id = %s AND ativo = TRUE
+                        ORDER BY id LIMIT 1
+                    """, (setor_id,))
+                    resp = cursor.fetchone()
+                    if resp:
+                        responsavel_id = resp['id']
+
+                # Montar descricao do problema
+                desc = 'Item: ' + item_info['item_descricao']
+                desc += ' | Categoria: ' + item_info['categoria_nome']
+                desc += ' | Paciente: ' + (nm_paciente or 'N/I')
+                desc += ' | Leito: ' + leito
+                if observacoes:
+                    desc += ' | Observacao da visita: ' + observacoes
+
+                # Criar tratativa
+                cursor.execute("""
+                    INSERT INTO sentir_agir_tratativas
+                        (visita_id, avaliacao_id, item_id, categoria_id,
+                         responsavel_id, descricao_problema, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'pendente')
+                """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'],
+                      responsavel_id, desc))
+                tratativas_criadas += 1
+
+            # Atualizar status_tratativa da visita para 'pendente'
+            cursor.execute("""
+                UPDATE sentir_agir_visitas
+                SET status_tratativa = 'pendente'
+                WHERE id = %s
+            """, (visita_id,))
 
         _registrar_log(cursor, 'visita', visita_id, 'criacao', usuario, ip_origem=ip)
+
+        if tratativas_criadas > 0:
+            _registrar_log(
+                cursor, 'visita', visita_id, 'tratativas_criadas', usuario,
+                valor_novo=str(tratativas_criadas), ip_origem=ip
+            )
+
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'success': True, 'data': {'id': visita_id}, 'message': 'Visita registrada'}), 201
+
+        msg = 'Visita registrada'
+        if tratativas_criadas > 0:
+            msg += '. %d tratativa(s) criada(s) para itens criticos.' % tratativas_criadas
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'id': visita_id,
+                'tratativas_criadas': tratativas_criadas
+            },
+            'message': msg
+        }), 201
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
