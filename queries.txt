@@ -1282,3 +1282,207 @@ SELECT * FROM vw_ocupacao_hospitalar LIMIT 5;
 -- ==========================================
 
 SELECT '✅ Todas as views foram recriadas com sucesso!' AS resultado;
+
+
+-- Table: public.painel21_contas
+
+-- DROP TABLE IF EXISTS public.painel21_contas;
+
+CREATE TABLE IF NOT EXISTS public.painel21_contas
+(
+    id integer NOT NULL DEFAULT nextval('painel21_contas_id_seq'::regclass),
+    nr_conta bigint NOT NULL,
+    nr_atendimento bigint NOT NULL,
+    estabelecimento character varying(80) COLLATE pg_catalog."default",
+    pessoa_fisica character varying(60) COLLATE pg_catalog."default",
+    tipo_atend character varying(80) COLLATE pg_catalog."default",
+    ie_tipo smallint,
+    status_conta character varying(20) COLLATE pg_catalog."default",
+    legenda_conta character varying(30) COLLATE pg_catalog."default",
+    convenio character varying(40) COLLATE pg_catalog."default",
+    protocolo character varying(30) COLLATE pg_catalog."default",
+    status_protocolo character varying(20) COLLATE pg_catalog."default",
+    entrega_convenio character varying(10) COLLATE pg_catalog."default",
+    vl_conta numeric(15,2) DEFAULT 0,
+    dt_conta timestamp without time zone,
+    dt_periodo_inicial timestamp without time zone,
+    dt_periodo_final timestamp without time zone,
+    dt_mesano_referencia timestamp without time zone,
+    nr_seq_etapa integer,
+    etapa_conta character varying(254) COLLATE pg_catalog."default",
+    cd_setor_atendimento integer,
+    setor_atendimento character varying(200) COLLATE pg_catalog."default",
+    auditoria character varying(255) COLLATE pg_catalog."default",
+    dt_carga timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_painel21_contas PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.painel21_contas
+    OWNER to postgres;
+
+COMMENT ON TABLE public.painel21_contas
+    IS 'Painel 21 - Evolução de Contas. Carga: TRUNCATE + INSERT via Apache Hop. NR_CONTA não é PK pois a mesma conta pode ter múltiplas etapas.';
+
+COMMENT ON COLUMN public.painel21_contas.id
+    IS 'Chave surrogate auto-incremento';
+
+COMMENT ON COLUMN public.painel21_contas.nr_conta
+    IS 'Número interno da conta. Origem: CONTA_PACIENTE.NR_INTERNO_CONTA';
+
+COMMENT ON COLUMN public.painel21_contas.nr_atendimento
+    IS 'Número do atendimento. Um atendimento pode ter múltiplas contas';
+
+COMMENT ON COLUMN public.painel21_contas.estabelecimento
+    IS 'Nome do estabelecimento. Origem: OBTER_NOME_ESTABELECIMENTO()';
+
+COMMENT ON COLUMN public.painel21_contas.pessoa_fisica
+    IS 'Nome do paciente. Origem: OBTER_PESSOA_CONTA()';
+
+COMMENT ON COLUMN public.painel21_contas.tipo_atend
+    IS 'Descrição do tipo de atendimento (Internado, Ambulatorial, Externo, Pronto Socorro)';
+
+COMMENT ON COLUMN public.painel21_contas.ie_tipo
+    IS 'Código do tipo de atendimento (1=Internado, 3=PS, 7=Externo, 8=Ambulatorial)';
+
+COMMENT ON COLUMN public.painel21_contas.status_conta
+    IS 'Status do acerto da conta (Provisório / Definitivo)';
+
+COMMENT ON COLUMN public.painel21_contas.legenda_conta
+    IS 'Situação da conta no pipeline de faturamento';
+
+COMMENT ON COLUMN public.painel21_contas.convenio
+    IS 'Nome do convênio. Origem: OBTER_DESCRICAO_PADRAO()';
+
+COMMENT ON COLUMN public.painel21_contas.protocolo
+    IS 'Número do protocolo ou Fora Remessa';
+
+COMMENT ON COLUMN public.painel21_contas.status_protocolo
+    IS 'Status do protocolo (Provisório, Definitivo, Auditoria, Fora Remessa)';
+
+COMMENT ON COLUMN public.painel21_contas.entrega_convenio
+    IS 'Data de entrega ao convênio (formato MM/YYYY)';
+
+COMMENT ON COLUMN public.painel21_contas.vl_conta
+    IS 'Valor total da conta em R$. Origem: obter_valor_conta()';
+
+COMMENT ON COLUMN public.painel21_contas.dt_conta
+    IS 'Data do acerto da conta';
+
+COMMENT ON COLUMN public.painel21_contas.dt_periodo_inicial
+    IS 'Data início do período da conta (filtro principal)';
+
+COMMENT ON COLUMN public.painel21_contas.dt_periodo_final
+    IS 'Data fim do período da conta';
+
+COMMENT ON COLUMN public.painel21_contas.dt_mesano_referencia
+    IS 'Mês/Ano de referência da conta';
+
+COMMENT ON COLUMN public.painel21_contas.nr_seq_etapa
+    IS 'Código da etapa atual da conta';
+
+COMMENT ON COLUMN public.painel21_contas.etapa_conta
+    IS 'Descrição da etapa atual. Origem: OBTER_CONTA_PACIENTE_ETAPA()';
+
+COMMENT ON COLUMN public.painel21_contas.cd_setor_atendimento
+    IS 'Código do setor de atendimento da etapa mais recente';
+
+COMMENT ON COLUMN public.painel21_contas.setor_atendimento
+    IS 'Nome do setor de atendimento. Origem: OBTER_NOME_SETOR()';
+
+COMMENT ON COLUMN public.painel21_contas.auditoria
+    IS 'Status da auditoria da conta. Origem: OBTER_STATUS_AUDITORIA_CONTA()';
+
+COMMENT ON COLUMN public.painel21_contas.dt_carga
+    IS 'Data/hora da última carga ETL via Apache Hop';
+-- Index: idx_p21_convenio
+
+-- DROP INDEX IF EXISTS public.idx_p21_convenio;
+
+CREATE INDEX IF NOT EXISTS idx_p21_convenio
+    ON public.painel21_contas USING btree
+    (convenio COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_dt_carga
+
+-- DROP INDEX IF EXISTS public.idx_p21_dt_carga;
+
+CREATE INDEX IF NOT EXISTS idx_p21_dt_carga
+    ON public.painel21_contas USING btree
+    (dt_carga DESC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_dt_periodo_inicial
+
+-- DROP INDEX IF EXISTS public.idx_p21_dt_periodo_inicial;
+
+CREATE INDEX IF NOT EXISTS idx_p21_dt_periodo_inicial
+    ON public.painel21_contas USING btree
+    (dt_periodo_inicial DESC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_ie_tipo
+
+-- DROP INDEX IF EXISTS public.idx_p21_ie_tipo;
+
+CREATE INDEX IF NOT EXISTS idx_p21_ie_tipo
+    ON public.painel21_contas USING btree
+    (ie_tipo ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_legenda_conta
+
+-- DROP INDEX IF EXISTS public.idx_p21_legenda_conta;
+
+CREATE INDEX IF NOT EXISTS idx_p21_legenda_conta
+    ON public.painel21_contas USING btree
+    (legenda_conta COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_nr_atendimento
+
+-- DROP INDEX IF EXISTS public.idx_p21_nr_atendimento;
+
+CREATE INDEX IF NOT EXISTS idx_p21_nr_atendimento
+    ON public.painel21_contas USING btree
+    (nr_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_nr_conta
+
+-- DROP INDEX IF EXISTS public.idx_p21_nr_conta;
+
+CREATE INDEX IF NOT EXISTS idx_p21_nr_conta
+    ON public.painel21_contas USING btree
+    (nr_conta ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_ordenacao_padrao
+
+-- DROP INDEX IF EXISTS public.idx_p21_ordenacao_padrao;
+
+CREATE INDEX IF NOT EXISTS idx_p21_ordenacao_padrao
+    ON public.painel21_contas USING btree
+    (estabelecimento COLLATE pg_catalog."default" ASC NULLS LAST, dt_periodo_inicial DESC NULLS LAST, nr_atendimento ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_status_conta
+
+-- DROP INDEX IF EXISTS public.idx_p21_status_conta;
+
+CREATE INDEX IF NOT EXISTS idx_p21_status_conta
+    ON public.painel21_contas USING btree
+    (status_conta COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_p21_status_protocolo
+
+-- DROP INDEX IF EXISTS public.idx_p21_status_protocolo;
+
+CREATE INDEX IF NOT EXISTS idx_p21_status_protocolo
+    ON public.painel21_contas USING btree
+    (status_protocolo COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
