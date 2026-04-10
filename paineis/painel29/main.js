@@ -52,7 +52,7 @@
     function configurarBotoes() {
         var btnVoltar = document.getElementById('btn-voltar');
         if (btnVoltar) btnVoltar.addEventListener('click', function () {
-            window.location.href = '/frontend/dashboard.html';
+            window.location.href = '/paineis/painel28/sentir-agir.html';
         });
 
         var btnRefresh = document.getElementById('btn-refresh');
