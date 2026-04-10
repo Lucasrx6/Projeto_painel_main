@@ -190,6 +190,22 @@ def dashboard():
         cursor.execute(sql, params)
         stats = cursor.fetchone()
 
+        # KPIs de tratativas (filtradas pelo mesmo período via join)
+        cursor.execute("""
+            SELECT
+                COUNT(*) AS trat_total,
+                SUM(CASE WHEN t.status = 'pendente' THEN 1 ELSE 0 END) AS trat_pendentes,
+                SUM(CASE WHEN t.status = 'em_tratativa' THEN 1 ELSE 0 END) AS trat_em_tratativa,
+                SUM(CASE WHEN t.status = 'regularizado' THEN 1 ELSE 0 END) AS trat_regularizadas,
+                SUM(CASE WHEN t.status = 'cancelado' THEN 1 ELSE 0 END) AS trat_canceladas
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_visitas v ON v.id = t.visita_id
+            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+            WHERE """ + where, params)
+        stats_trat = cursor.fetchone()
+
         # Top 5 itens mais críticos (ranking)
         cursor.execute("""
             SELECT
@@ -220,6 +236,14 @@ def dashboard():
         resultado = serializar_linha(stats) if stats else {}
         resultado['top_criticos'] = top_criticos
         resultado['is_admin'] = _is_admin()
+
+        # Mesclar KPIs de tratativas
+        if stats_trat:
+            trat = serializar_linha(stats_trat)
+            resultado['trat_total'] = trat.get('trat_total', 0) or 0
+            resultado['trat_pendentes'] = trat.get('trat_pendentes', 0) or 0
+            resultado['trat_em_tratativa'] = trat.get('trat_em_tratativa', 0) or 0
+            resultado['trat_regularizadas'] = trat.get('trat_regularizadas', 0) or 0
 
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
@@ -257,6 +281,7 @@ def dados():
                 v.avaliacao_final,
                 v.observacoes,
                 v.criado_em,
+                v.status_tratativa,
                 (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
                  WHERE a.visita_id = v.id AND a.resultado = 'critico') AS qtd_critico,
                 (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
@@ -266,7 +291,15 @@ def dados():
                 (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
                  WHERE a.visita_id = v.id AND a.resultado = 'nao_aplica') AS qtd_nao_aplica,
                 (SELECT COUNT(*) FROM sentir_agir_imagens i
-                 WHERE i.visita_id = v.id) AS qtd_imagens
+                 WHERE i.visita_id = v.id) AS qtd_imagens,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id) AS trat_total,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id AND t.status = 'pendente') AS trat_pendentes,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id AND t.status = 'em_tratativa') AS trat_em_tratativa,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id AND t.status = 'regularizado') AS trat_regularizadas
             FROM sentir_agir_visitas v
             JOIN sentir_agir_rondas r ON r.id = v.ronda_id
             JOIN sentir_agir_setores s ON s.id = v.setor_id
@@ -401,6 +434,36 @@ def detalhe_visita(visita_id):
         """, (visita_id,))
         imagens = cursor.fetchall()
 
+        # Tratativas desta visita
+        cursor.execute("""
+            SELECT
+                t.id AS tratativa_id,
+                t.status,
+                t.prioridade,
+                t.descricao_problema,
+                t.plano_acao,
+                t.data_resolucao,
+                t.criado_em,
+                i.descricao AS item_descricao,
+                c.nome AS categoria_nome,
+                c.icone AS categoria_icone,
+                COALESCE(r.nome, t.responsavel_nome_manual, 'Sem responsavel') AS responsavel_display
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_itens i ON i.id = t.item_id
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            LEFT JOIN sentir_agir_responsaveis r ON r.id = t.responsavel_id
+            WHERE t.visita_id = %s
+            ORDER BY
+                CASE t.status
+                    WHEN 'pendente' THEN 1
+                    WHEN 'em_tratativa' THEN 2
+                    WHEN 'regularizado' THEN 3
+                    WHEN 'cancelado' THEN 4
+                END,
+                t.criado_em
+        """, (visita_id,))
+        tratativas = cursor.fetchall()
+
         # Log de alterações desta visita
         cursor.execute("""
             SELECT acao, campo_alterado, valor_anterior, valor_novo, usuario, criado_em
@@ -442,6 +505,7 @@ def detalhe_visita(visita_id):
             dict(serializar_linha(img), url='/api/paineis/painel28/imagens/%d' % img['id'])
             for img in imagens
         ]
+        visita_dict['tratativas'] = [serializar_linha(t) for t in tratativas]
         visita_dict['historico'] = [serializar_linha(h) for h in historico]
         visita_dict['is_admin'] = _is_admin()
 

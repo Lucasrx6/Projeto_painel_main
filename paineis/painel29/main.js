@@ -66,6 +66,11 @@
             window.location.href = '/paineis/painel28/formulario.html';
         });
 
+        var btnTratativas = document.getElementById('btn-tratativas');
+        if (btnTratativas) btnTratativas.addEventListener('click', function () {
+            window.location.href = '/painel/painel30';
+        });
+
         var btnExportar = document.getElementById('btn-exportar');
         if (btnExportar) btnExportar.addEventListener('click', function () {
             exportarExcel();
@@ -221,6 +226,11 @@
                     setTexto('stat-atencao', d.total_atencao || 0);
                     setTexto('stat-adequados', d.total_adequados || 0);
                     setTexto('stat-leitos', d.total_leitos || 0);
+                    // KPIs de tratativas
+                    setTexto('stat-trat-total', d.trat_total || 0);
+                    setTexto('stat-trat-pendentes', d.trat_pendentes || 0);
+                    setTexto('stat-trat-em-tratativa', d.trat_em_tratativa || 0);
+                    setTexto('stat-trat-regularizadas', d.trat_regularizadas || 0);
                 }
             })
             .catch(function (err) { console.error('Erro dashboard:', err); });
@@ -304,6 +314,21 @@
 
             // Status ronda
             html += '<td><span class="badge-status badge-' + v.status_ronda + '">' + formatarStatus(v.status_ronda) + '</span></td>';
+
+            // Tratativas
+            html += '<td class="celula-tratativas">';
+            if (!v.trat_total || v.trat_total === 0) {
+                html += '<span class="trat-badge trat-sem">–</span>';
+            } else {
+                var stTrat = v.status_tratativa || 'pendente';
+                html += '<span class="trat-status-badge trat-st-' + stTrat + '">' + formatarStatusTratativa(stTrat) + '</span>';
+                html += '<span class="trat-counts">';
+                if (v.trat_pendentes > 0) html += '<span class="trat-num trat-p" title="Pendentes">' + v.trat_pendentes + 'P</span>';
+                if (v.trat_em_tratativa > 0) html += '<span class="trat-num trat-t" title="Em Tratativa">' + v.trat_em_tratativa + 'T</span>';
+                if (v.trat_regularizadas > 0) html += '<span class="trat-num trat-r" title="Regularizadas">' + v.trat_regularizadas + 'R</span>';
+                html += '</span>';
+            }
+            html += '</td>';
 
             // Acoes
             html += '<td><button class="btn-ver-detalhe" onclick="window.P29.abrirDetalhe(' + v.visita_id + ')">';
@@ -477,6 +502,43 @@
                 html += '</div>';
             });
             html += '</div></div>';
+        }
+
+        // Tratativas
+        if (visita.tratativas && visita.tratativas.length > 0 && !editavel) {
+            html += '<div class="detalhe-secao">';
+            html += '<div class="detalhe-secao-titulo"><i class="fas fa-clipboard-check"></i> Tratativas (' + visita.tratativas.length + ')</div>';
+            html += '<div class="tratativas-detalhe-lista">';
+            visita.tratativas.forEach(function (t) {
+                html += '<div class="tratativa-detalhe-item tratativa-st-' + t.status + '">';
+                html += '<div class="trat-item-header">';
+                html += '<span class="trat-status-badge trat-st-' + t.status + '">' + formatarStatusTratativa(t.status) + '</span>';
+                html += '<span class="trat-item-cat"><i class="' + escapeHtml(t.categoria_icone || 'fas fa-tag') + '"></i> ' + escapeHtml(t.categoria_nome) + '</span>';
+                html += '<span class="trat-item-resp"><i class="fas fa-user"></i> ' + escapeHtml(t.responsavel_display) + '</span>';
+                html += '</div>';
+                html += '<div class="trat-item-desc"><strong>' + escapeHtml(t.item_descricao) + '</strong></div>';
+                if (t.descricao_problema) {
+                    html += '<div class="trat-item-problema"><i class="fas fa-exclamation-triangle"></i> ' + escapeHtml(t.descricao_problema) + '</div>';
+                }
+                if (t.plano_acao) {
+                    html += '<div class="trat-item-plano"><i class="fas fa-tasks"></i> <em>' + escapeHtml(t.plano_acao) + '</em></div>';
+                }
+                if (t.data_resolucao) {
+                    html += '<div class="trat-item-meta">Resolvido em: ' + formatarData(t.data_resolucao) + '</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div></div>';
+        } else if (!editavel) {
+            var temCriticos = visita.categorias && visita.categorias.some(function(c) {
+                return c.itens && c.itens.some(function(i) { return i.resultado === 'critico'; });
+            });
+            if (temCriticos) {
+                html += '<div class="detalhe-secao">';
+                html += '<div class="detalhe-secao-titulo"><i class="fas fa-clipboard-check"></i> Tratativas</div>';
+                html += '<div class="detalhe-obs" style="color:#aaa;"><i class="fas fa-info-circle"></i> Nenhuma tratativa registrada para esta visita.</div>';
+                html += '</div>';
+            }
         }
 
         // Historico de alteracoes (apenas visualizacao)
@@ -655,6 +717,16 @@
 
     function formatarStatus(s) {
         return { 'em_andamento': 'Em andamento', 'concluida': 'Concluida', 'cancelada': 'Cancelada' }[s] || s;
+    }
+
+    function formatarStatusTratativa(s) {
+        return {
+            'pendente': 'Pendente',
+            'em_tratativa': 'Em Tratativa',
+            'regularizado': 'Regularizado',
+            'cancelado': 'Cancelado',
+            'sem_pendencia': 'OK'
+        }[s] || s;
     }
 
     function atualizarHora() {

@@ -757,3 +757,97 @@ body {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ========================================
+   TRATATIVAS — KPIs, coluna e modal
+   ======================================== */
+
+/* Segunda linha de KPIs (tratativas) */
+.stats-row-tratativas {
+    grid-template-columns: repeat(4, 1fr);
+    margin-top: 0;
+}
+
+/* Icones para os KPI cards de tratativas */
+.icon-trat-total    { background: linear-gradient(135deg, #6c757d, #495057); }
+.icon-pendente      { background: linear-gradient(135deg, #dc3545, #a71d2a); }
+.icon-tratativa     { background: linear-gradient(135deg, #fd7e14, #d9620a); }
+.icon-regularizado  { background: linear-gradient(135deg, #28a745, #1e7e34); }
+
+.stat-card-pendente { border: 2px solid #fde8ea; }
+
+/* Coluna tratativas na tabela */
+.celula-tratativas { white-space: nowrap; }
+
+/* Badge de status geral da tratativa */
+.trat-status-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+}
+.trat-st-pendente      { background: #fde8ea; color: #c82333; }
+.trat-st-em_tratativa  { background: #fff3e0; color: #d9620a; }
+.trat-st-regularizado  { background: #e8f5e9; color: #1e7e34; }
+.trat-st-cancelado     { background: #f5f5f5; color: #999; }
+.trat-st-sem_pendencia { background: #e8f5e9; color: #1e7e34; }
+
+.trat-sem { color: #ccc; font-size: 0.8rem; }
+
+/* Mini contadores P/T/R */
+.trat-counts { display: inline-flex; gap: 3px; margin-left: 4px; }
+.trat-num {
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.trat-p { background: #fde8ea; color: #c82333; }
+.trat-t { background: #fff3e0; color: #d9620a; }
+.trat-r { background: #e8f5e9; color: #1e7e34; }
+
+/* Seção de tratativas no modal de detalhe */
+.tratativas-detalhe-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+
+.tratativa-detalhe-item {
+    border-radius: 8px;
+    padding: 10px 12px;
+    border-left: 4px solid #ddd;
+    background: #fafafa;
+}
+.tratativa-st-pendente     { border-left-color: #dc3545; background: #fff9f9; }
+.tratativa-st-em_tratativa { border-left-color: #fd7e14; background: #fff8f3; }
+.tratativa-st-regularizado { border-left-color: #28a745; background: #f6fff6; }
+.tratativa-st-cancelado    { border-left-color: #aaa; background: #f8f8f8; }
+
+.trat-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+.trat-item-cat  { font-size: 0.75rem; color: #555; }
+.trat-item-resp { font-size: 0.75rem; color: #777; margin-left: auto; }
+.trat-item-desc { font-size: 0.85rem; color: #333; margin-bottom: 4px; }
+.trat-item-problema {
+    font-size: 0.78rem; color: #c82333;
+    margin-bottom: 3px;
+}
+.trat-item-plano {
+    font-size: 0.78rem; color: #444;
+    margin-bottom: 3px;
+}
+.trat-item-meta { font-size: 0.7rem; color: #888; margin-top: 4px; }
+
+@media (max-width: 1100px) {
+    .stats-row-tratativas { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 480px) {
+    .stats-row-tratativas { grid-template-columns: repeat(2, 1fr); }
+    .celula-tratativas .trat-counts { display: none; }
+}

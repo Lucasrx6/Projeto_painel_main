@@ -59,6 +59,11 @@
             mostrarToast('Dados atualizados', 'info');
         });
 
+        var btnFormulario = document.getElementById('btn-formulario');
+        if (btnFormulario) btnFormulario.addEventListener('click', function () {
+            window.location.href = '/paineis/painel28/formulario.html';
+        });
+
         var btnGestao = document.getElementById('btn-gestao');
         if (btnGestao) btnGestao.addEventListener('click', function () {
             window.location.href = '/painel/painel29';

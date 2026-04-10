@@ -31,6 +31,10 @@
                     <button id="btn-formulario" class="btn-header" title="Ir para Formulario">
                         <i class="fas fa-heart-pulse"></i> <span class="btn-text">Formulario</span>
                     </button>
+                    <!-- Tratativas -->
+                    <button id="btn-tratativas" class="btn-header" title="Central de Tratativas">
+                        <i class="fas fa-tasks"></i> <span class="btn-text">Tratativas</span>
+                    </button>
                     <!-- Refresh -->
                     <button id="btn-refresh" class="btn-header" title="Atualizar">
                         <i class="fas fa-sync-alt"></i>
@@ -140,6 +144,30 @@
                 </div>
             </div>
 
+            <!-- KPIs Tratativas -->
+            <div class="stats-row stats-row-tratativas" id="stats-row-tratativas">
+                <div class="stat-card stat-card-trat-header" style="grid-column: span 1; pointer-events:none;">
+                    <div class="stat-icon icon-trat-total"><i class="fas fa-clipboard-check"></i></div>
+                    <h3 id="stat-trat-total">0</h3>
+                    <p>Total Tratativas</p>
+                </div>
+                <div class="stat-card stat-card-pendente">
+                    <div class="stat-icon icon-pendente"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3 id="stat-trat-pendentes">0</h3>
+                    <p>Pendentes</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-tratativa"><i class="fas fa-spinner"></i></div>
+                    <h3 id="stat-trat-em-tratativa">0</h3>
+                    <p>Em Tratativa</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-regularizado"><i class="fas fa-check-circle"></i></div>
+                    <h3 id="stat-trat-regularizadas">0</h3>
+                    <p>Regularizadas</p>
+                </div>
+            </div>
+
             <!-- Tabela de Visitas -->
             <div class="tabela-container">
                 <div class="tabela-header">
@@ -163,6 +191,7 @@
                                 </th>
                                 <th>Img</th>
                                 <th>Status</th>
+                                <th>Tratativas</th>
                                 <th>Acoes</th>
                             </tr>
                         </thead>

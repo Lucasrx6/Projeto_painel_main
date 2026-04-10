@@ -329,9 +329,11 @@
 
     function configurarNavegacao() {
         var btnVoltar = document.getElementById('btn-voltar');
-        if (btnVoltar) btnVoltar.addEventListener('click', function () { window.location.href = '/painel/painel28'; });
+        if (btnVoltar) btnVoltar.addEventListener('click', function () { window.location.href = '/paineis/painel28/sentir-agir.html'; });
         var btnGestao = document.getElementById('btn-gestao');
         if (btnGestao) btnGestao.addEventListener('click', function () { window.location.href = '/painel/painel29'; });
+        var btnTratativas = document.getElementById('btn-tratativas');
+        if (btnTratativas) btnTratativas.addEventListener('click', function () { window.location.href = '/painel/painel30'; });
     }
 
     function mostrarTela(tela) {
