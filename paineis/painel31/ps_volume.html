@@ -38,7 +38,6 @@
             </div>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs-container">
             <button class="tab-btn ativo" data-tab="visao-geral">
                 <i class="fas fa-chart-simple"></i> Visao Geral
@@ -48,23 +47,34 @@
             </button>
         </div>
 
-        <!-- ABA 1: VISAO GERAL (default) -->
+        <!-- ABA 1: VISAO GERAL -->
         <div class="tab-content ativo" id="tab-visao-geral">
             <div class="detalhe-main">
 
-                <!-- Destaque: previsao de hoje -->
-                <div class="destaque-hoje">
-                    <div class="destaque-hoje-icon">
-                        <i class="fas fa-hospital-user"></i>
+                <!-- Linha superior: destaque hoje + picos -->
+                <div class="topo-row">
+                    <div class="destaque-hoje">
+                        <div class="destaque-hoje-icon">
+                            <i class="fas fa-hospital-user"></i>
+                        </div>
+                        <div class="destaque-hoje-info">
+                            <span class="destaque-hoje-label">Previsao para hoje</span>
+                            <span class="destaque-hoje-valor" id="hoje-valor">--</span>
+                            <span class="destaque-hoje-unidade">atendimentos</span>
+                        </div>
+                        <div class="destaque-hoje-faixa">
+                            <span class="destaque-hoje-label-pequeno">Variacao esperada</span>
+                            <span class="destaque-hoje-valor-pequeno" id="hoje-faixa">-- a --</span>
+                        </div>
                     </div>
-                    <div class="destaque-hoje-info">
-                        <span class="destaque-hoje-label">Previsao para hoje</span>
-                        <span class="destaque-hoje-valor" id="hoje-valor">--</span>
-                        <span class="destaque-hoje-unidade">atendimentos</span>
-                    </div>
-                    <div class="destaque-hoje-faixa">
-                        <span class="destaque-hoje-label-pequeno">Variacao esperada</span>
-                        <span class="destaque-hoje-valor-pequeno" id="hoje-faixa">-- a --</span>
+
+                    <div class="picos-card">
+                        <div class="picos-header">
+                            <h3><i class="fas fa-chart-column"></i> Horarios de pico hoje</h3>
+                        </div>
+                        <div class="picos-body" id="picos-body">
+                            <div class="loading-container"><div class="loading-spinner"></div></div>
+                        </div>
                     </div>
                 </div>
 
@@ -156,9 +166,7 @@
                     </div>
                 </div>
 
-                <div class="info-modelo-tecnica" id="info-modelo-tecnica">
-                    <!-- preenchido via JS -->
-                </div>
+                <div class="info-modelo-tecnica" id="info-modelo-tecnica"></div>
             </div>
         </div>
 

@@ -9,6 +9,7 @@ var CONFIG = {
     apiMetricas:      BASE_URL + '/api/paineis/painel31/metricas/ps_volume',
     apiModelo:        BASE_URL + '/api/paineis/painel31/modelo/ps_volume',
     apiHistoricoReal: BASE_URL + '/api/paineis/painel31/historico-real',
+    apiPicosHoje:     BASE_URL + '/api/paineis/painel31/picos-hoje',
     intervaloRefresh: 300000
 };
 
@@ -63,9 +64,10 @@ function carregarTudo() {
         fetch(CONFIG.apiPrevisoes,     { credentials: 'include' }).then(function(r) { return r.json(); }),
         fetch(CONFIG.apiMetricas,      { credentials: 'include' }).then(function(r) { return r.json(); }),
         fetch(CONFIG.apiModelo,        { credentials: 'include' }).then(function(r) { return r.json(); }),
-        fetch(CONFIG.apiHistoricoReal, { credentials: 'include' }).then(function(r) { return r.json(); })
+        fetch(CONFIG.apiHistoricoReal, { credentials: 'include' }).then(function(r) { return r.json(); }),
+        fetch(CONFIG.apiPicosHoje,     { credentials: 'include' }).then(function(r) { return r.json(); })
     ]).then(function(results) {
-        var prev = results[0], met = results[1], mod = results[2], hist = results[3];
+        var prev = results[0], met = results[1], mod = results[2], hist = results[3], picos = results[4];
 
         if (prev.success) {
             renderizarDestaqueHoje(prev.previsoes_futuras);
@@ -73,9 +75,10 @@ function carregarTudo() {
             renderizarPrevisoesGrid(prev.previsoes_futuras);
             renderizarGrafico(prev.historico_realizado, prev.previsoes_futuras);
         }
-        if (hist.success) renderizarHistoricoGrid(hist.historico);
-        if (met.success)  renderizarKPIsMetricas(met);
-        if (mod.success)  { renderizarSubtitulo(mod.modelo); renderizarInfoTecnica(mod.modelo); }
+        if (hist.success)  renderizarHistoricoGrid(hist.historico);
+        if (met.success)   renderizarKPIsMetricas(met);
+        if (mod.success)   { renderizarSubtitulo(mod.modelo); renderizarInfoTecnica(mod.modelo); }
+        if (picos.success) renderizarPicos(picos);
 
         atualizarTimestamp();
         var ind = document.getElementById('status-indicator');
@@ -191,6 +194,43 @@ function renderizarHistoricoGrid(historico) {
     });
     grid.innerHTML = html;
 }
+
+
+function renderizarPicos(data) {
+    var body = document.getElementById('picos-body');
+    if (!body) return;
+
+    if (!data.top_picos || data.top_picos.length === 0) {
+        body.innerHTML = '<div class="mensagem-vazia"><i class="fas fa-clock"></i><p>Aguardando previsao de hoje</p></div>';
+        return;
+    }
+
+    var html = '';
+
+    // Banner do proximo pico
+    if (data.proximo_pico) {
+        var horaFmt = ('0' + data.proximo_pico.hora).slice(-2) + ':00';
+        html += '<div class="proximo-pico-banner">';
+        html += '  <i class="fas fa-triangle-exclamation"></i>';
+        html += '  <span>Proximo pico: <strong>' + horaFmt + '</strong> com ~<strong>' + data.proximo_pico.estimado + '</strong> atendimentos esperados</span>';
+        html += '</div>';
+    }
+
+    // Top 3 picos do dia
+    html += '<div class="picos-lista">';
+    data.top_picos.forEach(function(p) {
+        var horaFmt = ('0' + p.hora).slice(-2) + 'h';
+        html += '<div class="pico-item">';
+        html += '  <div class="pico-item-hora">' + horaFmt + '</div>';
+        html += '  <div class="pico-item-estimativa">~' + p.estimado + '</div>';
+        html += '  <div class="pico-item-label">atendimentos</div>';
+        html += '</div>';
+    });
+    html += '</div>';
+
+    body.innerHTML = html;
+}
+
 
 // ----- ABA TECNICA: KPIs -----
 function renderizarKPIsMetricas(data) {

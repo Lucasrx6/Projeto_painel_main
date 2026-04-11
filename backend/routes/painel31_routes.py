@@ -580,3 +580,115 @@ def api_painel31_historico_real():
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500
+
+
+# =============================================================================
+# API - PICOS HORARIOS DE HOJE
+# =============================================================================
+
+@painel31_bp.route('/api/paineis/painel31/picos-hoje', methods=['GET'])
+@login_required
+def api_painel31_picos_hoje():
+    """
+    Retorna a estimativa horaria de atendimentos para hoje, baseada em:
+      - Previsao diaria do modelo (valor_previsto para CURRENT_DATE)
+      - Distribuicao percentual historica por hora (vw_ps_perfil_horario_semanal)
+    """
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin:
+        if not verificar_permissao_painel(usuario_id, 'painel31'):
+            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # 1. Previsao diaria de hoje
+        cursor.execute("""
+            SELECT valor_previsto
+            FROM ml_ps_predicoes
+            WHERE dt_alvo = CURRENT_DATE
+            ORDER BY horizonte_dias ASC, dt_geracao DESC
+            LIMIT 1
+        """)
+        prev_row = cursor.fetchone()
+
+        if not prev_row:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': True,
+                'picos': [],
+                'mensagem': 'Sem previsao diaria disponivel para hoje'
+            })
+
+        previsao_diaria = float(prev_row['valor_previsto'])
+
+        # 2. Perfil horario do dia da semana de hoje
+        # PostgreSQL DOW: 0=Dom, 1=Seg, ..., 6=Sab
+        cursor.execute("""
+            SELECT hora, pct_do_dia
+            FROM vw_ps_perfil_horario_semanal
+            WHERE dia_semana = EXTRACT(DOW FROM CURRENT_DATE)::int
+            ORDER BY hora
+        """)
+        perfil = cursor.fetchall()
+
+        if not perfil:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': True,
+                'picos': [],
+                'mensagem': 'Sem perfil historico disponivel'
+            })
+
+        # 3. Estima atendimentos por hora
+        horas_estimativas = []
+        for p in perfil:
+            estimado = round(previsao_diaria * float(p['pct_do_dia']) / 100)
+            horas_estimativas.append({
+                'hora': p['hora'],
+                'estimado': estimado,
+                'pct': float(p['pct_do_dia'])
+            })
+
+        # 4. Identifica os 3 maiores picos
+        ordenados = sorted(horas_estimativas, key=lambda x: x['estimado'], reverse=True)
+        top_picos = ordenados[:3]
+        top_picos.sort(key=lambda x: x['hora'])
+
+        # 5. Hora atual e proxima hora de pico relevante
+        from datetime import datetime as dt
+        hora_atual = dt.now().hour
+        proximo_pico = None
+        for h in horas_estimativas:
+            if h['hora'] >= hora_atual and h['estimado'] >= ordenados[0]['estimado'] * 0.85:
+                proximo_pico = h
+                break
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'previsao_diaria': round(previsao_diaria),
+            'horas': horas_estimativas,
+            'top_picos': top_picos,
+            'proximo_pico': proximo_pico,
+            'hora_atual': hora_atual,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        current_app.logger.error(
+            f'Erro ao buscar picos de hoje: {e}', exc_info=True
+        )
+        if conn:
+            conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao calcular picos'}), 500
