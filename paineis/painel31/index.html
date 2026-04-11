@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Machine Learning - Hospital Anchieta Ceilandia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel31/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+</head>
+<body>
+    <div class="painel-container">
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-brain"></i> Central de Machine Learning</h1>
+                        <span class="header-subtitle">Modelos preditivos em producao - Hospital Anchieta Ceilandia</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-actions">
+                        <button id="btn-voltar" class="btn-header">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="header-status">
+                        <span class="status-indicator status-loading" id="status-indicator"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs do hub -->
+        <div class="hub-kpis" id="hub-kpis">
+            <div class="kpi-card">
+                <div class="kpi-icon kpi-icon-azul"><i class="fas fa-cubes"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-valor" id="kpi-total-modelos">0</span>
+                    <span class="kpi-label">Modelos ativos</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon kpi-icon-verde"><i class="fas fa-check-circle"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-valor" id="kpi-em-producao">0</span>
+                    <span class="kpi-label">Em producao</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon kpi-icon-roxo"><i class="fas fa-bullseye"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-valor" id="kpi-total-predicoes">0</span>
+                    <span class="kpi-label">Predicoes geradas</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon kpi-icon-laranja"><i class="fas fa-heartbeat"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-valor" id="kpi-saude-geral">--</span>
+                    <span class="kpi-label">Saude geral</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards de modelos -->
+        <div class="painel-main">
+            <div class="modelos-grid" id="modelos-grid">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando modelos...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rodape -->
+        <div class="painel-footer">
+            <p><i class="fas fa-info-circle"></i> Modelos atualizados diariamente as 04:30 via worker autonomo. Clique em um card para ver detalhes, metricas e previsoes.</p>
+        </div>
+    </div>
+
+    <script src="/paineis/painel31/hub.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

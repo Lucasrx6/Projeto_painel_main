@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previsao de Atendimentos PS - Central de ML</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel31/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="painel-container">
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-chart-line"></i> Previsao de Atendimentos - Pronto Socorro</h1>
+                        <span class="header-subtitle" id="subtitulo-modelo">Modelo preditivo de demanda</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-actions">
+                        <button id="btn-voltar" class="btn-header">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Hub ML</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="header-status">
+                        <span class="status-indicator status-loading" id="status-indicator"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <button class="tab-btn ativo" data-tab="visao-geral">
+                <i class="fas fa-chart-simple"></i> Visao Geral
+            </button>
+            <button class="tab-btn" data-tab="tecnica">
+                <i class="fas fa-flask"></i> Analise Tecnica
+            </button>
+        </div>
+
+        <!-- ABA 1: VISAO GERAL (default) -->
+        <div class="tab-content ativo" id="tab-visao-geral">
+            <div class="detalhe-main">
+
+                <!-- Destaque: previsao de hoje -->
+                <div class="destaque-hoje">
+                    <div class="destaque-hoje-icon">
+                        <i class="fas fa-hospital-user"></i>
+                    </div>
+                    <div class="destaque-hoje-info">
+                        <span class="destaque-hoje-label">Previsao para hoje</span>
+                        <span class="destaque-hoje-valor" id="hoje-valor">--</span>
+                        <span class="destaque-hoje-unidade">atendimentos</span>
+                    </div>
+                    <div class="destaque-hoje-faixa">
+                        <span class="destaque-hoje-label-pequeno">Variacao esperada</span>
+                        <span class="destaque-hoje-valor-pequeno" id="hoje-faixa">-- a --</span>
+                    </div>
+                </div>
+
+                <!-- Comparativo: ontem vs hoje vs amanha -->
+                <div class="comparativo-row">
+                    <div class="comparativo-card comparativo-ontem">
+                        <div class="comparativo-header"><i class="fas fa-arrow-left"></i> Ontem</div>
+                        <div class="comparativo-valor" id="ontem-valor">--</div>
+                        <div class="comparativo-label">atendimentos realizados</div>
+                    </div>
+                    <div class="comparativo-card comparativo-hoje">
+                        <div class="comparativo-header"><i class="fas fa-circle-dot"></i> Hoje</div>
+                        <div class="comparativo-valor" id="hoje-valor-pequeno">--</div>
+                        <div class="comparativo-label">previsao</div>
+                    </div>
+                    <div class="comparativo-card comparativo-amanha">
+                        <div class="comparativo-header">Amanha <i class="fas fa-arrow-right"></i></div>
+                        <div class="comparativo-valor" id="amanha-valor">--</div>
+                        <div class="comparativo-label">previsao</div>
+                    </div>
+                </div>
+
+                <!-- Proximos 7 dias -->
+                <div class="previsoes-container">
+                    <div class="previsoes-header">
+                        <h2><i class="fas fa-calendar-week"></i> Previsao para os proximos 7 dias</h2>
+                        <span class="previsoes-subtitle">Estimativa do volume de atendimentos por dia</span>
+                    </div>
+                    <div class="previsoes-grid" id="previsoes-grid">
+                        <div class="loading-container"><div class="loading-spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- Historico recente -->
+                <div class="previsoes-container">
+                    <div class="previsoes-header">
+                        <h2><i class="fas fa-clock-rotate-left"></i> Atendimentos dos ultimos 14 dias</h2>
+                        <span class="previsoes-subtitle">Volume real de atendimentos realizados</span>
+                    </div>
+                    <div class="historico-grid" id="historico-grid">
+                        <div class="loading-container"><div class="loading-spinner"></div></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ABA 2: ANALISE TECNICA -->
+        <div class="tab-content" id="tab-tecnica">
+            <div class="detalhe-main">
+                <div class="modelo-kpis">
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-vermelho"><i class="fas fa-bullseye"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-mae-baseline">--</span>
+                            <span class="kpi-label">MAE de treino</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-azul"><i class="fas fa-chart-pie"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-mape-baseline">--</span>
+                            <span class="kpi-label">MAPE de treino</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-roxo"><i class="fas fa-clock"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-mae-30d">--</span>
+                            <span class="kpi-label">MAE ultimos 30d</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-verde"><i class="fas fa-heart-pulse"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-status-saude">--</span>
+                            <span class="kpi-label">Saude do modelo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grafico-container">
+                    <div class="grafico-header">
+                        <h2><i class="fas fa-chart-area"></i> Previsto vs Realizado + Previsoes Futuras</h2>
+                        <span class="grafico-subtitle">Ultimos 30 dias e proximos 7 dias</span>
+                    </div>
+                    <div class="grafico-body">
+                        <canvas id="grafico-previsao"></canvas>
+                    </div>
+                </div>
+
+                <div class="info-modelo-tecnica" id="info-modelo-tecnica">
+                    <!-- preenchido via JS -->
+                </div>
+            </div>
+        </div>
+
+        <div class="painel-footer">
+            <p><i class="fas fa-info-circle"></i> Modelo preditivo treinado com historico de atendimentos, calendario, feriados e dados climaticos. Atualizado diariamente as 04:30.</p>
+        </div>
+    </div>
+
+    <script src="/paineis/painel31/ps_volume.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
