@@ -660,6 +660,28 @@ body {
 
 .btn-add-resp:hover { filter: brightness(1.1); }
 
+.resp-form-acoes { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.resp-form-acoes .btn-add-resp { margin-top: 0; }
+
+.btn-cancelar-resp-edicao {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid var(--cor-borda);
+    border-radius: 6px;
+    background: white;
+    color: var(--cor-texto-sec);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.btn-cancelar-resp-edicao:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+
 .resp-lista-titulo {
     font-size: 0.85rem;
     font-weight: 700;

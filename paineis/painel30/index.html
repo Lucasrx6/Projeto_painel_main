@@ -197,9 +197,15 @@
                             <option value="">Setor (opcional)</option>
                         </select>
                     </div>
-                    <button class="btn-add-resp" id="btn-add-resp">
-                        <i class="fas fa-plus"></i> Adicionar Responsavel
-                    </button>
+                    <input type="hidden" id="resp-edit-id" value="">
+                    <div class="resp-form-acoes">
+                        <button class="btn-add-resp" id="btn-add-resp">
+                            <i class="fas fa-plus"></i> Adicionar Responsavel
+                        </button>
+                        <button type="button" class="btn-cancelar-resp-edicao" id="btn-cancelar-resp-edicao" style="display:none;">
+                            <i class="fas fa-times"></i> Cancelar Edicao
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Lista -->

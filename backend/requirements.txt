@@ -42,6 +42,12 @@ gunicorn==21.2.0
 requests==2.31.0
 
 # ============================================
+# NOTIFICADORES (standalone services)
+# ============================================
+apprise==1.8.0
+schedule==1.2.1
+
+# ============================================
 # DESENVOLVIMENTO (OPCIONAL)
 # ============================================
 # pytest==7.4.3  # Testes automatizados

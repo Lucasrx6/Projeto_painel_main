@@ -23,7 +23,8 @@
         refreshInterval: null,
         filtrosVisiveis: false,
         debounceTimer: null,
-        responsaveisCache: []
+        responsaveisCache: [],
+        responsaveisLista: []
     };
 
     // ========================================
@@ -474,6 +475,13 @@
     function salvarTratativa() {
         if (!estado.tratativaAtual) return;
 
+        // O endpoint de detalhe retorna 'id'; a listagem retorna 'tratativa_id' — suporta os dois
+        var idTratativa = estado.tratativaAtual.tratativa_id || estado.tratativaAtual.id;
+        if (!idTratativa) {
+            mostrarToast('Erro: ID da tratativa nao encontrado', 'erro');
+            return;
+        }
+
         var planoAcao = (document.getElementById('edit-plano-acao').value || '').trim();
         var obsResolucao = (document.getElementById('edit-obs-resolucao').value || '').trim();
         var respId = document.getElementById('edit-responsavel-id').value;
@@ -493,7 +501,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
         }
 
-        fetch(CONFIG.apiTratativas + '/' + estado.tratativaAtual.tratativa_id, {
+        fetch(CONFIG.apiTratativas + '/' + idTratativa, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -535,7 +543,10 @@
         if (btnFecharBottom) btnFecharBottom.addEventListener('click', function () { fecharModal('modal-responsaveis'); });
 
         var btnAdd = document.getElementById('btn-add-resp');
-        if (btnAdd) btnAdd.addEventListener('click', salvarNovoResponsavel);
+        if (btnAdd) btnAdd.addEventListener('click', salvarResponsavel);
+
+        var btnCancelar = document.getElementById('btn-cancelar-resp-edicao');
+        if (btnCancelar) btnCancelar.addEventListener('click', cancelarEdicaoResponsavel);
     }
 
     function popularSelectsResponsaveis() {
@@ -575,7 +586,10 @@
         fetch(CONFIG.apiResponsaveis + '?todas=1')
             .then(function (r) { return r.json(); })
             .then(function (d) {
-                if (d.success) renderizarResponsaveis(d.data || []);
+                if (d.success) {
+                    estado.responsaveisLista = d.data || [];
+                    renderizarResponsaveis(estado.responsaveisLista);
+                }
             })
             .catch(function () {
                 lista.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Erro ao carregar</p>';
@@ -604,6 +618,7 @@
             html += '</div>';
             html += '</div>';
             html += '<div class="resp-acoes">';
+            html += '<button class="r-btn r-btn-editar" onclick="window.P30.editarResponsavel(' + r.id + ')" title="Editar"><i class="fas fa-edit"></i></button>';
             html += '<button class="r-btn r-btn-toggle ' + (r.ativo ? 'ativo' : '') + '" onclick="window.P30.toggleResponsavel(' + r.id + ')" title="' + (r.ativo ? 'Desativar' : 'Ativar') + '"><i class="fas fa-' + (r.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
             html += '</div>';
             html += '</div>';
@@ -611,13 +626,14 @@
         }).join('');
     }
 
-    function salvarNovoResponsavel() {
+    function salvarResponsavel() {
         var nome = (document.getElementById('resp-nome').value || '').trim();
         var email = (document.getElementById('resp-email').value || '').trim();
         var telefone = (document.getElementById('resp-telefone').value || '').trim();
         var cargo = (document.getElementById('resp-cargo').value || '').trim();
         var categoria = document.getElementById('resp-categoria').value;
         var setor = document.getElementById('resp-setor').value;
+        var editId = document.getElementById('resp-edit-id').value;
 
         if (!nome) { mostrarToast('Nome obrigatorio', 'erro'); return; }
 
@@ -630,21 +646,20 @@
             setor_id: setor ? parseInt(setor) : null
         };
 
-        fetch(CONFIG.apiResponsaveis, {
-            method: 'POST',
+        var isEdicao = !!editId;
+        var url = isEdicao ? CONFIG.apiResponsaveis + '/' + editId : CONFIG.apiResponsaveis;
+        var metodo = isEdicao ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: metodo,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
         .then(function (r) { return r.json(); })
         .then(function (d) {
             if (d.success) {
-                mostrarToast('Responsavel adicionado', 'sucesso');
-                document.getElementById('resp-nome').value = '';
-                document.getElementById('resp-email').value = '';
-                document.getElementById('resp-telefone').value = '';
-                document.getElementById('resp-cargo').value = '';
-                document.getElementById('resp-categoria').value = '';
-                document.getElementById('resp-setor').value = '';
+                mostrarToast(isEdicao ? 'Responsavel atualizado' : 'Responsavel adicionado', 'sucesso');
+                _limparFormResponsavel();
                 carregarResponsaveis();
                 carregarFiltrosOpcoes();
             } else {
@@ -652,6 +667,57 @@
             }
         })
         .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    function editarResponsavel(id) {
+        var r = null;
+        for (var i = 0; i < estado.responsaveisLista.length; i++) {
+            if (estado.responsaveisLista[i].id === id) { r = estado.responsaveisLista[i]; break; }
+        }
+        if (!r) { mostrarToast('Responsavel nao encontrado', 'erro'); return; }
+
+        document.getElementById('resp-edit-id').value = r.id;
+        document.getElementById('resp-nome').value = r.nome || '';
+        document.getElementById('resp-email').value = r.email || '';
+        document.getElementById('resp-telefone').value = r.telefone || '';
+        document.getElementById('resp-cargo').value = r.cargo || '';
+        document.getElementById('resp-categoria').value = r.categoria_id || '';
+        document.getElementById('resp-setor').value = r.setor_id || '';
+
+        var titulo = document.querySelector('.resp-form h4');
+        if (titulo) titulo.innerHTML = '<i class="fas fa-edit"></i> Editando: ' + escapeHtml(r.nome);
+
+        var btnAdd = document.getElementById('btn-add-resp');
+        if (btnAdd) btnAdd.innerHTML = '<i class="fas fa-save"></i> Salvar Alteracoes';
+
+        var btnCanc = document.getElementById('btn-cancelar-resp-edicao');
+        if (btnCanc) btnCanc.style.display = 'flex';
+
+        var form = document.querySelector('.resp-form');
+        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function cancelarEdicaoResponsavel() {
+        _limparFormResponsavel();
+    }
+
+    function _limparFormResponsavel() {
+        document.getElementById('resp-edit-id').value = '';
+        document.getElementById('resp-nome').value = '';
+        document.getElementById('resp-email').value = '';
+        document.getElementById('resp-telefone').value = '';
+        document.getElementById('resp-cargo').value = '';
+        document.getElementById('resp-categoria').value = '';
+        document.getElementById('resp-setor').value = '';
+
+        var titulo = document.querySelector('.resp-form h4');
+        if (titulo) titulo.innerHTML = '<i class="fas fa-plus-circle"></i> Adicionar Responsavel';
+
+        var btnAdd = document.getElementById('btn-add-resp');
+        if (btnAdd) btnAdd.innerHTML = '<i class="fas fa-plus"></i> Adicionar Responsavel';
+
+        var btnCanc = document.getElementById('btn-cancelar-resp-edicao');
+        if (btnCanc) btnCanc.style.display = 'none';
     }
 
     function toggleResponsavel(id) {
@@ -723,7 +789,8 @@
     window.P30 = {
         abrirTratativa: abrirTratativa,
         selecionarStatus: selecionarStatus,
-        toggleResponsavel: toggleResponsavel
+        toggleResponsavel: toggleResponsavel,
+        editarResponsavel: editarResponsavel
     };
 
     if (document.readyState === 'loading') {
