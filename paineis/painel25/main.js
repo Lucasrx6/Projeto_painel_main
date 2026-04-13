@@ -445,11 +445,12 @@
     // TOGGLE FILTROS
     // =========================================================
 
+    var filtrosVisiveis = false;
+
     function toggleFiltros() {
-        Estado.filtrosRecolhidos = !Estado.filtrosRecolhidos;
-        if (DOM.headerControls) DOM.headerControls.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        salvar('filtrosRecolhidos', Estado.filtrosRecolhidos ? '1' : '0');
+        filtrosVisiveis = !filtrosVisiveis;
+        var bar = document.getElementById('filtros-bar');
+        if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
     }
 
     // =========================================================
@@ -546,12 +547,7 @@
         var buscaSalva = recuperar('busca');
         if (buscaSalva) { Estado.filtros.busca = buscaSalva; if (DOM.filtroBusca) DOM.filtroBusca.value = buscaSalva; }
 
-        // Restaurar toggle
-        Estado.filtrosRecolhidos = recuperar('filtrosRecolhidos') === '1';
-        if (Estado.filtrosRecolhidos) {
-            if (DOM.headerControls) DOM.headerControls.classList.add('recolhido');
-            if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.add('recolhido');
-        }
+        Estado.filtrosRecolhidos = false;
 
         configurarEventos();
         carregarFiltrosDinamicos();

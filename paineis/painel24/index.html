@@ -27,123 +27,7 @@
                     </div>
                 </div>
                 <div class="header-right">
-                    <!-- Botao recolher filtros -->
-                    <button id="btn-toggle-filtros" class="btn-header btn-toggle-filtros" title="Recolher/Expandir filtros" aria-label="Recolher filtros">
-                        <i class="fas fa-filter" aria-hidden="true"></i>
-                        <i class="fas fa-chevron-up toggle-arrow" aria-hidden="true"></i>
-                    </button>
-
-                    <div class="header-controls" id="header-controls">
-
-                        <!-- Multi-select: Local de Estoque -->
-                        <div class="multi-select-container" id="ms-local" data-state-key="multiLocal" data-placeholder="Local Estoque">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Local Estoque</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <!-- Multi-select: Tipo Local -->
-                        <div class="multi-select-container" id="ms-tipo-local" data-state-key="multiTipoLocal" data-placeholder="Tipo Local">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Tipo Local</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <!-- Multi-select: Grupo -->
-                        <div class="multi-select-container" id="ms-grupo" data-state-key="multiGrupo" data-placeholder="Grupo">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Grupo</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <!-- Multi-select: Subgrupo -->
-                        <div class="multi-select-container" id="ms-subgrupo" data-state-key="multiSubgrupo" data-placeholder="Subgrupo">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Subgrupo</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <!-- Multi-select: Classificacao -->
-                        <div class="multi-select-container" id="ms-classificacao" data-state-key="multiClassificacao" data-placeholder="Classificacao">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Classificacao</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <!-- Busca -->
-                        <div class="filtro-container filtro-busca">
-                            <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar item/codigo..." aria-label="Buscar">
-                        </div>
-
-                        <!-- Toggle: Ocultar sem consumo -->
-                        <button id="btn-ocultar-sem-consumo" class="btn-filtro-toggle" title="Ocultar itens sem consumo no periodo" aria-pressed="false">
-                            <i class="fas fa-eye-slash" aria-hidden="true"></i>
-                            <span class="btn-filtro-text">S/ Consumo</span>
-                        </button>
-
-                        <!-- Toggle: Ocultar carrinhos/maletas -->
-                        <button id="btn-ocultar-carrinhos" class="btn-filtro-toggle" title="Ocultar carrinhos e maletas" aria-pressed="false">
-                            <i class="fas fa-suitcase-medical" aria-hidden="true"></i>
-                            <span class="btn-filtro-text">Carrinhos</span>
-                        </button>
-
-                        <!-- Toggle: Apenas criticos (<3d) -->
-                        <button id="btn-apenas-criticos" class="btn-filtro-toggle" title="Mostrar apenas itens abaixo de 3 dias" aria-pressed="false">
-                            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-                            <span class="btn-filtro-text">&lt;3d</span>
-                        </button>
-
-                        <!-- Limpar filtros -->
-                        <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
-                            <i class="fas fa-eraser" aria-hidden="true"></i>
-                        </button>
-
-                        <div class="header-status">
-                            <span class="filtro-stats"><strong id="total-filtrados">0</strong> / <span id="total-registros">0</span></span>
-                            <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
-                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
-                        </div>
-                    </div>
+                    <button id="btn-toggle-filtros" class="btn-header"><i class="fas fa-filter" aria-hidden="true"></i> <span class="btn-text">Filtros</span></button>
 
                     <div class="header-actions">
                         <button id="btn-exportar" class="btn-header btn-exportar" title="Exportar Excel" aria-label="Exportar Excel">
@@ -169,6 +53,119 @@
                 </div>
             </div>
         </header>
+
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <!-- Multi-select: Local de Estoque -->
+                <div class="multi-select-container" id="ms-local" data-state-key="multiLocal" data-placeholder="Local Estoque">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Local Estoque</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <!-- Multi-select: Tipo Local -->
+                <div class="multi-select-container" id="ms-tipo-local" data-state-key="multiTipoLocal" data-placeholder="Tipo Local">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Tipo Local</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <!-- Multi-select: Grupo -->
+                <div class="multi-select-container" id="ms-grupo" data-state-key="multiGrupo" data-placeholder="Grupo">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Grupo</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <!-- Multi-select: Subgrupo -->
+                <div class="multi-select-container" id="ms-subgrupo" data-state-key="multiSubgrupo" data-placeholder="Subgrupo">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Subgrupo</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <!-- Multi-select: Classificacao -->
+                <div class="multi-select-container" id="ms-classificacao" data-state-key="multiClassificacao" data-placeholder="Classificacao">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Classificacao</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="filtro-container filtro-busca">
+                    <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar item/codigo..." aria-label="Buscar">
+                </div>
+
+                <!-- Toggle: Ocultar sem consumo -->
+                <button id="btn-ocultar-sem-consumo" class="btn-filtro-toggle" title="Ocultar itens sem consumo no periodo" aria-pressed="false">
+                    <i class="fas fa-eye-slash" aria-hidden="true"></i>
+                    <span class="btn-filtro-text">S/ Consumo</span>
+                </button>
+
+                <!-- Toggle: Ocultar carrinhos/maletas -->
+                <button id="btn-ocultar-carrinhos" class="btn-filtro-toggle" title="Ocultar carrinhos e maletas" aria-pressed="false">
+                    <i class="fas fa-suitcase-medical" aria-hidden="true"></i>
+                    <span class="btn-filtro-text">Carrinhos</span>
+                </button>
+
+                <!-- Toggle: Apenas criticos (<3d) -->
+                <button id="btn-apenas-criticos" class="btn-filtro-toggle" title="Mostrar apenas itens abaixo de 3 dias" aria-pressed="false">
+                    <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                    <span class="btn-filtro-text">&lt;3d</span>
+                </button>
+
+                <!-- Limpar filtros -->
+                <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
+                    <i class="fas fa-eraser" aria-hidden="true"></i>
+                </button>
+
+                <div class="header-status">
+                    <span class="filtro-stats"><strong id="total-filtrados">0</strong> / <span id="total-registros">0</span></span>
+                    <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
 
         <section class="dashboard-resumo" aria-label="Resumo de Estoque">
             <div class="resumo-grid">

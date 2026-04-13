@@ -80,7 +80,7 @@ function aplicarTema(tema, salvar) {
         html.classList.add('tema-azul');
         if (bolinha) { bolinha.className = 'tema-bolinha tema-bolinha-azul'; }
         if (label)   { label.textContent = 'Azul'; }
-        if (metaTheme) metaTheme.setAttribute('content', '#1976d2');
+        if (metaTheme) metaTheme.setAttribute('content', '#44bbc2');
     } else {
         html.classList.remove('tema-azul');
         if (bolinha) { bolinha.className = 'tema-bolinha tema-bolinha-vermelho'; }

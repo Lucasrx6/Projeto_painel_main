@@ -27,91 +27,7 @@
                     </div>
                 </div>
                 <div class="header-right">
-                    <!-- Botao recolher filtros -->
-                    <button id="btn-toggle-filtros" class="btn-header btn-toggle-filtros" title="Recolher/Expandir filtros" aria-label="Recolher filtros">
-                        <i class="fas fa-filter" aria-hidden="true"></i>
-                        <i class="fas fa-chevron-up toggle-arrow" aria-hidden="true"></i>
-                    </button>
-
-                    <div class="header-controls" id="header-controls">
-                        <!-- Filtro Medico -->
-                        <div class="multi-select-container" id="ms-medico" data-state-key="multiMedico" data-placeholder="Medico">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Medico</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <!-- Filtro Clinica -->
-                        <div class="multi-select-container" id="ms-clinica" data-state-key="multiClinica" data-placeholder="Clinica">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Clinica</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <!-- Filtro Tipo Exame -->
-                        <div class="filtro-container">
-                            <select id="filtro-tipo-exame" class="filtro-select" aria-label="Tipo de Exame">
-                                <option value="">Tipo Exame</option>
-                                <option value="RADIOLOGIA">Radiologia</option>
-                                <option value="LABORATORIO">Laboratorio</option>
-                            </select>
-                        </div>
-
-                        <!-- Filtro Status -->
-                        <div class="multi-select-container" id="ms-status" data-state-key="multiStatusExame" data-placeholder="Status">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Status</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options">
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="LAUDADO"> <span class="multi-select-item-text">Laudado</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="LIBERADO"> <span class="multi-select-item-text">Liberado</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="EXECUTADO"> <span class="multi-select-item-text">Executado</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="EM_ANALISE"> <span class="multi-select-item-text">Em Analise</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="COLETADO"> <span class="multi-select-item-text">Coletado</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="AGUARDANDO"> <span class="multi-select-item-text">Aguardando</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="SOLICITADO"> <span class="multi-select-item-text">Solicitado</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="RESULTADO_PARCIAL"> <span class="multi-select-item-text">Resultado Parcial</span></label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Busca por atendimento/paciente -->
-                        <div class="filtro-container filtro-busca">
-                            <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar atend./paciente..." aria-label="Buscar">
-                        </div>
-
-                        <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
-                            <i class="fas fa-eraser" aria-hidden="true"></i>
-                        </button>
-
-                        <div class="header-status">
-                            <span class="filtro-stats"><strong id="total-filtrados">0</strong> pac.</span>
-                            <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
-                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
-                        </div>
-                    </div>
+                    <button id="btn-toggle-filtros" class="btn-header"><i class="fas fa-filter" aria-hidden="true"></i> <span class="btn-text">Filtros</span></button>
 
                     <div class="header-actions">
                         <button id="btn-refresh" class="btn-header btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
@@ -125,6 +41,88 @@
                 </div>
             </div>
         </header>
+
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <!-- Filtro Medico -->
+                <div class="multi-select-container" id="ms-medico" data-state-key="multiMedico" data-placeholder="Medico">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Medico</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <!-- Filtro Clinica -->
+                <div class="multi-select-container" id="ms-clinica" data-state-key="multiClinica" data-placeholder="Clinica">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Clinica</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <!-- Filtro Tipo Exame -->
+                <div class="filtro-container">
+                    <select id="filtro-tipo-exame" class="filtro-select" aria-label="Tipo de Exame">
+                        <option value="">Tipo Exame</option>
+                        <option value="RADIOLOGIA">Radiologia</option>
+                        <option value="LABORATORIO">Laboratorio</option>
+                    </select>
+                </div>
+
+                <!-- Filtro Status -->
+                <div class="multi-select-container" id="ms-status" data-state-key="multiStatusExame" data-placeholder="Status">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Status</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options">
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="LAUDADO"> <span class="multi-select-item-text">Laudado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="LIBERADO"> <span class="multi-select-item-text">Liberado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="EXECUTADO"> <span class="multi-select-item-text">Executado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="EM_ANALISE"> <span class="multi-select-item-text">Em Analise</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="COLETADO"> <span class="multi-select-item-text">Coletado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="AGUARDANDO"> <span class="multi-select-item-text">Aguardando</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="SOLICITADO"> <span class="multi-select-item-text">Solicitado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="RESULTADO_PARCIAL"> <span class="multi-select-item-text">Resultado Parcial</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Busca por atendimento/paciente -->
+                <div class="filtro-container filtro-busca">
+                    <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar atend./paciente..." aria-label="Buscar">
+                </div>
+
+                <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
+                    <i class="fas fa-eraser" aria-hidden="true"></i>
+                </button>
+
+                <div class="header-status">
+                    <span class="filtro-stats"><strong id="total-filtrados">0</strong> pac.</span>
+                    <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
 
         <section class="dashboard-resumo" aria-label="Resumo de Exames">
             <div class="resumo-grid">

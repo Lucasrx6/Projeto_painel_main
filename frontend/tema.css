@@ -17,21 +17,18 @@
    ============================================================================== */
 
 html.tema-azul {
+    /* Cores de MARCA (headers, botões primários) → azul clínico */
     --cor-primaria: #44bbc2 !important;
     --cor-primaria-hover: #2fa8b0 !important;
     --cor-primaria-light: #e0f7f8 !important;
     --cor-primaria-dark: #227a80 !important;
     --cor-header: #44bbc2 !important;
     --cor-header-dark: #2fa8b0 !important;
-    --cor-perigo: #44bbc2 !important;
-    --cor-perigo-light: #e0f7f8 !important;
-    --cor-tempo-critico: #44bbc2 !important;
-    --cor-sem-nf: #44bbc2 !important;
-    --cor-pendente: #44bbc2 !important;
-    --cor-pendente-bg: #e0f7f8 !important;
     --grad-total: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
-    --grad-sem-nf: linear-gradient(135deg, #2fa8b0 0%, #44bbc2 100%) !important;
-    --grad-desatualizado: linear-gradient(135deg, #44bbc2 0%, #227a80 100%) !important;
+
+    /* Cores de STATUS/PERIGO permanecem VERMELHAS intencionalmente:
+       --cor-perigo, --cor-perigo-light, --cor-tempo-critico,
+       --cor-sem-nf, --cor-pendente, --cor-pendente-bg             */
 }
 
 
@@ -85,13 +82,7 @@ html.tema-azul .hospital-name {
    ============================================================================== */
 
 html.tema-azul .dashboard-header {
-    background: linear-gradient(to right, #ffffff 0%, #44bbc2 100%) !important;
-}
-
-/* Lado esquerdo (sobre o branco): texto escuro */
-html.tema-azul .dashboard-header .header-left,
-html.tema-azul .dashboard-header .header-left * {
-    color: #227a80 !important;
+    background: #44bbc2 !important;
 }
 
 html.tema-azul .dashboard-header *:focus {
@@ -139,27 +130,7 @@ html.tema-azul .status-inactive {
    ============================================================================== */
 
 html.tema-azul .painel-header {
-    background: linear-gradient(to right, #ffffff 0%, #44bbc2 100%) !important;
-}
-
-/* Lado esquerdo (sobre o branco): texto escuro */
-html.tema-azul .painel-header .header-left,
-html.tema-azul .painel-header .header-left * {
-    color: #227a80 !important;
-}
-
-/* Botão Voltar quando está no lado esquerdo do header */
-html.tema-azul .painel-header .header-left .btn-voltar,
-html.tema-azul .painel-header .header-left .btn-header {
-    background: rgba(34, 122, 128, 0.1) !important;
-    border-color: rgba(34, 122, 128, 0.35) !important;
-}
-
-html.tema-azul .painel-header .header-left .btn-voltar:hover,
-html.tema-azul .painel-header .header-left .btn-header:hover {
-    background: rgba(34, 122, 128, 0.2) !important;
-    color: #1a5c62 !important;
-    transform: translateY(-1px);
+    background: #44bbc2 !important;
 }
 
 
@@ -318,3 +289,234 @@ html.tema-azul .header-admin {
 
 .btn-tema .tema-bolinha-vermelho { background: #ff6b6b; }
 .btn-tema .tema-bolinha-azul    { background: #64b5f6; }
+
+
+/* ==============================================================================
+   FILTROS-BAR — CORREÇÃO DE CONTEXTO
+   Os filtros tinham CSS para fundo colorido (header). Aqui ficam em fundo branco.
+   Estas regras se aplicam a todos os temas (vermelho e azul).
+   ============================================================================== */
+
+/* Selects e inputs simples */
+.filtros-bar select,
+.filtros-bar input[type="text"],
+.filtros-bar input[type="search"],
+.filtros-bar .filtro-setor-select,
+.filtros-bar .filtro-status-select,
+.filtros-bar .filtro-select,
+.filtros-bar .filtro-busca {
+    background: #ffffff !important;
+    background-image: none !important;     /* remove setas SVG brancas do header */
+    -webkit-appearance: auto !important;
+    -moz-appearance: auto !important;
+    appearance: auto !important;           /* restaura seta nativa do browser (escura) */
+    color: #333333 !important;
+    border: 1.5px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.82rem !important;
+    min-width: 120px;
+}
+
+.filtros-bar select:focus,
+.filtros-bar input:focus {
+    border-color: #44bbc2 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(68, 187, 194, 0.2) !important;
+}
+
+/* Multi-select trigger (painel11, 21, 24, 25, 27, 13) */
+.filtros-bar .multi-select-trigger,
+.filtros-bar .ms-trigger {
+    background: #ffffff !important;
+    color: #333333 !important;
+    border: 1.5px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.82rem !important;
+    min-width: 120px;
+    cursor: pointer;
+}
+
+.filtros-bar .multi-select-trigger:hover,
+.filtros-bar .ms-trigger:hover {
+    border-color: #44bbc2 !important;
+    background: #f0fafb !important;
+}
+
+.filtros-bar .multi-select-label {
+    color: #333333 !important;
+}
+
+.filtros-bar .multi-select-arrow {
+    color: #666666 !important;
+}
+
+/* Dropdown do multi-select */
+.filtros-bar .multi-select-dropdown {
+    background: #ffffff !important;
+    border: 1.5px solid #ced4da !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+    color: #333333 !important;
+}
+
+.filtros-bar .multi-select-option {
+    color: #333333 !important;
+}
+
+.filtros-bar .multi-select-option:hover {
+    background: #e0f7f8 !important;
+}
+
+/* Labels dentro da barra */
+.filtros-bar label,
+.filtros-bar .filtro-label {
+    color: #555555 !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+}
+
+/* Botão limpar filtros */
+.filtros-bar .btn-limpar-filtros,
+.filtros-bar #btn-limpar-filtros,
+.filtros-bar .btn-clear {
+    background: #f8f9fa !important;
+    color: #dc3545 !important;
+    border: 1.5px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.82rem !important;
+    cursor: pointer !important;
+}
+
+.filtros-bar .btn-limpar-filtros:hover,
+.filtros-bar #btn-limpar-filtros:hover {
+    background: #f8d7da !important;
+    border-color: #dc3545 !important;
+}
+
+/* Status buttons (painel13) */
+.filtros-bar .btn-status,
+.filtros-bar .status-btn {
+    background: #f8f9fa !important;
+    color: #333333 !important;
+    border: 1.5px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.8rem !important;
+    cursor: pointer !important;
+}
+
+.filtros-bar .btn-status.ativo,
+.filtros-bar .status-btn.active {
+    background: #44bbc2 !important;
+    color: white !important;
+    border-color: #44bbc2 !important;
+}
+
+/* Período / filtros de data */
+.filtros-bar .periodo-filtro,
+.filtros-bar .filtro-periodo,
+.filtros-bar .filtro-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+/* Ícones de busca dentro da barra */
+.filtros-bar .search-icon,
+.filtros-bar .fa-search,
+.filtros-bar .fa-magnifying-glass {
+    color: #888888 !important;
+}
+
+/* Botões genéricos dentro da barra (btn-header, btn-filtro-status, btn-limpar, etc.) */
+.filtros-bar .btn-header,
+.filtros-bar .btn-filtro-status,
+.filtros-bar .btn-limpar,
+.filtros-bar .pesquisa-limpar {
+    background: #f8f9fa !important;
+    color: #333333 !important;
+    border: 1.5px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+}
+
+.filtros-bar .btn-header:hover,
+.filtros-bar .btn-filtro-status:hover,
+.filtros-bar .btn-limpar:hover {
+    background: #e0f7f8 !important;
+    color: #2fa8b0 !important;
+    border-color: #44bbc2 !important;
+    transform: none !important;
+}
+
+/* Input de texto genérico (filtro-input, pesquisa-input) */
+.filtros-bar .filtro-input,
+.filtros-bar .pesquisa-input,
+.filtros-bar input[type="text"] {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #333333 !important;
+    border: 1.5px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+}
+
+.filtros-bar .filtro-input::placeholder,
+.filtros-bar .pesquisa-input::placeholder,
+.filtros-bar input[type="text"]::placeholder {
+    color: #999999 !important;
+}
+
+/* Ícone de pesquisa dentro do wrapper */
+.filtros-bar .pesquisa-icone {
+    color: #888888 !important;
+}
+
+/* Header-status dentro da barra (painel11) */
+.filtros-bar .header-status .ultima-atualizacao {
+    color: #555555 !important;
+    opacity: 1 !important;
+}
+
+.filtros-bar .header-status .status-indicator {
+    background: #ced4da !important;
+    box-shadow: none !important;
+}
+
+.filtros-bar .header-status .status-indicator.status-online {
+    background: #28a745 !important;
+    box-shadow: 0 0 6px rgba(40, 167, 69, 0.5) !important;
+}
+
+
+/* ==============================================================================
+   PAINEL 28 - CARDS DE SERVIÇOS (cores vêm do backend, forçar azul no tema)
+   ============================================================================== */
+
+html.tema-azul .servico-icone {
+    background: #44bbc2 !important;
+}
+
+html.tema-azul .servico-card::before {
+    background: #44bbc2 !important;
+}
+
+html.tema-azul .servico-card:hover {
+    border-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   PAINEL 15 - BOTÃO DE EMERGÊNCIA
+   ============================================================================== */
+
+html.tema-azul .botao-emergencia {
+    background: linear-gradient(145deg, #5ecfd5 0%, #44bbc2 50%, #2fa8b0 100%) !important;
+    box-shadow:
+        0 8px 30px rgba(68, 187, 194, 0.4),
+        0 0 0 6px rgba(68, 187, 194, 0.15),
+        inset 0 -4px 10px rgba(0, 0, 0, 0.15),
+        inset 0 4px 10px rgba(255, 255, 255, 0.15) !important;
+}

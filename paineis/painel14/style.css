@@ -934,3 +934,25 @@ body {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ========================================
+   FILTROS BAR (painel30 pattern)
+   ======================================== */
+
+.filtros-bar {
+    background: #ffffff;
+    border-bottom: 2px solid #e9ecef;
+    padding: 10px 16px;
+    flex-shrink: 0;
+    animation: slideDown 0.3s ease;
+}
+.filtros-content {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

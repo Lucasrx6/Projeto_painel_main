@@ -1486,3 +1486,59 @@ CREATE INDEX IF NOT EXISTS idx_p21_status_protocolo
     (status_protocolo COLLATE pg_catalog."default" ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+
+
+
+
+   BEGIN;
+
+SELECT 'ANTES DA LIMPEZA' AS momento;
+SELECT 'rondas' AS tabela, COUNT(*) AS total FROM sentir_agir_rondas
+UNION ALL SELECT 'visitas', COUNT(*) FROM sentir_agir_visitas
+UNION ALL SELECT 'avaliacoes', COUNT(*) FROM sentir_agir_avaliacoes
+UNION ALL SELECT 'tratativas', COUNT(*) FROM sentir_agir_tratativas
+UNION ALL SELECT 'imagens', COUNT(*) FROM sentir_agir_imagens
+UNION ALL SELECT 'log', COUNT(*) FROM sentir_agir_log;
+
+
+DELETE FROM sentir_agir_imagens;
+
+DELETE FROM sentir_agir_tratativas;
+
+DELETE FROM sentir_agir_avaliacoes;
+
+DELETE FROM sentir_agir_visitas;
+
+DELETE FROM sentir_agir_rondas;
+
+DELETE FROM sentir_agir_log;
+
+
+
+
+SELECT 'DEPOIS DA LIMPEZA (tudo zerado)' AS momento;
+SELECT 'rondas' AS tabela, COUNT(*) AS total FROM sentir_agir_rondas
+UNION ALL SELECT 'visitas', COUNT(*) FROM sentir_agir_visitas
+UNION ALL SELECT 'avaliacoes', COUNT(*) FROM sentir_agir_avaliacoes
+UNION ALL SELECT 'tratativas', COUNT(*) FROM sentir_agir_tratativas
+UNION ALL SELECT 'imagens', COUNT(*) FROM sentir_agir_imagens
+UNION ALL SELECT 'log', COUNT(*) FROM sentir_agir_log;
+
+
+
+
+SELECT 'ESTRUTURA PRESERVADA (deve ter registros)' AS momento;
+SELECT 'duplas ativas' AS tabela, COUNT(*) AS total FROM sentir_agir_duplas WHERE ativo = TRUE
+UNION ALL SELECT 'categorias ativas', COUNT(*) FROM sentir_agir_categorias WHERE ativo = TRUE
+UNION ALL SELECT 'itens ativos', COUNT(*) FROM sentir_agir_itens WHERE ativo = TRUE
+UNION ALL SELECT 'setores ativos', COUNT(*) FROM sentir_agir_setores WHERE ativo = TRUE
+UNION ALL SELECT 'mapeamento setores', COUNT(*) FROM sentir_agir_setor_mapeamento
+UNION ALL SELECT 'responsaveis ativos', COUNT(*) FROM sentir_agir_responsaveis WHERE ativo = TRUE
+UNION ALL SELECT 'configuracoes', COUNT(*) FROM sentir_agir_config
+UNION ALL SELECT 'servicos hub', COUNT(*) FROM hub_servicos WHERE ativo = TRUE;
+
+
+
+COMMIT;
+
+-- ROLLBACK;

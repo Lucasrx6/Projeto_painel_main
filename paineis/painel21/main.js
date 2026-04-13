@@ -779,11 +779,12 @@
     // TOGGLE FILTROS (RECOLHER/EXPANDIR)
     // =========================================================
 
+    var filtrosVisiveis = false;
+
     function toggleFiltros() {
-        Estado.filtrosRecolhidos = !Estado.filtrosRecolhidos;
-        if (DOM.headerControls) DOM.headerControls.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        salvar('filtrosRecolhidos', Estado.filtrosRecolhidos ? '1' : '0');
+        filtrosVisiveis = !filtrosVisiveis;
+        var bar = document.getElementById('filtros-bar');
+        if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
     }
 
     // =========================================================
@@ -845,7 +846,6 @@
         // Excluir zerados
         if (DOM.btnExcluirZerados) DOM.btnExcluirZerados.addEventListener('click', function() { Estado.excluirZerados = !Estado.excluirZerados; atualizarBotaoExcluirZerados(); salvar('excluirZerados', Estado.excluirZerados ? '1' : '0'); carregarDados(); });
 
-        // Toggle filtros
         if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.addEventListener('click', toggleFiltros);
 
         // Modo scroll
@@ -927,11 +927,7 @@
         Estado.excluirZerados = recuperar('excluirZerados') === '1';
         atualizarBotaoExcluirZerados();
 
-        Estado.filtrosRecolhidos = recuperar('filtrosRecolhidos') === '1';
-        if (Estado.filtrosRecolhidos) {
-            if (DOM.headerControls) DOM.headerControls.classList.add('recolhido');
-            if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.add('recolhido');
-        }
+        Estado.filtrosRecolhidos = false;
 
         var modoSalvo = recuperar('modoScroll');
         if (modoSalvo) Estado.modoScroll = modoSalvo;

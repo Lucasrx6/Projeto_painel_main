@@ -428,11 +428,12 @@
         });
     }
 
+    var filtrosVisiveis = false;
+
     function toggleFiltros() {
-        Estado.filtrosRecolhidos = !Estado.filtrosRecolhidos;
-        if (DOM.headerControls) DOM.headerControls.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        salvar('filtrosRecolhidos', Estado.filtrosRecolhidos ? '1' : '0');
+        filtrosVisiveis = !filtrosVisiveis;
+        var bar = document.getElementById('filtros-bar');
+        if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
     }
 
     // Eventos
@@ -503,11 +504,7 @@
         if (statusSalvo && DOM.filtroStatus) DOM.filtroStatus.value = statusSalvo;
         var buscaSalva = recuperar('busca');
         if (buscaSalva && DOM.filtroBusca) DOM.filtroBusca.value = buscaSalva;
-        Estado.filtrosRecolhidos = recuperar('filtrosRecolhidos') === '1';
-        if (Estado.filtrosRecolhidos) {
-            if (DOM.headerControls) DOM.headerControls.classList.add('recolhido');
-            if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.add('recolhido');
-        }
+        Estado.filtrosRecolhidos = false;
 
         registrarEventos();
         carregarFiltros();

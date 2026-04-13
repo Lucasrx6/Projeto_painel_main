@@ -22,10 +22,7 @@
                     <h1><i class="fas fa-bed"></i> Monitoramento de Enfermaria</h1>
                 </div>
                 <div class="header-right">
-                    <!-- Filtro de Setor -->
-                    <select id="filtro-setor" class="filtro-setor-select">
-                        <option value="">Carregando setores...</option>
-                    </select>
+                    <button id="btn-toggle-filtros" class="btn-header"><i class="fas fa-filter" aria-hidden="true"></i> <span class="btn-text">Filtros</span></button>
                     <button id="btn-voltar" class="btn-voltar">
                         <i class="fas fa-arrow-left"></i> Voltar
                     </button>
@@ -37,6 +34,14 @@
                     </button>
                     <span class="ultima-atualizacao">-</span>
                 </div>
+            </div>
+        </div>
+
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <select id="filtro-setor" class="filtro-setor-select">
+                    <option value="">Carregando setores...</option>
+                </select>
             </div>
         </div>
 
