@@ -144,8 +144,25 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
 .header-title h1 i { font-size: 0.9rem; }
 .header-subtitle { font-size: 0.7rem; opacity: 0.85; display: block; margin-top: 2px; }
 .header-right { display: flex; align-items: center; gap: var(--espacamento-sm); flex-wrap: wrap; justify-content: flex-end; }
-.header-controls { display: flex; align-items: center; gap: var(--espacamento-xs); flex-wrap: wrap; transition: max-height 0.35s ease, opacity 0.25s ease; max-height: 500px; opacity: 1; overflow: visible; }
-.header-controls.recolhido { max-height: 0; opacity: 0; overflow: hidden; padding: 0; gap: 0; pointer-events: none; }
+.filtros-bar {
+    background: #ffffff;
+    border-bottom: 2px solid #e9ecef;
+    padding: 10px 16px;
+    flex-shrink: 0;
+    animation: slideDown 0.3s ease;
+}
+
+.filtros-content {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 /* Status */
 .header-status { display: flex; align-items: center; gap: var(--espacamento-sm); }
@@ -157,8 +174,6 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
 
 /* 4.5 Toggle filtros */
 .btn-toggle-filtros { display: flex; align-items: center; gap: 4px; padding: 5px 8px; flex-shrink: 0; }
-.btn-toggle-filtros .toggle-arrow { font-size: 0.55rem; transition: transform 0.3s ease; }
-.btn-toggle-filtros.recolhido .toggle-arrow { transform: rotate(180deg); }
 
 /* Botoes header */
 .header-actions { display: flex; gap: var(--espacamento-xs); flex-shrink: 0; }

@@ -19,6 +19,8 @@
     <!-- Estilos -->
     <link rel="stylesheet" href="/paineis/painel20/style.css">
     <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
     <div class="painel-container">
@@ -38,28 +40,6 @@
                 </div>
                 <div class="header-right">
                     <div class="header-controls">
-                        <!-- Filtro de Período -->
-                        <div class="filtro-container">
-                            <label for="filtro-periodo" class="sr-only">Filtrar por período</label>
-                            <select id="filtro-periodo" class="filtro-status-select" aria-label="Filtrar por período">
-                                <option value="">Todos</option>
-                                <option value="6">Últimas 6h</option>
-                                <option value="12" selected>Últimas 12h</option>
-                                <option value="24">Últimas 24h</option>
-                            </select>
-                        </div>
-
-                        <!-- Filtro de Status -->
-                        <div class="filtro-container">
-                            <label for="filtro-status" class="sr-only">Filtrar por status</label>
-                            <select id="filtro-status" class="filtro-status-select" aria-label="Filtrar por status">
-                                <option value="">Todos os Status</option>
-                                <option value="AGUARDANDO">Aguardando Execução</option>
-                                <option value="EXECUTADO_SEM_LAUDO">Sem Laudo</option>
-                                <option value="LAUDADO">Laudados</option>
-                            </select>
-                        </div>
-
                         <!-- Status e Hora -->
                         <div class="header-status">
                             <span class="status-indicator" id="status-indicator" title="Status da conexão"></span>
@@ -68,6 +48,7 @@
                     </div>
 
                     <div class="header-actions">
+                        <button id="btn-toggle-filtros" class="btn-header"><i class="fas fa-filter" aria-hidden="true"></i> <span class="btn-text">Filtros</span></button>
                         <!-- Controle de Volume -->
                         <div class="volume-control" id="volume-control">
                             <button id="btn-som" class="btn-header btn-som-ativo" title="Som de alerta">
@@ -93,6 +74,32 @@
                 </div>
             </div>
         </header>
+
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <!-- Filtro de Período -->
+                <div class="filtro-container">
+                    <label for="filtro-periodo" class="sr-only">Filtrar por período</label>
+                    <select id="filtro-periodo" class="filtro-status-select" aria-label="Filtrar por período">
+                        <option value="">Todos</option>
+                        <option value="6">Últimas 6h</option>
+                        <option value="12" selected>Últimas 12h</option>
+                        <option value="24">Últimas 24h</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Status -->
+                <div class="filtro-container">
+                    <label for="filtro-status" class="sr-only">Filtrar por status</label>
+                    <select id="filtro-status" class="filtro-status-select" aria-label="Filtrar por status">
+                        <option value="">Todos os Status</option>
+                        <option value="AGUARDANDO">Aguardando Execução</option>
+                        <option value="EXECUTADO_SEM_LAUDO">Sem Laudo</option>
+                        <option value="LAUDADO">Laudados</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
         <!-- Dashboard Resumo -->
         <section class="dashboard-resumo" aria-label="Resumo Radiologia PS">

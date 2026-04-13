@@ -60,7 +60,18 @@
     // BOTOES
     // ========================================
 
+    var filtrosVisiveis = false;
+
     function configurarBotoes() {
+        var btnToggleFiltros = document.getElementById('btn-toggle-filtros');
+        if (btnToggleFiltros) {
+            btnToggleFiltros.addEventListener('click', function() {
+                filtrosVisiveis = !filtrosVisiveis;
+                var bar = document.getElementById('filtros-bar');
+                if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
+            });
+        }
+
         var btnVoltar = document.getElementById('btn-voltar');
         if (btnVoltar) btnVoltar.addEventListener('click', function () { window.location.href = '/frontend/dashboard.html'; });
 

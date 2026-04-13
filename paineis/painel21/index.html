@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/paineis/painel21/style.css">
     <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
     <div class="painel-container">
@@ -25,157 +27,7 @@
                     </div>
                 </div>
                 <div class="header-right">
-                    <!-- Botao recolher filtros -->
-                    <button id="btn-toggle-filtros" class="btn-header btn-toggle-filtros" title="Recolher/Expandir filtros" aria-label="Recolher filtros">
-                        <i class="fas fa-filter" aria-hidden="true"></i>
-                        <i class="fas fa-chevron-up toggle-arrow" aria-hidden="true"></i>
-                    </button>
-
-                    <div class="header-controls" id="header-controls">
-                        <div class="filtro-container">
-                            <select id="filtro-periodo" class="filtro-select" aria-label="Filtrar por periodo">
-                                <option value="">Todos</option>
-                                <option value="7">7 dias</option>
-                                <option value="14">14 dias</option>
-                                <option value="30" selected>1 mes</option>
-                                <option value="90">3 meses</option>
-                                <option value="180">6 meses</option>
-                                <option value="365">1 ano</option>
-                            </select>
-                        </div>
-
-                        <div class="multi-select-container" id="ms-status-conta" data-state-key="multiStatus" data-placeholder="St. Conta">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">St. Conta</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options">
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="Provisório"> <span class="multi-select-item-text">Provisorio</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="Definitivo"> <span class="multi-select-item-text">Definitivo</span></label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="filtro-container">
-                            <select id="filtro-legenda" class="filtro-select" aria-label="Legenda">
-                                <option value="">Legenda</option>
-                            </select>
-                        </div>
-
-                        <div class="multi-select-container" id="ms-tipo" data-state-key="multiTipo" data-placeholder="Tipo Atend.">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Tipo Atend.</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options">
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="1"> <span class="multi-select-item-text">Internado</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="3"> <span class="multi-select-item-text">Pronto Socorro</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="7"> <span class="multi-select-item-text">Externo</span></label>
-                                    <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="8"> <span class="multi-select-item-text">Ambulatorial</span></label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="multi-select-container" id="ms-protocolo" data-state-key="multiProtocolo" data-placeholder="St. Protocolo">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">St. Protocolo</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <div class="multi-select-container" id="ms-convenio" data-state-key="multiConvenio" data-placeholder="Convenio">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Convenio</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <div class="multi-select-container" id="ms-setor" data-state-key="multiSetor" data-placeholder="Setor">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Setor</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <div class="multi-select-container" id="ms-etapa" data-state-key="multiEtapa" data-placeholder="Etapa">
-                            <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="multi-select-label">Etapa</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" role="listbox">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
-                                    <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
-                                </div>
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-
-                        <div class="filtro-container filtro-data">
-                            <input type="date" id="filtro-dt-inicio" class="filtro-input filtro-date" title="Data Inicio" aria-label="Data Inicio">
-                        </div>
-                        <div class="filtro-container filtro-data">
-                            <input type="date" id="filtro-dt-fim" class="filtro-input filtro-date" title="Data Fim" aria-label="Data Fim">
-                        </div>
-
-                        <!-- Filtro Valor Min/Max -->
-                        <div class="filtro-container filtro-valor">
-                            <input type="number" id="filtro-vl-min" class="filtro-input filtro-number" placeholder="R$ Min" min="0" step="0.01" title="Valor Minimo" aria-label="Valor Minimo">
-                        </div>
-                        <div class="filtro-container filtro-valor">
-                            <input type="number" id="filtro-vl-max" class="filtro-input filtro-number" placeholder="R$ Max" min="0" step="0.01" title="Valor Maximo" aria-label="Valor Maximo">
-                        </div>
-
-                        <div class="filtro-container filtro-busca">
-                            <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar atend./paciente..." aria-label="Buscar">
-                        </div>
-
-                        <button id="btn-excluir-zerados" class="btn-filtro-toggle" title="Excluir contas com valor R$ 0,00" aria-pressed="false">
-                            <i class="fas fa-ban" aria-hidden="true"></i>
-                            <span class="btn-filtro-text">R$0</span>
-                        </button>
-
-                        <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
-                            <i class="fas fa-eraser" aria-hidden="true"></i>
-                        </button>
-
-                        <div class="header-status">
-                            <span class="filtro-stats"><strong id="total-filtrados">0</strong> / <span id="total-registros">0</span></span>
-                            <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
-                            <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
-                        </div>
-                    </div>
+                    <button id="btn-toggle-filtros" class="btn-header"><i class="fas fa-filter" aria-hidden="true"></i> <span class="btn-text">Filtros</span></button>
 
                     <div class="header-actions">
                         <button id="btn-exportar" class="btn-header btn-exportar" title="Exportar Excel" aria-label="Exportar Excel">
@@ -201,6 +53,154 @@
                 </div>
             </div>
         </header>
+
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <div class="filtro-container">
+                    <select id="filtro-periodo" class="filtro-select" aria-label="Filtrar por periodo">
+                        <option value="">Todos</option>
+                        <option value="7">7 dias</option>
+                        <option value="14">14 dias</option>
+                        <option value="30" selected>1 mes</option>
+                        <option value="90">3 meses</option>
+                        <option value="180">6 meses</option>
+                        <option value="365">1 ano</option>
+                    </select>
+                </div>
+
+                <div class="multi-select-container" id="ms-status-conta" data-state-key="multiStatus" data-placeholder="St. Conta">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">St. Conta</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options">
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="Provisório"> <span class="multi-select-item-text">Provisorio</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="Definitivo"> <span class="multi-select-item-text">Definitivo</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filtro-container">
+                    <select id="filtro-legenda" class="filtro-select" aria-label="Legenda">
+                        <option value="">Legenda</option>
+                    </select>
+                </div>
+
+                <div class="multi-select-container" id="ms-tipo" data-state-key="multiTipo" data-placeholder="Tipo Atend.">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Tipo Atend.</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options">
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="1"> <span class="multi-select-item-text">Internado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="3"> <span class="multi-select-item-text">Pronto Socorro</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="7"> <span class="multi-select-item-text">Externo</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="8"> <span class="multi-select-item-text">Ambulatorial</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="multi-select-container" id="ms-protocolo" data-state-key="multiProtocolo" data-placeholder="St. Protocolo">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">St. Protocolo</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <div class="multi-select-container" id="ms-convenio" data-state-key="multiConvenio" data-placeholder="Convenio">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Convenio</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <div class="multi-select-container" id="ms-setor" data-state-key="multiSetor" data-placeholder="Setor">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Setor</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <div class="multi-select-container" id="ms-etapa" data-state-key="multiEtapa" data-placeholder="Etapa">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Etapa</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+
+                <div class="filtro-container filtro-data">
+                    <input type="date" id="filtro-dt-inicio" class="filtro-input filtro-date" title="Data Inicio" aria-label="Data Inicio">
+                </div>
+                <div class="filtro-container filtro-data">
+                    <input type="date" id="filtro-dt-fim" class="filtro-input filtro-date" title="Data Fim" aria-label="Data Fim">
+                </div>
+
+                <!-- Filtro Valor Min/Max -->
+                <div class="filtro-container filtro-valor">
+                    <input type="number" id="filtro-vl-min" class="filtro-input filtro-number" placeholder="R$ Min" min="0" step="0.01" title="Valor Minimo" aria-label="Valor Minimo">
+                </div>
+                <div class="filtro-container filtro-valor">
+                    <input type="number" id="filtro-vl-max" class="filtro-input filtro-number" placeholder="R$ Max" min="0" step="0.01" title="Valor Maximo" aria-label="Valor Maximo">
+                </div>
+
+                <div class="filtro-container filtro-busca">
+                    <input type="text" id="filtro-busca" class="filtro-input" placeholder="Buscar atend./paciente..." aria-label="Buscar">
+                </div>
+
+                <button id="btn-excluir-zerados" class="btn-filtro-toggle" title="Excluir contas com valor R$ 0,00" aria-pressed="false">
+                    <i class="fas fa-ban" aria-hidden="true"></i>
+                    <span class="btn-filtro-text">R$0</span>
+                </button>
+
+                <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros" aria-label="Limpar filtros">
+                    <i class="fas fa-eraser" aria-hidden="true"></i>
+                </button>
+
+                <div class="header-status">
+                    <span class="filtro-stats"><strong id="total-filtrados">0</strong> / <span id="total-registros">0</span></span>
+                    <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
 
         <section class="dashboard-resumo" aria-label="Resumo de Contas">
             <div class="resumo-grid">

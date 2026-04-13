@@ -941,7 +941,18 @@
     // EVENTOS
     // =========================================================
 
+    var filtrosVisiveis = false;
+
     function configurarEventos() {
+        var btnToggleFiltros = document.getElementById('btn-toggle-filtros');
+        if (btnToggleFiltros) {
+            btnToggleFiltros.addEventListener('click', function() {
+                filtrosVisiveis = !filtrosVisiveis;
+                var bar = document.getElementById('filtros-bar');
+                if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
+            });
+        }
+
         if (DOM.filtroSetor) {
             DOM.filtroSetor.addEventListener('change', function() {
                 Estado.setorSelecionado = this.value;

@@ -803,11 +803,12 @@
     // TOGGLE FILTROS (RECOLHER/EXPANDIR)
     // =========================================================
 
+    var filtrosVisiveis = false;
+
     function toggleFiltros() {
-        Estado.filtrosRecolhidos = !Estado.filtrosRecolhidos;
-        if (DOM.headerControls) DOM.headerControls.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.toggle('recolhido', Estado.filtrosRecolhidos);
-        salvar('filtrosRecolhidos', Estado.filtrosRecolhidos ? '1' : '0');
+        filtrosVisiveis = !filtrosVisiveis;
+        var bar = document.getElementById('filtros-bar');
+        if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
     }
 
     // =========================================================
@@ -832,7 +833,6 @@
     function configurarEventos() {
         configurarToggleMultiSelects();
 
-        // Toggle filtros
         if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.addEventListener('click', toggleFiltros);
 
         // Limpar filtros
@@ -901,12 +901,7 @@
     function inicializar() {
         cachearElementos();
 
-        // Restaurar filtros recolhidos
-        Estado.filtrosRecolhidos = recuperar('filtrosRecolhidos') === '1';
-        if (Estado.filtrosRecolhidos) {
-            if (DOM.headerControls) DOM.headerControls.classList.add('recolhido');
-            if (DOM.btnToggleFiltros) DOM.btnToggleFiltros.classList.add('recolhido');
-        }
+        Estado.filtrosRecolhidos = false;
 
         // Restaurar arrays de filtros do localStorage ANTES do primeiro carregarDados
         Estado.multiStatusInternacao = recuperarArray('multiStatusInternacao');

@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/paineis/painel16/style.css">
     <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
     <div class="painel-container">
@@ -23,17 +25,7 @@
                 </div>
                 <div class="header-right">
                     <div class="header-actions">
-                        <select id="filtro-setor" class="btn-header filtro-setor-select">
-                            <option value="">Todos os Setores</option>
-                            <option value="PS">Pronto Socorro</option>
-                            <option value="AMB">Ambulatorio</option>
-                            <option value="RAD">Radiologia</option>
-                        </select>
-                        <select id="filtro-turno" class="btn-header filtro-setor-select">
-                            <option value="">Todos os Turnos</option>
-                            <option value="diurno">Diurno (07h-19h)</option>
-                            <option value="noturno">Noturno (19h-07h)</option>
-                        </select>
+                        <button id="btn-toggle-filtros" class="btn-header"><i class="fas fa-filter" aria-hidden="true"></i> <span class="btn-text">Filtros</span></button>
                         <button id="btn-voltar" class="btn-header">
                             <i class="fas fa-arrow-left"></i>
                             <span class="btn-text">Voltar</span>
@@ -51,6 +43,22 @@
                         <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <select id="filtro-setor" class="btn-header filtro-setor-select">
+                    <option value="">Todos os Setores</option>
+                    <option value="PS">Pronto Socorro</option>
+                    <option value="AMB">Ambulatorio</option>
+                    <option value="RAD">Radiologia</option>
+                </select>
+                <select id="filtro-turno" class="btn-header filtro-setor-select">
+                    <option value="">Todos os Turnos</option>
+                    <option value="diurno">Diurno (07h-19h)</option>
+                    <option value="noturno">Noturno (19h-07h)</option>
+                </select>
             </div>
         </div>
 

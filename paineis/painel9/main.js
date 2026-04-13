@@ -33,6 +33,18 @@ function inicializar() {
     console.log('✅ Painel inicializado!');
 }
 
+var filtrosVisiveis = false;
+document.addEventListener('DOMContentLoaded', function() {
+    var btnToggleFiltros = document.getElementById('btn-toggle-filtros');
+    if (btnToggleFiltros) {
+        btnToggleFiltros.addEventListener('click', function() {
+            filtrosVisiveis = !filtrosVisiveis;
+            var bar = document.getElementById('filtros-bar');
+            if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
+        });
+    }
+});
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializar);
 } else {

@@ -25,6 +25,10 @@
     <!-- CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/frontend/dashboard.css">
+    <link rel="stylesheet" href="/frontend/tema.css">
+
+    <!-- Aplica tema salvo antes de renderizar (evita flash) -->
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
     <!-- Skip link para acessibilidade -->
@@ -61,6 +65,16 @@
                             aria-label="Cadastrar novo usuario">
                         <i class="fas fa-user-plus" aria-hidden="true"></i>
                         <span class="btn-text">Cadastrar</span>
+                    </button>
+
+                    <!-- Botao Alternar Tema -->
+                    <button type="button"
+                            id="btn-tema"
+                            class="btn-tema"
+                            onclick="toggleTema()"
+                            aria-label="Alternar tema de cores">
+                        <span class="tema-bolinha" id="tema-bolinha" aria-hidden="true"></span>
+                        <span id="tema-label">Tema</span>
                     </button>
 
                     <!-- Botao Logout -->

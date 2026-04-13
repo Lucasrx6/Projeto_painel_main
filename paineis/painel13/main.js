@@ -1175,6 +1175,16 @@
     // =========================================================
 
     function configurarEventos() {
+        var btnToggleFiltros = document.getElementById('btn-toggle-filtros');
+        if (btnToggleFiltros) {
+            var filtrosVisiveis = false;
+            btnToggleFiltros.addEventListener('click', function() {
+                filtrosVisiveis = !filtrosVisiveis;
+                var bar = document.getElementById('filtros-bar');
+                if (bar) bar.style.display = filtrosVisiveis ? 'block' : 'none';
+            });
+        }
+
         if (DOM.btnMultiSetor) {
             DOM.btnMultiSetor.addEventListener('click', function(e) {
                 e.stopPropagation();

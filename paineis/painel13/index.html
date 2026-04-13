@@ -19,6 +19,8 @@
     <!-- Estilos -->
     <link rel="stylesheet" href="/paineis/painel13/style.css">
     <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
     <div class="painel-container">
@@ -39,40 +41,6 @@
                 <div class="header-right">
                     <div class="header-controls">
 
-                        <!-- Filtro Multi-Setor (dropdown customizado) -->
-                        <div class="multi-select-container" id="multi-select-setor">
-                            <button type="button" class="multi-select-trigger" id="btn-multi-setor" aria-haspopup="listbox" aria-expanded="false">
-                                <i class="fas fa-hospital" aria-hidden="true"></i>
-                                <span class="multi-select-label" id="label-setor">Todos os Setores</span>
-                                <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
-                            </button>
-                            <div class="multi-select-dropdown" id="dropdown-setor" role="listbox" aria-label="Selecionar setores">
-                                <div class="multi-select-actions">
-                                    <button type="button" class="btn-select-action" id="btn-select-all" title="Selecionar todos">
-                                        <i class="fas fa-check-double"></i> Todos
-                                    </button>
-                                    <button type="button" class="btn-select-action" id="btn-select-none" title="Limpar selecao">
-                                        <i class="fas fa-times"></i> Limpar
-                                    </button>
-                                </div>
-                                <div class="multi-select-options" id="options-setor">
-                                    <!-- Opcoes populadas via JS -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Filtro de Status -->
-                        <div class="filtro-status-container">
-                            <button type="button" class="btn-filtro-status" id="btn-filtro-sem-prescricao" title="Filtrar sem prescricao" aria-pressed="false">
-                                <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-                                <span class="btn-filtro-text">Sem Presc.</span>
-                            </button>
-                            <button type="button" class="btn-filtro-status" id="btn-filtro-desatualizadas" title="Filtrar desatualizadas" aria-pressed="false">
-                                <i class="fas fa-calendar-times" aria-hidden="true"></i>
-                                <span class="btn-filtro-text">Desatualiz.</span>
-                            </button>
-                        </div>
-
                         <!-- Status e Hora -->
                         <div class="header-status">
                             <span class="status-indicator" id="status-indicator" title="Status da conexao"></span>
@@ -81,6 +49,7 @@
                     </div>
 
                     <div class="header-actions">
+                        <button id="btn-toggle-filtros" class="btn-header"><i class="fas fa-filter" aria-hidden="true"></i> <span class="btn-text">Filtros</span></button>
                         <!-- Toggle modo de scroll -->
                         <button id="btn-modo-scroll" class="btn-header btn-modo-scroll" title="Alternar modo: Rolagem / Paginado" aria-label="Alternar modo de scroll">
                             <i class="fas fa-scroll" aria-hidden="true"></i>
@@ -101,6 +70,44 @@
                 </div>
             </div>
         </header>
+
+        <div class="filtros-bar" id="filtros-bar" style="display:none;">
+            <div class="filtros-content">
+                <!-- Filtro Multi-Setor (dropdown customizado) -->
+                <div class="multi-select-container" id="multi-select-setor">
+                    <button type="button" class="multi-select-trigger" id="btn-multi-setor" aria-haspopup="listbox" aria-expanded="false">
+                        <i class="fas fa-hospital" aria-hidden="true"></i>
+                        <span class="multi-select-label" id="label-setor">Todos os Setores</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" id="dropdown-setor" role="listbox" aria-label="Selecionar setores">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action" id="btn-select-all" title="Selecionar todos">
+                                <i class="fas fa-check-double"></i> Todos
+                            </button>
+                            <button type="button" class="btn-select-action" id="btn-select-none" title="Limpar selecao">
+                                <i class="fas fa-times"></i> Limpar
+                            </button>
+                        </div>
+                        <div class="multi-select-options" id="options-setor">
+                            <!-- Opcoes populadas via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro de Status -->
+                <div class="filtro-status-container">
+                    <button type="button" class="btn-filtro-status" id="btn-filtro-sem-prescricao" title="Filtrar sem prescricao" aria-pressed="false">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <span class="btn-filtro-text">Sem Presc.</span>
+                    </button>
+                    <button type="button" class="btn-filtro-status" id="btn-filtro-desatualizadas" title="Filtrar desatualizadas" aria-pressed="false">
+                        <i class="fas fa-calendar-times" aria-hidden="true"></i>
+                        <span class="btn-filtro-text">Desatualiz.</span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Dashboard Resumo -->
         <section class="dashboard-resumo" aria-label="Resumo de Nutricao">

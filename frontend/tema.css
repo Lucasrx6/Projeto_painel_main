@@ -1,0 +1,522 @@
+/* ==============================================================================
+   SISTEMA DE TEMAS - AZUL MÉDICO
+   Sistema de Paineis - Hospital Anchieta Ceilandia
+
+   Como funciona:
+   - Tema VERMELHO (padrão): sem classe extra no <html>
+   - Tema AZUL: classe 'tema-azul' no <html> (ex: document.documentElement.classList.add('tema-azul'))
+
+   O toggle é controlado pelo botão no Dashboard principal.
+   A preferência é salva em localStorage ('tema_sistema').
+   ============================================================================== */
+
+
+/* ==============================================================================
+   OVERRIDE DE VARIÁVEIS CSS
+   (cobre todos os paineis que usam :root com --cor-primaria e similares)
+   ============================================================================== */
+
+html.tema-azul {
+    /* Cores de MARCA (headers, botões primários) → azul clínico */
+    --cor-primaria: #44bbc2 !important;
+    --cor-primaria-hover: #2fa8b0 !important;
+    --cor-primaria-light: #e0f7f8 !important;
+    --cor-primaria-dark: #227a80 !important;
+    --cor-header: #44bbc2 !important;
+    --cor-header-dark: #2fa8b0 !important;
+    --grad-total: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+
+    /* Cores de STATUS/PERIGO permanecem VERMELHAS intencionalmente:
+       --cor-perigo, --cor-perigo-light, --cor-tempo-critico,
+       --cor-sem-nf, --cor-pendente, --cor-pendente-bg             */
+}
+
+
+/* ==============================================================================
+   PÁGINA DE LOGIN
+   ============================================================================== */
+
+html.tema-azul .btn-login {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+html.tema-azul .form-group label i {
+    color: #44bbc2 !important;
+}
+
+html.tema-azul .form-control:focus,
+html.tema-azul .form-input:focus {
+    border-color: #44bbc2 !important;
+    outline-color: #44bbc2 !important;
+}
+
+html.tema-azul input:focus,
+html.tema-azul select:focus,
+html.tema-azul textarea:focus {
+    border-color: #44bbc2 !important;
+    outline: 3px solid rgba(68, 187, 194, 0.25) !important;
+}
+
+html.tema-azul input,
+html.tema-azul select,
+html.tema-azul textarea,
+html.tema-azul input[type="checkbox"],
+html.tema-azul input[type="radio"] {
+    accent-color: #44bbc2 !important;
+}
+
+html.tema-azul .login-logo-border,
+html.tema-azul .logo-circle {
+    border-color: #44bbc2 !important;
+}
+
+html.tema-azul .login-title,
+html.tema-azul .hospital-name {
+    color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   DASHBOARD PRINCIPAL - HEADER
+   Gradiente: branco (esquerda) → azul clínico (direita)
+   ============================================================================== */
+
+html.tema-azul .dashboard-header {
+    background: #44bbc2 !important;
+}
+
+html.tema-azul .dashboard-header *:focus {
+    outline-color: #e0f7f8 !important;
+}
+
+html.tema-azul .skip-link:focus {
+    background: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   DASHBOARD - CARDS DOS PAINEIS
+   ============================================================================== */
+
+html.tema-azul .painel-icon {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+html.tema-azul .painel-card {
+    border-top-color: #44bbc2 !important;
+}
+
+html.tema-azul .painel-card:focus {
+    outline-color: #44bbc2 !important;
+}
+
+html.tema-azul .painel-card:hover .painel-icon {
+    box-shadow: 0 8px 25px rgba(68, 187, 194, 0.4) !important;
+}
+
+html.tema-azul .sem-paineis-icon {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+    box-shadow: 0 10px 30px rgba(68, 187, 194, 0.3) !important;
+}
+
+html.tema-azul .status-inactive {
+    color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   HEADERS DE PAINEIS (elemento mais visível - todas as telas de painel)
+   Gradiente: branco (esquerda) → azul clínico (direita)
+   ============================================================================== */
+
+html.tema-azul .painel-header {
+    background: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   SUB-HEADERS / HEADERS DE SEÇÃO (dentro dos paineis)
+   ============================================================================== */
+
+html.tema-azul .grupo-dia-header,
+html.tema-azul .section-header,
+html.tema-azul .secao-header,
+html.tema-azul .card-header-primary,
+html.tema-azul .table-header-primary,
+html.tema-azul .bloco-header {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+
+/* ==============================================================================
+   BOTÕES - HOVER COM COR PRIMÁRIA
+   ============================================================================== */
+
+html.tema-azul .btn-voltar:hover,
+html.tema-azul .btn-refresh:hover,
+html.tema-azul .btn-auto-scroll:hover,
+html.tema-azul .btn-header:hover {
+    color: #44bbc2 !important;
+}
+
+html.tema-azul .btn-primario,
+html.tema-azul .btn-primary-solid {
+    background: #44bbc2 !important;
+    border-color: #44bbc2 !important;
+}
+
+html.tema-azul .btn-primario:hover,
+html.tema-azul .btn-primary-solid:hover {
+    background: #2fa8b0 !important;
+    border-color: #2fa8b0 !important;
+}
+
+
+/* ==============================================================================
+   LOADING / CARREGAMENTO
+   ============================================================================== */
+
+html.tema-azul .loading-container,
+html.tema-azul .loading-text {
+    color: #44bbc2 !important;
+}
+
+html.tema-azul .loading-spinner {
+    border-top-color: #44bbc2 !important;
+}
+
+html.tema-azul .loading-ring {
+    border-top-color: #44bbc2 !important;
+    border-right-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   TEXTO COM COR PRIMÁRIA
+   ============================================================================== */
+
+html.tema-azul .texto-primario,
+html.tema-azul .text-primary-color {
+    color: #44bbc2 !important;
+}
+
+/* Links ativos */
+html.tema-azul a.active,
+html.tema-azul .nav-link.active {
+    color: #44bbc2 !important;
+    border-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   BORDAS E DESTAQUES
+   ============================================================================== */
+
+html.tema-azul .border-primary,
+html.tema-azul .destaque-primario {
+    border-color: #44bbc2 !important;
+}
+
+html.tema-azul .border-left-primary {
+    border-left-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   SCROLLBAR (navegadores WebKit)
+   ============================================================================== */
+
+html.tema-azul ::-webkit-scrollbar-thumb {
+    background: #44bbc2 !important;
+}
+
+html.tema-azul ::-webkit-scrollbar-thumb:hover {
+    background: #2fa8b0 !important;
+}
+
+
+/* ==============================================================================
+   ADMIN / GESTÃO DE USUÁRIOS
+   ============================================================================== */
+
+html.tema-azul .admin-header,
+html.tema-azul .header-admin {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+
+/* ==============================================================================
+   BOTÃO DE ALTERNÂNCIA DE TEMA
+   (aparece no header do dashboard)
+   ============================================================================== */
+
+.btn-tema {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    font-family: inherit;
+    flex-shrink: 0;
+}
+
+.btn-tema:hover {
+    background: rgba(255, 255, 255, 0.38);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-tema:active {
+    transform: translateY(0);
+}
+
+.btn-tema .tema-bolinha {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.7);
+}
+
+.btn-tema .tema-bolinha-vermelho { background: #ff6b6b; }
+.btn-tema .tema-bolinha-azul    { background: #64b5f6; }
+
+
+/* ==============================================================================
+   FILTROS-BAR — CORREÇÃO DE CONTEXTO
+   Os filtros tinham CSS para fundo colorido (header). Aqui ficam em fundo branco.
+   Estas regras se aplicam a todos os temas (vermelho e azul).
+   ============================================================================== */
+
+/* Selects e inputs simples */
+.filtros-bar select,
+.filtros-bar input[type="text"],
+.filtros-bar input[type="search"],
+.filtros-bar .filtro-setor-select,
+.filtros-bar .filtro-status-select,
+.filtros-bar .filtro-select,
+.filtros-bar .filtro-busca {
+    background: #ffffff !important;
+    background-image: none !important;     /* remove setas SVG brancas do header */
+    -webkit-appearance: auto !important;
+    -moz-appearance: auto !important;
+    appearance: auto !important;           /* restaura seta nativa do browser (escura) */
+    color: #333333 !important;
+    border: 1.5px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.82rem !important;
+    min-width: 120px;
+}
+
+.filtros-bar select:focus,
+.filtros-bar input:focus {
+    border-color: #44bbc2 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(68, 187, 194, 0.2) !important;
+}
+
+/* Multi-select trigger (painel11, 21, 24, 25, 27, 13) */
+.filtros-bar .multi-select-trigger,
+.filtros-bar .ms-trigger {
+    background: #ffffff !important;
+    color: #333333 !important;
+    border: 1.5px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.82rem !important;
+    min-width: 120px;
+    cursor: pointer;
+}
+
+.filtros-bar .multi-select-trigger:hover,
+.filtros-bar .ms-trigger:hover {
+    border-color: #44bbc2 !important;
+    background: #f0fafb !important;
+}
+
+.filtros-bar .multi-select-label {
+    color: #333333 !important;
+}
+
+.filtros-bar .multi-select-arrow {
+    color: #666666 !important;
+}
+
+/* Dropdown do multi-select */
+.filtros-bar .multi-select-dropdown {
+    background: #ffffff !important;
+    border: 1.5px solid #ced4da !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+    color: #333333 !important;
+}
+
+.filtros-bar .multi-select-option {
+    color: #333333 !important;
+}
+
+.filtros-bar .multi-select-option:hover {
+    background: #e0f7f8 !important;
+}
+
+/* Labels dentro da barra */
+.filtros-bar label,
+.filtros-bar .filtro-label {
+    color: #555555 !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+}
+
+/* Botão limpar filtros */
+.filtros-bar .btn-limpar-filtros,
+.filtros-bar #btn-limpar-filtros,
+.filtros-bar .btn-clear {
+    background: #f8f9fa !important;
+    color: #dc3545 !important;
+    border: 1.5px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.82rem !important;
+    cursor: pointer !important;
+}
+
+.filtros-bar .btn-limpar-filtros:hover,
+.filtros-bar #btn-limpar-filtros:hover {
+    background: #f8d7da !important;
+    border-color: #dc3545 !important;
+}
+
+/* Status buttons (painel13) */
+.filtros-bar .btn-status,
+.filtros-bar .status-btn {
+    background: #f8f9fa !important;
+    color: #333333 !important;
+    border: 1.5px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.8rem !important;
+    cursor: pointer !important;
+}
+
+.filtros-bar .btn-status.ativo,
+.filtros-bar .status-btn.active {
+    background: #44bbc2 !important;
+    color: white !important;
+    border-color: #44bbc2 !important;
+}
+
+/* Período / filtros de data */
+.filtros-bar .periodo-filtro,
+.filtros-bar .filtro-periodo,
+.filtros-bar .filtro-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+/* Ícones de busca dentro da barra */
+.filtros-bar .search-icon,
+.filtros-bar .fa-search,
+.filtros-bar .fa-magnifying-glass {
+    color: #888888 !important;
+}
+
+/* Botões genéricos dentro da barra (btn-header, btn-filtro-status, btn-limpar, etc.) */
+.filtros-bar .btn-header,
+.filtros-bar .btn-filtro-status,
+.filtros-bar .btn-limpar,
+.filtros-bar .pesquisa-limpar {
+    background: #f8f9fa !important;
+    color: #333333 !important;
+    border: 1.5px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+}
+
+.filtros-bar .btn-header:hover,
+.filtros-bar .btn-filtro-status:hover,
+.filtros-bar .btn-limpar:hover {
+    background: #e0f7f8 !important;
+    color: #2fa8b0 !important;
+    border-color: #44bbc2 !important;
+    transform: none !important;
+}
+
+/* Input de texto genérico (filtro-input, pesquisa-input) */
+.filtros-bar .filtro-input,
+.filtros-bar .pesquisa-input,
+.filtros-bar input[type="text"] {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #333333 !important;
+    border: 1.5px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+}
+
+.filtros-bar .filtro-input::placeholder,
+.filtros-bar .pesquisa-input::placeholder,
+.filtros-bar input[type="text"]::placeholder {
+    color: #999999 !important;
+}
+
+/* Ícone de pesquisa dentro do wrapper */
+.filtros-bar .pesquisa-icone {
+    color: #888888 !important;
+}
+
+/* Header-status dentro da barra (painel11) */
+.filtros-bar .header-status .ultima-atualizacao {
+    color: #555555 !important;
+    opacity: 1 !important;
+}
+
+.filtros-bar .header-status .status-indicator {
+    background: #ced4da !important;
+    box-shadow: none !important;
+}
+
+.filtros-bar .header-status .status-indicator.status-online {
+    background: #28a745 !important;
+    box-shadow: 0 0 6px rgba(40, 167, 69, 0.5) !important;
+}
+
+
+/* ==============================================================================
+   PAINEL 28 - CARDS DE SERVIÇOS (cores vêm do backend, forçar azul no tema)
+   ============================================================================== */
+
+html.tema-azul .servico-icone {
+    background: #44bbc2 !important;
+}
+
+html.tema-azul .servico-card::before {
+    background: #44bbc2 !important;
+}
+
+html.tema-azul .servico-card:hover {
+    border-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   PAINEL 15 - BOTÃO DE EMERGÊNCIA
+   ============================================================================== */
+
+html.tema-azul .botao-emergencia {
+    background: linear-gradient(145deg, #5ecfd5 0%, #44bbc2 50%, #2fa8b0 100%) !important;
+    box-shadow:
+        0 8px 30px rgba(68, 187, 194, 0.4),
+        0 0 0 6px rgba(68, 187, 194, 0.15),
+        inset 0 -4px 10px rgba(0, 0, 0, 0.15),
+        inset 0 4px 10px rgba(255, 255, 255, 0.15) !important;
+}
