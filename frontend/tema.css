@@ -1,0 +1,320 @@
+/* ==============================================================================
+   SISTEMA DE TEMAS - AZUL MÉDICO
+   Sistema de Paineis - Hospital Anchieta Ceilandia
+
+   Como funciona:
+   - Tema VERMELHO (padrão): sem classe extra no <html>
+   - Tema AZUL: classe 'tema-azul' no <html> (ex: document.documentElement.classList.add('tema-azul'))
+
+   O toggle é controlado pelo botão no Dashboard principal.
+   A preferência é salva em localStorage ('tema_sistema').
+   ============================================================================== */
+
+
+/* ==============================================================================
+   OVERRIDE DE VARIÁVEIS CSS
+   (cobre todos os paineis que usam :root com --cor-primaria e similares)
+   ============================================================================== */
+
+html.tema-azul {
+    --cor-primaria: #44bbc2 !important;
+    --cor-primaria-hover: #2fa8b0 !important;
+    --cor-primaria-light: #e0f7f8 !important;
+    --cor-primaria-dark: #227a80 !important;
+    --cor-header: #44bbc2 !important;
+    --cor-header-dark: #2fa8b0 !important;
+    --cor-perigo: #44bbc2 !important;
+    --cor-perigo-light: #e0f7f8 !important;
+    --cor-tempo-critico: #44bbc2 !important;
+    --cor-sem-nf: #44bbc2 !important;
+    --cor-pendente: #44bbc2 !important;
+    --cor-pendente-bg: #e0f7f8 !important;
+    --grad-total: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+    --grad-sem-nf: linear-gradient(135deg, #2fa8b0 0%, #44bbc2 100%) !important;
+    --grad-desatualizado: linear-gradient(135deg, #44bbc2 0%, #227a80 100%) !important;
+}
+
+
+/* ==============================================================================
+   PÁGINA DE LOGIN
+   ============================================================================== */
+
+html.tema-azul .btn-login {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+html.tema-azul .form-group label i {
+    color: #44bbc2 !important;
+}
+
+html.tema-azul .form-control:focus,
+html.tema-azul .form-input:focus {
+    border-color: #44bbc2 !important;
+    outline-color: #44bbc2 !important;
+}
+
+html.tema-azul input:focus,
+html.tema-azul select:focus,
+html.tema-azul textarea:focus {
+    border-color: #44bbc2 !important;
+    outline: 3px solid rgba(68, 187, 194, 0.25) !important;
+}
+
+html.tema-azul input,
+html.tema-azul select,
+html.tema-azul textarea,
+html.tema-azul input[type="checkbox"],
+html.tema-azul input[type="radio"] {
+    accent-color: #44bbc2 !important;
+}
+
+html.tema-azul .login-logo-border,
+html.tema-azul .logo-circle {
+    border-color: #44bbc2 !important;
+}
+
+html.tema-azul .login-title,
+html.tema-azul .hospital-name {
+    color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   DASHBOARD PRINCIPAL - HEADER
+   Gradiente: branco (esquerda) → azul clínico (direita)
+   ============================================================================== */
+
+html.tema-azul .dashboard-header {
+    background: linear-gradient(to right, #ffffff 0%, #44bbc2 100%) !important;
+}
+
+/* Lado esquerdo (sobre o branco): texto escuro */
+html.tema-azul .dashboard-header .header-left,
+html.tema-azul .dashboard-header .header-left * {
+    color: #227a80 !important;
+}
+
+html.tema-azul .dashboard-header *:focus {
+    outline-color: #e0f7f8 !important;
+}
+
+html.tema-azul .skip-link:focus {
+    background: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   DASHBOARD - CARDS DOS PAINEIS
+   ============================================================================== */
+
+html.tema-azul .painel-icon {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+html.tema-azul .painel-card {
+    border-top-color: #44bbc2 !important;
+}
+
+html.tema-azul .painel-card:focus {
+    outline-color: #44bbc2 !important;
+}
+
+html.tema-azul .painel-card:hover .painel-icon {
+    box-shadow: 0 8px 25px rgba(68, 187, 194, 0.4) !important;
+}
+
+html.tema-azul .sem-paineis-icon {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+    box-shadow: 0 10px 30px rgba(68, 187, 194, 0.3) !important;
+}
+
+html.tema-azul .status-inactive {
+    color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   HEADERS DE PAINEIS (elemento mais visível - todas as telas de painel)
+   Gradiente: branco (esquerda) → azul clínico (direita)
+   ============================================================================== */
+
+html.tema-azul .painel-header {
+    background: linear-gradient(to right, #ffffff 0%, #44bbc2 100%) !important;
+}
+
+/* Lado esquerdo (sobre o branco): texto escuro */
+html.tema-azul .painel-header .header-left,
+html.tema-azul .painel-header .header-left * {
+    color: #227a80 !important;
+}
+
+/* Botão Voltar quando está no lado esquerdo do header */
+html.tema-azul .painel-header .header-left .btn-voltar,
+html.tema-azul .painel-header .header-left .btn-header {
+    background: rgba(34, 122, 128, 0.1) !important;
+    border-color: rgba(34, 122, 128, 0.35) !important;
+}
+
+html.tema-azul .painel-header .header-left .btn-voltar:hover,
+html.tema-azul .painel-header .header-left .btn-header:hover {
+    background: rgba(34, 122, 128, 0.2) !important;
+    color: #1a5c62 !important;
+    transform: translateY(-1px);
+}
+
+
+/* ==============================================================================
+   SUB-HEADERS / HEADERS DE SEÇÃO (dentro dos paineis)
+   ============================================================================== */
+
+html.tema-azul .grupo-dia-header,
+html.tema-azul .section-header,
+html.tema-azul .secao-header,
+html.tema-azul .card-header-primary,
+html.tema-azul .table-header-primary,
+html.tema-azul .bloco-header {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+
+/* ==============================================================================
+   BOTÕES - HOVER COM COR PRIMÁRIA
+   ============================================================================== */
+
+html.tema-azul .btn-voltar:hover,
+html.tema-azul .btn-refresh:hover,
+html.tema-azul .btn-auto-scroll:hover,
+html.tema-azul .btn-header:hover {
+    color: #44bbc2 !important;
+}
+
+html.tema-azul .btn-primario,
+html.tema-azul .btn-primary-solid {
+    background: #44bbc2 !important;
+    border-color: #44bbc2 !important;
+}
+
+html.tema-azul .btn-primario:hover,
+html.tema-azul .btn-primary-solid:hover {
+    background: #2fa8b0 !important;
+    border-color: #2fa8b0 !important;
+}
+
+
+/* ==============================================================================
+   LOADING / CARREGAMENTO
+   ============================================================================== */
+
+html.tema-azul .loading-container,
+html.tema-azul .loading-text {
+    color: #44bbc2 !important;
+}
+
+html.tema-azul .loading-spinner {
+    border-top-color: #44bbc2 !important;
+}
+
+html.tema-azul .loading-ring {
+    border-top-color: #44bbc2 !important;
+    border-right-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   TEXTO COM COR PRIMÁRIA
+   ============================================================================== */
+
+html.tema-azul .texto-primario,
+html.tema-azul .text-primary-color {
+    color: #44bbc2 !important;
+}
+
+/* Links ativos */
+html.tema-azul a.active,
+html.tema-azul .nav-link.active {
+    color: #44bbc2 !important;
+    border-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   BORDAS E DESTAQUES
+   ============================================================================== */
+
+html.tema-azul .border-primary,
+html.tema-azul .destaque-primario {
+    border-color: #44bbc2 !important;
+}
+
+html.tema-azul .border-left-primary {
+    border-left-color: #44bbc2 !important;
+}
+
+
+/* ==============================================================================
+   SCROLLBAR (navegadores WebKit)
+   ============================================================================== */
+
+html.tema-azul ::-webkit-scrollbar-thumb {
+    background: #44bbc2 !important;
+}
+
+html.tema-azul ::-webkit-scrollbar-thumb:hover {
+    background: #2fa8b0 !important;
+}
+
+
+/* ==============================================================================
+   ADMIN / GESTÃO DE USUÁRIOS
+   ============================================================================== */
+
+html.tema-azul .admin-header,
+html.tema-azul .header-admin {
+    background: linear-gradient(135deg, #44bbc2 0%, #2fa8b0 100%) !important;
+}
+
+
+/* ==============================================================================
+   BOTÃO DE ALTERNÂNCIA DE TEMA
+   (aparece no header do dashboard)
+   ============================================================================== */
+
+.btn-tema {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    font-family: inherit;
+    flex-shrink: 0;
+}
+
+.btn-tema:hover {
+    background: rgba(255, 255, 255, 0.38);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-tema:active {
+    transform: translateY(0);
+}
+
+.btn-tema .tema-bolinha {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.7);
+}
+
+.btn-tema .tema-bolinha-vermelho { background: #ff6b6b; }
+.btn-tema .tema-bolinha-azul    { background: #64b5f6; }

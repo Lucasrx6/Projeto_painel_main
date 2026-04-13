@@ -58,7 +58,45 @@ document.addEventListener('DOMContentLoaded', function() {
     verificarAutenticacao();
     configurarEventos();
     registrarServiceWorker();
+    inicializarTema();
 });
+
+// ==============================================================================
+// SISTEMA DE TEMAS (Vermelho / Azul Médico)
+// ==============================================================================
+
+function inicializarTema() {
+    var tema = localStorage.getItem('tema_sistema') || 'vermelho';
+    aplicarTema(tema, false);
+}
+
+function aplicarTema(tema, salvar) {
+    var html = document.documentElement;
+    var bolinha = document.getElementById('tema-bolinha');
+    var label = document.getElementById('tema-label');
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+
+    if (tema === 'azul') {
+        html.classList.add('tema-azul');
+        if (bolinha) { bolinha.className = 'tema-bolinha tema-bolinha-azul'; }
+        if (label)   { label.textContent = 'Azul'; }
+        if (metaTheme) metaTheme.setAttribute('content', '#1976d2');
+    } else {
+        html.classList.remove('tema-azul');
+        if (bolinha) { bolinha.className = 'tema-bolinha tema-bolinha-vermelho'; }
+        if (label)   { label.textContent = 'Vermelho'; }
+        if (metaTheme) metaTheme.setAttribute('content', '#dc3545');
+    }
+
+    if (salvar !== false) {
+        localStorage.setItem('tema_sistema', tema);
+    }
+}
+
+function toggleTema() {
+    var temaAtual = localStorage.getItem('tema_sistema') || 'vermelho';
+    aplicarTema(temaAtual === 'vermelho' ? 'azul' : 'vermelho');
+}
 
 function registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
