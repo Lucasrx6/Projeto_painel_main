@@ -40,6 +40,7 @@
         console.log('Inicializando Formulario Sentir e Agir V2...');
         configurarNavegacao();
         configurarFormulario();
+        configurarModalImpossibilitada();
         configurarConfirmacao();
         configurarResumo();
         configurarModais();
@@ -195,6 +196,92 @@
         exibirPaciente(estado.filaPacientes[estado.filaPosicao]);
         limparRespostasCategorias();
         mostrarToast('Paciente ' + (estado.filaPosicao + 1) + ' de ' + estado.filaPacientes.length, 'info');
+    }
+
+    // ========================================
+    // VISITA IMPOSSIBILITADA
+    // ========================================
+
+    function configurarModalImpossibilitada() {
+        var els = {
+            'btn-modal-fechar-impossibilitada': function () { fecharModal('modal-impossibilitada'); },
+            'btn-cancelar-impossibilitada': function () { fecharModal('modal-impossibilitada'); },
+            'btn-confirmar-impossibilitada': function () { registrarVisitaImpossibilitada(); }
+        };
+        for (var id in els) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('click', els[id]);
+        }
+    }
+
+    function abrirModalImpossibilitada() {
+        if (!estado.pacienteAtual) {
+            mostrarToast('Nenhum paciente carregado', 'erro');
+            return;
+        }
+        var pac = estado.pacienteAtual;
+        var info = document.getElementById('impossibilitada-paciente-info');
+        if (info) {
+            info.innerHTML =
+                '<div class="impossibilitada-pac-nome">' + escapeHtml(pac.nm_paciente || 'N/I') + '</div>' +
+                '<div class="impossibilitada-pac-detalhe">' +
+                '<i class="fas fa-bed"></i> Leito: <strong>' + escapeHtml(pac.leito || '--') + '</strong>' +
+                ' &nbsp;|&nbsp; <i class="fas fa-door-open"></i> ' + escapeHtml(pac.setor_sa_nome || pac.setor_ocupacao || '--') +
+                '</div>';
+        }
+        var obs = document.getElementById('input-obs-impossibilitada');
+        if (obs) obs.value = '';
+        abrirModal('modal-impossibilitada');
+    }
+
+    function registrarVisitaImpossibilitada() {
+        if (!estado.pacienteAtual) return;
+        if (!estado.rondaId) { mostrarToast('Ronda nao iniciada', 'erro'); return; }
+
+        var pac = estado.pacienteAtual;
+        var motivo = document.getElementById('select-motivo-impossibilitada');
+        var obsExtra = document.getElementById('input-obs-impossibilitada');
+        var motivoTexto = motivo ? motivo.value : 'Motivo nao informado';
+        var obsTexto = obsExtra ? (obsExtra.value || '').trim() : '';
+        var observacoes = 'Visita impossibilitada - ' + motivoTexto;
+        if (obsTexto) observacoes += '. ' + obsTexto;
+
+        var btnConfirmar = document.getElementById('btn-confirmar-impossibilitada');
+        if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...'; }
+
+        var payload = {
+            ronda_id: estado.rondaId,
+            setor_id: pac.setor_sa_id,
+            leito: pac.leito,
+            nr_atendimento: pac.nr_atendimento,
+            nm_paciente: pac.nm_paciente,
+            setor_ocupacao: pac.setor_ocupacao,
+            qt_dias_internacao: pac.qt_dia_permanencia,
+            observacoes: observacoes,
+            avaliacao_final: 'impossibilitada',
+            avaliacoes: []
+        };
+
+        fetch(CONFIG.apiVisitas, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                fecharModal('modal-impossibilitada');
+                mostrarToast('Registrado. Avancando para o proximo paciente.', 'sucesso');
+                limparFormularioVisita();
+                carregarProximoPaciente();
+            } else {
+                mostrarToast(data.error || (data.errors ? data.errors[0] : 'Erro ao registrar'), 'erro');
+            }
+        })
+        .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); })
+        .finally(function () {
+            if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.innerHTML = '<i class="fas fa-check"></i> Confirmar e Avançar'; }
+        });
     }
 
     // ========================================
@@ -362,6 +449,9 @@
 
         var btnPular = document.getElementById('btn-pular');
         if (btnPular) btnPular.addEventListener('click', function () { pularPaciente(); });
+
+        var btnImpos = document.getElementById('btn-impossibilitada');
+        if (btnImpos) btnImpos.addEventListener('click', function () { abrirModalImpossibilitada(); });
     }
 
     function iniciarRonda() {
@@ -631,7 +721,9 @@
         var vazio = document.getElementById('resumo-vazio');
         var total = visitas.length, crit = 0, aten = 0, adeq = 0;
         visitas.forEach(function (v) {
-            if (v.avaliacao_final === 'critico') crit++; else if (v.avaliacao_final === 'atencao') aten++; else adeq++;
+            if (v.avaliacao_final === 'critico') crit++;
+            else if (v.avaliacao_final === 'atencao') aten++;
+            else if (v.avaliacao_final !== 'impossibilitada') adeq++;
         });
         setTexto('kpi-total', total); setTexto('kpi-criticos', crit);
         setTexto('kpi-atencao', aten); setTexto('kpi-adequados', adeq);
@@ -864,7 +956,7 @@
     function fecharModal(id) { var m = document.getElementById(id); if (m) m.classList.remove('ativo'); }
     function setTexto(id, t) { var el = document.getElementById(id); if (el) el.textContent = t; }
     function formatarData(s) { if (!s) return '--'; var p = s.split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : s; }
-    function formatarResultado(r) { return { 'critico': 'Critico', 'atencao': 'Atencao', 'adequado': 'Adequado', 'nao_aplica': 'N/A', 'sim': 'Sim', 'nao': 'Nao' }[r] || r; }
+    function formatarResultado(r) { return { 'critico': 'Critico', 'atencao': 'Atencao', 'adequado': 'Adequado', 'nao_aplica': 'N/A', 'sim': 'Sim', 'nao': 'Nao', 'impossibilitada': 'Impossibilitada' }[r] || r; }
     function escapeHtml(t) { if (!t) return ''; var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
     function escapeAttr(t) { if (!t) return ''; return t.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 

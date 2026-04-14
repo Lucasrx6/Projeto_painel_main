@@ -554,9 +554,9 @@ def registrar_visita():
             erros.append('Setor e obrigatorio')
         if not leito:
             erros.append('Leito e obrigatorio')
-        if avaliacao_final not in ('critico', 'atencao', 'adequado'):
+        if avaliacao_final not in ('critico', 'atencao', 'adequado', 'impossibilitada'):
             erros.append('Avaliacao final invalida')
-        if not avaliacoes:
+        if avaliacao_final != 'impossibilitada' and not avaliacoes:
             erros.append('Avaliacoes dos itens sao obrigatorias')
 
         resultados_validos = ('critico', 'atencao', 'adequado', 'nao_aplica', 'sim', 'nao')
@@ -700,7 +700,10 @@ def registrar_visita():
         cursor.close()
         conn.close()
 
-        msg = 'Visita registrada'
+        if avaliacao_final == 'impossibilitada':
+            msg = 'Visita impossibilitada registrada. Paciente reposicionado na fila.'
+        else:
+            msg = 'Visita registrada'
         if tratativas_criadas > 0:
             msg += '. %d tratativa(s) criada(s) para itens criticos.' % tratativas_criadas
 
