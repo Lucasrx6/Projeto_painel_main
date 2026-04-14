@@ -1,8 +1,8 @@
 """
 Painel 31 - Central de Machine Learning
-Hub de modelos ML em produção, com previsões, métricas e monitoramento.
+Hub de modelos ML em producao, com previsoes, metricas e monitoramento.
 """
-from flask import Blueprint, jsonify, send_from_directory, session, current_app, abort
+from flask import Blueprint, jsonify, send_from_directory, session, current_app, abort, request
 from datetime import datetime, timedelta
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection
@@ -16,12 +16,10 @@ painel31_bp = Blueprint('painel31', __name__)
 # CONFIGURACAO
 # =============================================================================
 
-# Janela padrao para calculo de metricas (em dias)
 JANELA_METRICAS_DIAS = 30
-
-# Thresholds de saude do modelo (drift sobre o MAE de treino)
 DRIFT_AMARELO_PCT = 20.0
 DRIFT_VERMELHO_PCT = 50.0
+MIN_AMOSTRAS_SAUDE = 14
 
 
 # =============================================================================
@@ -29,15 +27,9 @@ DRIFT_VERMELHO_PCT = 50.0
 # =============================================================================
 
 def _calcular_status_saude(mae_atual, mae_baseline):
-    """
-    Calcula status de saude do modelo baseado em drift do MAE.
-    Retorna: 'verde', 'amarelo', 'vermelho' ou 'sem_dados'
-    """
     if mae_atual is None or mae_baseline is None or mae_baseline == 0:
         return 'sem_dados'
-
     drift_pct = (mae_atual - mae_baseline) / mae_baseline * 100
-
     if drift_pct >= DRIFT_VERMELHO_PCT:
         return 'vermelho'
     elif drift_pct >= DRIFT_AMARELO_PCT:
@@ -47,37 +39,24 @@ def _calcular_status_saude(mae_atual, mae_baseline):
 
 
 def _calcular_metricas_janela(predicoes_realizadas):
-    """
-    Calcula MAE, MAPE, RMSE e bias a partir de uma lista de predicoes
-    com valor_realizado preenchido.
-    """
     if not predicoes_realizadas:
         return None
-
-    erros = []
-    erros_pct = []
-    erros_quad = []
-    erros_signed = []
-
+    erros, erros_pct, erros_quad, erros_signed = [], [], [], []
     for p in predicoes_realizadas:
         previsto = float(p['valor_previsto'])
         real = float(p['valor_realizado'])
-
         erro = previsto - real
         erro_abs = abs(erro)
         erros.append(erro_abs)
         erros_signed.append(erro)
         erros_quad.append(erro * erro)
-
         if real > 0:
             erros_pct.append(erro_abs / real * 100)
-
     n = len(erros)
     mae = sum(erros) / n
     rmse = (sum(erros_quad) / n) ** 0.5
     bias = sum(erros_signed) / n
     mape = sum(erros_pct) / len(erros_pct) if erros_pct else None
-
     return {
         'mae': round(mae, 2),
         'rmse': round(rmse, 2),
@@ -88,16 +67,19 @@ def _calcular_metricas_janela(predicoes_realizadas):
 
 
 def _buscar_modelo_por_nome(cursor, nome_modelo):
-    """Busca um modelo no registry pelo nome (pega versao mais recente ativa)."""
     cursor.execute("""
         SELECT *
         FROM ml_modelos_registry
-        WHERE nome_modelo = %s
-          AND ie_ativo = TRUE
+        WHERE nome_modelo = %s AND ie_ativo = TRUE
         ORDER BY dt_criacao DESC
         LIMIT 1
     """, (nome_modelo,))
     return cursor.fetchone()
+
+
+def _serializar_data(d):
+    """Converte data/datetime para string ISO. Retorna None se input for None."""
+    return d.isoformat() if d else None
 
 
 # =============================================================================
@@ -107,143 +89,99 @@ def _buscar_modelo_por_nome(cursor, nome_modelo):
 @painel31_bp.route('/painel/painel31')
 @login_required
 def painel31_hub():
-    """Pagina principal - Hub da Central de ML"""
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            current_app.logger.warning(
-                f'Acesso negado ao painel31: {session.get("usuario")}'
-            )
-            return send_from_directory('frontend', 'acesso-negado.html')
-
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        current_app.logger.warning(f'Acesso negado ao painel31: {session.get("usuario")}')
+        return send_from_directory('frontend', 'acesso-negado.html')
     return send_from_directory('paineis/painel31', 'index.html')
 
 
 @painel31_bp.route('/painel/painel31/<nome_modelo>')
 @login_required
 def painel31_detalhe(nome_modelo):
-    """Sub-pagina de detalhes de um modelo especifico"""
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            current_app.logger.warning(
-                f'Acesso negado ao painel31/{nome_modelo}: {session.get("usuario")}'
-            )
-            return send_from_directory('frontend', 'acesso-negado.html')
-
-    # Sanitizacao basica do parametro (evita path traversal)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        current_app.logger.warning(f'Acesso negado ao painel31/{nome_modelo}: {session.get("usuario")}')
+        return send_from_directory('frontend', 'acesso-negado.html')
     if not nome_modelo.replace('_', '').isalnum():
         abort(400)
-
-    # Por enquanto so temos ps_volume; futuros modelos terao paginas proprias
     if nome_modelo == 'ps_volume':
         return send_from_directory('paineis/painel31', 'ps_volume.html')
-
     return send_from_directory('frontend', '404.html')
 
 
 # =============================================================================
-# API - LISTA DE MODELOS (alimenta o hub)
+# API - LISTA DE MODELOS (hub)
 # =============================================================================
 
 @painel31_bp.route('/api/paineis/painel31/modelos', methods=['GET'])
 @login_required
 def api_painel31_modelos():
-    """
-    Retorna todos os modelos do registry com snapshot de saude atual.
-    Alimenta o hub principal do P31.
-    """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissao'
-            }), 403
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexao com o banco'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        # Lista todos os modelos ativos
         cursor.execute("""
-            SELECT
-                id, nome_modelo, versao, descricao, categoria, algoritmo,
-                dt_treino, periodo_treino_inicio, periodo_treino_fim,
-                num_amostras_treino, mae_teste, mape_teste, rmse_teste,
-                num_features, status, dt_criacao
+            SELECT id, nome_modelo, versao, descricao, categoria, algoritmo,
+                   dt_treino, periodo_treino_inicio, periodo_treino_fim,
+                   num_amostras_treino, mae_teste, mape_teste, rmse_teste,
+                   num_features, status, dt_criacao
             FROM ml_modelos_registry
             WHERE ie_ativo = TRUE
             ORDER BY status DESC, dt_criacao DESC
         """)
         modelos = cursor.fetchall()
-
         resultado = []
 
         for modelo in modelos:
             modelo_dict = dict(modelo)
 
-            # Busca metricas recentes (ultimos N dias) para calcular saude atual
             cursor.execute("""
                 SELECT valor_previsto, valor_realizado
                 FROM ml_ps_predicoes
                 WHERE modelo_id = %s
                   AND valor_realizado IS NOT NULL
-                  AND dt_alvo >= CURRENT_DATE - INTERVAL '%s days'
+                  AND dt_alvo >= CURRENT_DATE - (INTERVAL '1 day' * %s)
                 ORDER BY dt_alvo DESC
             """, (modelo['id'], JANELA_METRICAS_DIAS))
             preds_realizadas = cursor.fetchall()
 
             metricas_atuais = _calcular_metricas_janela(preds_realizadas)
             mae_atual = metricas_atuais['mae'] if metricas_atuais else None
-            status_saude = _calcular_status_saude(mae_atual, float(modelo['mae_teste']) if modelo['mae_teste'] else None)
+            mae_baseline = float(modelo['mae_teste']) if modelo['mae_teste'] else None
 
-            # Conta total de predicoes ja geradas
-            cursor.execute("""
-                SELECT COUNT(*) AS total
-                FROM ml_ps_predicoes
-                WHERE modelo_id = %s
-            """, (modelo['id'],))
+            # Saude so e calculada se houver amostras suficientes
+            if metricas_atuais and metricas_atuais['amostras'] >= MIN_AMOSTRAS_SAUDE:
+                status_saude = _calcular_status_saude(mae_atual, mae_baseline)
+            else:
+                status_saude = 'sem_dados'
+
+            cursor.execute("SELECT COUNT(*) AS total FROM ml_ps_predicoes WHERE modelo_id = %s", (modelo['id'],))
             total_preds = cursor.fetchone()['total']
 
-            # Ultima execucao do worker
-            cursor.execute("""
-                SELECT MAX(dt_geracao) AS ultima
-                FROM ml_ps_predicoes
-                WHERE modelo_id = %s
-            """, (modelo['id'],))
+            cursor.execute("SELECT MAX(dt_geracao) AS ultima FROM ml_ps_predicoes WHERE modelo_id = %s", (modelo['id'],))
             ultima_exec = cursor.fetchone()['ultima']
 
             modelo_dict.update({
                 'metricas_atuais': metricas_atuais,
                 'status_saude': status_saude,
                 'total_predicoes': total_preds,
-                'ultima_execucao': ultima_exec.isoformat() if ultima_exec else None,
-                'mae_baseline': float(modelo['mae_teste']) if modelo['mae_teste'] else None,
+                'ultima_execucao': _serializar_data(ultima_exec),
+                'mae_baseline': mae_baseline,
                 'mae_atual': mae_atual
             })
 
-            # Converte datas para isoformat para serializar
-            for campo in ['dt_treino', 'dt_criacao']:
-                if modelo_dict.get(campo):
-                    modelo_dict[campo] = modelo_dict[campo].isoformat()
-            for campo in ['periodo_treino_inicio', 'periodo_treino_fim']:
-                if modelo_dict.get(campo):
-                    modelo_dict[campo] = modelo_dict[campo].isoformat()
-
-            # Converte numeric para float (JSON serializa)
+            for campo in ['dt_treino', 'dt_criacao', 'periodo_treino_inicio', 'periodo_treino_fim']:
+                modelo_dict[campo] = _serializar_data(modelo_dict.get(campo))
             for campo in ['mae_teste', 'mape_teste', 'rmse_teste']:
                 if modelo_dict.get(campo) is not None:
                     modelo_dict[campo] = float(modelo_dict[campo])
@@ -252,7 +190,6 @@ def api_painel31_modelos():
 
         cursor.close()
         conn.close()
-
         return jsonify({
             'success': True,
             'modelos': resultado,
@@ -261,15 +198,10 @@ def api_painel31_modelos():
         })
 
     except Exception as e:
-        current_app.logger.error(
-            f'Erro ao listar modelos do painel31: {e}', exc_info=True
-        )
+        current_app.logger.error(f'Erro ao listar modelos do painel31: {e}', exc_info=True)
         if conn:
             conn.close()
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao buscar modelos'
-        }), 500
+        return jsonify({'success': False, 'error': 'Erro ao buscar modelos'}), 500
 
 
 # =============================================================================
@@ -279,13 +211,10 @@ def api_painel31_modelos():
 @painel31_bp.route('/api/paineis/painel31/modelo/<nome_modelo>', methods=['GET'])
 @login_required
 def api_painel31_modelo_detalhe(nome_modelo):
-    """Retorna metadados completos de um modelo especifico."""
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
     conn = get_db_connection()
     if not conn:
@@ -298,43 +227,40 @@ def api_painel31_modelo_detalhe(nome_modelo):
         if not modelo:
             cursor.close()
             conn.close()
-            return jsonify({
-                'success': False,
-                'error': f'Modelo {nome_modelo} nao encontrado'
-            }), 404
+            return jsonify({'success': False, 'error': f'Modelo {nome_modelo} nao encontrado'}), 404
 
         modelo_dict = dict(modelo)
 
-        # Serializa datas e numerics
-        for campo in ['dt_treino', 'dt_criacao', 'dt_atualizacao']:
-            if modelo_dict.get(campo):
-                modelo_dict[campo] = modelo_dict[campo].isoformat()
-        for campo in ['periodo_treino_inicio', 'periodo_treino_fim']:
-            if modelo_dict.get(campo):
-                modelo_dict[campo] = modelo_dict[campo].isoformat()
-        for campo in ['mae_teste', 'mape_teste', 'rmse_teste']:
-            if modelo_dict.get(campo) is not None:
-                modelo_dict[campo] = float(modelo_dict[campo])
+        # ⚠️ CORRECAO: buscar "dados_ate" ANTES de fechar o cursor
+        cursor.execute("""
+            SELECT MAX(DATE(dt_entrada)) AS ultima_data
+            FROM ml_ps_historico_chegadas
+        """)
+        row = cursor.fetchone()
+        modelo_dict['dados_ate'] = _serializar_data(row['ultima_data']) if row and row['ultima_data'] else None
 
         cursor.close()
         conn.close()
 
-        return jsonify({
-            'success': True,
-            'modelo': modelo_dict
-        })
+        # Serializacao
+        for campo in ['dt_treino', 'dt_criacao', 'dt_atualizacao', 'periodo_treino_inicio', 'periodo_treino_fim']:
+            if modelo_dict.get(campo):
+                modelo_dict[campo] = _serializar_data(modelo_dict[campo])
+        for campo in ['mae_teste', 'mape_teste', 'rmse_teste']:
+            if modelo_dict.get(campo) is not None:
+                modelo_dict[campo] = float(modelo_dict[campo])
+
+        return jsonify({'success': True, 'modelo': modelo_dict})
 
     except Exception as e:
-        current_app.logger.error(
-            f'Erro ao buscar modelo {nome_modelo}: {e}', exc_info=True
-        )
+        current_app.logger.error(f'Erro ao buscar modelo {nome_modelo}: {e}', exc_info=True)
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro ao buscar modelo'}), 500
 
 
 # =============================================================================
-# API - PREVISOES (futuro + historico realizado)
+# API - PREVISOES (CORRIGIDO: futuras sao futuras, historicas sao historicas)
 # =============================================================================
 
 @painel31_bp.route('/api/paineis/painel31/previsoes/<nome_modelo>', methods=['GET'])
@@ -342,16 +268,19 @@ def api_painel31_modelo_detalhe(nome_modelo):
 def api_painel31_previsoes(nome_modelo):
     """
     Retorna:
-      - Previsoes futuras (proximos 7 dias) - apenas a versao mais recente por dia
-      - Historico realizado (ultimos 30 dias) com previsto vs real
-    Alimenta o grafico principal da sub-pagina do modelo.
+      - previsoes_futuras: CURRENT_DATE em diante, mais recente por dia
+      - historico_realizado: ultimos N dias com valor_realizado preenchido
     """
+    try:
+        dias_hist = int(request.args.get('dias', 30))
+        dias_hist = max(7, min(180, dias_hist))
+    except (ValueError, TypeError):
+        dias_hist = 30
+
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
     conn = get_db_connection()
     if not conn:
@@ -364,15 +293,11 @@ def api_painel31_previsoes(nome_modelo):
         if not modelo:
             cursor.close()
             conn.close()
-            return jsonify({
-                'success': False,
-                'error': f'Modelo {nome_modelo} nao encontrado'
-            }), 404
+            return jsonify({'success': False, 'error': f'Modelo {nome_modelo} nao encontrado'}), 404
 
         modelo_id = modelo['id']
 
-        # Previsoes futuras: pega a versao mais recente para cada dia futuro
-        # (menor horizonte = previsao mais recente para aquele dia)
+        # ==== PREVISOES FUTURAS (dt_alvo >= hoje, sem exigir valor_realizado) ====
         cursor.execute("""
             SELECT DISTINCT ON (dt_alvo)
                 dt_alvo, horizonte_dias,
@@ -381,11 +306,11 @@ def api_painel31_previsoes(nome_modelo):
             FROM ml_ps_predicoes
             WHERE modelo_id = %s
               AND dt_alvo >= CURRENT_DATE
-            ORDER BY dt_alvo, horizonte_dias ASC
+            ORDER BY dt_alvo ASC, horizonte_dias ASC, dt_geracao DESC
         """, (modelo_id,))
         futuras = cursor.fetchall()
 
-        # Historico realizado: ultimos 30 dias com previsto vs real
+        # ==== HISTORICO REALIZADO (dt_alvo passado + valor_realizado preenchido) ====
         cursor.execute("""
             SELECT DISTINCT ON (dt_alvo)
                 dt_alvo, horizonte_dias,
@@ -395,20 +320,20 @@ def api_painel31_previsoes(nome_modelo):
             FROM ml_ps_predicoes
             WHERE modelo_id = %s
               AND valor_realizado IS NOT NULL
-              AND dt_alvo >= CURRENT_DATE - INTERVAL '30 days'
+              AND dt_alvo < CURRENT_DATE
+              AND dt_alvo >= CURRENT_DATE - (INTERVAL '1 day' * %s)
             ORDER BY dt_alvo DESC, horizonte_dias ASC
-        """, (modelo_id,))
+        """, (modelo_id, dias_hist))
         historico = cursor.fetchall()
 
-        # Serializa
         def serializar(rows):
             resultado = []
             for r in rows:
                 d = dict(r)
                 if d.get('dt_alvo'):
-                    d['dt_alvo'] = d['dt_alvo'].isoformat()
+                    d['dt_alvo'] = _serializar_data(d['dt_alvo'])
                 if d.get('dt_geracao'):
-                    d['dt_geracao'] = d['dt_geracao'].isoformat()
+                    d['dt_geracao'] = _serializar_data(d['dt_geracao'])
                 for k in ['valor_previsto', 'valor_realizado', 'intervalo_inferior',
                           'intervalo_superior', 'erro_absoluto', 'erro_percentual']:
                     if d.get(k) is not None:
@@ -423,36 +348,30 @@ def api_painel31_previsoes(nome_modelo):
             'success': True,
             'modelo': nome_modelo,
             'modelo_versao': modelo['versao'],
+            'dias_historico': dias_hist,
             'previsoes_futuras': serializar(futuras),
             'historico_realizado': serializar(list(reversed(historico))),
             'timestamp': datetime.now().isoformat()
         })
 
     except Exception as e:
-        current_app.logger.error(
-            f'Erro ao buscar previsoes de {nome_modelo}: {e}', exc_info=True
-        )
+        current_app.logger.error(f'Erro ao buscar previsoes de {nome_modelo}: {e}', exc_info=True)
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro ao buscar previsoes'}), 500
 
 
 # =============================================================================
-# API - METRICAS DE QUALIDADE
+# API - METRICAS
 # =============================================================================
 
 @painel31_bp.route('/api/paineis/painel31/metricas/<nome_modelo>', methods=['GET'])
 @login_required
 def api_painel31_metricas(nome_modelo):
-    """
-    Retorna metricas de qualidade calculadas em janelas moveis (7d, 30d).
-    """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
     conn = get_db_connection()
     if not conn:
@@ -465,10 +384,7 @@ def api_painel31_metricas(nome_modelo):
         if not modelo:
             cursor.close()
             conn.close()
-            return jsonify({
-                'success': False,
-                'error': f'Modelo {nome_modelo} nao encontrado'
-            }), 404
+            return jsonify({'success': False, 'error': f'Modelo {nome_modelo} nao encontrado'}), 404
 
         modelo_id = modelo['id']
         mae_baseline = float(modelo['mae_teste']) if modelo['mae_teste'] else None
@@ -481,22 +397,23 @@ def api_painel31_metricas(nome_modelo):
                 FROM ml_ps_predicoes
                 WHERE modelo_id = %s
                   AND valor_realizado IS NOT NULL
-                  AND dt_alvo >= CURRENT_DATE - INTERVAL '%s days'
+                  AND dt_alvo < CURRENT_DATE
+                  AND dt_alvo >= CURRENT_DATE - (INTERVAL '1 day' * %s)
                 ORDER BY dt_alvo DESC, horizonte_dias ASC
             """, (modelo_id, dias))
             preds = cursor.fetchall()
 
             metricas = _calcular_metricas_janela(preds)
-            if metricas:
-                metricas['status_saude'] = _calcular_status_saude(
-                    metricas['mae'], mae_baseline
-                )
+            if metricas and metricas['amostras'] >= MIN_AMOSTRAS_SAUDE:
+                metricas['status_saude'] = _calcular_status_saude(metricas['mae'], mae_baseline)
                 if mae_baseline and mae_baseline > 0:
-                    metricas['drift_pct'] = round(
-                        (metricas['mae'] - mae_baseline) / mae_baseline * 100, 2
-                    )
+                    metricas['drift_pct'] = round((metricas['mae'] - mae_baseline) / mae_baseline * 100, 2)
                 else:
                     metricas['drift_pct'] = None
+            elif metricas:
+                metricas['status_saude'] = 'aguardando'
+                metricas['drift_pct'] = None
+                metricas['amostras_minimas'] = MIN_AMOSTRAS_SAUDE
             janelas[f'janela_{dias}d'] = metricas
 
         cursor.close()
@@ -512,31 +429,23 @@ def api_painel31_metricas(nome_modelo):
         })
 
     except Exception as e:
-        current_app.logger.error(
-            f'Erro ao buscar metricas de {nome_modelo}: {e}', exc_info=True
-        )
+        current_app.logger.error(f'Erro ao buscar metricas de {nome_modelo}: {e}', exc_info=True)
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro ao buscar metricas'}), 500
 
+
 # =============================================================================
-# API - HISTORICO REAL DE ATENDIMENTOS (independente de predicoes)
+# API - HISTORICO REAL
 # =============================================================================
 
 @painel31_bp.route('/api/paineis/painel31/historico-real', methods=['GET'])
 @login_required
 def api_painel31_historico_real():
-    """
-    Retorna o historico real de atendimentos do PS dos ultimos N dias,
-    direto da tabela de chegadas (independente de existir predicao).
-    Usado para exibir os dias passados na visao geral do usuario.
-    """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
     conn = get_db_connection()
     if not conn:
@@ -544,39 +453,24 @@ def api_painel31_historico_real():
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
         cursor.execute("""
-            SELECT
-                DATE(dt_entrada) AS data,
-                COUNT(*)::int AS atendimentos
+            SELECT DATE(dt_entrada) AS data, COUNT(*)::int AS atendimentos
             FROM ml_ps_historico_chegadas
             WHERE dt_entrada >= CURRENT_DATE - INTERVAL '14 days'
               AND dt_entrada < CURRENT_DATE
+              AND (ds_clinica IS NULL OR ds_clinica <> 'Cardiologia')
             GROUP BY DATE(dt_entrada)
             ORDER BY data
         """)
         rows = cursor.fetchall()
-
-        historico = []
-        for r in rows:
-            historico.append({
-                'data': r['data'].isoformat(),
-                'atendimentos': r['atendimentos']
-            })
+        historico = [{'data': r['data'].isoformat(), 'atendimentos': r['atendimentos']} for r in rows]
 
         cursor.close()
         conn.close()
-
-        return jsonify({
-            'success': True,
-            'historico': historico,
-            'timestamp': datetime.now().isoformat()
-        })
+        return jsonify({'success': True, 'historico': historico, 'timestamp': datetime.now().isoformat()})
 
     except Exception as e:
-        current_app.logger.error(
-            f'Erro ao buscar historico real: {e}', exc_info=True
-        )
+        current_app.logger.error(f'Erro ao buscar historico real: {e}', exc_info=True)
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500
@@ -589,17 +483,10 @@ def api_painel31_historico_real():
 @painel31_bp.route('/api/paineis/painel31/picos-hoje', methods=['GET'])
 @login_required
 def api_painel31_picos_hoje():
-    """
-    Retorna a estimativa horaria de atendimentos para hoje, baseada em:
-      - Previsao diaria do modelo (valor_previsto para CURRENT_DATE)
-      - Distribuicao percentual historica por hora (vw_ps_perfil_horario_semanal)
-    """
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel31'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
     conn = get_db_connection()
     if not conn:
@@ -608,12 +495,15 @@ def api_painel31_picos_hoje():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # 1. Previsao diaria de hoje
+        # Pega previsao mais recente pro dia de hoje (independente de modelo_id,
+        # porque tanto v1 quanto v2 podem ter previsto hoje — queremos a mais recente)
         cursor.execute("""
-            SELECT valor_previsto
-            FROM ml_ps_predicoes
-            WHERE dt_alvo = CURRENT_DATE
-            ORDER BY horizonte_dias ASC, dt_geracao DESC
+            SELECT p.valor_previsto
+            FROM ml_ps_predicoes p
+            JOIN ml_modelos_registry r ON r.id = p.modelo_id
+            WHERE p.dt_alvo = CURRENT_DATE
+              AND r.ie_ativo = TRUE
+            ORDER BY p.dt_geracao DESC, p.horizonte_dias ASC
             LIMIT 1
         """)
         prev_row = cursor.fetchone()
@@ -621,16 +511,10 @@ def api_painel31_picos_hoje():
         if not prev_row:
             cursor.close()
             conn.close()
-            return jsonify({
-                'success': True,
-                'picos': [],
-                'mensagem': 'Sem previsao diaria disponivel para hoje'
-            })
+            return jsonify({'success': True, 'picos': [], 'mensagem': 'Sem previsao diaria disponivel para hoje'})
 
         previsao_diaria = float(prev_row['valor_previsto'])
 
-        # 2. Perfil horario do dia da semana de hoje
-        # PostgreSQL DOW: 0=Dom, 1=Seg, ..., 6=Sab
         cursor.execute("""
             SELECT hora, pct_do_dia
             FROM vw_ps_perfil_horario_semanal
@@ -642,30 +526,18 @@ def api_painel31_picos_hoje():
         if not perfil:
             cursor.close()
             conn.close()
-            return jsonify({
-                'success': True,
-                'picos': [],
-                'mensagem': 'Sem perfil historico disponivel'
-            })
+            return jsonify({'success': True, 'picos': [], 'mensagem': 'Sem perfil historico disponivel'})
 
-        # 3. Estima atendimentos por hora
-        horas_estimativas = []
-        for p in perfil:
-            estimado = round(previsao_diaria * float(p['pct_do_dia']) / 100)
-            horas_estimativas.append({
-                'hora': p['hora'],
-                'estimado': estimado,
-                'pct': float(p['pct_do_dia'])
-            })
+        horas_estimativas = [{
+            'hora': p['hora'],
+            'estimado': round(previsao_diaria * float(p['pct_do_dia']) / 100),
+            'pct': float(p['pct_do_dia'])
+        } for p in perfil]
 
-        # 4. Identifica os 3 maiores picos
         ordenados = sorted(horas_estimativas, key=lambda x: x['estimado'], reverse=True)
-        top_picos = ordenados[:3]
-        top_picos.sort(key=lambda x: x['hora'])
+        top_picos = sorted(ordenados[:3], key=lambda x: x['hora'])
 
-        # 5. Hora atual e proxima hora de pico relevante
-        from datetime import datetime as dt
-        hora_atual = dt.now().hour
+        hora_atual = datetime.now().hour
         proximo_pico = None
         for h in horas_estimativas:
             if h['hora'] >= hora_atual and h['estimado'] >= ordenados[0]['estimado'] * 0.85:
@@ -686,9 +558,144 @@ def api_painel31_picos_hoje():
         })
 
     except Exception as e:
-        current_app.logger.error(
-            f'Erro ao buscar picos de hoje: {e}', exc_info=True
-        )
+        current_app.logger.error(f'Erro ao buscar picos de hoje: {e}', exc_info=True)
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro ao calcular picos'}), 500
+
+
+# =============================================================================
+# API - COMPARATIVO DIARIO (previsto vs realizado unificado)
+# =============================================================================
+
+@painel31_bp.route('/api/paineis/painel31/comparativo/<nome_modelo>', methods=['GET'])
+@login_required
+def api_painel31_comparativo(nome_modelo):
+    """
+    Retorna, para cada dia dos ultimos N dias + proximos 7 dias:
+      - dt: data
+      - realizado: atendimentos reais (da ml_ps_historico_chegadas, sem Cardiologia)
+      - previsto: valor previsto pelo modelo ativo (menor horizonte = mais recente)
+      - erro_pct: |previsto - realizado| / realizado * 100 (se realizado existir)
+      - acerto_pct: 100 - erro_pct, clamped 0-100
+      - status_acerto: 'verde' / 'amarelo' / 'vermelho' / 'futuro' / 'sem_previsao'
+    """
+    try:
+        dias_hist = int(request.args.get('dias', 30))
+        dias_hist = max(7, min(180, dias_hist))
+    except (ValueError, TypeError):
+        dias_hist = 30
+
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        modelo = _buscar_modelo_por_nome(cursor, nome_modelo)
+
+        if not modelo:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': f'Modelo {nome_modelo} nao encontrado'}), 404
+
+        modelo_id = modelo['id']
+
+        # 1. Realizados (historico, sem Cardiologia)
+        cursor.execute("""
+            SELECT DATE(dt_entrada) AS dt, COUNT(*)::int AS realizado
+            FROM ml_ps_historico_chegadas
+            WHERE dt_entrada >= CURRENT_DATE - (INTERVAL '1 day' * %s)
+              AND dt_entrada < CURRENT_DATE
+              AND (ds_clinica IS NULL OR ds_clinica <> 'Cardiologia')
+            GROUP BY DATE(dt_entrada)
+            ORDER BY dt
+        """, (dias_hist,))
+        realizados = {r['dt']: r['realizado'] for r in cursor.fetchall()}
+
+        # 2. Previstos (todos dias do periodo + proximos 7, menor horizonte primeiro)
+        cursor.execute("""
+            SELECT DISTINCT ON (dt_alvo)
+                dt_alvo, valor_previsto, intervalo_inferior, intervalo_superior
+            FROM ml_ps_predicoes
+            WHERE modelo_id = %s
+              AND dt_alvo >= CURRENT_DATE - (INTERVAL '1 day' * %s)
+              AND dt_alvo <= CURRENT_DATE + INTERVAL '7 days'
+            ORDER BY dt_alvo, horizonte_dias ASC, dt_geracao DESC
+        """, (modelo_id, dias_hist))
+        previstos = {}
+        for r in cursor.fetchall():
+            previstos[r['dt_alvo']] = {
+                'previsto': float(r['valor_previsto']),
+                'inferior': float(r['intervalo_inferior']) if r['intervalo_inferior'] else None,
+                'superior': float(r['intervalo_superior']) if r['intervalo_superior'] else None,
+            }
+
+        # 3. Monta lista unificada cobrindo todo o range
+        from datetime import date as date_cls
+        hoje = date_cls.today()
+        data_inicio = hoje - timedelta(days=dias_hist)
+        data_fim = hoje + timedelta(days=7)
+
+        resultado = []
+        d = data_inicio
+        while d <= data_fim:
+            realizado = realizados.get(d)
+            prev_data = previstos.get(d)
+            previsto = prev_data['previsto'] if prev_data else None
+
+            # Calcula acerto se ambos existirem
+            erro_pct = None
+            acerto_pct = None
+            status_acerto = None
+
+            if d >= hoje:
+                status_acerto = 'futuro'
+            elif realizado is None:
+                status_acerto = None  # dia nao tem dado real ainda
+            elif previsto is None:
+                status_acerto = 'sem_previsao'
+            elif realizado > 0:
+                erro_pct = abs(previsto - realizado) / realizado * 100
+                acerto_pct = max(0, min(100, 100 - erro_pct))
+                if acerto_pct >= 90:
+                    status_acerto = 'verde'
+                elif acerto_pct >= 75:
+                    status_acerto = 'amarelo'
+                else:
+                    status_acerto = 'vermelho'
+
+            resultado.append({
+                'dt': d.isoformat(),
+                'realizado': realizado,
+                'previsto': round(previsto, 1) if previsto is not None else None,
+                'inferior': round(prev_data['inferior'], 1) if prev_data and prev_data['inferior'] else None,
+                'superior': round(prev_data['superior'], 1) if prev_data and prev_data['superior'] else None,
+                'erro_pct': round(erro_pct, 1) if erro_pct is not None else None,
+                'acerto_pct': round(acerto_pct, 1) if acerto_pct is not None else None,
+                'status_acerto': status_acerto,
+            })
+            d += timedelta(days=1)
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'modelo': nome_modelo,
+            'versao': modelo['versao'],
+            'dias_historico': dias_hist,
+            'comparativo': resultado,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        current_app.logger.error(f'Erro ao buscar comparativo de {nome_modelo}: {e}', exc_info=True)
+        if conn:
+            conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar comparativo'}), 500

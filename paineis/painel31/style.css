@@ -716,3 +716,115 @@ body {
     .painel-container { min-height: auto; overflow: visible; }
     .tab-content { display: block !important; }
 }
+
+/* =========================================================
+   Seletor de periodo no grafico
+   ========================================================= */
+
+.grafico-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.grafico-header-esq { flex: 1; min-width: 250px; }
+
+.grafico-periodo {
+    display: flex;
+    gap: 4px;
+    background: #f0f4f8;
+    padding: 3px;
+    border-radius: var(--raio-sm);
+}
+.btn-periodo {
+    background: none;
+    border: none;
+    padding: 6px 12px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--cor-texto-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: var(--transicao-rapida);
+    font-family: var(--fonte-principal);
+}
+.btn-periodo:hover { color: var(--cor-texto); }
+.btn-periodo.ativo {
+    background: var(--cor-fundo-card);
+    color: var(--cor-primaria);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 600px) {
+    .grafico-periodo { width: 100%; justify-content: space-between; }
+    .btn-periodo { flex: 1; padding: 8px 4px; }
+}
+
+
+/* =========================================================
+   COMPARATIVO PREVISTO vs REALIZADO (cards historico)
+   ========================================================= */
+
+.historico-dia {
+    /* garante espaco pro bloco extra */
+    padding-bottom: 8px;
+}
+
+.historico-dia-comparativo {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--cor-borda);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.historico-dia-previsto {
+    font-size: 0.62rem;
+    color: var(--cor-texto-muted);
+    font-weight: 600;
+}
+
+.historico-dia-acerto {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.historico-dia-acerto i { font-size: 0.7rem; }
+
+.acerto-verde {
+    background: #e8f5e9;
+    color: var(--cor-saude-verde);
+}
+.acerto-amarelo {
+    background: #fff8e1;
+    color: var(--cor-saude-amarelo);
+}
+.acerto-vermelho {
+    background: #fdecea;
+    color: var(--cor-saude-vermelho);
+}
+
+.historico-dia-semprev {
+    font-size: 0.6rem;
+    color: var(--cor-texto-muted);
+    font-style: italic;
+}
+
+/* Cards ficam um pouco maiores pra caber o bloco extra */
+@media (max-width: 1500px) {
+    .historico-grid { grid-template-columns: repeat(7, 1fr); }
+    .historico-dia-valor { font-size: 1.1rem; }
+}
+@media (max-width: 900px) {
+    .historico-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+    .historico-grid { grid-template-columns: repeat(2, 1fr); }
+}

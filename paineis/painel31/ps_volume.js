@@ -1,5 +1,5 @@
 // =============================================================================
-// PAINEL 31 - SUB-PAGINA PS VOLUME (com tabs)
+// PAINEL 31 - SUB-PAGINA PS VOLUME (com comparativo previsto vs realizado)
 // =============================================================================
 
 var BASE_URL = window.location.origin;
@@ -10,15 +10,18 @@ var CONFIG = {
     apiModelo:        BASE_URL + '/api/paineis/painel31/modelo/ps_volume',
     apiHistoricoReal: BASE_URL + '/api/paineis/painel31/historico-real',
     apiPicosHoje:     BASE_URL + '/api/paineis/painel31/picos-hoje',
+    apiComparativo:   BASE_URL + '/api/paineis/painel31/comparativo/ps_volume',
     intervaloRefresh: 300000
 };
 
 var grafico = null;
+var diasHistorico = 30;
 
 function inicializar() {
     console.log('Inicializando PS Volume...');
     configurarBotoes();
     configurarTabs();
+    configurarSeletorPeriodo();
     carregarTudo();
     setInterval(carregarTudo, CONFIG.intervaloRefresh);
 }
@@ -51,10 +54,32 @@ function configurarTabs() {
             var tab = btn.getAttribute('data-tab');
             botoes.forEach(function(b) { b.classList.remove('ativo'); });
             btn.classList.add('ativo');
-            var conteudos = document.querySelectorAll('.tab-content');
-            conteudos.forEach(function(c) { c.classList.remove('ativo'); });
+            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('ativo'); });
             var alvo = document.getElementById('tab-' + tab);
             if (alvo) alvo.classList.add('ativo');
+        });
+    });
+}
+
+function configurarSeletorPeriodo() {
+    var botoes = document.querySelectorAll('.btn-periodo');
+    botoes.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var dias = parseInt(btn.getAttribute('data-dias'));
+            if (dias === diasHistorico) return;
+            diasHistorico = dias;
+            botoes.forEach(function(b) { b.classList.remove('ativo'); });
+            btn.classList.add('ativo');
+
+            var sub = document.getElementById('grafico-subtitle');
+            if (sub) sub.textContent = 'Ultimos ' + dias + ' dias e proximos 7 dias';
+
+            // Recarrega apenas o comparativo (gráfico usa ele)
+            fetch(CONFIG.apiComparativo + '?dias=' + dias, { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) renderizarGrafico(data.comparativo);
+                });
         });
     });
 }
@@ -65,20 +90,24 @@ function carregarTudo() {
         fetch(CONFIG.apiMetricas,      { credentials: 'include' }).then(function(r) { return r.json(); }),
         fetch(CONFIG.apiModelo,        { credentials: 'include' }).then(function(r) { return r.json(); }),
         fetch(CONFIG.apiHistoricoReal, { credentials: 'include' }).then(function(r) { return r.json(); }),
-        fetch(CONFIG.apiPicosHoje,     { credentials: 'include' }).then(function(r) { return r.json(); })
+        fetch(CONFIG.apiPicosHoje,     { credentials: 'include' }).then(function(r) { return r.json(); }),
+        fetch(CONFIG.apiComparativo + '?dias=' + diasHistorico, { credentials: 'include' }).then(function(r) { return r.json(); }),
+        fetch(CONFIG.apiComparativo + '?dias=14', { credentials: 'include' }).then(function(r) { return r.json(); })
     ]).then(function(results) {
-        var prev = results[0], met = results[1], mod = results[2], hist = results[3], picos = results[4];
+        var prev = results[0], met = results[1], mod = results[2];
+        var hist = results[3], picos = results[4];
+        var compGrafico = results[5], comp14 = results[6];
 
         if (prev.success) {
             renderizarDestaqueHoje(prev.previsoes_futuras);
             renderizarComparativo(prev.previsoes_futuras, hist.success ? hist.historico : []);
             renderizarPrevisoesGrid(prev.previsoes_futuras);
-            renderizarGrafico(prev.historico_realizado, prev.previsoes_futuras);
         }
-        if (hist.success)  renderizarHistoricoGrid(hist.historico);
-        if (met.success)   renderizarKPIsMetricas(met);
-        if (mod.success)   { renderizarSubtitulo(mod.modelo); renderizarInfoTecnica(mod.modelo); }
-        if (picos.success) renderizarPicos(picos);
+        if (comp14.success)     renderizarHistoricoGridComAcerto(comp14.comparativo);
+        if (compGrafico.success) renderizarGrafico(compGrafico.comparativo);
+        if (met.success)        renderizarKPIsMetricas(met);
+        if (mod.success)        { renderizarSubtitulo(mod.modelo); renderizarInfoTecnica(mod.modelo); }
+        if (picos.success)      renderizarPicos(picos);
 
         atualizarTimestamp();
         var ind = document.getElementById('status-indicator');
@@ -91,13 +120,12 @@ function renderizarDestaqueHoje(futuras) {
     if (!futuras || futuras.length === 0) return;
 
     var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    var hojeStr = hoje.getFullYear() + '-' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '-' + ('0' + hoje.getDate()).slice(-2);
+    var hojeStr = formatarISO(hoje);
 
     var previsaoHoje = null;
     futuras.forEach(function(f) {
         if (f.dt_alvo === hojeStr || f.dt_alvo.indexOf(hojeStr) === 0) previsaoHoje = f;
     });
-
     if (!previsaoHoje) previsaoHoje = futuras[0];
 
     document.getElementById('hoje-valor').textContent = Math.round(previsaoHoje.valor_previsto);
@@ -115,18 +143,14 @@ function renderizarComparativo(futuras, historico) {
     var ontemStr = formatarISO(ontem);
     var amanhaStr = formatarISO(amanha);
 
-    // Ontem (real)
     var ontemValor = '--';
     if (historico && historico.length > 0) {
         historico.forEach(function(h) {
-            if (h.data === ontemStr || h.data.indexOf(ontemStr) === 0) {
-                ontemValor = h.atendimentos;
-            }
+            if (h.data === ontemStr || h.data.indexOf(ontemStr) === 0) ontemValor = h.atendimentos;
         });
     }
     document.getElementById('ontem-valor').textContent = ontemValor;
 
-    // Hoje + Amanha (previsto)
     var hojeValor = '--', amanhaValor = '--';
     if (futuras && futuras.length > 0) {
         futuras.forEach(function(f) {
@@ -169,45 +193,67 @@ function renderizarPrevisoesGrid(futuras) {
     grid.innerHTML = html;
 }
 
-// ----- HISTORICO 14 DIAS -----
-function renderizarHistoricoGrid(historico) {
+// ----- HISTORICO 14 DIAS COM ACERTO -----
+function renderizarHistoricoGridComAcerto(comparativo) {
     var grid = document.getElementById('historico-grid');
     if (!grid) return;
-    if (!historico || historico.length === 0) {
+
+    // Filtra apenas dias passados (ignora futuro retornado pelo endpoint)
+    var historicoApenas = comparativo.filter(function(c) { return c.status_acerto !== 'futuro'; });
+
+    if (!historicoApenas || historicoApenas.length === 0) {
         grid.innerHTML = '<div class="mensagem-vazia"><i class="fas fa-clock"></i><p>Sem historico disponivel</p></div>';
         return;
     }
 
     var dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
     var html = '';
-    historico.forEach(function(h) {
-        var d = new Date(h.data + 'T00:00:00');
+
+    historicoApenas.forEach(function(c) {
+        if (c.realizado === null) return; // pula dia sem realizado ainda
+
+        var d = new Date(c.dt + 'T00:00:00');
         var nomeDia = dias[d.getDay()];
         var dataStr = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+
+        // Monta bloco de acerto
+        var blocoAcerto = '';
+        if (c.previsto !== null && c.acerto_pct !== null) {
+            var classeAcerto = 'acerto-' + c.status_acerto;
+            var icone = c.status_acerto === 'verde' ? 'fa-check-circle' :
+                        c.status_acerto === 'amarelo' ? 'fa-circle-exclamation' : 'fa-triangle-exclamation';
+            blocoAcerto =
+                '<div class="historico-dia-comparativo">' +
+                '  <div class="historico-dia-previsto">Previsto: ' + Math.round(c.previsto) + '</div>' +
+                '  <div class="historico-dia-acerto ' + classeAcerto + '">' +
+                '    <i class="fas ' + icone + '"></i> ' + c.acerto_pct + '% acerto' +
+                '  </div>' +
+                '</div>';
+        } else if (c.previsto === null) {
+            blocoAcerto = '<div class="historico-dia-comparativo"><div class="historico-dia-semprev">Sem previsao</div></div>';
+        }
 
         html += '<div class="historico-dia">';
         html += '  <div class="historico-dia-data">' + dataStr + '</div>';
         html += '  <div class="historico-dia-nome">' + nomeDia + '</div>';
-        html += '  <div class="historico-dia-valor">' + h.atendimentos + '</div>';
+        html += '  <div class="historico-dia-valor">' + c.realizado + '</div>';
         html += '  <div class="historico-dia-unidade">atendimentos</div>';
+        html += blocoAcerto;
         html += '</div>';
     });
     grid.innerHTML = html;
 }
 
-
+// ----- PICOS -----
 function renderizarPicos(data) {
     var body = document.getElementById('picos-body');
     if (!body) return;
-
     if (!data.top_picos || data.top_picos.length === 0) {
         body.innerHTML = '<div class="mensagem-vazia"><i class="fas fa-clock"></i><p>Aguardando previsao de hoje</p></div>';
         return;
     }
 
     var html = '';
-
-    // Banner do proximo pico
     if (data.proximo_pico) {
         var horaFmt = ('0' + data.proximo_pico.hora).slice(-2) + ':00';
         html += '<div class="proximo-pico-banner">';
@@ -216,7 +262,6 @@ function renderizarPicos(data) {
         html += '</div>';
     }
 
-    // Top 3 picos do dia
     html += '<div class="picos-lista">';
     data.top_picos.forEach(function(p) {
         var horaFmt = ('0' + p.hora).slice(-2) + 'h';
@@ -227,10 +272,8 @@ function renderizarPicos(data) {
         html += '</div>';
     });
     html += '</div>';
-
     body.innerHTML = html;
 }
-
 
 // ----- ABA TECNICA: KPIs -----
 function renderizarKPIsMetricas(data) {
@@ -238,7 +281,7 @@ function renderizarKPIsMetricas(data) {
     document.getElementById('kpi-mape-baseline').textContent = data.mape_baseline ? data.mape_baseline + '%' : '--';
 
     var m30 = data.metricas && data.metricas.janela_30d;
-    if (m30) {
+    if (m30 && m30.status_saude && m30.status_saude !== 'aguardando') {
         document.getElementById('kpi-mae-30d').textContent = m30.mae;
         var statusEl = document.getElementById('kpi-status-saude');
         var s = m30.status_saude;
@@ -246,6 +289,11 @@ function renderizarKPIsMetricas(data) {
         else if (s === 'amarelo') statusEl.textContent = 'Atencao';
         else if (s === 'vermelho') statusEl.textContent = 'Critico';
         else statusEl.textContent = 'Sem dados';
+    } else if (m30 && m30.amostras_minimas) {
+        document.getElementById('kpi-mae-30d').textContent = m30.mae || '--';
+        document.getElementById('kpi-status-saude').textContent = 'Aguardando';
+        document.getElementById('kpi-status-saude').title =
+            'Aguardando ' + m30.amostras_minimas + ' amostras realizadas. Atual: ' + (m30.amostras || 0);
     } else {
         document.getElementById('kpi-mae-30d').textContent = '--';
         document.getElementById('kpi-status-saude').textContent = 'Aguardando';
@@ -257,11 +305,9 @@ function renderizarSubtitulo(modelo) {
     if (sub) sub.textContent = 'Modelo ' + modelo.algoritmo + ' ' + modelo.versao;
 }
 
-// ----- ABA TECNICA: INFO DETALHADA -----
 function renderizarInfoTecnica(modelo) {
     var container = document.getElementById('info-modelo-tecnica');
     if (!container) return;
-
     var html = '<h3><i class="fas fa-circle-info"></i> Detalhes do modelo</h3>';
     html += '<div class="info-grid">';
     html += '  <div class="info-item"><div class="info-item-label">Nome</div><div class="info-item-valor">' + escapeHtml(modelo.nome_modelo) + '</div></div>';
@@ -272,33 +318,42 @@ function renderizarInfoTecnica(modelo) {
     html += '  <div class="info-item"><div class="info-item-label">Features</div><div class="info-item-valor">' + (modelo.num_features || '--') + '</div></div>';
     html += '  <div class="info-item"><div class="info-item-label">Amostras de treino</div><div class="info-item-valor">' + (modelo.num_amostras_treino || '--') + '</div></div>';
     html += '  <div class="info-item"><div class="info-item-label">Periodo de treino</div><div class="info-item-valor">' + (modelo.periodo_treino_inicio || '--') + ' a ' + (modelo.periodo_treino_fim || '--') + '</div></div>';
+    html += '  <div class="info-item"><div class="info-item-label">Dados disponiveis ate</div><div class="info-item-valor">' + (modelo.dados_ate || '--') + '</div></div>';
     html += '  <div class="info-item"><div class="info-item-label">RMSE</div><div class="info-item-valor">' + (modelo.rmse_teste || '--') + '</div></div>';
     html += '</div>';
     container.innerHTML = html;
 }
 
-// ----- GRAFICO -----
-function renderizarGrafico(historico, futuras) {
+// ----- GRAFICO UNIFICADO -----
+function renderizarGrafico(comparativo) {
     var ctx = document.getElementById('grafico-previsao');
     if (!ctx) return;
 
-    var labels = [], realizadoData = [], previstoHistData = [], previstoFuturoData = [], faixaSup = [], faixaInf = [];
+    var labels = [];
+    var realizadoData = [];
+    var previstoHistData = [];
+    var previstoFuturoData = [];
+    var faixaSup = [];
+    var faixaInf = [];
 
-    historico.forEach(function(h) {
-        labels.push(formatarDataCurta(h.dt_alvo));
-        realizadoData.push(h.valor_realizado);
-        previstoHistData.push(h.valor_previsto);
-        previstoFuturoData.push(null);
-        faixaSup.push(null);
-        faixaInf.push(null);
-    });
-    futuras.forEach(function(f) {
-        labels.push(formatarDataCurta(f.dt_alvo));
-        realizadoData.push(null);
-        previstoHistData.push(null);
-        previstoFuturoData.push(f.valor_previsto);
-        faixaSup.push(f.intervalo_superior);
-        faixaInf.push(f.intervalo_inferior);
+    comparativo.forEach(function(c) {
+        labels.push(formatarDataCurta(c.dt));
+
+        if (c.status_acerto === 'futuro') {
+            // Futuro: só previsto + faixa
+            realizadoData.push(null);
+            previstoHistData.push(null);
+            previstoFuturoData.push(c.previsto);
+            faixaSup.push(c.superior);
+            faixaInf.push(c.inferior);
+        } else {
+            // Passado: realizado + previsto (quando existe)
+            realizadoData.push(c.realizado);
+            previstoHistData.push(c.previsto);
+            previstoFuturoData.push(null);
+            faixaSup.push(null);
+            faixaInf.push(null);
+        }
     });
 
     if (grafico) grafico.destroy();
@@ -320,7 +375,26 @@ function renderizarGrafico(historico, futuras) {
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { position: 'top', labels: { filter: function(item) { return item.text.indexOf('Faixa') === -1; }, font: { size: 11 } } },
-                tooltip: { callbacks: { label: function(ctx) { if (ctx.parsed.y === null) return null; return ctx.dataset.label + ': ' + Math.round(ctx.parsed.y) + ' atendimentos'; } } }
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            if (ctx.parsed.y === null) return null;
+                            return ctx.dataset.label + ': ' + Math.round(ctx.parsed.y) + ' atendimentos';
+                        },
+                        afterBody: function(items) {
+                            // Mostra % de acerto se houver realizado + previsto no ponto
+                            if (items.length < 2) return null;
+                            var idx = items[0].dataIndex;
+                            var real = realizadoData[idx];
+                            var prev = previstoHistData[idx];
+                            if (real !== null && prev !== null && real > 0) {
+                                var acerto = Math.max(0, Math.min(100, 100 - Math.abs(prev - real) / real * 100));
+                                return 'Acerto: ' + acerto.toFixed(1) + '%';
+                            }
+                            return null;
+                        }
+                    }
+                }
             },
             scales: {
                 y: { beginAtZero: false, title: { display: true, text: 'Atendimentos/dia' } },

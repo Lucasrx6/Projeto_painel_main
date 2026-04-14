@@ -160,8 +160,16 @@
 
                 <div class="grafico-container">
                     <div class="grafico-header">
-                        <h2><i class="fas fa-chart-area"></i> Previsto vs Realizado + Previsoes Futuras</h2>
-                        <span class="grafico-subtitle">Ultimos 30 dias e proximos 7 dias</span>
+                        <div class="grafico-header-esq">
+                            <h2><i class="fas fa-chart-area"></i> Previsto vs Realizado + Previsoes Futuras</h2>
+                            <span class="grafico-subtitle" id="grafico-subtitle">Ultimos 30 dias e proximos 7 dias</span>
+                        </div>
+                        <div class="grafico-periodo">
+                            <button class="btn-periodo" data-dias="7">7d</button>
+                            <button class="btn-periodo ativo" data-dias="30">30d</button>
+                            <button class="btn-periodo" data-dias="60">60d</button>
+                            <button class="btn-periodo" data-dias="90">90d</button>
+                        </div>
                     </div>
                     <div class="grafico-body">
                         <canvas id="grafico-previsao"></canvas>
