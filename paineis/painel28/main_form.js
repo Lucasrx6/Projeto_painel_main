@@ -29,7 +29,9 @@
         avaliacaoFinalCalculada: null,
         imagensParaEnviar: [],
         enviando: false,
-        configServidor: {}
+        configServidor: {},
+        rondaEmAndamento: null,    // Ronda em andamento encontrada para a dupla selecionada
+        editandoVisitaId: null     // Quando nao-null, formulario esta em modo de edicao
     };
 
     // ========================================
@@ -181,6 +183,11 @@
         setTexto('pac-clinica', pac.ds_clinica || '--');
         setTexto('pac-convenio', pac.ds_convenio || '--');
         setTexto('pac-acomodacao', pac.ds_tipo_acomodacao || '--');
+
+        // Restaurar rascunho do localStorage (apenas se nao estiver em modo edicao)
+        if (!estado.editandoVisitaId) {
+            setTimeout(function () { restaurarRascunho(pac); }, 80);
+        }
     }
 
     function pularPaciente() {
@@ -285,6 +292,277 @@
     }
 
     // ========================================
+    // EDITAR VISITA SALVA
+    // ========================================
+
+    function editarVisita(visitaId) {
+        // Se chamado do banner (sem sessao iniciada), iniciar sessao com a ronda em andamento
+        if (!estado.rondaId && estado.rondaEmAndamento) {
+            estado.rondaId = estado.rondaEmAndamento.id;
+            estado.dataRonda = estado.rondaEmAndamento.data_ronda;
+            var duplaVal = document.getElementById('select-dupla').value;
+            if (duplaVal) estado.duplaId = parseInt(duplaVal);
+            var badge = document.getElementById('ronda-info-badge');
+            if (badge) badge.textContent = 'Ronda #' + estado.rondaId;
+            ocultarBannerRondaAndamento();
+        }
+
+        var loading = document.getElementById('paciente-loading');
+        var dados = document.getElementById('paciente-dados');
+        if (loading) loading.style.display = 'block';
+        if (dados) dados.style.display = 'none';
+        mostrarTela('formulario');
+
+        fetch(CONFIG.apiVisitas + '/' + visitaId)
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res.success || !res.data) {
+                    mostrarToast('Erro ao carregar visita', 'erro');
+                    if (loading) loading.style.display = 'none';
+                    return;
+                }
+                var v = res.data;
+                estado.editandoVisitaId = visitaId;
+
+                // Construir objeto paciente a partir dos dados da visita
+                var pac = {
+                    nr_atendimento: v.nr_atendimento,
+                    nm_paciente: v.nm_paciente,
+                    leito: v.leito,
+                    setor_sa_id: v.setor_id,
+                    setor_sa_nome: v.setor_nome,
+                    setor_sa_sigla: v.setor_sigla,
+                    setor_ocupacao: v.setor_ocupacao,
+                    qt_dia_permanencia: v.qt_dias_internacao,
+                    ds_tipo_acomodacao: null,
+                    medico_responsavel: null,
+                    ds_clinica: null,
+                    ds_convenio: null
+                };
+                exibirPaciente(pac); // nao restaura draft pois editandoVisitaId esta definido
+
+                // Pre-preencher semaforo apos renderizacao
+                setTimeout(function () {
+                    limparRespostasCategorias();
+                    if (v.categorias) {
+                        v.categorias.forEach(function (cat) {
+                            cat.itens.forEach(function (item) {
+                                if (!item.item_id) return;
+                                var btn = document.querySelector(
+                                    '.item-avaliacao[data-item-id="' + item.item_id + '"] .btn-semaforo[data-valor="' + item.resultado + '"]'
+                                );
+                                if (btn) {
+                                    var cont = btn.closest('.item-semaforo');
+                                    cont.querySelectorAll('.btn-semaforo').forEach(function (b) { b.classList.remove('selecionado'); });
+                                    btn.classList.add('selecionado');
+                                }
+                            });
+                        });
+                    }
+                    // Pre-preencher observacoes
+                    var obs = document.getElementById('input-observacoes');
+                    if (obs) {
+                        obs.value = v.observacoes || '';
+                        var c = document.getElementById('count-obs');
+                        if (c) c.textContent = (v.observacoes || '').length;
+                    }
+                    calcularAvaliacaoFinal();
+
+                    // Mostrar barra de edicao
+                    var bar = document.getElementById('edit-mode-bar');
+                    var ePac = document.getElementById('edit-mode-pac');
+                    if (bar) bar.style.display = 'flex';
+                    if (ePac) ePac.textContent = v.nm_paciente || v.leito;
+
+                    // Alterar botao de envio
+                    var btnEnviar = document.getElementById('btn-enviar-visita');
+                    if (btnEnviar) btnEnviar.innerHTML = '<i class="fas fa-save"></i> Atualizar Visita';
+
+                    // Ocultar upload (nao edita imagens neste modo)
+                    var uploadArea = document.getElementById('upload-area');
+                    if (uploadArea) uploadArea.style.display = 'none';
+
+                    mostrarToast('Editando visita de ' + escapeHtml(v.nm_paciente || v.leito), 'info');
+                }, 100);
+            })
+            .catch(function () {
+                mostrarToast('Erro de comunicacao', 'erro');
+                if (loading) loading.style.display = 'none';
+            });
+    }
+
+    function cancelarEdicao() {
+        limparFormularioVisita();
+        mostrarTela('ronda');
+    }
+
+    // ========================================
+    // RONDA EM ANDAMENTO (cross-device cache)
+    // ========================================
+
+    function verificarRondaEmAndamento(duplaId) {
+        var banner = document.getElementById('ronda-andamento-banner');
+        if (!banner) return;
+        banner.style.display = 'none';
+        estado.rondaEmAndamento = null;
+
+        fetch(CONFIG.apiDuplas + '/' + duplaId + '/ronda-em-andamento')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success && data.data) {
+                    estado.rondaEmAndamento = data.data;
+                    renderizarBannerRondaAndamento(data.data);
+                }
+            })
+            .catch(function () {});
+    }
+
+    function ocultarBannerRondaAndamento() {
+        var banner = document.getElementById('ronda-andamento-banner');
+        if (banner) banner.style.display = 'none';
+        estado.rondaEmAndamento = null;
+    }
+
+    // ========================================
+    // AUTO-SAVE (localStorage) - rascunho do formulario
+    // ========================================
+
+    function _chaveDraft(pac) {
+        return 'p28_draft_' + (estado.rondaId || '0') + '_' + (pac.nr_atendimento || pac.leito || 'pac');
+    }
+
+    function salvarRascunho() {
+        if (!estado.rondaId || !estado.pacienteAtual || estado.editandoVisitaId) return;
+        var pac = estado.pacienteAtual;
+        var avaliacoes = {};
+        var itens = document.querySelectorAll('.item-avaliacao');
+        for (var i = 0; i < itens.length; i++) {
+            var itemId = itens[i].getAttribute('data-item-id');
+            var sel = itens[i].querySelector('.btn-semaforo.selecionado');
+            if (sel) avaliacoes[itemId] = sel.getAttribute('data-valor');
+        }
+        var obs = document.getElementById('input-observacoes');
+        try {
+            localStorage.setItem(_chaveDraft(pac), JSON.stringify({
+                paciente: pac,
+                avaliacoes: avaliacoes,
+                observacoes: obs ? obs.value : ''
+            }));
+        } catch (e) {}
+    }
+
+    function restaurarRascunho(pac) {
+        if (estado.editandoVisitaId) return false;
+        try {
+            var raw = localStorage.getItem(_chaveDraft(pac));
+            if (!raw) return false;
+            var draft = JSON.parse(raw);
+            if (!draft.avaliacoes || Object.keys(draft.avaliacoes).length === 0) return false;
+            var restaurou = false;
+            Object.keys(draft.avaliacoes).forEach(function (itemId) {
+                var valor = draft.avaliacoes[itemId];
+                var btn = document.querySelector('.item-avaliacao[data-item-id="' + itemId + '"] .btn-semaforo[data-valor="' + valor + '"]');
+                if (btn) {
+                    var container = btn.closest('.item-semaforo');
+                    container.querySelectorAll('.btn-semaforo').forEach(function (b) { b.classList.remove('selecionado'); });
+                    btn.classList.add('selecionado');
+                    restaurou = true;
+                }
+            });
+            var obs = document.getElementById('input-observacoes');
+            if (obs && draft.observacoes) {
+                obs.value = draft.observacoes;
+                var c = document.getElementById('count-obs');
+                if (c) c.textContent = draft.observacoes.length;
+            }
+            if (restaurou) {
+                calcularAvaliacaoFinal();
+                mostrarToast('Rascunho anterior restaurado', 'info');
+            }
+            return restaurou;
+        } catch (e) { return false; }
+    }
+
+    function limparRascunho(pac) {
+        if (!pac) return;
+        try { localStorage.removeItem(_chaveDraft(pac)); } catch (e) {}
+    }
+
+    function renderizarBannerRondaAndamento(ronda) {
+        var banner = document.getElementById('ronda-andamento-banner');
+        if (!banner) return;
+
+        var dataEl = document.getElementById('ronda-andamento-data');
+        if (dataEl) dataEl.textContent = formatarData(ronda.data_ronda);
+
+        var visitasEl = document.getElementById('ronda-andamento-visitas');
+        if (visitasEl) {
+            if (ronda.visitas && ronda.visitas.length > 0) {
+                visitasEl.innerHTML = ronda.visitas.map(function (v) {
+                    return '<div class="ronda-andamento-item">' +
+                        '<span class="ronda-andamento-pac"><i class="fas fa-user"></i> ' + escapeHtml(v.nm_paciente || v.leito) + '</span>' +
+                        '<div class="ronda-andamento-item-dir">' +
+                        '<span class="badge-mini badge-' + v.avaliacao_final + '">' + formatarResultado(v.avaliacao_final) + '</span>' +
+                        '<button class="btn-editar-visita-andamento" onclick="window.FORM.editarVisita(' + v.id + ')" title="Editar visita">' +
+                        '<i class="fas fa-edit"></i></button>' +
+                        '<button class="btn-excluir-visita-andamento" onclick="window.FORM.excluirVisitaAndamento(' + v.id + ')" title="Remover visita">' +
+                        '<i class="fas fa-trash-alt"></i></button>' +
+                        '</div></div>';
+                }).join('');
+            } else {
+                visitasEl.innerHTML = '<p class="ronda-andamento-vazia"><i class="fas fa-clipboard"></i> Nenhuma visita registrada ainda</p>';
+            }
+        }
+
+        banner.style.display = 'block';
+    }
+
+    function retomarRonda() {
+        if (!estado.rondaEmAndamento) return;
+        var inputData = document.getElementById('input-data-ronda');
+        if (inputData) {
+            var dr = estado.rondaEmAndamento.data_ronda;
+            var p = dr.split('-');
+            if (p.length === 3) inputData.value = p[2] + '/' + p[1] + '/' + p[0];
+        }
+        ocultarBannerRondaAndamento();
+        iniciarRonda();
+    }
+
+    function excluirVisitaAndamento(visitaId) {
+        if (!confirm('Remover esta visita da ronda em andamento?')) return;
+        fetch(CONFIG.apiVisitas + '/' + visitaId, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    mostrarToast('Visita removida', 'sucesso');
+                    var duplaId = document.getElementById('select-dupla').value;
+                    if (duplaId) verificarRondaEmAndamento(parseInt(duplaId));
+                } else {
+                    mostrarToast(data.error || 'Erro ao remover', 'erro');
+                }
+            })
+            .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    function excluirVisitaSessao(visitaId) {
+        if (!confirm('Remover esta visita da ronda?')) return;
+        fetch(CONFIG.apiVisitas + '/' + visitaId, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    mostrarToast('Visita removida', 'sucesso');
+                    carregarVisitasRonda();
+                    var telaResumo = document.getElementById('tela-resumo');
+                    if (telaResumo && telaResumo.style.display !== 'none') carregarResumo();
+                } else {
+                    mostrarToast(data.error || 'Erro ao remover', 'erro');
+                }
+            })
+            .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    // ========================================
     // RENDERIZAR CATEGORIAS (SEMAFORO + SIM/NAO)
     // ========================================
 
@@ -341,6 +619,7 @@
         for (var i = 0; i < botoes.length; i++) botoes[i].classList.remove('selecionado');
         btn.classList.add('selecionado');
         calcularAvaliacaoFinal();
+        salvarRascunho();
     }
 
     function limparRespostasCategorias() {
@@ -452,6 +731,19 @@
 
         var btnImpos = document.getElementById('btn-impossibilitada');
         if (btnImpos) btnImpos.addEventListener('click', function () { abrirModalImpossibilitada(); });
+
+        var btnCancelarEd = document.getElementById('btn-cancelar-edicao');
+        if (btnCancelarEd) btnCancelarEd.addEventListener('click', function () { cancelarEdicao(); });
+
+        var selDupla = document.getElementById('select-dupla');
+        if (selDupla) selDupla.addEventListener('change', function () {
+            var duplaId = this.value;
+            if (duplaId && !estado.rondaId) {
+                verificarRondaEmAndamento(parseInt(duplaId));
+            } else {
+                ocultarBannerRondaAndamento();
+            }
+        });
     }
 
     function iniciarRonda() {
@@ -476,6 +768,7 @@
                 estado.rondaId = data.data.id;
                 estado.duplaId = parseInt(duplaId);
                 estado.dataRonda = dataISO;
+                ocultarBannerRondaAndamento();
                 var badge = document.getElementById('ronda-info-badge');
                 if (badge) badge.textContent = 'Ronda #' + estado.rondaId;
                 if (data.data.existente) {
@@ -552,21 +845,35 @@
             avaliacoes: avaliacoes
         };
 
-        fetch(CONFIG.apiVisitas, {
-            method: 'POST',
+        var editId = estado.editandoVisitaId;
+        var metodo = editId ? 'PUT' : 'POST';
+        var url = editId ? CONFIG.apiVisitas + '/' + editId : CONFIG.apiVisitas;
+
+        fetch(url, {
+            method: metodo,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.success) {
-                var visitaId = data.data.id;
-                if (estado.imagensParaEnviar.length > 0) {
-                    enviarImagensSequencial(visitaId, 0, function () {
-                        exibirConfirmacao(pac, avaliacoes);
-                    });
+                limparRascunho(pac);
+                if (editId) {
+                    // Modo edicao: voltar para tela-ronda com resumo atualizado
+                    limparFormularioVisita();
+                    carregarVisitasRonda();
+                    mostrarTela('ronda');
+                    mostrarToast('Visita atualizada com sucesso!', 'sucesso');
                 } else {
-                    exibirConfirmacao(pac, avaliacoes);
+                    // Modo normal: fluxo de confirmacao
+                    var visitaId = data.data.id;
+                    if (estado.imagensParaEnviar.length > 0) {
+                        enviarImagensSequencial(visitaId, 0, function () {
+                            exibirConfirmacao(pac, avaliacoes);
+                        });
+                    } else {
+                        exibirConfirmacao(pac, avaliacoes);
+                    }
                 }
             } else {
                 mostrarToast(data.error || (data.errors ? data.errors[0] : 'Erro'), 'erro');
@@ -575,7 +882,12 @@
         .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); })
         .finally(function () {
             estado.enviando = false;
-            if (btnEnviar) { btnEnviar.disabled = false; btnEnviar.innerHTML = '<i class="fas fa-paper-plane"></i> Registrar Visita'; }
+            if (btnEnviar) {
+                btnEnviar.disabled = false;
+                btnEnviar.innerHTML = estado.editandoVisitaId
+                    ? '<i class="fas fa-save"></i> Atualizar Visita'
+                    : '<i class="fas fa-paper-plane"></i> Registrar Visita';
+            }
         });
     }
 
@@ -712,7 +1024,11 @@
         lista.innerHTML = visitas.map(function (v) {
             return '<div class="visita-mini-card mini-' + v.avaliacao_final + '">' +
                 '<span><strong>' + escapeHtml(v.nm_paciente || v.leito) + '</strong> - ' + escapeHtml(v.setor_sigla || v.setor_nome) + '</span>' +
-                '<span>' + escapeHtml(formatarResultado(v.avaliacao_final)) + '</span></div>';
+                '<div class="mini-card-direita">' +
+                '<span>' + escapeHtml(formatarResultado(v.avaliacao_final)) + '</span>' +
+                '<button class="btn-editar-mini" onclick="window.FORM.editarVisita(' + v.id + ')" title="Editar"><i class="fas fa-edit"></i></button>' +
+                '<button class="btn-excluir-mini" onclick="window.FORM.excluirVisitaSessao(' + v.id + ')" title="Remover"><i class="fas fa-trash-alt"></i></button>' +
+                '</div></div>';
         }).join('');
     }
 
@@ -934,6 +1250,15 @@
         limparRespostasCategorias();
         estado.imagensParaEnviar = [];
         renderizarPreviews();
+        // Sair do modo de edicao
+        estado.editandoVisitaId = null;
+        var bar = document.getElementById('edit-mode-bar');
+        if (bar) bar.style.display = 'none';
+        var btnEnviar = document.getElementById('btn-enviar-visita');
+        if (btnEnviar) btnEnviar.innerHTML = '<i class="fas fa-paper-plane"></i> Registrar Visita';
+        // Reabilitar upload de imagens
+        var uploadArea = document.getElementById('upload-area');
+        if (uploadArea) uploadArea.style.display = '';
     }
 
     // ========================================
@@ -945,6 +1270,7 @@
         if (obs) obs.addEventListener('input', function () {
             var c = document.getElementById('count-obs');
             if (c) c.textContent = this.value.length;
+            salvarRascunho();
         });
     }
 
@@ -981,7 +1307,12 @@
         editarDupla: editarDupla,
         salvarDupla: salvarDupla,
         toggleDupla: toggleDupla,
-        carregarDuplasG: carregarDuplasGerenciar
+        carregarDuplasG: carregarDuplasGerenciar,
+        retomarRonda: retomarRonda,
+        excluirVisitaAndamento: excluirVisitaAndamento,
+        excluirVisitaSessao: excluirVisitaSessao,
+        editarVisita: editarVisita,
+        cancelarEdicao: cancelarEdicao
     };
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', inicializar); }

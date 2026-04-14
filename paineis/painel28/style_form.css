@@ -959,6 +959,266 @@ body {
 .visita-mini-card.mini-atencao { border-left-color: var(--cor-atencao); }
 .visita-mini-card.mini-adequado { border-left-color: var(--cor-adequado); }
 
+.mini-card-direita {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-editar-mini {
+    background: none;
+    border: none;
+    color: #adb5bd;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+.btn-editar-mini:hover {
+    color: var(--cor-info);
+    background: #e3f2fd;
+}
+
+.btn-excluir-mini {
+    background: none;
+    border: none;
+    color: #adb5bd;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+.btn-excluir-mini:hover {
+    color: var(--cor-critico);
+    background: #fde8ea;
+}
+
+/* ========================================
+   BANNER: RONDA EM ANDAMENTO
+   ======================================== */
+
+.ronda-andamento-banner {
+    margin-top: 16px;
+    border-radius: var(--radius);
+    border: 2px solid #ffc107;
+    background: #fff8e1;
+    overflow: hidden;
+}
+
+.ronda-andamento-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #fff3cd;
+    border-bottom: 1px solid #ffc107;
+    gap: 12px;
+}
+
+.ronda-andamento-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #856404;
+    font-size: 0.85rem;
+}
+
+.ronda-andamento-titulo i {
+    font-size: 1.1rem;
+    color: #ffc107;
+}
+
+.ronda-andamento-titulo strong {
+    display: block;
+    font-size: 0.88rem;
+    color: #856404;
+}
+
+.ronda-andamento-titulo span {
+    font-size: 0.78rem;
+    color: #997404;
+}
+
+.btn-retomar-ronda {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.btn-retomar-ronda:hover { background: #e0a800; }
+
+.ronda-andamento-visitas {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.ronda-andamento-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 10px;
+    background: #ffffff;
+    border-radius: 7px;
+    font-size: 0.78rem;
+    border: 1px solid #ffeaa7;
+    gap: 8px;
+}
+
+.ronda-andamento-pac {
+    flex: 1;
+    color: var(--cor-texto);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ronda-andamento-pac i { color: #adb5bd; flex-shrink: 0; }
+
+.ronda-andamento-item-dir {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-editar-visita-andamento {
+    background: none;
+    border: none;
+    color: #adb5bd;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    transition: color 0.15s, background 0.15s;
+}
+
+.btn-editar-visita-andamento:hover {
+    color: var(--cor-info);
+    background: #e3f2fd;
+}
+
+.btn-excluir-visita-andamento {
+    background: none;
+    border: none;
+    color: #adb5bd;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    transition: color 0.15s, background 0.15s;
+}
+
+.btn-excluir-visita-andamento:hover {
+    color: var(--cor-critico);
+    background: #fde8ea;
+}
+
+.ronda-andamento-vazia {
+    text-align: center;
+    color: #999;
+    font-size: 0.8rem;
+    padding: 12px;
+    margin: 0;
+}
+
+.badge-mini {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 8px;
+}
+
+.badge-mini.badge-critico { background: var(--cor-critico-bg); color: var(--cor-critico); }
+.badge-mini.badge-atencao { background: var(--cor-atencao-bg); color: #856404; }
+.badge-mini.badge-adequado { background: var(--cor-adequado-bg); color: var(--cor-sucesso-dark); }
+.badge-mini.badge-impossibilitada { background: #fff3e0; color: #e65100; }
+
+/* ========================================
+   BARRA MODO EDICAO
+   ======================================== */
+
+.edit-mode-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #fff8e1;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin-bottom: 10px;
+    font-size: 0.82rem;
+    color: #856404;
+    flex-shrink: 0;
+}
+
+.edit-mode-bar strong { color: #5d4037; }
+
+.btn-cancelar-edicao {
+    background: none;
+    border: 1.5px solid #ffc107;
+    color: #856404;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+
+.btn-cancelar-edicao:hover {
+    background: #fff3cd;
+}
+
+/* ========================================
+   AVISO MODAL CONCLUIR
+   ======================================== */
+
+.concluir-aviso {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    color: #e65100;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+}
+
+.concluir-aviso i { margin-top: 2px; flex-shrink: 0; }
+
 /* ========================================
    MODAIS
    ======================================== */

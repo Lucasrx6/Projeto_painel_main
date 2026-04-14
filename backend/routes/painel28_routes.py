@@ -911,7 +911,7 @@ def detalhe_visita(visita_id):
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
-            SELECT v.id, v.ronda_id, v.leito, v.nr_atendimento,
+            SELECT v.id, v.ronda_id, v.setor_id, v.leito, v.nr_atendimento,
                    v.nm_paciente, v.setor_ocupacao, v.qt_dias_internacao,
                    v.observacoes, v.avaliacao_final, v.criado_em, v.atualizado_em,
                    s.nome AS setor_nome, s.sigla AS setor_sigla,
@@ -930,7 +930,7 @@ def detalhe_visita(visita_id):
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
         cursor.execute("""
-            SELECT a.id AS avaliacao_id, a.resultado,
+            SELECT a.id AS avaliacao_id, a.item_id, a.resultado,
                    i.descricao AS item_descricao, i.ordem AS item_ordem,
                    COALESCE(i.tipo, 'semaforo') AS item_tipo,
                    c.id AS categoria_id, c.nome AS categoria_nome,
@@ -978,6 +978,7 @@ def detalhe_visita(visita_id):
                 categorias_agrupadas.append(cat_atual)
             cat_atual['itens'].append({
                 'avaliacao_id': av['avaliacao_id'],
+                'item_id': av['item_id'],
                 'descricao': av['item_descricao'],
                 'resultado': av['resultado'],
                 'tipo': av['item_tipo']
@@ -986,6 +987,258 @@ def detalhe_visita(visita_id):
         visita_dict['categorias'] = categorias_agrupadas
         visita_dict['imagens'] = imagens_lista
         return jsonify({'success': True, 'data': visita_dict})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: ATUALIZAR VISITA (somente rondas em_andamento)
+# ============================================================
+
+@painel28_bp.route('/visitas/<int:visita_id>', methods=['PUT'])
+@login_required
+def atualizar_visita(visita_id):
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+        avaliacao_final = dados.get('avaliacao_final')
+        avaliacoes = dados.get('avaliacoes', [])
+        observacoes = (dados.get('observacoes') or '').strip() or None
+
+        erros = []
+        if avaliacao_final not in ('critico', 'atencao', 'adequado', 'impossibilitada'):
+            erros.append('Avaliacao final invalida')
+        if avaliacao_final != 'impossibilitada' and not avaliacoes:
+            erros.append('Avaliacoes dos itens sao obrigatorias')
+
+        resultados_validos = ('critico', 'atencao', 'adequado', 'nao_aplica', 'sim', 'nao')
+        for av in avaliacoes:
+            if not av.get('item_id'):
+                erros.append('Item de avaliacao invalido')
+                break
+            if av.get('resultado') not in resultados_validos:
+                erros.append('Resultado invalido: %s' % av.get('resultado'))
+                break
+        if erros:
+            return jsonify({'success': False, 'errors': erros}), 400
+
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT v.id, v.nm_paciente, v.ronda_id, v.setor_id, r.status
+            FROM sentir_agir_visitas v
+            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+            WHERE v.id = %s
+        """, (visita_id,))
+        visita = cursor.fetchone()
+        if not visita:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
+        if visita['status'] != 'em_andamento':
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Ronda ja concluida, edicao nao permitida'}), 400
+
+        # Remover tratativas e avaliacoes antigas
+        cursor.execute("DELETE FROM sentir_agir_tratativas WHERE visita_id = %s", (visita_id,))
+        cursor.execute("DELETE FROM sentir_agir_avaliacoes WHERE visita_id = %s", (visita_id,))
+
+        # Atualizar visita
+        cursor.execute("""
+            UPDATE sentir_agir_visitas
+            SET avaliacao_final = %s, observacoes = %s, status_tratativa = 'sem_pendencia', atualizado_em = NOW()
+            WHERE id = %s
+        """, (avaliacao_final, observacoes, visita_id))
+
+        # Inserir novas avaliacoes e detectar criticos
+        avaliacoes_criticas = []
+        for av in avaliacoes:
+            cursor.execute("""
+                INSERT INTO sentir_agir_avaliacoes (visita_id, item_id, resultado)
+                VALUES (%s, %s, %s) RETURNING id
+            """, (visita_id, av['item_id'], av['resultado']))
+            avaliacao_id = cursor.fetchone()['id']
+            if av['resultado'] in ('critico', 'nao'):
+                avaliacoes_criticas.append((avaliacao_id, av['item_id']))
+
+        auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
+        tratativas_criadas = 0
+
+        if auto_criar == 'true' and avaliacoes_criticas:
+            for avaliacao_id, item_id in avaliacoes_criticas:
+                cursor.execute("""
+                    SELECT i.id AS item_id, i.descricao AS item_descricao,
+                           c.id AS categoria_id, c.nome AS categoria_nome
+                    FROM sentir_agir_itens i
+                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                    WHERE i.id = %s
+                """, (item_id,))
+                item_info = cursor.fetchone()
+                if not item_info:
+                    continue
+                responsavel_id = None
+                cursor.execute("""
+                    SELECT id FROM sentir_agir_responsaveis
+                    WHERE categoria_id = %s AND ativo = TRUE ORDER BY id LIMIT 1
+                """, (item_info['categoria_id'],))
+                resp = cursor.fetchone()
+                if resp:
+                    responsavel_id = resp['id']
+                else:
+                    cursor.execute("""
+                        SELECT id FROM sentir_agir_responsaveis
+                        WHERE setor_id = %s AND ativo = TRUE ORDER BY id LIMIT 1
+                    """, (visita['setor_id'],))
+                    resp = cursor.fetchone()
+                    if resp:
+                        responsavel_id = resp['id']
+
+                cursor.execute("""
+                    INSERT INTO sentir_agir_tratativas
+                        (visita_id, avaliacao_id, item_id, categoria_id, responsavel_id, descricao_problema, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'pendente')
+                """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'], responsavel_id,
+                      'Item: %s | Categoria: %s | Obs: %s' % (
+                          item_info['item_descricao'], item_info['categoria_nome'], observacoes or '')))
+                tratativas_criadas += 1
+
+            cursor.execute("""
+                UPDATE sentir_agir_visitas SET status_tratativa = 'pendente' WHERE id = %s
+            """, (visita_id,))
+
+        _registrar_log(cursor, 'visita', visita_id, 'edicao', usuario, ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        msg = 'Visita atualizada'
+        if tratativas_criadas > 0:
+            msg += '. %d tratativa(s) recriada(s).' % tratativas_criadas
+        return jsonify({'success': True, 'data': {'id': visita_id}, 'message': msg})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: RONDA EM ANDAMENTO POR DUPLA (cross-device cache)
+# ============================================================
+
+@painel28_bp.route('/duplas/<int:dupla_id>/ronda-em-andamento', methods=['GET'])
+@login_required
+def ronda_em_andamento(dupla_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT r.id, r.data_ronda, r.status, r.criado_em
+            FROM sentir_agir_rondas r
+            WHERE r.dupla_id = %s AND r.status = 'em_andamento'
+            ORDER BY r.criado_em DESC
+            LIMIT 1
+        """, (dupla_id,))
+        ronda = cursor.fetchone()
+
+        if not ronda:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': True, 'data': None})
+
+        cursor.execute("""
+            SELECT v.id, v.leito, v.nm_paciente, v.avaliacao_final, v.criado_em,
+                   s.nome AS setor_nome, s.sigla AS setor_sigla
+            FROM sentir_agir_visitas v
+            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            WHERE v.ronda_id = %s ORDER BY v.criado_em ASC
+        """, (ronda['id'],))
+        visitas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        ronda_dict = dict(ronda)
+        if ronda_dict.get('data_ronda'):
+            val = ronda_dict['data_ronda']
+            ronda_dict['data_ronda'] = val.isoformat() if hasattr(val, 'isoformat') else str(val)
+        if ronda_dict.get('criado_em'):
+            ronda_dict['criado_em'] = ronda_dict['criado_em'].isoformat()
+
+        visitas_lista = []
+        for v in visitas:
+            vd = dict(v)
+            if vd.get('criado_em'):
+                vd['criado_em'] = vd['criado_em'].isoformat()
+            visitas_lista.append(vd)
+
+        ronda_dict['visitas'] = visitas_lista
+        return jsonify({'success': True, 'data': ronda_dict})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: EXCLUIR VISITA (somente rondas em_andamento)
+# ============================================================
+
+@painel28_bp.route('/visitas/<int:visita_id>', methods=['DELETE'])
+@login_required
+def excluir_visita(visita_id):
+    try:
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT v.id, v.nm_paciente, v.leito, v.ronda_id, r.status
+            FROM sentir_agir_visitas v
+            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+            WHERE v.id = %s
+        """, (visita_id,))
+        visita = cursor.fetchone()
+
+        if not visita:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
+
+        if visita['status'] != 'em_andamento':
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Nao e possivel excluir visitas de rondas ja concluidas'}), 400
+
+        # Remover arquivos de imagem do disco
+        cursor.execute("SELECT id, caminho_arquivo FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
+        imagens = cursor.fetchall()
+        caminho_base = _get_config(cursor, 'caminho_imagens',
+                                   os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
+        for img in imagens:
+            try:
+                caminho_completo = os.path.join(caminho_base, img['caminho_arquivo'])
+                if os.path.exists(caminho_completo):
+                    os.remove(caminho_completo)
+            except Exception:
+                pass
+
+        cursor.execute("DELETE FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
+        cursor.execute("DELETE FROM sentir_agir_tratativas WHERE visita_id = %s", (visita_id,))
+        cursor.execute("DELETE FROM sentir_agir_avaliacoes WHERE visita_id = %s", (visita_id,))
+        cursor.execute("DELETE FROM sentir_agir_visitas WHERE id = %s", (visita_id,))
+
+        _registrar_log(cursor, 'visita', visita_id, 'exclusao', usuario,
+                       valor_anterior='%s - %s' % (visita['nm_paciente'] or '', visita['leito']),
+                       ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Visita removida'})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
