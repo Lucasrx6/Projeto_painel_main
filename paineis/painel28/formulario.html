@@ -68,6 +68,26 @@
                         <input type="text" id="input-data-ronda" placeholder="dd/mm/aaaa" maxlength="10" inputmode="numeric" required>
                     </div>
                 </div>
+                <!-- Banner: Ronda em andamento encontrada -->
+                <div class="ronda-andamento-banner" id="ronda-andamento-banner" style="display:none;">
+                    <div class="ronda-andamento-header">
+                        <div class="ronda-andamento-titulo">
+                            <i class="fas fa-hourglass-half"></i>
+                            <div>
+                                <strong>Ronda em andamento</strong>
+                                <span id="ronda-andamento-data"></span>
+                            </div>
+                        </div>
+                        <button class="btn-retomar-ronda" onclick="window.FORM.retomarRonda()">
+                            <i class="fas fa-play-circle"></i> Retomar
+                        </button>
+                        <button class="btn-finalizar-ronda-banner" onclick="window.FORM.finalizarRondaEmAndamento()">
+                            <i class="fas fa-flag-checkered"></i> Finalizar
+                        </button>
+                    </div>
+                    <div class="ronda-andamento-visitas" id="ronda-andamento-visitas"></div>
+                </div>
+
                 <button class="btn-principal" id="btn-iniciar-ronda">
                     <i class="fas fa-play-circle"></i> Iniciar Ronda
                 </button>
@@ -89,6 +109,14 @@
                     </button>
                     <h2><i class="fas fa-bed"></i> Registrar Visita</h2>
                     <span class="ronda-info" id="ronda-info-badge">--</span>
+                </div>
+
+                <!-- Indicador modo edicao -->
+                <div class="edit-mode-bar" id="edit-mode-bar" style="display:none;">
+                    <span><i class="fas fa-edit"></i> Editando: <strong id="edit-mode-pac"></strong></span>
+                    <button type="button" class="btn-cancelar-edicao" id="btn-cancelar-edicao">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
                 </div>
 
                 <form class="formulario" id="form-visita" autocomplete="off">
@@ -249,6 +277,10 @@
             <div class="modal-body">
                 <p>Deseja concluir esta ronda?</p>
                 <div class="modal-resumo" id="modal-concluir-resumo"></div>
+                <div class="concluir-aviso">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Após concluída, <strong>não será mais possível</strong> adicionar, editar ou remover visitas desta ronda.
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn-cancelar" id="btn-cancelar-concluir">Cancelar</button>

@@ -118,8 +118,8 @@ def get_connection():
 
 def buscar_tratativas_pendentes(conn):
     """
-    Retorna todas as tratativas com status=pendente cuja visita
-    tem avaliacao_final em critico ou atencao.
+    Retorna todas as tratativas com status=pendente (itens criticos/nao).
+    Inclui descricao_problema para exibir a observacao especifica do item no email.
     """
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -128,9 +128,11 @@ def buscar_tratativas_pendentes(conn):
             t.id AS tratativa_id,
             t.status,
             t.criado_em,
+            t.descricao_problema,
             i.descricao AS item_descricao,
             c.nome AS categoria_nome,
             c.id AS categoria_id,
+            v.id AS visita_id,
             v.nm_paciente,
             v.nr_atendimento,
             v.leito,
@@ -149,12 +151,54 @@ def buscar_tratativas_pendentes(conn):
         JOIN sentir_agir_setores s ON s.id = v.setor_id
         JOIN sentir_agir_duplas d ON d.id = r.dupla_id
         WHERE t.status = 'pendente'
-          AND v.avaliacao_final IN ('critico', 'atencao')
     """)
 
     rows = cursor.fetchall()
     cursor.close()
     return [dict(r) for r in rows]
+
+
+def buscar_visitas_atencao(conn):
+    """
+    Retorna visitas com avaliacao_final = 'atencao' para envio de alerta simples.
+    Inclui os itens marcados como 'atencao' para listagem no email.
+    """
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    cursor.execute("""
+        SELECT
+            v.id AS visita_id,
+            v.nm_paciente,
+            v.nr_atendimento,
+            v.leito,
+            v.observacoes AS visita_observacoes,
+            v.criado_em,
+            r.data_ronda,
+            s.nome AS setor_nome,
+            s.sigla AS setor_sigla,
+            s.id AS setor_id,
+            d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
+        FROM sentir_agir_visitas v
+        JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+        JOIN sentir_agir_setores s ON s.id = v.setor_id
+        JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+        WHERE v.avaliacao_final = 'atencao'
+    """)
+    visitas = [dict(r) for r in cursor.fetchall()]
+
+    for v in visitas:
+        cursor.execute("""
+            SELECT i.descricao AS item_descricao, c.nome AS categoria_nome, c.id AS categoria_id
+            FROM sentir_agir_avaliacoes a
+            JOIN sentir_agir_itens i ON i.id = a.item_id
+            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+            WHERE a.visita_id = %s AND a.resultado = 'atencao'
+            ORDER BY c.ordem, i.ordem
+        """, (v['visita_id'],))
+        v['itens_atencao'] = [dict(r) for r in cursor.fetchall()]
+
+    cursor.close()
+    return visitas
 
 
 # =========================================================
@@ -197,42 +241,63 @@ def _formatar_data(valor):
     return '{}/{}/{}'.format(partes[2], partes[1], partes[0]) if len(partes) == 3 else str(valor)
 
 
+def _extrair_obs_item(descricao_problema):
+    """
+    Extrai a observacao especifica do item da descricao_problema.
+    Formato esperado: '... | Observacao do item: TEXTO' ou '... | Observacao da visita: TEXTO'
+    Retorna (tipo, texto) onde tipo e 'item', 'visita' ou None.
+    """
+    if not descricao_problema:
+        return None, None
+    if ' | Observacao do item: ' in descricao_problema:
+        texto = descricao_problema.split(' | Observacao do item: ', 1)[1]
+        return 'item', texto.strip()
+    if ' | Observacao da visita: ' in descricao_problema:
+        texto = descricao_problema.split(' | Observacao da visita: ', 1)[1]
+        return 'visita', texto.strip()
+    return None, None
+
+
 def montar_email_html(t):
     """
-    Monta corpo do email em HTML com dados da tratativa.
-    Cor e label variam conforme avaliacao (critico=vermelho, atencao=laranja).
+    Monta email HTML para item CRITICO.
+    Exibe de forma destacada a observacao especifica do item (se houver).
     """
-    avaliacao = t.get('avaliacao_final', 'critico')
-    cor = '#dc3545' if avaliacao == 'critico' else '#fd7e14'
-    label = 'CRITICO' if avaliacao == 'critico' else 'ATENCAO'
+    cor = '#dc3545'
+    label = 'CRITICO'
 
-    obs = t.get('visita_observacoes', '') or ''
-    obs_html = obs.replace('\n', '<br>')
-    bloco_obs = ''
-    if obs:
-        bloco_obs = (
-            '<div style="margin-top:14px;padding:10px 14px;background:#f8f9fa;'
-            'border-radius:4px;border-left:4px solid #6c757d;">'
-            '<p style="margin:0;font-size:12px;color:#6c757d;font-weight:bold;">Observacoes da visita:</p>'
-            '<p style="margin:6px 0 0;font-size:13px;color:#333;">' + obs_html + '</p>'
+    # Observacao especifica do item (nova funcionalidade)
+    tipo_obs, texto_obs = _extrair_obs_item(t.get('descricao_problema', ''))
+    bloco_obs_item = ''
+    if texto_obs:
+        titulo_obs = 'Observacao sobre este item:' if tipo_obs == 'item' else 'Observacao da visita:'
+        bloco_obs_item = (
+            '<div style="margin-top:16px;padding:14px 16px;background:#fff0f0;'
+            'border-radius:6px;border-left:5px solid #dc3545;">'
+            '<p style="margin:0;font-size:12px;color:#dc3545;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">'
+            + titulo_obs + '</p>'
+            '<p style="margin:8px 0 0;font-size:14px;color:#333;line-height:1.5;">'
+            + texto_obs.replace('\n', '<br>') + '</p>'
             '</div>'
         )
 
     html = """
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: {cor}; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
-            <h2 style="margin: 0; font-size: 18px;">Nova Tratativa - {label}</h2>
+            <h2 style="margin: 0; font-size: 18px;">&#x26A0; Nova Tratativa - {label}</h2>
             <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Hospital Anchieta Ceilandia - Projeto Sentir e Agir</p>
         </div>
 
         <div style="border: 1px solid #dee2e6; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
 
-            <div style="background: {cor}18; border-left: 4px solid {cor}; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px;">
+            <div style="background: #fff0f0; border-left: 4px solid {cor}; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px;">
                 <strong style="color: {cor}; font-size: 15px;">{item}</strong><br>
-                <small style="color: #555;">Categoria: {categoria}</small>
+                <small style="color: #555; margin-top: 4px; display:block;">Categoria: {categoria}</small>
             </div>
 
-            <table style="width: 100%%; border-collapse: collapse; font-size: 14px;">
+            {bloco_obs_item}
+
+            <table style="width: 100%%; border-collapse: collapse; font-size: 14px; margin-top: 16px;">
                 <tr>
                     <td style="padding: 7px 0; color: #6c757d; width: 130px; vertical-align:top;">Paciente:</td>
                     <td style="padding: 7px 0; font-weight: bold;">{paciente}</td>
@@ -265,8 +330,6 @@ def montar_email_html(t):
                 </tr>
             </table>
 
-            {bloco_obs}
-
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
                 Notificacao automatica - Sistema de Paineis HAC<br>
@@ -279,12 +342,129 @@ def montar_email_html(t):
         label=label,
         item=t.get('item_descricao', '-'),
         categoria=t.get('categoria_nome', '-'),
+        bloco_obs_item=bloco_obs_item,
         paciente=t.get('nm_paciente', 'Nao informado'),
         atendimento=t.get('nr_atendimento', '--') or '--',
         setor=t.get('setor_nome', '-'),
         leito=t.get('leito', '-'),
         data_ronda=_formatar_data(t.get('data_ronda')),
         dupla=t.get('dupla_nome', '-'),
+        enviado_em=datetime.now().strftime('%d/%m/%Y %H:%M')
+    )
+
+    return html
+
+
+def montar_email_html_atencao(v):
+    """
+    Monta email HTML de ALERTA para visita com avaliacao ATENCAO.
+    Lista os itens marcados como atencao para contexto do gestor.
+    """
+    cor = '#fd7e14'
+    itens = v.get('itens_atencao', [])
+
+    linhas_itens = ''
+    for item in itens:
+        linhas_itens += (
+            '<tr>'
+            '<td style="padding:6px 8px;border-bottom:1px solid #ffe8d0;font-size:13px;color:#333;">'
+            + item.get('item_descricao', '-') +
+            '</td>'
+            '<td style="padding:6px 8px;border-bottom:1px solid #ffe8d0;font-size:12px;color:#6c757d;">'
+            + item.get('categoria_nome', '-') +
+            '</td>'
+            '</tr>'
+        )
+    if not linhas_itens:
+        linhas_itens = '<tr><td colspan="2" style="padding:8px;color:#aaa;font-size:12px;">Itens nao identificados</td></tr>'
+
+    obs = v.get('visita_observacoes', '') or ''
+    bloco_obs = ''
+    if obs:
+        bloco_obs = (
+            '<div style="margin-top:14px;padding:10px 14px;background:#f8f9fa;'
+            'border-radius:4px;border-left:4px solid #6c757d;">'
+            '<p style="margin:0;font-size:12px;color:#6c757d;font-weight:bold;">Observacoes da visita:</p>'
+            '<p style="margin:6px 0 0;font-size:13px;color:#333;">' + obs.replace('\n', '<br>') + '</p>'
+            '</div>'
+        )
+
+    html = """
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: {cor}; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0; font-size: 18px;">&#x1F4CB; Alerta de Atencao - Visita</h2>
+            <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Hospital Anchieta Ceilandia - Projeto Sentir e Agir</p>
+        </div>
+
+        <div style="border: 1px solid #dee2e6; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
+
+            <div style="background: #fff8f0; border-left: 4px solid {cor}; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px;">
+                <strong style="color: {cor}; font-size: 14px;">Itens que requerem atencao nesta visita:</strong>
+            </div>
+
+            <table style="width:100%%;border-collapse:collapse;font-size:14px;background:#fff8f0;border-radius:6px;overflow:hidden;">
+                <thead>
+                    <tr style="background:{cor}22;">
+                        <th style="padding:8px;text-align:left;font-size:12px;color:{cor};font-weight:bold;">Item</th>
+                        <th style="padding:8px;text-align:left;font-size:12px;color:{cor};font-weight:bold;">Categoria</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {linhas_itens}
+                </tbody>
+            </table>
+
+            <table style="width: 100%%; border-collapse: collapse; font-size: 14px; margin-top: 16px;">
+                <tr>
+                    <td style="padding: 7px 0; color: #6c757d; width: 130px;">Paciente:</td>
+                    <td style="padding: 7px 0; font-weight: bold;">{paciente}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 7px 0; color: #6c757d;">Atendimento:</td>
+                    <td style="padding: 7px 0;">{atendimento}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 7px 0; color: #6c757d;">Setor:</td>
+                    <td style="padding: 7px 0;">{setor}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 7px 0; color: #6c757d;">Leito:</td>
+                    <td style="padding: 7px 0;">{leito}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 7px 0; color: #6c757d;">Data da Ronda:</td>
+                    <td style="padding: 7px 0;">{data_ronda}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 7px 0; color: #6c757d;">Dupla:</td>
+                    <td style="padding: 7px 0;">{dupla}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 7px 0; color: #6c757d;">Avaliacao:</td>
+                    <td style="padding: 7px 0;">
+                        <span style="background:{cor}; color:white; padding:2px 10px; border-radius:4px; font-size:12px; font-weight:bold;">ATENCAO</span>
+                    </td>
+                </tr>
+            </table>
+
+            {bloco_obs}
+
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
+                Notificacao automatica - Sistema de Paineis HAC<br>
+                Enviado em {enviado_em}
+            </p>
+        </div>
+    </div>
+    """.format(
+        cor=cor,
+        linhas_itens=linhas_itens,
+        paciente=v.get('nm_paciente', 'Nao informado'),
+        atendimento=v.get('nr_atendimento', '--') or '--',
+        setor=v.get('setor_nome', '-'),
+        leito=v.get('leito', '-'),
+        data_ronda=_formatar_data(v.get('data_ronda')),
+        dupla=v.get('dupla_nome', '-'),
         bloco_obs=bloco_obs,
         enviado_em=datetime.now().strftime('%d/%m/%Y %H:%M')
     )
@@ -354,31 +534,34 @@ def enviar_email(destinatarios, titulo, corpo_html):
 # =========================================================
 
 def _chave_tratativa(tratativa_id):
-    """Chave permanente de deduplicacao no log (sem data — uma notificacao por tratativa)."""
     return 'sentir_agir_trat_{}'.format(tratativa_id)
 
 
-def ja_notificado(conn, tratativa_id):
-    """
-    Retorna True se essa tratativa ja foi notificada com sucesso em qualquer momento.
-    Usa notificacoes_log como fonte da verdade permanente.
-    """
+def _chave_atencao(visita_id):
+    return 'sentir_agir_atencao_{}'.format(visita_id)
+
+
+def ja_notificado_por_chave(conn, chave):
+    """Retorna True se essa chave ja foi notificada com sucesso."""
     cursor = conn.cursor()
     cursor.execute("""
         SELECT id FROM notificacoes_log
         WHERE chave_evento = %s AND status = 'notificado'
         LIMIT 1
-    """, (_chave_tratativa(tratativa_id),))
+    """, (chave,))
     existe = cursor.fetchone() is not None
     cursor.close()
     return existe
 
 
-def registrar_log(conn, tratativa_id, nr_atendimento, categoria, setor, destinatarios, sucesso, resposta):
-    """Insere registro no log. Nao verifica duplicata aqui — a checagem e feita em ja_notificado()."""
+def ja_notificado(conn, tratativa_id):
+    return ja_notificado_por_chave(conn, _chave_tratativa(tratativa_id))
+
+
+def registrar_log_chave(conn, tipo_evento, chave, nr_atendimento, categoria, setor, destinatarios, sucesso, resposta):
+    """Insere registro no log pela chave fornecida."""
     cursor = conn.cursor()
     agora = datetime.now()
-    chave = _chave_tratativa(tratativa_id)
     emails = ', '.join([d['email'] for d in destinatarios]) if destinatarios else 'nenhum'
 
     dados_extra = json.dumps({
@@ -399,9 +582,8 @@ def registrar_log(conn, tratativa_id, nr_atendimento, categoria, setor, destinat
              %s, %s,
              %s, %s)
     """, (
-        'sentir_agir_tratativa', chave, str(nr_atendimento or ''), setor,
-        dados_extra,
-        '',
+        tipo_evento, chave, str(nr_atendimento or ''), setor,
+        dados_extra, '',
         'notificado' if sucesso else 'erro',
         agora,
         agora if sucesso else None,
@@ -414,54 +596,48 @@ def registrar_log(conn, tratativa_id, nr_atendimento, categoria, setor, destinat
     cursor.close()
 
 
+def registrar_log(conn, tratativa_id, nr_atendimento, categoria, setor, destinatarios, sucesso, resposta):
+    """Mantém compatibilidade — delega para registrar_log_chave."""
+    registrar_log_chave(
+        conn, 'sentir_agir_tratativa', _chave_tratativa(tratativa_id),
+        nr_atendimento, categoria, setor, destinatarios, sucesso, resposta
+    )
+
+
 # =========================================================
 # CICLO PRINCIPAL: VERIFICAR NOVAS TRATATIVAS
 # =========================================================
 
 def verificar_tratativas():
     """
-    Verifica tratativas pendentes com avaliacao critico/atencao e envia email
-    para as que ainda nao foram notificadas.
+    Verifica e notifica:
+      1. Tratativas pendentes de itens CRITICOS (email detalhado com obs do item)
+      2. Visitas com avaliacao ATENCAO ainda nao notificadas (email de alerta simples)
 
-    Logica:
-    - Busca todas as tratativas pendentes (critico/atencao) no banco
-    - Para cada uma, consulta notificacoes_log pela chave permanente
-    - So notifica se nunca houve notificacao com sucesso
-    - Idempotente: reiniciar o servico nao perde nem duplica notificacoes
+    Idempotente: reiniciar o servico nao perde nem duplica notificacoes.
     """
     logger.info('=' * 50)
-    logger.info('Verificando novas tratativas criticas/atencao...')
+    logger.info('Verificando tratativas criticas e alertas de atencao...')
 
     conn = get_connection()
     if not conn:
         return
 
     try:
+        # ── BLOCO 1: itens CRITICOS (via tratativas) ──────────────────────
         tratativas_atuais = buscar_tratativas_pendentes(conn)
-
-        if not tratativas_atuais:
-            logger.info('[sentir_agir] Nenhuma tratativa pendente critico/atencao no momento')
-            return
-
-        notificados = 0
-        ignorados = 0
-        sem_responsavel = 0
+        notif_critico = 0
+        ignorados_critico = 0
+        sem_resp_critico = 0
 
         for t in tratativas_atuais:
             tid = t['tratativa_id']
-
-            # Pula se ja foi enviado com sucesso em qualquer execucao anterior
             if ja_notificado(conn, tid):
-                ignorados += 1
+                ignorados_critico += 1
                 continue
 
             responsaveis = buscar_responsaveis(conn, t['categoria_id'], t['setor_id'])
-
-            avaliacao = t.get('avaliacao_final', 'critico')
-            label_av = 'CRITICO' if avaliacao == 'critico' else 'ATENCAO'
-
-            titulo = 'Sentir e Agir - {} - {} - {}'.format(
-                label_av,
+            titulo = 'Sentir e Agir - CRITICO - {} - {}'.format(
                 t.get('categoria_nome', '-'),
                 t.get('setor_nome', '-')
             )
@@ -473,9 +649,9 @@ def verificar_tratativas():
                 corpo_html = montar_email_html(t)
                 sucesso_email, resposta_email = enviar_email(responsaveis, titulo, corpo_html)
             else:
-                sem_responsavel += 1
+                sem_resp_critico += 1
                 logger.info(
-                    '[sentir_agir] Sem responsavel com email para categoria=%s setor=%s',
+                    '[critico] Sem responsavel para categoria=%s setor=%s',
                     t.get('categoria_nome'), t.get('setor_nome')
                 )
 
@@ -487,20 +663,65 @@ def verificar_tratativas():
                 responsaveis,
                 sucesso_email, resposta_email
             )
+            notif_critico += 1
 
-            notificados += 1
-
-        # Resumo
-        if notificados > 0:
+        if tratativas_atuais:
             logger.info(
-                '[sentir_agir] %s notificadas | %s sem responsavel | %s ja enviadas anteriormente',
-                notificados, sem_responsavel, ignorados
+                '[critico] %s notificadas | %s sem responsavel | %s ja enviadas',
+                notif_critico, sem_resp_critico, ignorados_critico
             )
         else:
-            logger.info(
-                '[sentir_agir] Nenhuma nova (%s em monitoramento, %s ja notificadas)',
-                len(tratativas_atuais), ignorados
+            logger.info('[critico] Nenhuma tratativa pendente no momento')
+
+        # ── BLOCO 2: visitas de ATENCAO (alerta simples) ──────────────────
+        visitas_atencao = buscar_visitas_atencao(conn)
+        notif_atencao = 0
+        ignorados_atencao = 0
+        sem_resp_atencao = 0
+
+        for v in visitas_atencao:
+            vid = v['visita_id']
+            chave = _chave_atencao(vid)
+            if ja_notificado_por_chave(conn, chave):
+                ignorados_atencao += 1
+                continue
+
+            # Para atencao, busca responsaveis pelo setor (sem categoria especifica)
+            responsaveis = buscar_responsaveis(conn, None, v['setor_id'])
+            titulo = 'Sentir e Agir - ATENCAO - {} - {}'.format(
+                v.get('setor_nome', '-'),
+                _formatar_data(v.get('data_ronda'))
             )
+
+            sucesso_email = False
+            resposta_email = 'Sem responsavel com email cadastrado'
+
+            if responsaveis:
+                corpo_html = montar_email_html_atencao(v)
+                sucesso_email, resposta_email = enviar_email(responsaveis, titulo, corpo_html)
+            else:
+                sem_resp_atencao += 1
+                logger.info(
+                    '[atencao] Sem responsavel para setor=%s', v.get('setor_nome')
+                )
+
+            registrar_log_chave(
+                conn, 'sentir_agir_atencao', chave,
+                v.get('nr_atendimento'),
+                'atencao',
+                v.get('setor_nome'),
+                responsaveis,
+                sucesso_email, resposta_email
+            )
+            notif_atencao += 1
+
+        if visitas_atencao:
+            logger.info(
+                '[atencao] %s notificadas | %s sem responsavel | %s ja enviadas',
+                notif_atencao, sem_resp_atencao, ignorados_atencao
+            )
+        else:
+            logger.info('[atencao] Nenhuma visita de atencao no momento')
 
     except Exception as e:
         logger.error('[sentir_agir] Erro: %s', e)

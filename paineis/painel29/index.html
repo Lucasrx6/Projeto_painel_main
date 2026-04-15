@@ -29,6 +29,10 @@
                     <button id="btn-exportar" class="btn-header btn-exportar" title="Exportar Excel">
                         <i class="fas fa-file-excel"></i> <span class="btn-text">Exportar</span>
                     </button>
+                    <!-- Configurar Formulario -->
+                    <button id="btn-configurar-formulario" class="btn-header" title="Configurar Formulario">
+                        <i class="fas fa-sliders"></i> <span class="btn-text">Configurar</span>
+                    </button>
                     <!-- Formulario -->
                     <button id="btn-formulario" class="btn-header" title="Ir para Formulario">
                         <i class="fas fa-heart-pulse"></i> <span class="btn-text">Formulario</span>
@@ -229,8 +233,38 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancelar" id="btn-cancelar-detalhe">Fechar</button>
+                <button class="btn-alterar-status" id="btn-alterar-status-ronda" style="display:none;">
+                    <i class="fas fa-exchange-alt"></i> Alterar Status
+                </button>
                 <button class="btn-salvar-edicao" id="btn-salvar-edicao" style="display:none;">
                     <i class="fas fa-save"></i> Salvar Alteracoes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Alterar Status da Ronda -->
+    <div class="modal-overlay" id="modal-status-ronda">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-exchange-alt"></i> Alterar Status da Ronda</h2>
+                <button class="modal-fechar" id="btn-fechar-status-ronda">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:14px;">Selecione o novo status para esta ronda:</p>
+                <div class="form-group">
+                    <select id="select-novo-status-ronda" class="detalhe-campo-select">
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="concluida">Concluida</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
+                </div>
+                <div class="status-ronda-aviso" id="status-ronda-aviso" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-cancelar-status-ronda">Cancelar</button>
+                <button class="btn-confirmar-status" id="btn-confirmar-status-ronda">
+                    <i class="fas fa-check"></i> Confirmar
                 </button>
             </div>
         </div>

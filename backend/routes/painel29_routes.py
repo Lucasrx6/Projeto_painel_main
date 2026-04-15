@@ -644,6 +644,61 @@ def editar_visita(visita_id):
 
 
 # ============================================================
+# API: ALTERAR STATUS DA RONDA (qualquer usuário logado)
+# ============================================================
+
+@painel29_bp.route('/api/paineis/painel29/rondas/<int:ronda_id>/status', methods=['PUT'])
+@login_required
+def alterar_status_ronda(ronda_id):
+    """Altera o status de uma ronda. Acessível a qualquer usuário logado."""
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+        novo_status = dados.get('status', '').strip()
+        status_validos = ('em_andamento', 'concluida', 'cancelada')
+        if novo_status not in status_validos:
+            return jsonify({'success': False, 'error': 'Status invalido. Use: ' + ', '.join(status_validos)}), 400
+
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("SELECT id, status FROM sentir_agir_rondas WHERE id = %s", (ronda_id,))
+        ronda = cursor.fetchone()
+        if not ronda:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
+
+        if ronda['status'] == novo_status:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': True, 'message': 'Ronda ja esta com o status ' + novo_status})
+
+        cursor.execute(
+            "UPDATE sentir_agir_rondas SET status = %s, atualizado_em = NOW() WHERE id = %s",
+            (novo_status, ronda_id)
+        )
+        _registrar_log(cursor, 'ronda', ronda_id, 'alteracao_status', usuario,
+                       campo_alterado='status',
+                       valor_anterior=ronda['status'],
+                       valor_novo=novo_status,
+                       ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        labels = {'em_andamento': 'Em andamento', 'concluida': 'Concluida', 'cancelada': 'Cancelada'}
+        return jsonify({'success': True, 'message': 'Status alterado para: ' + labels.get(novo_status, novo_status)})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
 # API: EXPORTAR EXCEL
 # ============================================================
 

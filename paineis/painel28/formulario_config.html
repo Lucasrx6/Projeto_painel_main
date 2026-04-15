@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Configurar Formulário - Sentir e Agir</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel28/style_config.css">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#6f42c1">
+    <script>
+        if (localStorage.getItem('tema_sistema') === 'azul')
+            document.documentElement.classList.add('tema-azul');
+    </script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- Cabeçalho -->
+    <div class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                <h1><i class="fas fa-sliders"></i> Configurar Formulário</h1>
+            </div>
+            <div class="header-right">
+                <button id="btn-atualizar" class="btn-header" title="Recarregar">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="btn-voltar" class="btn-header" title="Voltar">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo principal -->
+    <div class="main-content">
+        <div class="config-wrapper">
+
+            <!-- Barra de ações -->
+            <div class="config-toolbar">
+                <div class="config-toolbar-title">
+                    Categorias e Itens
+                    <span>Gerencie as perguntas do formulário Sentir e Agir</span>
+                </div>
+                <button id="btn-nova-categoria" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Nova Categoria
+                </button>
+            </div>
+
+            <!-- Lista de categorias -->
+            <div id="config-lista">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <span>Carregando categorias...</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div class="hub-footer">
+        <span>Hospital Anchieta Ceilândia</span>
+        <span class="footer-sep">|</span>
+        <span>Sentir e Agir · Configurar Formulário</span>
+    </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ============================================================
+     MODAL: CATEGORIA
+     ============================================================ -->
+<div class="modal-overlay" id="modal-categoria">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="fas fa-layer-group"></i> <span id="modal-cat-titulo">Nova Categoria</span></h3>
+            <button class="btn-fechar-modal" id="btn-fechar-modal-categoria" title="Fechar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+
+            <div class="campo-grupo">
+                <label for="modal-cat-nome">Nome da Categoria *</label>
+                <input type="text" id="modal-cat-nome" placeholder="Ex: Comunicação, Ambiente, Equipe..." maxlength="100">
+            </div>
+
+            <div class="campo-row">
+                <div class="campo-grupo">
+                    <label for="modal-cat-icone">Ícone (Font Awesome)</label>
+                    <div class="icone-preview-wrap">
+                        <input type="text" id="modal-cat-icone" placeholder="fa-circle" maxlength="60">
+                        <div class="icone-preview-box" id="modal-cat-icone-preview">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                    </div>
+                    <small style="color:#888;font-size:0.75rem;">Ex: fa-heart, fa-bed, fa-users, fa-star</small>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label>Cor da Categoria</label>
+                <div class="cor-preview-wrap">
+                    <input type="color" id="modal-cat-cor" value="#17a2b8">
+                    <div class="cor-presets" id="cor-presets-container"></div>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label>Opções</label>
+                <div class="toggle-wrap">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="modal-cat-nao-aplica" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label">Permitir opção "Não se Aplica" nos itens desta categoria</span>
+                </div>
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="btn-cancelar-categoria">Cancelar</button>
+            <button class="btn btn-primary" id="btn-confirmar-categoria">
+                <i class="fas fa-check"></i> Salvar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MODAL: ITEM
+     ============================================================ -->
+<div class="modal-overlay" id="modal-item">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="fas fa-list-ul"></i> <span id="modal-item-titulo">Novo Item</span></h3>
+            <button class="btn-fechar-modal" id="btn-fechar-modal-item" title="Fechar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+
+            <div class="campo-grupo">
+                <label for="modal-item-descricao">Descrição do Item *</label>
+                <textarea id="modal-item-descricao" placeholder="Ex: O paciente foi informado sobre seu diagnóstico?" rows="3" maxlength="300"></textarea>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="modal-item-tipo">Tipo de Resposta</label>
+                <select id="modal-item-tipo">
+                    <option value="semaforo">Semáforo (Adequado / Atenção / Crítico / N/A)</option>
+                    <option value="sim_nao">Sim / Não</option>
+                </select>
+                <small style="color:#888;font-size:0.75rem;">
+                    <b>Semáforo:</b> avaliação em 4 níveis · <b>Sim/Não:</b> resposta binária (Não gera tratativa)
+                </small>
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="btn-cancelar-item">Cancelar</button>
+            <button class="btn btn-primary" id="btn-confirmar-item">
+                <i class="fas fa-check"></i> Salvar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="/paineis/painel28/main_config.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
