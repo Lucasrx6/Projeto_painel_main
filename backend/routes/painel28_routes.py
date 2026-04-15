@@ -8,7 +8,7 @@ import os
 import uuid
 import traceback
 from datetime import datetime, date
-from flask import Blueprint, request, jsonify, send_from_directory
+from flask import Blueprint, request, jsonify, send_from_directory, session
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection
 from backend.middleware.decorators import login_required
@@ -63,7 +63,7 @@ def _get_usuario():
 @painel28_bp.route('/index', endpoint='index_html', methods=['GET'])
 @login_required
 def servir_hub():
-    if not verificar_permissao_painel(28):
+    if not verificar_permissao_painel(session.get('usuario_id'), 'painel28'):
         return jsonify({'error': 'Sem permissao para este painel'}), 403
     return send_from_directory(PAINEL_DIR, 'index.html')
 
@@ -71,7 +71,7 @@ def servir_hub():
 @painel28_bp.route('/formulario', endpoint='formulario_html', methods=['GET'])
 @login_required
 def servir_formulario():
-    if not verificar_permissao_painel(28):
+    if not verificar_permissao_painel(session.get('usuario_id'), 'painel28'):
         return jsonify({'error': 'Sem permissao para este painel'}), 403
     return send_from_directory(PAINEL_DIR, 'formulario.html')
 
@@ -609,7 +609,7 @@ def registrar_visita():
         visita_id = cursor.fetchone()['id']
 
         # Inserir avaliações e detectar items críticos
-        avaliacoes_criticas = []  # lista de (avaliacao_id, item_id)
+        avaliacoes_criticas = []  # lista de (avaliacao_id, item_id, obs_item)
 
         for av in avaliacoes:
             cursor.execute("""
@@ -621,14 +621,15 @@ def registrar_visita():
 
             # Se for critico ou nao, marcar pra criar tratativa
             if av['resultado'] in ('critico', 'nao'):
-                avaliacoes_criticas.append((avaliacao_id, av['item_id']))
+                obs_item = (av.get('obs_item') or '').strip() or None
+                avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
 
         # Verificar se criação automática está ativa
         auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
         tratativas_criadas = 0
 
         if auto_criar == 'true' and avaliacoes_criticas:
-            for avaliacao_id, item_id in avaliacoes_criticas:
+            for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
                 # Buscar dados do item e categoria
                 cursor.execute("""
                     SELECT i.id AS item_id, i.descricao AS item_descricao,
@@ -663,12 +664,14 @@ def registrar_visita():
                     if resp:
                         responsavel_id = resp['id']
 
-                # Montar descricao do problema
-                desc = 'Item: ' + item_info['item_descricao']
+                # Montar descricao do problema — prioriza obs específica do item
+                desc = 'Item critico: ' + item_info['item_descricao']
                 desc += ' | Categoria: ' + item_info['categoria_nome']
                 desc += ' | Paciente: ' + (nm_paciente or 'N/I')
                 desc += ' | Leito: ' + leito
-                if observacoes:
+                if obs_item:
+                    desc += ' | Observacao do item: ' + obs_item
+                elif observacoes:
                     desc += ' | Observacao da visita: ' + observacoes
 
                 # Criar tratativa
@@ -1066,13 +1069,14 @@ def atualizar_visita(visita_id):
             """, (visita_id, av['item_id'], av['resultado']))
             avaliacao_id = cursor.fetchone()['id']
             if av['resultado'] in ('critico', 'nao'):
-                avaliacoes_criticas.append((avaliacao_id, av['item_id']))
+                obs_item = (av.get('obs_item') or '').strip() or None
+                avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
 
         auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
         tratativas_criadas = 0
 
         if auto_criar == 'true' and avaliacoes_criticas:
-            for avaliacao_id, item_id in avaliacoes_criticas:
+            for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
                 cursor.execute("""
                     SELECT i.id AS item_id, i.descricao AS item_descricao,
                            c.id AS categoria_id, c.nome AS categoria_nome
@@ -1100,13 +1104,18 @@ def atualizar_visita(visita_id):
                     if resp:
                         responsavel_id = resp['id']
 
+                desc = 'Item critico: ' + item_info['item_descricao']
+                desc += ' | Categoria: ' + item_info['categoria_nome']
+                if obs_item:
+                    desc += ' | Observacao do item: ' + obs_item
+                elif observacoes:
+                    desc += ' | Observacao da visita: ' + observacoes
+
                 cursor.execute("""
                     INSERT INTO sentir_agir_tratativas
                         (visita_id, avaliacao_id, item_id, categoria_id, responsavel_id, descricao_problema, status)
                     VALUES (%s, %s, %s, %s, %s, %s, 'pendente')
-                """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'], responsavel_id,
-                      'Item: %s | Categoria: %s | Obs: %s' % (
-                          item_info['item_descricao'], item_info['categoria_nome'], observacoes or '')))
+                """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'], responsavel_id, desc))
                 tratativas_criadas += 1
 
             cursor.execute("""
@@ -1239,6 +1248,394 @@ def excluir_visita(visita_id):
         cursor.close()
         conn.close()
         return jsonify({'success': True, 'message': 'Visita removida'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# CONFIGURAR FORMULÁRIO - PÁGINA ESTÁTICA
+# ============================================================
+
+@painel28_bp.route('/configurar-formulario', endpoint='configurar_formulario_html', methods=['GET'])
+@login_required
+def servir_configurar_formulario():
+    if not verificar_permissao_painel(session.get('usuario_id'), 'painel28'):
+        return jsonify({'error': 'Sem permissao para este painel'}), 403
+    return send_from_directory(PAINEL_DIR, 'formulario_config.html')
+
+
+@painel28_bp.route('/main_config.js', endpoint='main_config_js', methods=['GET'])
+def servir_main_config():
+    return send_from_directory(PAINEL_DIR, 'main_config.js')
+
+
+@painel28_bp.route('/style_config.css', endpoint='style_config_css', methods=['GET'])
+def servir_style_config():
+    return send_from_directory(PAINEL_DIR, 'style_config.css')
+
+
+# ============================================================
+# API: CATEGORIAS - CRUD COMPLETO
+# ============================================================
+
+@painel28_bp.route('/categorias', methods=['GET'])
+@login_required
+def listar_categorias():
+    """Lista todas as categorias (incluindo inativas) com seus itens."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT id, nome, icone, cor, ordem, ativo, permite_nao_aplica
+            FROM sentir_agir_categorias ORDER BY ordem, nome
+        """)
+        categorias = cursor.fetchall()
+        cursor.execute("""
+            SELECT id, categoria_id, descricao, ordem, ativo,
+                   COALESCE(tipo, 'semaforo') AS tipo
+            FROM sentir_agir_itens ORDER BY ordem
+        """)
+        itens = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        itens_por_cat = {}
+        for item in itens:
+            cid = item['categoria_id']
+            if cid not in itens_por_cat:
+                itens_por_cat[cid] = []
+            itens_por_cat[cid].append(dict(item))
+
+        resultado = []
+        for cat in categorias:
+            d = dict(cat)
+            d['itens'] = itens_por_cat.get(cat['id'], [])
+            resultado.append(d)
+
+        return jsonify({'success': True, 'data': resultado})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/categorias', methods=['POST'])
+@login_required
+def criar_categoria():
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+        nome = (dados.get('nome') or '').strip()
+        if not nome:
+            return jsonify({'success': False, 'error': 'Nome obrigatorio'}), 400
+        icone = (dados.get('icone') or 'fa-circle').strip()
+        cor = (dados.get('cor') or '#17a2b8').strip()
+        permite_nao_aplica = bool(dados.get('permite_nao_aplica', True))
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS prox FROM sentir_agir_categorias")
+        prox_ordem = cursor.fetchone()['prox']
+        cursor.execute("""
+            INSERT INTO sentir_agir_categorias (nome, icone, cor, ordem, ativo, permite_nao_aplica)
+            VALUES (%s, %s, %s, %s, TRUE, %s) RETURNING id
+        """, (nome, icone, cor, prox_ordem, permite_nao_aplica))
+        cat_id = cursor.fetchone()['id']
+        _registrar_log(cursor, 'categoria', cat_id, 'criacao', usuario,
+                       valor_novo=nome, ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'data': {'id': cat_id}, 'message': 'Categoria criada'}), 201
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/categorias/<int:cat_id>', methods=['PUT'])
+@login_required
+def editar_categoria(cat_id):
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+        nome = (dados.get('nome') or '').strip()
+        if not nome:
+            return jsonify({'success': False, 'error': 'Nome obrigatorio'}), 400
+        icone = (dados.get('icone') or 'fa-circle').strip()
+        cor = (dados.get('cor') or '#17a2b8').strip()
+        permite_nao_aplica = bool(dados.get('permite_nao_aplica', True))
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, nome FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
+        cat = cursor.fetchone()
+        if not cat:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+        cursor.execute("""
+            UPDATE sentir_agir_categorias
+            SET nome = %s, icone = %s, cor = %s, permite_nao_aplica = %s
+            WHERE id = %s
+        """, (nome, icone, cor, permite_nao_aplica, cat_id))
+        _registrar_log(cursor, 'categoria', cat_id, 'edicao', usuario,
+                       campo_alterado='nome', valor_anterior=cat['nome'],
+                       valor_novo=nome, ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Categoria atualizada'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/categorias/<int:cat_id>/toggle', methods=['PUT'])
+@login_required
+def toggle_categoria(cat_id):
+    try:
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, ativo FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
+        cat = cursor.fetchone()
+        if not cat:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+        novo_status = not cat['ativo']
+        cursor.execute("""
+            UPDATE sentir_agir_categorias SET ativo = %s WHERE id = %s
+        """, (novo_status, cat_id))
+        _registrar_log(cursor, 'categoria', cat_id, 'alteracao_status', usuario,
+                       campo_alterado='ativo', valor_anterior=str(cat['ativo']),
+                       valor_novo=str(novo_status), ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True,
+                        'message': 'Categoria ativada' if novo_status else 'Categoria desativada'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/categorias/<int:cat_id>/reordenar', methods=['PUT'])
+@login_required
+def reordenar_categoria(cat_id):
+    """Recebe {'direcao': 'cima' | 'baixo'} e troca a ordem com a vizinha."""
+    try:
+        dados = request.get_json()
+        direcao = (dados or {}).get('direcao', '')
+        if direcao not in ('cima', 'baixo'):
+            return jsonify({'success': False, 'error': 'Direcao invalida'}), 400
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, ordem FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
+        cat = cursor.fetchone()
+        if not cat:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+        if direcao == 'cima':
+            cursor.execute("""
+                SELECT id, ordem FROM sentir_agir_categorias
+                WHERE ordem < %s ORDER BY ordem DESC LIMIT 1
+            """, (cat['ordem'],))
+        else:
+            cursor.execute("""
+                SELECT id, ordem FROM sentir_agir_categorias
+                WHERE ordem > %s ORDER BY ordem ASC LIMIT 1
+            """, (cat['ordem'],))
+        vizinha = cursor.fetchone()
+        if not vizinha:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Ja esta no limite'})
+        cursor.execute("UPDATE sentir_agir_categorias SET ordem = %s WHERE id = %s",
+                       (vizinha['ordem'], cat_id))
+        cursor.execute("UPDATE sentir_agir_categorias SET ordem = %s WHERE id = %s",
+                       (cat['ordem'], vizinha['id']))
+        _registrar_log(cursor, 'categoria', cat_id, 'reordenacao', usuario, ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Reordenado'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: ITENS - CRUD COMPLETO
+# ============================================================
+
+@painel28_bp.route('/itens', methods=['POST'])
+@login_required
+def criar_item():
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+        categoria_id = dados.get('categoria_id')
+        descricao = (dados.get('descricao') or '').strip()
+        tipo = dados.get('tipo', 'semaforo')
+        if not categoria_id or not descricao:
+            return jsonify({'success': False, 'error': 'categoria_id e descricao obrigatorios'}), 400
+        if tipo not in ('semaforo', 'sim_nao'):
+            tipo = 'semaforo'
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id FROM sentir_agir_categorias WHERE id = %s", (categoria_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+        cursor.execute("""
+            SELECT COALESCE(MAX(ordem), 0) + 1 AS prox
+            FROM sentir_agir_itens WHERE categoria_id = %s
+        """, (categoria_id,))
+        prox_ordem = cursor.fetchone()['prox']
+        cursor.execute("""
+            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, ordem, ativo)
+            VALUES (%s, %s, %s, %s, TRUE) RETURNING id
+        """, (categoria_id, descricao, tipo, prox_ordem))
+        item_id = cursor.fetchone()['id']
+        _registrar_log(cursor, 'item', item_id, 'criacao', usuario,
+                       valor_novo=descricao, ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'data': {'id': item_id}, 'message': 'Item criado'}), 201
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/itens/<int:item_id>', methods=['PUT'])
+@login_required
+def editar_item(item_id):
+    try:
+        dados = request.get_json()
+        if not dados:
+            return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+        descricao = (dados.get('descricao') or '').strip()
+        if not descricao:
+            return jsonify({'success': False, 'error': 'Descricao obrigatoria'}), 400
+        tipo = dados.get('tipo', 'semaforo')
+        if tipo not in ('semaforo', 'sim_nao'):
+            tipo = 'semaforo'
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, descricao FROM sentir_agir_itens WHERE id = %s", (item_id,))
+        item = cursor.fetchone()
+        if not item:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
+        cursor.execute("""
+            UPDATE sentir_agir_itens
+            SET descricao = %s, tipo = %s
+            WHERE id = %s
+        """, (descricao, tipo, item_id))
+        _registrar_log(cursor, 'item', item_id, 'edicao', usuario,
+                       campo_alterado='descricao', valor_anterior=item['descricao'],
+                       valor_novo=descricao, ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Item atualizado'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/itens/<int:item_id>/toggle', methods=['PUT'])
+@login_required
+def toggle_item(item_id):
+    try:
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, ativo FROM sentir_agir_itens WHERE id = %s", (item_id,))
+        item = cursor.fetchone()
+        if not item:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
+        novo_status = not item['ativo']
+        cursor.execute("""
+            UPDATE sentir_agir_itens SET ativo = %s WHERE id = %s
+        """, (novo_status, item_id))
+        _registrar_log(cursor, 'item', item_id, 'alteracao_status', usuario,
+                       campo_alterado='ativo', valor_anterior=str(item['ativo']),
+                       valor_novo=str(novo_status), ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True,
+                        'message': 'Item ativado' if novo_status else 'Item desativado'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/itens/<int:item_id>/reordenar', methods=['PUT'])
+@login_required
+def reordenar_item(item_id):
+    """Recebe {'direcao': 'cima' | 'baixo'} e troca ordem com vizinho na mesma categoria."""
+    try:
+        dados = request.get_json()
+        direcao = (dados or {}).get('direcao', '')
+        if direcao not in ('cima', 'baixo'):
+            return jsonify({'success': False, 'error': 'Direcao invalida'}), 400
+        usuario = _get_usuario()
+        ip = _get_ip()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, ordem, categoria_id FROM sentir_agir_itens WHERE id = %s",
+                       (item_id,))
+        item = cursor.fetchone()
+        if not item:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
+        if direcao == 'cima':
+            cursor.execute("""
+                SELECT id, ordem FROM sentir_agir_itens
+                WHERE categoria_id = %s AND ordem < %s ORDER BY ordem DESC LIMIT 1
+            """, (item['categoria_id'], item['ordem']))
+        else:
+            cursor.execute("""
+                SELECT id, ordem FROM sentir_agir_itens
+                WHERE categoria_id = %s AND ordem > %s ORDER BY ordem ASC LIMIT 1
+            """, (item['categoria_id'], item['ordem']))
+        vizinho = cursor.fetchone()
+        if not vizinho:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Ja esta no limite'})
+        cursor.execute("UPDATE sentir_agir_itens SET ordem = %s WHERE id = %s",
+                       (vizinho['ordem'], item_id))
+        cursor.execute("UPDATE sentir_agir_itens SET ordem = %s WHERE id = %s",
+                       (item['ordem'], vizinho['id']))
+        _registrar_log(cursor, 'item', item_id, 'reordenacao', usuario, ip_origem=ip)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Reordenado'})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -435,17 +435,24 @@
         if (!estado.rondaId || !estado.pacienteAtual || estado.editandoVisitaId) return;
         var pac = estado.pacienteAtual;
         var avaliacoes = {};
+        var obsPorItem = {};
         var itens = document.querySelectorAll('.item-avaliacao');
         for (var i = 0; i < itens.length; i++) {
             var itemId = itens[i].getAttribute('data-item-id');
             var sel = itens[i].querySelector('.btn-semaforo.selecionado');
             if (sel) avaliacoes[itemId] = sel.getAttribute('data-valor');
+            var obsDiv = itens[i].querySelector('.item-obs-critico');
+            if (obsDiv && obsDiv.style.display !== 'none') {
+                var ta = obsDiv.querySelector('.item-obs-critico-textarea');
+                if (ta && ta.value.trim()) obsPorItem[itemId] = ta.value.trim();
+            }
         }
         var obs = document.getElementById('input-observacoes');
         try {
             localStorage.setItem(_chaveDraft(pac), JSON.stringify({
                 paciente: pac,
                 avaliacoes: avaliacoes,
+                obsPorItem: obsPorItem,
                 observacoes: obs ? obs.value : ''
             }));
         } catch (e) {}
@@ -466,6 +473,18 @@
                     var container = btn.closest('.item-semaforo');
                     container.querySelectorAll('.btn-semaforo').forEach(function (b) { b.classList.remove('selecionado'); });
                     btn.classList.add('selecionado');
+                    // Restaurar obs do item se crítico
+                    var itemEl = btn.closest('.item-avaliacao');
+                    if (itemEl && (valor === 'critico' || valor === 'nao')) {
+                        var obsDiv = itemEl.querySelector('.item-obs-critico');
+                        if (obsDiv) {
+                            obsDiv.style.display = 'block';
+                            if (draft.obsPorItem && draft.obsPorItem[itemId]) {
+                                var ta = obsDiv.querySelector('.item-obs-critico-textarea');
+                                if (ta) ta.value = draft.obsPorItem[itemId];
+                            }
+                        }
+                    }
                     restaurou = true;
                 }
             });
@@ -527,6 +546,27 @@
         }
         ocultarBannerRondaAndamento();
         iniciarRonda();
+    }
+
+    function finalizarRondaEmAndamento() {
+        if (!estado.rondaEmAndamento) return;
+        var ronda = estado.rondaEmAndamento;
+        var nVisitas = ronda.visitas ? ronda.visitas.length : 0;
+        var msg = 'Finalizar a ronda de ' + formatarData(ronda.data_ronda) + '?\n\n' +
+            nVisitas + ' visita(s) registrada(s).\n\nApós finalizar, não será possível adicionar novas visitas.';
+        if (!confirm(msg)) return;
+
+        fetch(CONFIG.apiRondas + '/' + ronda.id + '/concluir', { method: 'PUT' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    mostrarToast('Ronda finalizada com sucesso!', 'sucesso');
+                    ocultarBannerRondaAndamento();
+                } else {
+                    mostrarToast(data.error || 'Erro ao finalizar ronda', 'erro');
+                }
+            })
+            .catch(function () { mostrarToast('Erro de comunicação', 'erro'); });
     }
 
     function excluirVisitaAndamento(visitaId) {
@@ -606,7 +646,13 @@
                         html += '    </button>';
                     }
                 }
-                html += '  </div></div>';
+                html += '  </div>';
+                // Campo de observação individual para item crítico (aparece ao marcar como crítico/não)
+                html += '  <div class="item-obs-critico" style="display:none;">';
+                html += '    <label class="item-obs-critico-label"><i class="fas fa-exclamation-circle"></i> Obs. sobre "' + escapeHtml(item.descricao) + '":</label>';
+                html += '    <textarea class="item-obs-critico-textarea" placeholder="Descreva o problema identificado neste item..." rows="2" maxlength="500"></textarea>';
+                html += '  </div>';
+                html += '</div>';
             });
             html += '</div></div>';
             return html;
@@ -618,6 +664,22 @@
         var botoes = container.querySelectorAll('.btn-semaforo');
         for (var i = 0; i < botoes.length; i++) botoes[i].classList.remove('selecionado');
         btn.classList.add('selecionado');
+
+        // Mostrar/ocultar campo de observação individual para item crítico
+        var itemEl = btn.closest('.item-avaliacao');
+        if (itemEl) {
+            var obsDiv = itemEl.querySelector('.item-obs-critico');
+            if (obsDiv) {
+                var valor = btn.getAttribute('data-valor');
+                var ehCritico = (valor === 'critico' || valor === 'nao');
+                obsDiv.style.display = ehCritico ? 'block' : 'none';
+                if (!ehCritico) {
+                    var ta = obsDiv.querySelector('.item-obs-critico-textarea');
+                    if (ta) ta.value = '';
+                }
+            }
+        }
+
         calcularAvaliacaoFinal();
         salvarRascunho();
     }
@@ -812,7 +874,14 @@
             if (!selecionado) {
                 itensSemResposta++;
             } else {
-                avaliacoes.push({ item_id: parseInt(itemId), resultado: selecionado.getAttribute('data-valor') });
+                var valor = selecionado.getAttribute('data-valor');
+                var obsItem = null;
+                var obsDiv = itemEl.querySelector('.item-obs-critico');
+                if (obsDiv && obsDiv.style.display !== 'none') {
+                    var ta = obsDiv.querySelector('.item-obs-critico-textarea');
+                    if (ta) obsItem = ta.value.trim() || null;
+                }
+                avaliacoes.push({ item_id: parseInt(itemId), resultado: valor, obs_item: obsItem });
             }
         }
 
@@ -1309,6 +1378,7 @@
         toggleDupla: toggleDupla,
         carregarDuplasG: carregarDuplasGerenciar,
         retomarRonda: retomarRonda,
+        finalizarRondaEmAndamento: finalizarRondaEmAndamento,
         excluirVisitaAndamento: excluirVisitaAndamento,
         excluirVisitaSessao: excluirVisitaSessao,
         editarVisita: editarVisita,

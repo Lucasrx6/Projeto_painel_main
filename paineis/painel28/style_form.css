@@ -408,6 +408,52 @@ body {
 
 .item-avaliacao:last-child { border-bottom: none; }
 
+/* Campo de observação individual para item crítico */
+.item-obs-critico {
+    background: var(--cor-critico-bg);
+    border: 1.5px solid var(--cor-critico);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.item-obs-critico-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--cor-critico);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.item-obs-critico-label i { font-size: 0.72rem; }
+
+.item-obs-critico-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid rgba(220, 53, 69, 0.4);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: white;
+    resize: vertical;
+    min-height: 56px;
+}
+
+.item-obs-critico-textarea:focus {
+    outline: none;
+    border-color: var(--cor-critico);
+}
+
 .item-descricao {
     font-size: 0.82rem;
     font-weight: 600;
@@ -1063,6 +1109,24 @@ body {
 }
 
 .btn-retomar-ronda:hover { background: #e0a800; }
+
+.btn-finalizar-ronda-banner {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.btn-finalizar-ronda-banner:hover { background: #c82333; }
 
 .ronda-andamento-visitas {
     padding: 8px;

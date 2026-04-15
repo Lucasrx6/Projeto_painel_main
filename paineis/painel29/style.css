@@ -501,6 +501,41 @@ body {
 
 .btn-salvar-edicao:hover { filter: brightness(1.1); }
 
+.btn-alterar-status {
+    padding: 8px 18px; border: none; border-radius: 6px;
+    background: #6f42c1; color: white;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; font-family: inherit;
+    transition: all 0.2s;
+}
+
+.btn-alterar-status:hover { filter: brightness(1.1); }
+
+.btn-confirmar-status {
+    padding: 8px 18px; border: none; border-radius: 6px;
+    background: var(--cor-primaria); color: white;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; font-family: inherit;
+    transition: all 0.2s;
+}
+
+.btn-confirmar-status:hover { filter: brightness(1.1); }
+
+.detalhe-campo-select {
+    width: 100%; padding: 9px 12px; border: 2px solid var(--cor-borda);
+    border-radius: 8px; font-size: 0.9rem; color: var(--cor-texto);
+    background: white; font-family: inherit; cursor: pointer;
+}
+
+.detalhe-campo-select:focus { outline: none; border-color: #6f42c1; }
+
+.status-ronda-aviso {
+    margin-top: 10px; padding: 10px 14px; border-radius: 8px;
+    background: #fff3cd; color: #856404; font-size: 0.82rem;
+    display: flex; align-items: flex-start; gap: 6px;
+    border-left: 3px solid #ffc107;
+}
+
 /* Detalhe dentro do modal */
 .detalhe-info-header {
     display: flex;

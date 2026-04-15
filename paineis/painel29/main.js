@@ -13,6 +13,7 @@
         apiDados: BASE_URL + '/api/paineis/painel29/dados',
         apiFiltros: BASE_URL + '/api/paineis/painel29/filtros',
         apiVisita: BASE_URL + '/api/paineis/painel29/visitas',
+        apiRondas: BASE_URL + '/api/paineis/painel29/rondas',
         apiExportar: BASE_URL + '/api/paineis/painel29/exportar',
         apiConfig: BASE_URL + '/api/paineis/painel29/config',
         intervaloRefresh: 60000
@@ -59,6 +60,11 @@
         if (btnRefresh) btnRefresh.addEventListener('click', function () {
             carregarTudo();
             mostrarToast('Dados atualizados', 'info');
+        });
+
+        var btnConfigurarFormulario = document.getElementById('btn-configurar-formulario');
+        if (btnConfigurarFormulario) btnConfigurarFormulario.addEventListener('click', function () {
+            window.location.href = '/paineis/painel28/formulario_config.html';
         });
 
         var btnFormulario = document.getElementById('btn-formulario');
@@ -356,6 +362,26 @@
         var btnSalvar = document.getElementById('btn-salvar-edicao');
         if (btnSalvar) btnSalvar.addEventListener('click', function () { salvarEdicao(); });
 
+        var btnAlterarStatus = document.getElementById('btn-alterar-status-ronda');
+        if (btnAlterarStatus) btnAlterarStatus.addEventListener('click', function () { abrirModalStatusRonda(); });
+
+        // Modal status ronda
+        var btnFecharStatus = document.getElementById('btn-fechar-status-ronda');
+        if (btnFecharStatus) btnFecharStatus.addEventListener('click', function () { fecharModalStatusRonda(); });
+        var btnCancelarStatus = document.getElementById('btn-cancelar-status-ronda');
+        if (btnCancelarStatus) btnCancelarStatus.addEventListener('click', function () { fecharModalStatusRonda(); });
+        var btnConfirmarStatus = document.getElementById('btn-confirmar-status-ronda');
+        if (btnConfirmarStatus) btnConfirmarStatus.addEventListener('click', function () { confirmarStatusRonda(); });
+
+        var modalStatus = document.getElementById('modal-status-ronda');
+        if (modalStatus) modalStatus.addEventListener('click', function (e) {
+            if (e.target === this) fecharModalStatusRonda();
+        });
+
+        // Aviso ao trocar status
+        var selectStatus = document.getElementById('select-novo-status-ronda');
+        if (selectStatus) selectStatus.addEventListener('change', function () { atualizarAvisoStatus(this.value); });
+
         // Fechar clicando fora
         var modal = document.getElementById('modal-detalhe');
         if (modal) modal.addEventListener('click', function (e) {
@@ -363,7 +389,75 @@
         });
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') fecharDetalhe();
+            if (e.key === 'Escape') { fecharDetalhe(); fecharModalStatusRonda(); }
+        });
+    }
+
+    function abrirModalStatusRonda() {
+        if (!estado.visitaAtual) return;
+        var sel = document.getElementById('select-novo-status-ronda');
+        if (sel) sel.value = estado.visitaAtual.status_ronda || 'em_andamento';
+        atualizarAvisoStatus(estado.visitaAtual.status_ronda || 'em_andamento');
+        var modal = document.getElementById('modal-status-ronda');
+        if (modal) modal.classList.add('ativo');
+    }
+
+    function fecharModalStatusRonda() {
+        var modal = document.getElementById('modal-status-ronda');
+        if (modal) modal.classList.remove('ativo');
+    }
+
+    function atualizarAvisoStatus(novoStatus) {
+        var aviso = document.getElementById('status-ronda-aviso');
+        if (!aviso) return;
+        var avisos = {
+            'concluida': '<i class="fas fa-lock"></i> Ao concluir, não será mais possível adicionar visitas a esta ronda.',
+            'cancelada': '<i class="fas fa-exclamation-triangle"></i> Ao cancelar, a ronda será ocultada dos relatórios padrão.',
+            'em_andamento': '<i class="fas fa-info-circle"></i> A ronda voltará a aceitar novas visitas.'
+        };
+        var statusAtual = estado.visitaAtual ? estado.visitaAtual.status_ronda : '';
+        if (novoStatus !== statusAtual && avisos[novoStatus]) {
+            aviso.innerHTML = avisos[novoStatus];
+            aviso.style.display = 'block';
+        } else {
+            aviso.style.display = 'none';
+        }
+    }
+
+    function confirmarStatusRonda() {
+        if (!estado.visitaAtual) return;
+        var sel = document.getElementById('select-novo-status-ronda');
+        var novoStatus = sel ? sel.value : '';
+        if (!novoStatus) return;
+
+        if (novoStatus === estado.visitaAtual.status_ronda) {
+            mostrarToast('O status já é ' + novoStatus, 'info');
+            fecharModalStatusRonda();
+            return;
+        }
+
+        var btnConfirmar = document.getElementById('btn-confirmar-status-ronda');
+        if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'; }
+
+        fetch(CONFIG.apiRondas + '/' + estado.visitaAtual.ronda_id + '/status', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: novoStatus })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                mostrarToast(data.message || 'Status alterado', 'sucesso');
+                fecharModalStatusRonda();
+                fecharDetalhe();
+                carregarTudo();
+            } else {
+                mostrarToast(data.error || 'Erro ao alterar status', 'erro');
+            }
+        })
+        .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); })
+        .finally(function () {
+            if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.innerHTML = '<i class="fas fa-check"></i> Confirmar'; }
         });
     }
 
@@ -376,8 +470,10 @@
 
         var btnEditar = document.getElementById('btn-ativar-edicao');
         var btnSalvar = document.getElementById('btn-salvar-edicao');
+        var btnAlterarStatus = document.getElementById('btn-alterar-status-ronda');
         if (btnEditar) btnEditar.style.display = 'none';
         if (btnSalvar) btnSalvar.style.display = 'none';
+        if (btnAlterarStatus) btnAlterarStatus.style.display = 'none';
 
         var titulo = document.getElementById('modal-titulo');
         if (titulo) titulo.textContent = 'Detalhe da Visita';
@@ -391,6 +487,9 @@
                     estado.visitaAtual = data.data;
                     estado.isAdmin = data.data.is_admin || false;
                     renderizarDetalhe(data.data, false);
+
+                    // Botao alterar status visivel para todos
+                    if (btnAlterarStatus) btnAlterarStatus.style.display = 'flex';
 
                     if (estado.isAdmin && btnEditar) {
                         btnEditar.style.display = 'flex';
@@ -437,6 +536,12 @@
             html += '<option value="critico"' + (visita.avaliacao_final === 'critico' ? ' selected' : '') + '>Critico</option>';
             html += '<option value="atencao"' + (visita.avaliacao_final === 'atencao' ? ' selected' : '') + '>Atencao</option>';
             html += '<option value="adequado"' + (visita.avaliacao_final === 'adequado' ? ' selected' : '') + '>Adequado</option>';
+            html += '</select></div>';
+            html += '<div class="detalhe-campo-edit"><label>Status da Ronda:</label>';
+            html += '<select id="edit-status-ronda">';
+            html += '<option value="em_andamento"' + (visita.status_ronda === 'em_andamento' ? ' selected' : '') + '>Em andamento</option>';
+            html += '<option value="concluida"' + (visita.status_ronda === 'concluida' ? ' selected' : '') + '>Concluida</option>';
+            html += '<option value="cancelada"' + (visita.status_ronda === 'cancelada' ? ' selected' : '') + '>Cancelada</option>';
             html += '</select></div>';
         } else {
             html += '<span class="detalhe-badge-grande badge-' + visita.avaliacao_final + '">' + formatarResultado(visita.avaliacao_final) + '</span>';
@@ -585,6 +690,7 @@
         var atendimento = (document.getElementById('edit-atendimento').value || '').trim();
         var avaliacaoFinal = document.getElementById('edit-avaliacao-final').value;
         var observacoes = (document.getElementById('edit-observacoes').value || '').trim();
+        var novoStatusRonda = document.getElementById('edit-status-ronda') ? document.getElementById('edit-status-ronda').value : null;
 
         // Coletar avaliacoes editadas
         var avaliacoes = [];
@@ -610,30 +716,48 @@
             btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
         }
 
-        fetch(CONFIG.apiVisita + '/' + estado.visitaAtual.id, {
+        // Salvar visita e opcionalmente status da ronda
+        var salvarVisita = fetch(CONFIG.apiVisita + '/' + estado.visitaAtual.id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            if (data.success) {
-                mostrarToast(data.message || 'Visita atualizada', 'sucesso');
+        }).then(function (r) { return r.json(); });
+
+        var salvarRonda = (novoStatusRonda && novoStatusRonda !== estado.visitaAtual.status_ronda)
+            ? fetch(CONFIG.apiRondas + '/' + estado.visitaAtual.ronda_id + '/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: novoStatusRonda })
+            }).then(function (r) { return r.json(); })
+            : Promise.resolve(null);
+
+        Promise.all([salvarVisita, salvarRonda])
+            .then(function (resultados) {
+                var resVisita = resultados[0];
+                var resRonda = resultados[1];
+                if (!resVisita.success) {
+                    mostrarToast(resVisita.error || 'Erro ao salvar visita', 'erro');
+                    return;
+                }
+                if (resRonda && !resRonda.success) {
+                    mostrarToast(resRonda.error || 'Erro ao alterar status da ronda', 'erro');
+                    return;
+                }
+                var msg = resVisita.message || 'Visita atualizada';
+                if (resRonda && resRonda.success) msg += '. ' + resRonda.message;
+                mostrarToast(msg, 'sucesso');
                 fecharDetalhe();
                 carregarTudo();
-            } else {
-                mostrarToast(data.error || 'Erro ao salvar', 'erro');
-            }
-        })
-        .catch(function () {
-            mostrarToast('Erro de comunicacao', 'erro');
-        })
-        .finally(function () {
-            if (btnSalvar) {
-                btnSalvar.disabled = false;
-                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Alteracoes';
-            }
-        });
+            })
+            .catch(function () {
+                mostrarToast('Erro de comunicacao', 'erro');
+            })
+            .finally(function () {
+                if (btnSalvar) {
+                    btnSalvar.disabled = false;
+                    btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Alteracoes';
+                }
+            });
     }
 
     function fecharDetalhe() {
