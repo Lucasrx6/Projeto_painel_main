@@ -207,20 +207,39 @@ def buscar_visitas_atencao(conn):
 
 def buscar_responsaveis(conn, categoria_id, setor_id):
     """
-    Busca responsaveis com email cadastrado na categoria ou setor.
-    Prioriza categoria; aceita ambos na mesma consulta.
+    Busca responsaveis com email cadastrado.
+
+    Para criticos (categoria_id informado):
+      - Somente responsaveis vinculados a categoria
+      - Se o responsavel NAO tiver setor, recebe sempre (responsavel geral da categoria)
+      - Se o responsavel TIVER setor, so recebe se bater com o setor do evento
+
+    Para atencao (categoria_id None):
+      - Responsaveis vinculados ao setor diretamente
     """
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-    cursor.execute("""
-        SELECT DISTINCT nome, email
-        FROM sentir_agir_responsaveis
-        WHERE ativo = true
-          AND email IS NOT NULL
-          AND email <> ''
-          AND (categoria_id = %s OR setor_id = %s)
-        LIMIT 10
-    """, (categoria_id, setor_id))
+    if categoria_id is not None:
+        cursor.execute("""
+            SELECT DISTINCT nome, email
+            FROM sentir_agir_responsaveis
+            WHERE ativo = true
+              AND email IS NOT NULL
+              AND email <> ''
+              AND categoria_id = %s
+              AND (setor_id IS NULL OR setor_id = %s)
+            LIMIT 10
+        """, (categoria_id, setor_id))
+    else:
+        cursor.execute("""
+            SELECT DISTINCT nome, email
+            FROM sentir_agir_responsaveis
+            WHERE ativo = true
+              AND email IS NOT NULL
+              AND email <> ''
+              AND setor_id = %s
+            LIMIT 10
+        """, (setor_id,))
 
     responsaveis = cursor.fetchall()
     cursor.close()
