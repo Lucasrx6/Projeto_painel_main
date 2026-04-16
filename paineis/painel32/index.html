@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analise Diaria Sentir e Agir - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel32/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- =====================================================
+             HEADER
+             ===================================================== -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-brain"></i> Sentir e Agir — Analise Diaria</h1>
+                </div>
+                <div class="header-right">
+                    <!-- Botoes da view AGENDA -->
+                    <div id="header-agenda-btns">
+                        <button id="btn-analisar-hoje" class="btn-header btn-ia" title="Analisar visitas de hoje com IA">
+                            <i class="fas fa-brain"></i> <span class="btn-text">Analisar Hoje</span>
+                        </button>
+                        <button id="btn-refresh-agenda" class="btn-header" title="Atualizar lista">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <!-- Botoes da view DETALHE -->
+                    <div id="header-detalhe-btns" style="display:none;">
+                        <button id="btn-voltar-agenda" class="btn-header" title="Voltar para agenda">
+                            <i class="fas fa-arrow-left"></i> <span class="btn-text">Agenda</span>
+                        </button>
+                        <button id="btn-regenerar-analise" class="btn-header btn-ia" title="Gerar nova analise com IA" disabled>
+                            <i class="fas fa-brain"></i> <span class="btn-text">Regenerar IA</span>
+                        </button>
+                        <button id="btn-exportar-csv" class="btn-header btn-exportar" title="Exportar Excel" disabled>
+                            <i class="fas fa-file-excel"></i> <span class="btn-text">Excel</span>
+                        </button>
+                        <button id="btn-exportar-pdf" class="btn-header btn-exportar-pdf" title="Exportar PDF" disabled>
+                            <i class="fas fa-file-pdf"></i> <span class="btn-text">PDF</span>
+                        </button>
+                    </div>
+                    <!-- Botao voltar ao sistema (sempre visivel) -->
+                    <button id="btn-voltar" class="btn-header" title="Voltar ao Dashboard">
+                        <i class="fas fa-home"></i>
+                    </button>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- =====================================================
+             VIEW: AGENDA
+             ===================================================== -->
+        <div id="view-agenda" class="view-content">
+
+            <!-- Loading agenda -->
+            <div class="loading-container" id="loading-agenda">
+                <div class="loading-spinner"></div>
+                <p>Carregando historico...</p>
+            </div>
+
+            <!-- Agenda vazia -->
+            <div class="estado-inicial" id="agenda-vazia" style="display:none;">
+                <i class="fas fa-calendar-times"></i>
+                <h2>Nenhuma analise encontrada</h2>
+                <p>As analises sao geradas automaticamente pelo worker as 18:00 (dias uteis).</p>
+                <p>Ou clique em <strong>Analisar Hoje</strong> para gerar agora.</p>
+            </div>
+
+            <!-- Lista de dias -->
+            <div class="agenda-container" id="agenda-lista" style="display:none;">
+                <div class="agenda-header-info">
+                    <span id="agenda-total-info" class="agenda-info-text"></span>
+                </div>
+                <div class="agenda-grid" id="agenda-grid"></div>
+            </div>
+
+        </div>
+
+        <!-- =====================================================
+             VIEW: DETALHE DO DIA
+             ===================================================== -->
+        <div id="view-detalhe" class="view-content" style="display:none;">
+
+            <!-- Titulo do dia -->
+            <div class="detalhe-titulo-bar">
+                <div class="detalhe-data-info">
+                    <span class="detalhe-data-badge" id="detalhe-data-badge">--/--/----</span>
+                    <span class="detalhe-dia-semana" id="detalhe-dia-semana"></span>
+                </div>
+                <div class="detalhe-gerado-por" id="detalhe-gerado-por"></div>
+            </div>
+
+            <!-- KPIs do dia -->
+            <div class="stats-row" id="detalhe-stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon icon-visitas"><i class="fas fa-clipboard-list"></i></div>
+                    <div><h3 id="d-stat-total">0</h3><p>Visitas</p></div>
+                </div>
+                <div class="stat-card stat-card-critico">
+                    <div class="stat-icon icon-criticos"><i class="fas fa-exclamation-circle"></i></div>
+                    <div><h3 id="d-stat-criticos">0</h3><p>Criticos</p></div>
+                </div>
+                <div class="stat-card stat-card-atencao">
+                    <div class="stat-icon icon-atencao"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div><h3 id="d-stat-atencao">0</h3><p>Atencao</p></div>
+                </div>
+                <div class="stat-card stat-card-adequado">
+                    <div class="stat-icon icon-adequados"><i class="fas fa-check-circle"></i></div>
+                    <div><h3 id="d-stat-adequados">0</h3><p>Adequados</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-setores"><i class="fas fa-hospital"></i></div>
+                    <div><h3 id="d-stat-setores">0</h3><p>Setores</p></div>
+                </div>
+            </div>
+
+            <!-- Loading detalhe -->
+            <div class="loading-container" id="loading-detalhe" style="display:none;">
+                <div class="loading-spinner"></div>
+                <p id="loading-detalhe-msg">Carregando...</p>
+            </div>
+
+            <!-- Analise IA -->
+            <div class="analise-ia-container" id="analise-ia-container" style="display:none;">
+                <div class="analise-ia-header">
+                    <h3><i class="fas fa-brain"></i> Analise Executiva — IA</h3>
+                    <button class="btn-fechar-analise" id="btn-fechar-analise" title="Minimizar">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="analise-meta" id="analise-meta"></div>
+                <div class="analise-ia-body" id="analise-ia-body"></div>
+            </div>
+
+            <!-- Grid de setores -->
+            <div class="setores-grid" id="setores-grid"></div>
+
+            <!-- Sem visitas no dia -->
+            <div class="estado-inicial" id="detalhe-sem-visitas" style="display:none;">
+                <i class="fas fa-calendar-check"></i>
+                <h2>Sem visitas registradas</h2>
+                <p>Nao foram encontradas visitas para este dia.</p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Modal: Sugestao de Abordagem -->
+    <div class="modal-overlay" id="modal-sugestao">
+        <div class="modal modal-sugestao">
+            <div class="modal-header">
+                <h2><i class="fas fa-lightbulb"></i> Sugestao de Abordagem</h2>
+                <button class="modal-fechar" id="btn-fechar-sugestao">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-sugestao-body">
+                <div class="loading-ia">
+                    <div class="loading-spinner"></div>
+                    <p>Gerando sugestao com IA...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-cancelar-sugestao">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Analisar Hoje -->
+    <div class="modal-overlay" id="modal-analisar-hoje">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-brain"></i> Analisar Hoje</h2>
+                <button class="modal-fechar" id="btn-fechar-analisar-hoje">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-analisar-hoje-body">
+                <div class="loading-ia">
+                    <div class="loading-spinner"></div>
+                    <p>Aguarde, gerando analise do dia...</p>
+                </div>
+            </div>
+            <div class="modal-footer" id="modal-analisar-hoje-footer" style="display:none;">
+                <button class="btn-cancelar" id="btn-cancelar-analisar-hoje">Fechar</button>
+                <button class="btn-ver-detalhe" id="btn-ver-detalhe-hoje">
+                    <i class="fas fa-eye"></i> Ver Detalhes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel32/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

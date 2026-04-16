@@ -244,26 +244,20 @@
         setTexto('pac-convenio', pac.ds_convenio || '--');
         setTexto('pac-acomodacao', pac.ds_tipo_acomodacao || '--');
 
-        // Badge "já visitado hoje"
-        var badge = document.getElementById('pac-visitado-badge');
-        if (!badge) {
-            badge = document.createElement('div');
-            badge.id = 'pac-visitado-badge';
-            badge.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:6px 12px;font-size:0.82rem;display:flex;align-items:center;gap:6px;margin-top:6px;';
-            var nomeEl = document.getElementById('pac-nome');
-            if (nomeEl && nomeEl.parentNode) {
-                nomeEl.parentNode.insertBefore(badge, nomeEl.nextSibling);
+        // Status de visita do dia (sempre visivel)
+        var statusVisita = document.getElementById('pac-status-visita');
+        if (statusVisita) {
+            if (pac.ja_visitado_hoje) {
+                var horas = pac.horas_desde_visita_hoje;
+                var textoHoras = horas !== null && horas !== undefined
+                    ? (horas < 1 ? 'menos de 1h atr\u00e1s' : Math.round(horas) + 'h atr\u00e1s')
+                    : 'hoje';
+                statusVisita.innerHTML = '<i class="fas fa-exclamation-circle"></i> J\u00e1 visitado hoje (' + textoHoras + ') \u2014 fila recomeçando';
+                statusVisita.style.cssText = 'display:flex;align-items:center;gap:6px;margin:5px 0 8px;padding:6px 12px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;font-size:0.82rem;font-weight:500;';
+            } else {
+                statusVisita.innerHTML = '<i class="fas fa-circle" style="font-size:0.55rem;color:#28a745;"></i> Aguardando visita hoje';
+                statusVisita.style.cssText = 'display:flex;align-items:center;gap:6px;margin:5px 0 8px;padding:6px 12px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:8px;font-size:0.82rem;font-weight:500;';
             }
-        }
-        if (pac.ja_visitado_hoje) {
-            var horas = pac.horas_desde_visita_hoje;
-            var textoHoras = horas !== null && horas !== undefined
-                ? (horas < 1 ? 'menos de 1h atrás' : Math.round(horas) + 'h atrás')
-                : 'hoje';
-            badge.innerHTML = '<i class="fas fa-check-circle"></i> Já visitado hoje (' + textoHoras + ') — fila recomeçando';
-            badge.style.display = 'flex';
-        } else {
-            badge.style.display = 'none';
         }
 
         // Restaurar rascunho do localStorage (apenas se nao estiver em modo edicao)
