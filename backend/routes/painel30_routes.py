@@ -26,10 +26,7 @@ def _get_ip():
 
 
 def _get_usuario():
-    try:
-        return request.user.get('nome', 'sistema') if hasattr(request, 'user') else 'sistema'
-    except Exception:
-        return 'sistema'
+    return session.get('usuario', 'sistema')
 
 
 def _is_admin():

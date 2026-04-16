@@ -82,7 +82,7 @@ function carregarDados() {
 
 function atualizarCards(dados) {
     document.getElementById('total-leitos').textContent =
-        parseInt(dados.total_leitos) || 0;
+        parseInt(dados.leitos_fixos) || 0;
 
     document.getElementById('leitos-ocupados').textContent =
         parseInt(dados.leitos_ocupados) || 0;

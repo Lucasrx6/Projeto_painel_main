@@ -113,7 +113,10 @@
             if (cat.itens && cat.itens.length) {
                 cat.itens.forEach(function (item) {
                     var tipoClass = item.tipo === 'sim_nao' ? 'tipo-sim_nao' : 'tipo-semaforo';
-                    var tipoLabel = item.tipo === 'sim_nao' ? 'Sim/Não' : 'Semáforo';
+                    var criticoLabel = item.tipo === 'sim_nao'
+                        ? (item.critico_quando === 'sim' ? ' · crítico: Sim' : ' · crítico: Não')
+                        : '';
+                    var tipoLabel = item.tipo === 'sim_nao' ? ('Sim/Não' + criticoLabel) : 'Semáforo';
                     itensList += '<div class="item-row' + (item.ativo ? '' : ' inativo') + '" data-item-id="' + item.id + '">';
                     itensList += '  <span class="item-tipo-badge ' + tipoClass + '">' + tipoLabel + '</span>';
                     itensList += '  <span class="item-descricao">' + escapeHtml(item.descricao) + (item.ativo ? '' : ' <span class="badge-inativo">Inativo</span>') + '</span>';
@@ -360,6 +363,26 @@
     var modalItemId = null;
     var modalItemCatId = null;
 
+    function _atualizarCampoCriticoQuando(tipo) {
+        var campo = $('campo-critico-quando');
+        if (!campo) return;
+        campo.style.display = tipo === 'sim_nao' ? 'block' : 'none';
+        _atualizarEstiloCriticoQuando();
+    }
+
+    function _atualizarEstiloCriticoQuando() {
+        var radSim = $('critico-quando-sim');
+        var radNao = $('critico-quando-nao');
+        var lblSim = $('label-critico-sim');
+        var lblNao = $('label-critico-nao');
+        if (!radSim || !radNao) return;
+        var valor = radSim.checked ? 'sim' : 'nao';
+        if (lblSim) lblSim.style.border = valor === 'sim' ? '2px solid #dc3545' : '2px solid #dee2e6';
+        if (lblSim) lblSim.style.background = valor === 'sim' ? '#fff5f5' : '';
+        if (lblNao) lblNao.style.border = valor === 'nao' ? '2px solid #dc3545' : '2px solid #dee2e6';
+        if (lblNao) lblNao.style.background = valor === 'nao' ? '#fff5f5' : '';
+    }
+
     function abrirModalItem(modo, idParam) {
         modalItemMode = modo;
 
@@ -373,6 +396,9 @@
             if (titulo) titulo.textContent = 'Novo Item';
             if (inputDesc) inputDesc.value = '';
             if (selectTipo) selectTipo.value = 'semaforo';
+            var radNaoC = $('critico-quando-nao');
+            if (radNaoC) radNaoC.checked = true;
+            _atualizarCampoCriticoQuando('semaforo');
         } else {
             // editar — idParam é o item id
             modalItemId = idParam;
@@ -397,6 +423,12 @@
             if (itemEncontrado) {
                 if (inputDesc) inputDesc.value = itemEncontrado.descricao || '';
                 if (selectTipo) selectTipo.value = itemEncontrado.tipo || 'semaforo';
+                var criticoVal = itemEncontrado.critico_quando || 'nao';
+                var radSimE = $('critico-quando-sim');
+                var radNaoE = $('critico-quando-nao');
+                if (radSimE) radSimE.checked = criticoVal === 'sim';
+                if (radNaoE) radNaoE.checked = criticoVal === 'nao';
+                _atualizarCampoCriticoQuando(itemEncontrado.tipo || 'semaforo');
             }
         }
 
@@ -424,17 +456,23 @@
         var btn = $('btn-confirmar-item');
         if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
+        var tipoVal = selectTipo ? selectTipo.value : 'semaforo';
+        var radSimF = $('critico-quando-sim');
+        var criticoQuandoVal = (tipoVal === 'sim_nao' && radSimF && radSimF.checked) ? 'sim' : 'nao';
+
         var promise;
         if (modalItemMode === 'criar') {
             promise = apiPost(CONFIG.apiItens, {
                 categoria_id: modalItemCatId,
                 descricao: descricao,
-                tipo: selectTipo ? selectTipo.value : 'semaforo'
+                tipo: tipoVal,
+                critico_quando: criticoQuandoVal
             });
         } else {
             promise = apiPut(CONFIG.apiItens + '/' + modalItemId, {
                 descricao: descricao,
-                tipo: selectTipo ? selectTipo.value : 'semaforo'
+                tipo: tipoVal,
+                critico_quando: criticoQuandoVal
             });
         }
 
@@ -518,7 +556,20 @@
             });
         }
 
-        // Modal item
+        // Modal item — mostrar/ocultar campo critico_quando ao mudar tipo
+        var selectTipoEl = $('modal-item-tipo');
+        if (selectTipoEl) {
+            selectTipoEl.addEventListener('change', function () {
+                _atualizarCampoCriticoQuando(this.value);
+            });
+        }
+
+        // Radio critico_quando — highlight visual
+        var radSimEl = $('critico-quando-sim');
+        var radNaoEl = $('critico-quando-nao');
+        if (radSimEl) radSimEl.addEventListener('change', _atualizarEstiloCriticoQuando);
+        if (radNaoEl) radNaoEl.addEventListener('change', _atualizarEstiloCriticoQuando);
+
         var btnFecharModalItem = $('btn-fechar-modal-item');
         if (btnFecharModalItem) btnFecharModalItem.addEventListener('click', fecharModalItem);
 
