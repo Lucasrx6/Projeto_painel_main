@@ -160,7 +160,24 @@
                     <option value="sim_nao">Sim / Não</option>
                 </select>
                 <small style="color:#888;font-size:0.75rem;">
-                    <b>Semáforo:</b> avaliação em 4 níveis · <b>Sim/Não:</b> resposta binária (Não gera tratativa)
+                    <b>Semáforo:</b> avaliação em 4 níveis · <b>Sim/Não:</b> resposta binária
+                </small>
+            </div>
+
+            <div class="campo-grupo" id="campo-critico-quando" style="display:none;">
+                <label>Qual resposta é crítica?</label>
+                <div style="display:flex;gap:12px;margin-top:6px;">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:2px solid #dee2e6;border-radius:8px;font-weight:600;transition:all 0.15s;" id="label-critico-sim">
+                        <input type="radio" name="critico_quando" id="critico-quando-sim" value="sim" style="display:none;">
+                        <i class="fas fa-check" style="color:#28a745;"></i> Sim é crítico
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:2px solid #dee2e6;border-radius:8px;font-weight:600;transition:all 0.15s;" id="label-critico-nao">
+                        <input type="radio" name="critico_quando" id="critico-quando-nao" value="nao" style="display:none;" checked>
+                        <i class="fas fa-times" style="color:#dc3545;"></i> Não é crítico
+                    </label>
+                </div>
+                <small style="color:#888;font-size:0.75rem;margin-top:4px;display:block;">
+                    A resposta crítica gera tratativa automática e aparece em vermelho no formulário
                 </small>
             </div>
 

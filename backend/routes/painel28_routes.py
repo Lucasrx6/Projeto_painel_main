@@ -50,10 +50,21 @@ def _get_ip():
 
 
 def _get_usuario():
-    try:
-        return request.user.get('nome', 'sistema') if hasattr(request, 'user') else 'sistema'
-    except Exception:
-        return 'sistema'
+    return session.get('usuario', 'sistema')
+
+
+def _is_admin():
+    return session.get('is_admin', False)
+
+
+def _auto_finalizar_rondas_expiradas(cursor):
+    """Finaliza automaticamente rondas em_andamento com mais de 2 horas."""
+    cursor.execute("""
+        UPDATE sentir_agir_rondas
+        SET status = 'concluida', atualizado_em = NOW()
+        WHERE status = 'em_andamento'
+          AND criado_em < NOW() - INTERVAL '2 hours'
+    """)
 
 
 # ============================================================
@@ -286,7 +297,8 @@ def listar_categorias_itens():
         categorias = cursor.fetchall()
         cursor.execute("""
             SELECT id, categoria_id, descricao, ordem,
-                   COALESCE(tipo, 'semaforo') AS tipo
+                   COALESCE(tipo, 'semaforo') AS tipo,
+                   COALESCE(critico_quando, 'nao') AS critico_quando
             FROM sentir_agir_itens WHERE ativo = TRUE ORDER BY ordem
         """)
         itens = cursor.fetchall()
@@ -302,7 +314,8 @@ def listar_categorias_itens():
                 'id': item['id'],
                 'descricao': item['descricao'],
                 'ordem': item['ordem'],
-                'tipo': item['tipo']
+                'tipo': item['tipo'],
+                'critico_quando': item['critico_quando']
             })
 
         resultado = []
@@ -363,13 +376,44 @@ def fila_pacientes():
 
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Finaliza rondas esquecidas antes de calcular a fila
+        _auto_finalizar_rondas_expiradas(cursor)
+        conn.commit()
+
         cursor.execute("""
-            SELECT nr_atendimento, nm_paciente, leito, setor_ocupacao,
-                   cd_setor_atendimento, setor_sa_id, setor_sa_nome, setor_sa_sigla,
-                   dt_entrada_unidade, qt_dia_permanencia, ds_clinica,
-                   medico_responsavel, ds_convenio, ds_tipo_acomodacao,
-                   ultima_ronda_em, horas_desde_ultima_ronda, prioridade
-            FROM vw_sentir_agir_fila_pacientes LIMIT %s
+            SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
+                   f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
+                   f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
+                   f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
+                   f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
+                   EXISTS (
+                       SELECT 1 FROM sentir_agir_visitas v
+                       WHERE v.nr_atendimento = f.nr_atendimento
+                         AND v.avaliacao_final != 'impossibilitada'
+                         AND v.criado_em >= CURRENT_DATE
+                   ) AS ja_visitado_hoje,
+                   (
+                       SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
+                       FROM sentir_agir_visitas v
+                       WHERE v.nr_atendimento = f.nr_atendimento
+                         AND v.avaliacao_final != 'impossibilitada'
+                         AND v.criado_em >= CURRENT_DATE
+                       ORDER BY v.criado_em DESC LIMIT 1
+                   ) AS horas_desde_visita_hoje
+            FROM vw_sentir_agir_fila_pacientes f
+            WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
+              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
+            ORDER BY
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM sentir_agir_visitas v
+                    WHERE v.nr_atendimento = f.nr_atendimento
+                      AND v.avaliacao_final != 'impossibilitada'
+                      AND v.criado_em >= CURRENT_DATE
+                ) THEN 1 ELSE 0 END ASC,
+                f.prioridade ASC,
+                f.horas_desde_ultima_ronda DESC NULLS LAST
+            LIMIT %s
         """, (limite,))
         pacientes = cursor.fetchall()
         cursor.close()
@@ -383,6 +427,8 @@ def fila_pacientes():
                     item[campo] = item[campo].isoformat()
             if item.get('horas_desde_ultima_ronda') is not None:
                 item['horas_desde_ultima_ronda'] = round(float(item['horas_desde_ultima_ronda']), 1)
+            if item.get('horas_desde_visita_hoje') is not None:
+                item['horas_desde_visita_hoje'] = round(float(item['horas_desde_visita_hoje']), 1)
             if item.get('qt_dia_permanencia') is not None:
                 item['qt_dia_permanencia'] = int(item['qt_dia_permanencia'])
             resultado.append(item)
@@ -399,13 +445,44 @@ def proximo_paciente():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Finaliza rondas esquecidas antes de calcular a fila
+        _auto_finalizar_rondas_expiradas(cursor)
+        conn.commit()
+
         cursor.execute("""
-            SELECT nr_atendimento, nm_paciente, leito, setor_ocupacao,
-                   cd_setor_atendimento, setor_sa_id, setor_sa_nome, setor_sa_sigla,
-                   dt_entrada_unidade, qt_dia_permanencia, ds_clinica,
-                   medico_responsavel, ds_convenio, ds_tipo_acomodacao,
-                   ultima_ronda_em, horas_desde_ultima_ronda, prioridade
-            FROM vw_sentir_agir_fila_pacientes LIMIT 1
+            SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
+                   f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
+                   f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
+                   f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
+                   f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
+                   EXISTS (
+                       SELECT 1 FROM sentir_agir_visitas v
+                       WHERE v.nr_atendimento = f.nr_atendimento
+                         AND v.avaliacao_final != 'impossibilitada'
+                         AND v.criado_em >= CURRENT_DATE
+                   ) AS ja_visitado_hoje,
+                   (
+                       SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
+                       FROM sentir_agir_visitas v
+                       WHERE v.nr_atendimento = f.nr_atendimento
+                         AND v.avaliacao_final != 'impossibilitada'
+                         AND v.criado_em >= CURRENT_DATE
+                       ORDER BY v.criado_em DESC LIMIT 1
+                   ) AS horas_desde_visita_hoje
+            FROM vw_sentir_agir_fila_pacientes f
+            WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
+              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
+            ORDER BY
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM sentir_agir_visitas v
+                    WHERE v.nr_atendimento = f.nr_atendimento
+                      AND v.avaliacao_final != 'impossibilitada'
+                      AND v.criado_em >= CURRENT_DATE
+                ) THEN 1 ELSE 0 END ASC,
+                f.prioridade ASC,
+                f.horas_desde_ultima_ronda DESC NULLS LAST
+            LIMIT 1
         """)
         paciente = cursor.fetchone()
         cursor.close()
@@ -420,6 +497,8 @@ def proximo_paciente():
                 item[campo] = item[campo].isoformat()
         if item.get('horas_desde_ultima_ronda') is not None:
             item['horas_desde_ultima_ronda'] = round(float(item['horas_desde_ultima_ronda']), 1)
+        if item.get('horas_desde_visita_hoje') is not None:
+            item['horas_desde_visita_hoje'] = round(float(item['horas_desde_visita_hoje']), 1)
         if item.get('qt_dia_permanencia') is not None:
             item['qt_dia_permanencia'] = int(item['qt_dia_permanencia'])
 
@@ -588,6 +667,30 @@ def registrar_visita():
             conn.close()
             return jsonify({'success': False, 'error': 'Ronda esta cancelada'}), 400
 
+        # Verificar duplicidade: paciente já visitado hoje por outra ronda
+        if nr_atendimento and avaliacao_final != 'impossibilitada':
+            cursor.execute("""
+                SELECT v.id, d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+                WHERE v.nr_atendimento = %s
+                  AND v.avaliacao_final != 'impossibilitada'
+                  AND v.criado_em >= CURRENT_DATE
+                  AND v.ronda_id != %s
+                LIMIT 1
+            """, (nr_atendimento, ronda_id))
+            visita_duplicada = cursor.fetchone()
+            if visita_duplicada:
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'error': 'Este paciente ja foi visitado hoje pela dupla: %s. '
+                             'Selecione o proximo paciente da fila.' % visita_duplicada['dupla_nome'],
+                    'duplicado': True
+                }), 409
+
         # Verificar setor
         cursor.execute("SELECT id FROM sentir_agir_setores WHERE id = %s AND ativo = TRUE", (setor_id,))
         if not cursor.fetchone():
@@ -608,6 +711,18 @@ def registrar_visita():
               observacoes, avaliacao_final))
         visita_id = cursor.fetchone()['id']
 
+        # Pré-buscar critico_quando dos itens desta visita
+        item_ids = [av['item_id'] for av in avaliacoes if av.get('item_id')]
+        critico_quando_map = {}
+        if item_ids:
+            cursor.execute("""
+                SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
+                       COALESCE(critico_quando, 'nao') AS critico_quando
+                FROM sentir_agir_itens WHERE id = ANY(%s)
+            """, (item_ids,))
+            for row in cursor.fetchall():
+                critico_quando_map[row['id']] = row
+
         # Inserir avaliações e detectar items críticos
         avaliacoes_criticas = []  # lista de (avaliacao_id, item_id, obs_item)
 
@@ -619,8 +734,14 @@ def registrar_visita():
             """, (visita_id, av['item_id'], av['resultado']))
             avaliacao_id = cursor.fetchone()['id']
 
-            # Se for critico ou nao, marcar pra criar tratativa
-            if av['resultado'] in ('critico', 'nao'):
+            # Detectar se é crítico respeitando critico_quando por item
+            resultado = av['resultado']
+            item_cfg = critico_quando_map.get(av['item_id'], {})
+            eh_critico = (
+                resultado == 'critico' or
+                (item_cfg.get('tipo') == 'sim_nao' and resultado == item_cfg.get('critico_quando', 'nao'))
+            )
+            if eh_critico:
                 obs_item = (av.get('obs_item') or '').strip() or None
                 avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
 
@@ -1049,8 +1170,36 @@ def atualizar_visita(visita_id):
             conn.close()
             return jsonify({'success': False, 'error': 'Ronda ja concluida, edicao nao permitida'}), 400
 
-        # Remover tratativas e avaliacoes antigas
-        cursor.execute("DELETE FROM sentir_agir_tratativas WHERE visita_id = %s", (visita_id,))
+        # Pré-buscar critico_quando dos itens desta visita
+        item_ids_upd = [av['item_id'] for av in avaliacoes if av.get('item_id')]
+        critico_quando_map_upd = {}
+        if item_ids_upd:
+            cursor.execute("""
+                SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
+                       COALESCE(critico_quando, 'nao') AS critico_quando
+                FROM sentir_agir_itens WHERE id = ANY(%s)
+            """, (item_ids_upd,))
+            for row in cursor.fetchall():
+                critico_quando_map_upd[row['id']] = row
+
+        def _eh_critico_upd(av):
+            r = av.get('resultado')
+            cfg = critico_quando_map_upd.get(av['item_id'], {})
+            return (r == 'critico' or
+                    (cfg.get('tipo') == 'sim_nao' and r == cfg.get('critico_quando', 'nao')))
+
+        # Cancelar somente tratativas pendentes cujos itens não serão mais críticos
+        itens_criticos_novos = set(
+            av['item_id'] for av in avaliacoes if _eh_critico_upd(av)
+        )
+        cursor.execute("""
+            UPDATE sentir_agir_tratativas
+            SET status = 'cancelado'
+            WHERE visita_id = %s AND status = 'pendente'
+              AND item_id NOT IN %s
+        """, (visita_id, tuple(itens_criticos_novos) if itens_criticos_novos else (0,)))
+
+        # Remover somente avaliações (não carregam dedup, podem ser recriadas)
         cursor.execute("DELETE FROM sentir_agir_avaliacoes WHERE visita_id = %s", (visita_id,))
 
         # Atualizar visita
@@ -1068,7 +1217,7 @@ def atualizar_visita(visita_id):
                 VALUES (%s, %s, %s) RETURNING id
             """, (visita_id, av['item_id'], av['resultado']))
             avaliacao_id = cursor.fetchone()['id']
-            if av['resultado'] in ('critico', 'nao'):
+            if _eh_critico_upd(av):
                 obs_item = (av.get('obs_item') or '').strip() or None
                 avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
 
@@ -1077,6 +1226,16 @@ def atualizar_visita(visita_id):
 
         if auto_criar == 'true' and avaliacoes_criticas:
             for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
+                # Não recriar se já existe tratativa ativa para este item nesta visita
+                cursor.execute("""
+                    SELECT id FROM sentir_agir_tratativas
+                    WHERE visita_id = %s AND item_id = %s
+                      AND status NOT IN ('cancelado')
+                    LIMIT 1
+                """, (visita_id, item_id))
+                if cursor.fetchone():
+                    continue  # Tratativa já existe, não duplicar/renotificar
+
                 cursor.execute("""
                     SELECT i.id AS item_id, i.descricao AS item_descricao,
                            c.id AS categoria_id, c.nome AS categoria_nome
@@ -1106,6 +1265,7 @@ def atualizar_visita(visita_id):
 
                 desc = 'Item critico: ' + item_info['item_descricao']
                 desc += ' | Categoria: ' + item_info['categoria_nome']
+                desc += ' | Paciente: ' + (visita['nm_paciente'] or 'N/I')
                 if obs_item:
                     desc += ' | Observacao do item: ' + obs_item
                 elif observacoes:
@@ -1129,7 +1289,7 @@ def atualizar_visita(visita_id):
 
         msg = 'Visita atualizada'
         if tratativas_criadas > 0:
-            msg += '. %d tratativa(s) recriada(s).' % tratativas_criadas
+            msg += '. %d nova(s) tratativa(s) criada(s).' % tratativas_criadas
         return jsonify({'success': True, 'data': {'id': visita_id}, 'message': msg})
     except Exception as e:
         traceback.print_exc()
@@ -1146,6 +1306,11 @@ def ronda_em_andamento(dupla_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Finaliza rondas esquecidas antes de consultar
+        _auto_finalizar_rondas_expiradas(cursor)
+        conn.commit()
+
         cursor.execute("""
             SELECT r.id, r.data_ronda, r.status, r.criado_em
             FROM sentir_agir_rondas r
@@ -1293,7 +1458,8 @@ def listar_categorias():
         categorias = cursor.fetchall()
         cursor.execute("""
             SELECT id, categoria_id, descricao, ordem, ativo,
-                   COALESCE(tipo, 'semaforo') AS tipo
+                   COALESCE(tipo, 'semaforo') AS tipo,
+                   COALESCE(critico_quando, 'nao') AS critico_quando
             FROM sentir_agir_itens ORDER BY ordem
         """)
         itens = cursor.fetchall()
@@ -1491,6 +1657,9 @@ def criar_item():
             return jsonify({'success': False, 'error': 'categoria_id e descricao obrigatorios'}), 400
         if tipo not in ('semaforo', 'sim_nao'):
             tipo = 'semaforo'
+        critico_quando = dados.get('critico_quando', 'nao')
+        if critico_quando not in ('sim', 'nao'):
+            critico_quando = 'nao'
         usuario = _get_usuario()
         ip = _get_ip()
         conn = get_db_connection()
@@ -1506,9 +1675,9 @@ def criar_item():
         """, (categoria_id,))
         prox_ordem = cursor.fetchone()['prox']
         cursor.execute("""
-            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, ordem, ativo)
-            VALUES (%s, %s, %s, %s, TRUE) RETURNING id
-        """, (categoria_id, descricao, tipo, prox_ordem))
+            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, critico_quando, ordem, ativo)
+            VALUES (%s, %s, %s, %s, %s, TRUE) RETURNING id
+        """, (categoria_id, descricao, tipo, critico_quando, prox_ordem))
         item_id = cursor.fetchone()['id']
         _registrar_log(cursor, 'item', item_id, 'criacao', usuario,
                        valor_novo=descricao, ip_origem=ip)
@@ -1534,6 +1703,9 @@ def editar_item(item_id):
         tipo = dados.get('tipo', 'semaforo')
         if tipo not in ('semaforo', 'sim_nao'):
             tipo = 'semaforo'
+        critico_quando = dados.get('critico_quando', 'nao')
+        if critico_quando not in ('sim', 'nao'):
+            critico_quando = 'nao'
         usuario = _get_usuario()
         ip = _get_ip()
         conn = get_db_connection()
@@ -1546,9 +1718,9 @@ def editar_item(item_id):
             return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
         cursor.execute("""
             UPDATE sentir_agir_itens
-            SET descricao = %s, tipo = %s
+            SET descricao = %s, tipo = %s, critico_quando = %s
             WHERE id = %s
-        """, (descricao, tipo, item_id))
+        """, (descricao, tipo, critico_quando, item_id))
         _registrar_log(cursor, 'item', item_id, 'edicao', usuario,
                        campo_alterado='descricao', valor_anterior=item['descricao'],
                        valor_novo=descricao, ip_origem=ip)

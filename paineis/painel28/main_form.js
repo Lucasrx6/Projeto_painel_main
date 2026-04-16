@@ -184,6 +184,28 @@
         setTexto('pac-convenio', pac.ds_convenio || '--');
         setTexto('pac-acomodacao', pac.ds_tipo_acomodacao || '--');
 
+        // Badge "já visitado hoje"
+        var badge = document.getElementById('pac-visitado-badge');
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.id = 'pac-visitado-badge';
+            badge.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:6px 12px;font-size:0.82rem;display:flex;align-items:center;gap:6px;margin-top:6px;';
+            var nomeEl = document.getElementById('pac-nome');
+            if (nomeEl && nomeEl.parentNode) {
+                nomeEl.parentNode.insertBefore(badge, nomeEl.nextSibling);
+            }
+        }
+        if (pac.ja_visitado_hoje) {
+            var horas = pac.horas_desde_visita_hoje;
+            var textoHoras = horas !== null && horas !== undefined
+                ? (horas < 1 ? 'menos de 1h atrás' : Math.round(horas) + 'h atrás')
+                : 'hoje';
+            badge.innerHTML = '<i class="fas fa-check-circle"></i> Já visitado hoje (' + textoHoras + ') — fila recomeçando';
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+
         // Restaurar rascunho do localStorage (apenas se nao estiver em modo edicao)
         if (!estado.editandoVisitaId) {
             setTimeout(function () { restaurarRascunho(pac); }, 80);
@@ -621,14 +643,15 @@
                 var tipo = item.tipo || 'semaforo';
                 html += '<div class="item-avaliacao" data-item-id="' + item.id + '" data-tipo="' + tipo + '">';
                 html += '  <div class="item-descricao">' + escapeHtml(item.descricao) + '</div>';
-                html += '  <div class="item-semaforo">';
+                var cq = (tipo === 'sim_nao') ? (item.critico_quando || 'nao') : '';
+                html += '  <div class="item-semaforo"' + (cq ? ' data-critico-quando="' + cq + '"' : '') + '>';
 
                 if (tipo === 'sim_nao') {
                     html += '    <button type="button" class="btn-semaforo btn-sim" data-item="' + item.id + '" data-valor="sim" onclick="window.FORM.selecionarSemaforo(this)">';
                     html += '      <i class="fas fa-check"></i> Sim';
                     html += '    </button>';
                     html += '    <button type="button" class="btn-semaforo btn-nao" data-item="' + item.id + '" data-valor="nao" onclick="window.FORM.selecionarSemaforo(this)">';
-                    html += '      <i class="fas fa-times"></i> Nao';
+                    html += '      <i class="fas fa-times"></i> Não';
                     html += '    </button>';
                 } else {
                     html += '    <button type="button" class="btn-semaforo critico" data-item="' + item.id + '" data-valor="critico" onclick="window.FORM.selecionarSemaforo(this)">';
@@ -662,16 +685,27 @@
     function selecionarSemaforo(btn) {
         var container = btn.closest('.item-semaforo');
         var botoes = container.querySelectorAll('.btn-semaforo');
-        for (var i = 0; i < botoes.length; i++) botoes[i].classList.remove('selecionado');
-        btn.classList.add('selecionado');
+        for (var i = 0; i < botoes.length; i++) {
+            botoes[i].classList.remove('selecionado', 'sel-critico', 'sel-adequado');
+        }
+
+        var valor = btn.getAttribute('data-valor');
+
+        // Para itens sim_nao: colorir conforme critico_quando (armazenado no .item-semaforo)
+        var semaforo = btn.closest('.item-semaforo');
+        var criticoQuando = semaforo ? semaforo.getAttribute('data-critico-quando') : null;
+        if (criticoQuando) {
+            btn.classList.add('selecionado', valor === criticoQuando ? 'sel-critico' : 'sel-adequado');
+        } else {
+            btn.classList.add('selecionado');
+        }
 
         // Mostrar/ocultar campo de observação individual para item crítico
         var itemEl = btn.closest('.item-avaliacao');
         if (itemEl) {
             var obsDiv = itemEl.querySelector('.item-obs-critico');
             if (obsDiv) {
-                var valor = btn.getAttribute('data-valor');
-                var ehCritico = (valor === 'critico' || valor === 'nao');
+                var ehCritico = criticoQuando ? (valor === criticoQuando) : (valor === 'critico');
                 obsDiv.style.display = ehCritico ? 'block' : 'none';
                 if (!ehCritico) {
                     var ta = obsDiv.querySelector('.item-obs-critico-textarea');
@@ -700,15 +734,22 @@
         var temCritico = false;
         var temAtencao = false;
         var totalPreenchidos = 0;
-        var totalItens = todosItens.length;
 
         for (var i = 0; i < todosItens.length; i++) {
             var selecionado = todosItens[i].querySelector('.btn-semaforo.selecionado');
             if (selecionado) {
                 totalPreenchidos++;
                 var valor = selecionado.getAttribute('data-valor');
-                if (valor === 'critico' || valor === 'nao') temCritico = true;
-                if (valor === 'atencao') temAtencao = true;
+                if (valor === 'critico') {
+                    temCritico = true;
+                } else if (valor === 'atencao') {
+                    temAtencao = true;
+                } else if (valor === 'sim' || valor === 'nao') {
+                    // sim_nao: verificar critico_quando do item-semaforo
+                    var semF = selecionado.closest('.item-semaforo');
+                    var cqF = semF ? semF.getAttribute('data-critico-quando') : 'nao';
+                    if (valor === (cqF || 'nao')) temCritico = true;
+                }
             }
         }
 
@@ -1035,9 +1076,23 @@
         if (det) {
             var qC = 0, qA = 0, qAd = 0;
             avaliacoes.forEach(function (a) {
-                if (a.resultado === 'critico' || a.resultado === 'nao') qC++;
-                else if (a.resultado === 'atencao') qA++;
-                else if (a.resultado === 'adequado' || a.resultado === 'sim') qAd++;
+                if (a.resultado === 'critico') { qC++; }
+                else if (a.resultado === 'atencao') { qA++; }
+                else if (a.resultado === 'adequado') { qAd++; }
+                else if (a.resultado === 'sim' || a.resultado === 'nao') {
+                    // respeitar critico_quando do item
+                    var itemCfg = null;
+                    for (var ci = 0; ci < estado.categorias.length && !itemCfg; ci++) {
+                        var catI = estado.categorias[ci];
+                        if (catI.itens) {
+                            for (var ii = 0; ii < catI.itens.length; ii++) {
+                                if (catI.itens[ii].id === a.item_id) { itemCfg = catI.itens[ii]; break; }
+                            }
+                        }
+                    }
+                    var cqConf = itemCfg ? (itemCfg.critico_quando || 'nao') : 'nao';
+                    if (a.resultado === cqConf) qC++; else qAd++;
+                }
             });
             det.innerHTML =
                 '<strong>Paciente:</strong> ' + escapeHtml(pac.nm_paciente) + '<br>' +

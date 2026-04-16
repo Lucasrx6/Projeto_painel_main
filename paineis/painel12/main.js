@@ -70,9 +70,9 @@ function carregarDados() {
 // ========================================
 
 function atualizarCards(dados) {
-    // Card 1: Total Leitos
+    // Card 1: Total Leitos (exclui leitos temporários)
     document.getElementById('total-leitos').textContent =
-        parseInt(dados.total_leitos) || 0;
+        parseInt(dados.leitos_fixos) || 0;
 
     // Card 2: Leitos Ocupados
     document.getElementById('leitos-ocupados').textContent =

@@ -2029,45 +2029,35 @@ body {
 }
 */
 
-/* Botoes Sim/Nao */
-.btn-semaforo.btn-sim {
-    border-color: var(--cor-adequado);
-    color: var(--cor-adequado);
-    background: var(--cor-card);
-}
-
+/* Botoes Sim/Nao — cor neutra enquanto não selecionado */
+.btn-semaforo.btn-sim,
 .btn-semaforo.btn-nao {
-    border-color: var(--cor-critico);
-    color: var(--cor-critico);
+    border-color: #adb5bd;
+    color: #555;
     background: var(--cor-card);
 }
 
-.btn-semaforo.btn-sim:hover {
-    background: var(--cor-adequado-bg);
-    color: var(--cor-adequado);
-    border-color: var(--cor-adequado);
-    transform: scale(1.03);
-}
-
+.btn-semaforo.btn-sim:hover,
 .btn-semaforo.btn-nao:hover {
-    background: var(--cor-critico-bg);
-    color: var(--cor-critico);
-    border-color: var(--cor-critico);
+    background: #f1f3f5;
+    border-color: #6c757d;
+    color: #333;
     transform: scale(1.03);
 }
 
-.btn-semaforo.btn-sim.selecionado {
-    background: var(--cor-adequado);
-    border-color: var(--cor-adequado);
-    color: white;
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
-}
-
-.btn-semaforo.btn-nao.selecionado {
+/* Selecionado: crítico → vermelho, adequado → verde */
+.btn-semaforo.selecionado.sel-critico {
     background: var(--cor-critico);
     border-color: var(--cor-critico);
     color: white;
     box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+}
+
+.btn-semaforo.selecionado.sel-adequado {
+    background: var(--cor-adequado);
+    border-color: var(--cor-adequado);
+    color: white;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
 }
 
 
