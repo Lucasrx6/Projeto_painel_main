@@ -314,6 +314,10 @@ body {
     white-space: nowrap;
 }
 
+.th-sortable:hover { background: #edf0f3; }
+.th-sortable.sort-ativo { background: var(--cor-primaria); color: #fff; }
+.sort-icon { font-size: 0.6em; opacity: 0.45; vertical-align: middle; }
+
 .tabela-dados td {
     padding: 8px 10px;
     border-bottom: 1px solid #f5f5f5;

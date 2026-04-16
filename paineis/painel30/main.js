@@ -377,7 +377,12 @@
         html += '</div>';
         if (t.visita_observacoes) {
             html += '<div style="margin-top:10px;padding:10px;background:#f8f9fa;border-radius:6px;font-size:0.78rem;color:#666;font-style:italic;">';
-            html += '<strong>Obs da visita:</strong> ' + escapeHtml(t.visita_observacoes);
+            html += '<strong>Observa\u00e7\u00e3o Geral:</strong> ' + escapeHtml(t.visita_observacoes);
+            html += '</div>';
+        }
+        if (t.obs_item) {
+            html += '<div style="margin-top:8px;padding:10px 14px;background:#fff0f0;border-radius:6px;border-left:4px solid #dc3545;font-size:0.78rem;">';
+            html += '<strong style="color:#dc3545;">Cr\u00edtica:</strong> ' + escapeHtml(t.obs_item);
             html += '</div>';
         }
         html += '</div>';

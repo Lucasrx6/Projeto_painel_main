@@ -91,6 +91,42 @@
                 <button class="btn-principal" id="btn-iniciar-ronda">
                     <i class="fas fa-play-circle"></i> Iniciar Ronda
                 </button>
+
+                <!-- Fila de pacientes (visao geral antes de iniciar) -->
+                <div id="fila-visao-container" style="margin-top:20px;display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:0.85rem;font-weight:600;color:#555;">
+                            <i class="fas fa-list-ol" style="color:#17a2b8;"></i>
+                            Fila de Pacientes &mdash; <span id="fila-visao-total" style="font-weight:400;color:#888;"></span>
+                        </span>
+                        <button type="button" id="btn-atualizar-fila-visao"
+                            style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 10px;font-size:0.78rem;color:#666;cursor:pointer;">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                    <div style="overflow-x:auto;border-radius:8px;border:1px solid #e0e0e0;">
+                        <table id="fila-visao-tabela"
+                            style="width:100%;border-collapse:collapse;font-size:0.78rem;background:#fff;">
+                            <thead>
+                                <tr style="background:#f8f9fa;color:#555;font-weight:600;text-transform:uppercase;font-size:0.7rem;letter-spacing:0.3px;">
+                                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e0e0e0;">#</th>
+                                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e0e0e0;">Paciente</th>
+                                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e0e0e0;">Leito</th>
+                                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e0e0e0;">Setor</th>
+                                    <th style="padding:8px 10px;text-align:center;border-bottom:1px solid #e0e0e0;">Dias</th>
+                                    <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e0e0e0;">Dupla em Visita</th>
+                                    <th style="padding:8px 10px;text-align:center;border-bottom:1px solid #e0e0e0;">Hoje</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fila-visao-body">
+                                <tr><td colspan="7" style="text-align:center;padding:16px;color:#aaa;">
+                                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Resumo de visitas ja feitas -->
                 <div class="visitas-resumo" id="visitas-resumo" style="display:none;">
                     <div class="visitas-resumo-header">

@@ -398,6 +398,13 @@ def detalhe_tratativa(tratativa_id):
         resultado['historico'] = [serializar_linha(h) for h in historico]
         resultado['is_admin'] = _is_admin()
 
+        # Extrai obs_item de descricao_problema (formato: "... | Observacao do item: TEXT")
+        desc = resultado.get('descricao_problema') or ''
+        if ' | Observacao do item: ' in desc:
+            resultado['obs_item'] = desc.split(' | Observacao do item: ', 1)[1].strip()
+        else:
+            resultado['obs_item'] = None
+
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
         traceback.print_exc()

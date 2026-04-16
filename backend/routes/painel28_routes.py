@@ -58,12 +58,12 @@ def _is_admin():
 
 
 def _auto_finalizar_rondas_expiradas(cursor):
-    """Finaliza automaticamente rondas em_andamento com mais de 2 horas."""
+    """Finaliza automaticamente rondas em_andamento com mais de 1 hora."""
     cursor.execute("""
         UPDATE sentir_agir_rondas
         SET status = 'concluida', atualizado_em = NOW()
         WHERE status = 'em_andamento'
-          AND criado_em < NOW() - INTERVAL '2 hours'
+          AND criado_em < NOW() - INTERVAL '1 hour'
     """)
 
 
@@ -400,7 +400,17 @@ def fila_pacientes():
                          AND v.avaliacao_final != 'impossibilitada'
                          AND v.criado_em >= CURRENT_DATE
                        ORDER BY v.criado_em DESC LIMIT 1
-                   ) AS horas_desde_visita_hoje
+                   ) AS horas_desde_visita_hoje,
+                   (
+                       SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
+                       FROM sentir_agir_visitas v2
+                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                       WHERE v2.nr_atendimento = f.nr_atendimento
+                         AND r2.status = 'em_andamento'
+                         AND v2.criado_em >= CURRENT_DATE
+                       ORDER BY v2.criado_em DESC LIMIT 1
+                   ) AS dupla_em_visita
             FROM vw_sentir_agir_fila_pacientes f
             WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'

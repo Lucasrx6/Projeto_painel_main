@@ -58,6 +58,12 @@
             inputData.value = String(hoje.getDate()).padStart(2, '0') + '/' +
                 String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
         }
+
+        // Carregar tabela de fila de pacientes
+        carregarFilaVisao();
+        var btnAtualizarFila = document.getElementById('btn-atualizar-fila-visao');
+        if (btnAtualizarFila) btnAtualizarFila.addEventListener('click', carregarFilaVisao);
+
         console.log('Formulario V2 inicializado');
     }
 
@@ -125,6 +131,60 @@
         var maxImg = estado.configServidor.max_imagens_por_visita || '5';
         var el = document.getElementById('upload-limite');
         if (el) el.textContent = 'Maximo: ' + maxImg + ' imagens';
+    }
+
+    // ========================================
+    // FILA DE PACIENTES - TABELA VISAO GERAL
+    // ========================================
+
+    function carregarFilaVisao() {
+        var container = document.getElementById('fila-visao-container');
+        var body = document.getElementById('fila-visao-body');
+        var total = document.getElementById('fila-visao-total');
+
+        if (!container || !body) return;
+        container.style.display = 'block';
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:16px;color:#aaa;"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+        fetch(CONFIG.apiFilaPacientes + '?limite=50')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success || !data.data || data.data.length === 0) {
+                    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:16px;color:#aaa;">Nenhum paciente na fila</td></tr>';
+                    if (total) total.textContent = '0 pacientes';
+                    return;
+                }
+                var lista = data.data;
+                if (total) total.textContent = lista.length + ' paciente(s)';
+                body.innerHTML = lista.map(function (p, idx) {
+                    var visitadoHoje = p.ja_visitado_hoje;
+                    var emVisita = !!p.dupla_em_visita;
+                    var linhaStyle = visitadoHoje
+                        ? 'background:#f0fff4;color:#888;'
+                        : (emVisita ? 'background:#fff8e1;' : '');
+                    var html = '<tr style="border-bottom:1px solid #f0f0f0;' + linhaStyle + '">';
+                    html += '<td style="padding:7px 10px;color:#999;">' + (idx + 1) + '</td>';
+                    html += '<td style="padding:7px 10px;font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeAttr(p.nm_paciente || '') + '">' + escapeHtml(p.nm_paciente || 'N/I') + '</td>';
+                    html += '<td style="padding:7px 10px;"><strong>' + escapeHtml(p.leito || '--') + '</strong></td>';
+                    html += '<td style="padding:7px 10px;">' + escapeHtml(p.setor_sa_sigla || p.setor_ocupacao || '--') + '</td>';
+                    html += '<td style="padding:7px 10px;text-align:center;">' + (p.qt_dia_permanencia || '--') + '</td>';
+                    if (emVisita) {
+                        html += '<td style="padding:7px 10px;color:#e67e00;font-size:0.73rem;"><i class="fas fa-spinner fa-spin" style="font-size:0.6rem;"></i> ' + escapeHtml(p.dupla_em_visita) + '</td>';
+                    } else {
+                        html += '<td style="padding:7px 10px;color:#bbb;font-size:0.73rem;">&mdash;</td>';
+                    }
+                    if (visitadoHoje) {
+                        html += '<td style="padding:7px 10px;text-align:center;"><span style="background:#28a745;color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">Sim</span></td>';
+                    } else {
+                        html += '<td style="padding:7px 10px;text-align:center;"><span style="color:#ccc;font-size:0.75rem;">&mdash;</span></td>';
+                    }
+                    html += '</tr>';
+                    return html;
+                }).join('');
+            })
+            .catch(function () {
+                body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:16px;color:#dc3545;">Erro ao carregar fila</td></tr>';
+            });
     }
 
     // ========================================
