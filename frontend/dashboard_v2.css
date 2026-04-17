@@ -1,0 +1,1108 @@
+/* ==============================================================================
+   DASHBOARD PRINCIPAL - ESTILOS
+   Sistema de Paineis - Hospital Anchieta Ceilandia
+   Versao 2.0 - Responsivo e Otimizado
+   ============================================================================== */
+
+/* ==============================================================================
+   RESET E BASE
+   ============================================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f7fa;
+    min-height: 100%;
+    min-height: 100dvh;
+    color: #333;
+    line-height: 1.5;
+}
+
+.dashboard-container {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ==============================================================================
+   HEADER
+   ============================================================================== */
+
+.dashboard-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-width: 0;
+}
+
+.logo-header {
+    max-height: 50px;
+    height: auto;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.dashboard-header h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard-header h1 i {
+    margin-right: 10px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.user-info span {
+    font-size: 1rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Botoes do Header */
+.btn-admin,
+.btn-logout {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.btn-admin:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+}
+
+.btn-admin:active {
+    transform: translateY(0);
+}
+
+.btn-logout:hover {
+    background: #a71d2a;
+    border-color: #a71d2a;
+    color: white;
+}
+
+.btn-logout:active {
+    transform: translateY(0);
+}
+
+/* ==============================================================================
+   GRID DE PAINEIS
+   ============================================================================== */
+
+.paineis-grid {
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    flex: 1;
+}
+
+/* ==============================================================================
+   CARD DE PAINEL
+   ============================================================================== */
+
+.painel-card {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.painel-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.2);
+}
+
+.painel-card:focus {
+    outline: 3px solid #dc3545;
+    outline-offset: 2px;
+}
+
+.painel-card:active {
+    transform: translateY(-2px);
+}
+
+/* Card Desabilitado */
+.painel-card.painel-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.painel-card.painel-disabled:hover {
+    transform: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Icone do Painel */
+.painel-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+}
+
+.painel-icon i {
+    font-size: 2rem;
+    color: white;
+}
+
+/* Conteudo do Card */
+.painel-card h3 {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+    color: #333;
+    line-height: 1.3;
+}
+
+.painel-card p {
+    color: #666;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    flex: 1;
+}
+
+/* Status do Painel */
+.painel-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #666;
+    margin-top: auto;
+}
+
+.status-active {
+    color: #28a745;
+    font-size: 0.6rem;
+}
+
+.status-prototipo {
+    color: #ffc107;
+    font-size: 0.6rem;
+}
+
+.status-inactive {
+    color: #dc3545;
+    font-size: 0.6rem;
+}
+
+/* ==============================================================================
+   MENSAGEM SEM PAINEIS
+   ============================================================================== */
+
+.mensagem-sem-paineis {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.sem-paineis-icon {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 30px;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
+}
+
+.sem-paineis-icon i {
+    font-size: 4rem;
+    color: white;
+}
+
+.mensagem-sem-paineis h2 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.mensagem-sem-paineis p {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.mensagem-sem-paineis p:last-child {
+    font-weight: 600;
+    color: #dc3545;
+}
+
+/* ==============================================================================
+   MODAL
+   ============================================================================== */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
+    backdrop-filter: blur(2px);
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 15px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideUp 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    padding: 25px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    font-size: 1.4rem;
+    color: #333;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h2 i {
+    color: #dc3545;
+}
+
+.btn-close-modal {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: #999;
+    line-height: 1;
+    padding: 5px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-close-modal:hover {
+    color: #333;
+    background: #f0f0f0;
+}
+
+.modal-content form {
+    padding: 25px;
+}
+
+/* Formularios */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    font-family: inherit;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.form-control.error {
+    border-color: #dc3545;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 6px;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+/* Checkbox */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #dc3545;
+}
+
+/* Botoes do Modal */
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.btn-primary,
+.btn-secondary {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #d0d0d0;
+}
+
+/* Alertas */
+.alert {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert i {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.alert.alert-danger {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert.alert-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+}
+
+.alert.alert-info {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+/* ==============================================================================
+   LOADING
+   ============================================================================== */
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: #666;
+    font-size: 1rem;
+}
+
+/* ==============================================================================
+   RESPONSIVIDADE - TABLETS GRANDES (769px - 1024px)
+   ============================================================================== */
+
+@media (max-width: 1024px) {
+    .paineis-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .painel-card {
+        padding: 25px;
+    }
+
+    .painel-icon {
+        width: 65px;
+        height: 65px;
+    }
+
+    .painel-icon i {
+        font-size: 1.8rem;
+    }
+
+    .painel-card h3 {
+        font-size: 1.3rem;
+    }
+
+    .painel-card p {
+        font-size: 0.9rem;
+    }
+}
+
+/* ==============================================================================
+   RESPONSIVIDADE - TABLETS (481px - 768px)
+   ============================================================================== */
+
+@media (max-width: 768px) {
+    /* Header */
+    .dashboard-header {
+        padding: 15px;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .header-left {
+        width: 100%;
+        gap: 12px;
+    }
+
+    .logo-header {
+        max-height: 40px;
+        padding: 6px 10px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .user-info {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .user-info span {
+        font-size: 0.9rem;
+    }
+
+    .btn-admin,
+    .btn-logout {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    /* Grid: 2 colunas */
+    .paineis-grid {
+        margin: 30px auto;
+        padding: 0 15px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .painel-card {
+        padding: 20px;
+    }
+
+    .painel-icon {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 15px;
+    }
+
+    .painel-icon i {
+        font-size: 1.6rem;
+    }
+
+    .painel-card h3 {
+        font-size: 1.2rem;
+        margin-bottom: 8px;
+    }
+
+    .painel-card p {
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+    }
+
+    .painel-status {
+        font-size: 0.8rem;
+    }
+
+    /* Modal */
+    .modal {
+        padding: 15px;
+    }
+
+    .modal-header {
+        padding: 20px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .modal-content form {
+        padding: 20px;
+    }
+
+    /* Mensagem sem paineis */
+    .mensagem-sem-paineis {
+        padding: 60px 20px;
+    }
+
+    .sem-paineis-icon {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 25px;
+    }
+
+    .sem-paineis-icon i {
+        font-size: 3rem;
+    }
+
+    .mensagem-sem-paineis h2 {
+        font-size: 1.7rem;
+    }
+
+    .mensagem-sem-paineis p {
+        font-size: 1rem;
+    }
+}
+
+/* ==============================================================================
+   RESPONSIVIDADE - SMARTPHONES (menor que 480px)
+   ============================================================================== */
+
+@media (max-width: 480px) {
+    /* Header compacto */
+    .dashboard-header {
+        padding: 12px;
+    }
+
+    .header-content {
+        gap: 10px;
+    }
+
+    .header-left {
+        gap: 10px;
+    }
+
+    .logo-header {
+        max-height: 35px;
+        padding: 5px 8px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.25rem;
+    }
+
+    .dashboard-header h1 i {
+        font-size: 1rem;
+        margin-right: 6px;
+    }
+
+    .user-info {
+        gap: 8px;
+    }
+
+    .user-info span {
+        font-size: 0.85rem;
+        width: 100%;
+        text-align: center;
+    }
+
+    .btn-admin,
+    .btn-logout {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* Grid: 1 coluna */
+    .paineis-grid {
+        margin: 20px auto;
+        padding: 0 12px;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .painel-card {
+        padding: 18px;
+        border-radius: 12px;
+    }
+
+    .painel-icon {
+        width: 55px;
+        height: 55px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+    }
+
+    .painel-icon i {
+        font-size: 1.4rem;
+    }
+
+    .painel-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 6px;
+    }
+
+    .painel-card p {
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+    }
+
+    .painel-status {
+        font-size: 0.75rem;
+    }
+
+    /* Modal */
+    .modal {
+        padding: 10px;
+    }
+
+    .modal-content {
+        border-radius: 12px;
+        max-height: 95vh;
+    }
+
+    .modal-header {
+        padding: 15px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .btn-close-modal {
+        font-size: 1.6rem;
+        width: 32px;
+        height: 32px;
+    }
+
+    .modal-content form {
+        padding: 15px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .form-control {
+        padding: 10px;
+        font-size: 0.95rem;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+
+    .alert {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    /* Mensagem sem paineis */
+    .mensagem-sem-paineis {
+        padding: 40px 15px;
+        border-radius: 12px;
+    }
+
+    .sem-paineis-icon {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 20px;
+    }
+
+    .sem-paineis-icon i {
+        font-size: 2.5rem;
+    }
+
+    .mensagem-sem-paineis h2 {
+        font-size: 1.5rem;
+    }
+
+    .mensagem-sem-paineis p {
+        font-size: 0.9rem;
+    }
+}
+
+/* ==============================================================================
+   RESPONSIVIDADE - SMARTPHONES MUITO PEQUENOS (menor que 360px)
+   ============================================================================== */
+
+@media (max-width: 360px) {
+    .dashboard-header {
+        padding: 10px;
+    }
+
+    .logo-header {
+        max-height: 32px;
+        padding: 4px 6px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .user-info span {
+        font-size: 0.8rem;
+    }
+
+    .btn-admin,
+    .btn-logout {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+    }
+
+    .paineis-grid {
+        margin: 15px auto;
+        padding: 0 10px;
+        gap: 10px;
+    }
+
+    .painel-card {
+        padding: 15px;
+    }
+
+    .painel-icon {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 10px;
+    }
+
+    .painel-icon i {
+        font-size: 1.3rem;
+    }
+
+    .painel-card h3 {
+        font-size: 1rem;
+    }
+
+    .painel-card p {
+        font-size: 0.8rem;
+    }
+
+    .mensagem-sem-paineis {
+        padding: 30px 12px;
+    }
+
+    .sem-paineis-icon {
+        width: 70px;
+        height: 70px;
+    }
+
+    .sem-paineis-icon i {
+        font-size: 2rem;
+    }
+
+    .mensagem-sem-paineis h2 {
+        font-size: 1.3rem;
+    }
+
+    .mensagem-sem-paineis p {
+        font-size: 0.85rem;
+    }
+}
+
+/* ==============================================================================
+   RESPONSIVIDADE - LANDSCAPE MODE (altura menor que 500px)
+   ============================================================================== */
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .dashboard-header {
+        padding: 8px 15px;
+        position: relative;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.2rem;
+    }
+
+    .logo-header {
+        max-height: 30px;
+    }
+
+    .paineis-grid {
+        margin: 15px auto;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .painel-card {
+        padding: 15px;
+    }
+
+    .painel-icon {
+        width: 45px;
+        height: 45px;
+        margin-bottom: 8px;
+    }
+
+    .painel-icon i {
+        font-size: 1.2rem;
+    }
+
+    .painel-card h3 {
+        font-size: 1rem;
+        margin-bottom: 5px;
+    }
+
+    .painel-card p {
+        font-size: 0.75rem;
+        margin-bottom: 8px;
+    }
+
+    .mensagem-sem-paineis {
+        padding: 30px 20px;
+    }
+
+    .sem-paineis-icon {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 15px;
+    }
+
+    .sem-paineis-icon i {
+        font-size: 2rem;
+    }
+}
+
+/* ==============================================================================
+   SAFE AREA (NOTCH)
+   ============================================================================== */
+
+@supports (padding-top: env(safe-area-inset-top)) {
+    .dashboard-header {
+        padding-top: max(20px, env(safe-area-inset-top));
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+
+    .paineis-grid {
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+}
+
+/* ==============================================================================
+   ACESSIBILIDADE
+   ============================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus visible para navegacao por teclado */
+.btn-admin:focus-visible,
+.btn-logout:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.painel-card:focus-visible,
+.form-control:focus-visible,
+.btn-close-modal:focus-visible {
+    outline: 3px solid #dc3545;
+    outline-offset: 2px;
+}
+
+/* Skip link para acessibilidade */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #dc3545;
+    color: white;
+    padding: 8px 16px;
+    z-index: 10000;
+    transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+    top: 0;
+}
