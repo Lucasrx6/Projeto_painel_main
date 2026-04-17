@@ -25,7 +25,11 @@
         visitaAtual: null,
         refreshInterval: null,
         filtrosVisiveis: false,
-        debounceTimer: null
+        debounceTimer: null,
+        dadosTabela: [],
+        sortColuna: null,
+        sortDirecao: 'asc',
+        dashboardVisivel: true
     };
 
     // ========================================
@@ -87,6 +91,67 @@
             estado.filtrosVisiveis = !estado.filtrosVisiveis;
             var bar = document.getElementById('filtros-bar');
             if (bar) bar.style.display = estado.filtrosVisiveis ? 'block' : 'none';
+        });
+
+        var btnToggleDashboard = document.getElementById('btn-toggle-dashboard');
+        if (btnToggleDashboard) btnToggleDashboard.addEventListener('click', function () {
+            estado.dashboardVisivel = !estado.dashboardVisivel;
+            var row1 = document.getElementById('stats-row');
+            var row2 = document.getElementById('stats-row-tratativas');
+            var display = estado.dashboardVisivel ? '' : 'none';
+            if (row1) row1.style.display = display;
+            if (row2) row2.style.display = display;
+            this.innerHTML = estado.dashboardVisivel
+                ? '<i class="fas fa-chart-bar"></i> <span class="btn-text">Dashboard</span>'
+                : '<i class="fas fa-eye-slash"></i> <span class="btn-text">Dashboard</span>';
+        });
+
+        // Ordenacao de colunas da tabela
+        var ths = document.querySelectorAll('.th-sortable');
+        for (var i = 0; i < ths.length; i++) {
+            ths[i].style.cursor = 'pointer';
+            ths[i].style.userSelect = 'none';
+            ths[i].addEventListener('click', function () {
+                var col = this.getAttribute('data-sort');
+                if (estado.sortColuna === col) {
+                    estado.sortDirecao = estado.sortDirecao === 'asc' ? 'desc' : 'asc';
+                } else {
+                    estado.sortColuna = col;
+                    estado.sortDirecao = 'asc';
+                }
+                renderizarTabela(estado.dadosTabela);
+                _atualizarIconesSort();
+            });
+        }
+    }
+
+    function _atualizarIconesSort() {
+        var ths = document.querySelectorAll('.th-sortable');
+        for (var i = 0; i < ths.length; i++) {
+            var col = ths[i].getAttribute('data-sort');
+            var icon = ths[i].querySelector('.sort-icon');
+            if (!icon) continue;
+            if (col === estado.sortColuna) {
+                icon.textContent = estado.sortDirecao === 'asc' ? ' \u25B2' : ' \u25BC';
+                icon.style.color = '#fff';
+            } else {
+                icon.textContent = ' \u25B2\u25BC';
+                icon.style.color = 'rgba(255,255,255,0.35)';
+                icon.style.fontSize = '0.6em';
+            }
+        }
+    }
+
+    function _sortarDados(dados) {
+        if (!estado.sortColuna) return dados;
+        var col = estado.sortColuna;
+        var dir = estado.sortDirecao === 'asc' ? 1 : -1;
+        return dados.slice().sort(function (a, b) {
+            var va = a[col] !== null && a[col] !== undefined ? String(a[col]) : '';
+            var vb = b[col] !== null && b[col] !== undefined ? String(b[col]) : '';
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
         });
     }
 
@@ -248,7 +313,8 @@
             .then(function (data) {
                 if (data.success) {
                     estado.isAdmin = data.is_admin || false;
-                    renderizarTabela(data.data || []);
+                    estado.dadosTabela = data.data || [];
+                    renderizarTabela(estado.dadosTabela);
                     setTexto('tabela-total', (data.total || 0) + ' registros');
                 }
             })
@@ -269,6 +335,10 @@
         var wrapper = document.querySelector('.tabela-wrapper');
 
         if (!body) return;
+
+        // Aplicar ordenação antes de renderizar
+        visitas = _sortarDados(visitas);
+        _atualizarIconesSort();
 
         if (!visitas || visitas.length === 0) {
             body.innerHTML = '';

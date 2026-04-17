@@ -21,6 +21,10 @@
                     <h1><i class="fas fa-chart-bar"></i> Gestao Sentir e Agir</h1>
                 </div>
                 <div class="header-right">
+                    <!-- Toggle Dashboard -->
+                    <button id="btn-toggle-dashboard" class="btn-header" title="Ocultar/Mostrar Dashboard">
+                        <i class="fas fa-chart-bar"></i> <span class="btn-text">Dashboard</span>
+                    </button>
                     <!-- Filtros toggle -->
                     <button id="btn-toggle-filtros" class="btn-header" title="Filtros">
                         <i class="fas fa-filter"></i> <span class="btn-text">Filtros</span>
@@ -184,19 +188,19 @@
                     <table class="tabela-dados" id="tabela-dados">
                         <thead>
                             <tr>
-                                <th>Data</th>
-                                <th>Dupla</th>
-                                <th>Setor</th>
-                                <th>Leito</th>
-                                <th>Atend.</th>
-                                <th>Avaliacao</th>
+                                <th class="th-sortable" data-sort="data_ronda">Data <span class="sort-icon"></span></th>
+                                <th class="th-sortable" data-sort="dupla_nome">Dupla <span class="sort-icon"></span></th>
+                                <th class="th-sortable" data-sort="setor_sigla">Setor <span class="sort-icon"></span></th>
+                                <th class="th-sortable" data-sort="leito">Leito <span class="sort-icon"></span></th>
+                                <th class="th-sortable" data-sort="nr_atendimento">Atend. <span class="sort-icon"></span></th>
+                                <th class="th-sortable" data-sort="avaliacao_final">Avaliacao <span class="sort-icon"></span></th>
                                 <th class="col-semaforos">
                                     <span class="th-dot dot-critico" title="Criticos"></span>
                                     <span class="th-dot dot-atencao" title="Atencao"></span>
                                     <span class="th-dot dot-adequado" title="Adequados"></span>
                                 </th>
                                 <th>Img</th>
-                                <th>Status</th>
+                                <th class="th-sortable" data-sort="status_ronda">Status <span class="sort-icon"></span></th>
                                 <th>Tratativas</th>
                                 <th>Acoes</th>
                             </tr>
