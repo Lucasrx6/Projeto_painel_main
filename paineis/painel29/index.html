@@ -100,7 +100,18 @@
                     </select>
                 </div>
                 <div class="filtro-grupo">
-                    <label>Status:</label>
+                    <label>Status Trat.:</label>
+                    <select id="filtro-status-trat">
+                        <option value="">Todos</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="em_tratativa">Em Tratativa</option>
+                        <option value="regularizado">Regularizado</option>
+                        <option value="impossibilitado">Impossibilitado</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label>Status Ronda:</label>
                     <select id="filtro-status">
                         <option value="">Todos</option>
                         <option value="em_andamento">Em andamento</option>
@@ -120,17 +131,12 @@
         <!-- Dashboard Content -->
         <div class="dashboard-content">
 
-            <!-- KPIs -->
+            <!-- KPIs unificados (1 fileira) -->
             <div class="stats-row" id="stats-row">
                 <div class="stat-card">
                     <div class="stat-icon icon-visitas"><i class="fas fa-clipboard-list"></i></div>
                     <h3 id="stat-visitas">0</h3>
                     <p>Visitas</p>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon icon-rondas"><i class="fas fa-route"></i></div>
-                    <h3 id="stat-rondas">0</h3>
-                    <p>Rondas</p>
                 </div>
                 <div class="stat-card stat-card-critico">
                     <div class="stat-icon icon-criticos"><i class="fas fa-exclamation-circle"></i></div>
@@ -152,14 +158,10 @@
                     <h3 id="stat-leitos">0</h3>
                     <p>Leitos</p>
                 </div>
-            </div>
-
-            <!-- KPIs Tratativas -->
-            <div class="stats-row stats-row-tratativas" id="stats-row-tratativas">
-                <div class="stat-card stat-card-trat-header" style="grid-column: span 1; pointer-events:none;">
+                <div class="stat-card" style="pointer-events:none; border-left: 3px solid #dee2e6;">
                     <div class="stat-icon icon-trat-total"><i class="fas fa-clipboard-check"></i></div>
                     <h3 id="stat-trat-total">0</h3>
-                    <p>Total Tratativas</p>
+                    <p>Tratativas</p>
                 </div>
                 <div class="stat-card stat-card-pendente">
                     <div class="stat-icon icon-pendente"><i class="fas fa-exclamation-circle"></i></div>
@@ -175,6 +177,11 @@
                     <div class="stat-icon icon-regularizado"><i class="fas fa-check-circle"></i></div>
                     <h3 id="stat-trat-regularizadas">0</h3>
                     <p>Regularizadas</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-impossibilitado"><i class="fas fa-ban"></i></div>
+                    <h3 id="stat-trat-impossibilitados">0</h3>
+                    <p>Impossibilitado</p>
                 </div>
             </div>
 
@@ -193,6 +200,7 @@
                                 <th class="th-sortable" data-sort="setor_sigla">Setor <span class="sort-icon"></span></th>
                                 <th class="th-sortable" data-sort="leito">Leito <span class="sort-icon"></span></th>
                                 <th class="th-sortable" data-sort="nr_atendimento">Atend. <span class="sort-icon"></span></th>
+                                <th class="th-sortable" data-sort="nm_paciente">Paciente <span class="sort-icon"></span></th>
                                 <th class="th-sortable" data-sort="avaliacao_final">Avaliacao <span class="sort-icon"></span></th>
                                 <th class="col-semaforos">
                                     <span class="th-dot dot-critico" title="Criticos"></span>
@@ -206,7 +214,7 @@
                             </tr>
                         </thead>
                         <tbody id="tabela-body">
-                            <tr><td colspan="10" class="tabela-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
+                            <tr><td colspan="12" class="tabela-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>

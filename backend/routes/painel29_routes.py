@@ -116,6 +116,15 @@ def _build_common_filters():
         condicoes.append("r.status IN (" + placeholders + ")")
         params.extend(status_ronda)
 
+    # Filtro por status de tratativa
+    status_trat = request.args.get('status_trat', '').strip()
+    if status_trat:
+        condicoes.append("""EXISTS (
+            SELECT 1 FROM sentir_agir_tratativas t2
+            WHERE t2.visita_id = v.id AND t2.status = %s
+        )""")
+        params.append(status_trat)
+
     # Busca livre
     busca = request.args.get('busca', '').strip()
     if busca:
@@ -197,6 +206,7 @@ def dashboard():
                 SUM(CASE WHEN t.status = 'pendente' THEN 1 ELSE 0 END) AS trat_pendentes,
                 SUM(CASE WHEN t.status = 'em_tratativa' THEN 1 ELSE 0 END) AS trat_em_tratativa,
                 SUM(CASE WHEN t.status = 'regularizado' THEN 1 ELSE 0 END) AS trat_regularizadas,
+                SUM(CASE WHEN t.status = 'impossibilitado' THEN 1 ELSE 0 END) AS trat_impossibilitados,
                 SUM(CASE WHEN t.status = 'cancelado' THEN 1 ELSE 0 END) AS trat_canceladas
             FROM sentir_agir_tratativas t
             JOIN sentir_agir_visitas v ON v.id = t.visita_id
@@ -244,6 +254,7 @@ def dashboard():
             resultado['trat_pendentes'] = trat.get('trat_pendentes', 0) or 0
             resultado['trat_em_tratativa'] = trat.get('trat_em_tratativa', 0) or 0
             resultado['trat_regularizadas'] = trat.get('trat_regularizadas', 0) or 0
+            resultado['trat_impossibilitados'] = trat.get('trat_impossibilitados', 0) or 0
 
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
@@ -278,6 +289,7 @@ def dados():
                 s.sigla AS setor_sigla,
                 v.leito,
                 v.nr_atendimento,
+                v.nm_paciente,
                 v.avaliacao_final,
                 v.observacoes,
                 v.criado_em,

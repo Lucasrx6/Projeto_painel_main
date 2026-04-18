@@ -271,6 +271,7 @@ def listar_tratativas():
                 t.data_resolucao,
                 t.resolvido_por,
                 t.criado_em AS tratativa_criada_em,
+                t.observacoes_resolucao,
                 EXTRACT(EPOCH FROM (NOW() - t.criado_em)) / 86400.0 AS dias_em_aberto,
                 i.descricao AS item_descricao,
                 COALESCE(i.tipo, 'semaforo') AS item_tipo,
@@ -303,7 +304,8 @@ def listar_tratativas():
                     WHEN 'pendente' THEN 1
                     WHEN 'em_tratativa' THEN 2
                     WHEN 'regularizado' THEN 3
-                    WHEN 'cancelado' THEN 4
+                    WHEN 'impossibilitado' THEN 4
+                    WHEN 'cancelado' THEN 5
                 END,
                 t.criado_em DESC
         """
@@ -326,6 +328,110 @@ def listar_tratativas():
             'data': dados,
             'total': len(dados),
             'is_admin': _is_admin()
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: RESUMO DE CRÍTICOS (sintético + analítico)
+# ============================================================
+
+@painel30_bp.route('/api/paineis/painel30/criticos-resumo', methods=['GET'])
+@login_required
+def criticos_resumo():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        dias = request.args.get('dias', '30')
+
+        sql = """
+            SELECT
+                s.nome AS setor_nome,
+                s.sigla AS setor_sigla,
+                c.nome AS categoria_nome,
+                c.icone AS categoria_icone,
+                i.descricao AS item_descricao,
+                t.id AS tratativa_id,
+                t.status,
+                t.descricao_problema,
+                t.plano_acao,
+                t.observacoes_resolucao,
+                t.criado_em AS tratativa_criada_em,
+                EXTRACT(EPOCH FROM (NOW() - t.criado_em)) / 86400.0 AS dias_em_aberto,
+                v.leito,
+                v.nm_paciente,
+                v.nr_atendimento,
+                ro.data_ronda,
+                COALESCE(r.nome, t.responsavel_nome_manual, 'Sem responsavel') AS responsavel_display,
+                d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_visitas v ON v.id = t.visita_id
+            JOIN sentir_agir_itens i ON i.id = t.item_id
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            JOIN sentir_agir_rondas ro ON ro.id = v.ronda_id
+            JOIN sentir_agir_duplas d ON d.id = ro.dupla_id
+            LEFT JOIN sentir_agir_responsaveis r ON r.id = t.responsavel_id
+            WHERE t.status IN ('pendente', 'em_tratativa')
+        """
+        params = []
+        if dias:
+            sql += " AND t.criado_em >= NOW() - %s * INTERVAL '1 day'"
+            params.append(int(dias))
+
+        sql += " ORDER BY s.nome, c.nome, t.criado_em DESC"
+
+        cursor.execute(sql, params)
+        rows = [serializar_linha(r) for r in cursor.fetchall()]
+
+        for r in rows:
+            if r.get('dias_em_aberto') is not None:
+                r['dias_em_aberto'] = round(float(r['dias_em_aberto']), 1)
+
+        cursor.close()
+        conn.close()
+
+        # Agrupar por setor → categoria (sintético)
+        from collections import OrderedDict
+        setores_map = OrderedDict()
+        for row in rows:
+            sn = row['setor_nome']
+            cn = row['categoria_nome']
+            if sn not in setores_map:
+                setores_map[sn] = {
+                    'setor_nome': sn,
+                    'setor_sigla': row['setor_sigla'],
+                    'total': 0,
+                    'categorias': OrderedDict()
+                }
+            if cn not in setores_map[sn]['categorias']:
+                setores_map[sn]['categorias'][cn] = {
+                    'categoria_nome': cn,
+                    'categoria_icone': row['categoria_icone'],
+                    'total': 0
+                }
+            setores_map[sn]['categorias'][cn]['total'] += 1
+            setores_map[sn]['total'] += 1
+
+        sintetico = []
+        for sn, sd in setores_map.items():
+            sintetico.append({
+                'setor_nome': sd['setor_nome'],
+                'setor_sigla': sd['setor_sigla'],
+                'total': sd['total'],
+                'categorias': list(sd['categorias'].values())
+            })
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'sintetico': sintetico,
+                'analitico': rows,
+                'total': len(rows)
+            }
         })
     except Exception as e:
         traceback.print_exc()
@@ -455,7 +561,7 @@ def atualizar_tratativa(tratativa_id):
         # Status
         if 'status' in dados:
             novo_status = dados['status']
-            if novo_status not in ('pendente', 'em_tratativa', 'regularizado', 'cancelado'):
+            if novo_status not in ('pendente', 'em_tratativa', 'regularizado', 'impossibilitado', 'cancelado'):
                 cursor.close()
                 conn.close()
                 return jsonify({'success': False, 'error': 'Status invalido'}), 400

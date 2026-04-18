@@ -13,6 +13,7 @@
         apiTratativas: BASE_URL + '/api/paineis/painel30/tratativas',
         apiFiltros: BASE_URL + '/api/paineis/painel30/filtros',
         apiResponsaveis: BASE_URL + '/api/paineis/painel30/responsaveis',
+        apiCriticosResumo: BASE_URL + '/api/paineis/painel30/criticos-resumo',
         intervaloRefresh: 60000
     };
 
@@ -24,7 +25,9 @@
         filtrosVisiveis: false,
         debounceTimer: null,
         responsaveisCache: [],
-        responsaveisLista: []
+        responsaveisLista: [],
+        abaAtiva: 'resumo',
+        resumoCarregado: false
     };
 
     // ========================================
@@ -33,15 +36,63 @@
 
     function inicializar() {
         console.log('Inicializando Painel 30 - Central de Tratativas...');
+        configurarTabs();
         configurarBotoes();
         configurarFiltros();
         configurarKpiClicks();
         configurarModais();
         configurarResponsaveis();
         carregarFiltrosOpcoes();
-        carregarTudo();
-        estado.refreshInterval = setInterval(carregarTudo, CONFIG.intervaloRefresh);
+        carregarResumo();
+        estado.refreshInterval = setInterval(function () {
+            if (estado.abaAtiva === 'resumo' || estado.abaAtiva === 'criticos') {
+                carregarResumo();
+            } else {
+                carregarTudo();
+            }
+        }, CONFIG.intervaloRefresh);
         console.log('Painel 30 inicializado');
+    }
+
+    // ========================================
+    // TABS
+    // ========================================
+
+    function configurarTabs() {
+        var btns = document.querySelectorAll('.tab-nav-btn');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].addEventListener('click', function () {
+                ativarTab(this.getAttribute('data-tab'));
+            });
+        }
+    }
+
+    function ativarTab(nomeTab) {
+        estado.abaAtiva = nomeTab;
+
+        var btns = document.querySelectorAll('.tab-nav-btn');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === nomeTab);
+        }
+
+        var panels = document.querySelectorAll('.tab-panel');
+        for (var j = 0; j < panels.length; j++) {
+            panels[j].classList.toggle('active', panels[j].id === 'tab-' + nomeTab);
+        }
+
+        // Filtros só aparecem na aba de tratativas
+        var filtrosBar = document.getElementById('filtros-bar');
+        if (nomeTab !== 'tratativas' && filtrosBar) {
+            filtrosBar.style.display = 'none';
+            estado.filtrosVisiveis = false;
+        }
+
+        // Carregar dados da aba selecionada na primeira vez
+        if (nomeTab === 'resumo' || nomeTab === 'criticos') {
+            carregarResumo();
+        } else if (nomeTab === 'tratativas') {
+            carregarTudo();
+        }
     }
 
     // ========================================
@@ -79,10 +130,17 @@
 
         var btnToggleFiltros = document.getElementById('btn-toggle-filtros');
         if (btnToggleFiltros) btnToggleFiltros.addEventListener('click', function () {
+            if (estado.abaAtiva !== 'tratativas') {
+                ativarTab('tratativas');
+                return;
+            }
             estado.filtrosVisiveis = !estado.filtrosVisiveis;
             var bar = document.getElementById('filtros-bar');
             if (bar) bar.style.display = estado.filtrosVisiveis ? 'block' : 'none';
         });
+
+        var selResumoDias = document.getElementById('resumo-dias');
+        if (selResumoDias) selResumoDias.addEventListener('change', function () { carregarResumo(); });
     }
 
     // ========================================
@@ -197,6 +255,138 @@
     }
 
     // ========================================
+    // CARREGAR RESUMO DE CRITICOS
+    // ========================================
+
+    function carregarResumo() {
+        var dias = (document.getElementById('resumo-dias') || {}).value || '30';
+        var url = CONFIG.apiCriticosResumo + (dias ? '?dias=' + dias : '');
+
+        fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                var d = data.data;
+                setTexto('resumo-total-badge', d.total + ' crítico' + (d.total !== 1 ? 's' : ''));
+                setTexto('analitico-total-badge', d.total + ' registro' + (d.total !== 1 ? 's' : ''));
+                renderizarSintetico(d.sintetico || []);
+                renderizarAnalitico(d.analitico || []);
+            })
+            .catch(function (err) {
+                console.error('Erro resumo:', err);
+                var c = document.getElementById('resumo-sintetico-container');
+                if (c) c.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">Erro ao carregar</p>';
+            });
+    }
+
+    function renderizarSintetico(setores) {
+        var container = document.getElementById('resumo-sintetico-container');
+        if (!container) return;
+
+        if (!setores || setores.length === 0) {
+            container.innerHTML = '<div class="resumo-vazio"><i class="fas fa-check-circle"></i><p>Nenhum crítico em aberto</p><small>Todos os itens estão regularizados</small></div>';
+            return;
+        }
+
+        var html = '<div class="resumo-grid">';
+        setores.forEach(function (s) {
+            html += '<div class="resumo-setor-card">';
+            html += '<div class="resumo-setor-header">';
+            html += '<div class="resumo-setor-nome"><i class="fas fa-hospital"></i> ' + escapeHtml(s.setor_nome) + '</div>';
+            html += '<span class="resumo-setor-total">' + s.total + ' crítico' + (s.total !== 1 ? 's' : '') + '</span>';
+            html += '</div>';
+            html += '<div class="resumo-cats-lista">';
+            s.categorias.forEach(function (cat) {
+                var pct = Math.round((cat.total / s.total) * 100);
+                html += '<div class="resumo-cat-item">';
+                html += '<div class="resumo-cat-nome">';
+                if (cat.categoria_icone) html += '<i class="' + escapeHtml(cat.categoria_icone) + '"></i> ';
+                html += escapeHtml(cat.categoria_nome);
+                html += '</div>';
+                html += '<div class="resumo-cat-barra-wrap">';
+                html += '<div class="resumo-cat-barra" style="width:' + pct + '%"></div>';
+                html += '</div>';
+                html += '<span class="resumo-cat-total">' + cat.total + '</span>';
+                html += '</div>';
+            });
+            html += '</div>';
+            html += '</div>';
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    function renderizarAnalitico(itens) {
+        var container = document.getElementById('resumo-analitico-container');
+        if (!container) return;
+
+        if (!itens || itens.length === 0) {
+            container.innerHTML = '<div class="resumo-vazio"><i class="fas fa-check-circle"></i><p>Nenhum crítico em aberto</p></div>';
+            return;
+        }
+
+        // Agrupar por setor
+        var setoresMap = {};
+        var setoresOrdem = [];
+        itens.forEach(function (item) {
+            var sn = item.setor_nome;
+            if (!setoresMap[sn]) { setoresMap[sn] = []; setoresOrdem.push(sn); }
+            setoresMap[sn].push(item);
+        });
+
+        var html = '';
+        setoresOrdem.forEach(function (setor) {
+            var lista = setoresMap[setor];
+            html += '<div class="analitico-setor">';
+            html += '<div class="analitico-setor-header"><i class="fas fa-hospital"></i> ' + escapeHtml(setor) + ' <span class="analitico-setor-count">' + lista.length + '</span></div>';
+            html += '<div class="analitico-itens">';
+            lista.forEach(function (item) {
+                var dias = item.dias_em_aberto || 0;
+                var diasTexto = dias < 1 ? 'hoje' : Math.floor(dias) + 'd em aberto';
+                var urgente = dias >= 2;
+                html += '<div class="analitico-card' + (urgente ? ' urgente' : '') + '">';
+
+                html += '<div class="analitico-card-header">';
+                html += '<span class="analitico-cat-badge">';
+                if (item.categoria_icone) html += '<i class="' + escapeHtml(item.categoria_icone) + '"></i> ';
+                html += escapeHtml(item.categoria_nome) + '</span>';
+                html += '<span class="analitico-dias' + (urgente ? ' urgente' : '') + '">';
+                if (urgente) html += '<i class="fas fa-clock"></i> ';
+                html += diasTexto + '</span>';
+                html += '</div>';
+
+                html += '<div class="analitico-item-desc"><i class="fas fa-exclamation-circle"></i> ' + escapeHtml(item.item_descricao) + '</div>';
+
+                html += '<div class="analitico-meta">';
+                if (item.nm_paciente) html += '<span><i class="fas fa-user-injured"></i> ' + escapeHtml(item.nm_paciente) + '</span>';
+                html += '<span><i class="fas fa-bed"></i> Leito ' + escapeHtml(item.leito || '--') + '</span>';
+                html += '<span><i class="fas fa-calendar"></i> ' + formatarData(item.data_ronda) + '</span>';
+                html += '<span><i class="fas fa-user-tie"></i> ' + escapeHtml(item.responsavel_display) + '</span>';
+                html += '</div>';
+
+                if (item.descricao_problema) {
+                    html += '<div class="analitico-problema"><i class="fas fa-comment-dots"></i> ' + escapeHtml(item.descricao_problema) + '</div>';
+                }
+                if (item.plano_acao) {
+                    html += '<div class="analitico-plano"><i class="fas fa-tasks"></i> ' + escapeHtml(item.plano_acao) + '</div>';
+                }
+                if (item.observacoes_resolucao) {
+                    html += '<div class="analitico-obs"><i class="fas fa-comment-check"></i> ' + escapeHtml(item.observacoes_resolucao) + '</div>';
+                }
+
+                html += '<button class="analitico-btn-ver" onclick="window.P30.abrirTratativa(' + item.tratativa_id + ')">';
+                html += '<i class="fas fa-edit"></i> Abrir Tratativa</button>';
+
+                html += '</div>';
+            });
+            html += '</div></div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ========================================
     // CARREGAR DADOS
     // ========================================
 
@@ -263,7 +453,15 @@
             var atrasado = dias > 3 && (t.status === 'pendente' || t.status === 'em_tratativa');
             var diasTexto = dias < 1 ? 'hoje' : Math.floor(dias) + ' dia(s) em aberto';
 
-            var html = '<div class="tratativa-card status-' + t.status + '" onclick="window.P30.abrirTratativa(' + t.tratativa_id + ')">';
+            var ativo = t.status === 'pendente' || t.status === 'em_tratativa';
+            var temDevolutiva = t.observacoes_resolucao && t.observacoes_resolucao.trim() !== '';
+            var alertaClass = '';
+            if (!temDevolutiva && ativo) {
+                if (dias >= 2) alertaClass = ' alerta-sem-dev-critico';
+                else if (dias >= 1) alertaClass = ' alerta-sem-dev-atencao';
+            }
+
+            var html = '<div class="tratativa-card status-' + t.status + alertaClass + '" onclick="window.P30.abrirTratativa(' + t.tratativa_id + ')">';
 
             html += '<div class="trat-header">';
             html += '<div class="trat-paciente"><i class="fas fa-user-injured"></i> ' + escapeHtml(t.nm_paciente || 'N/I') + '</div>';
@@ -288,6 +486,15 @@
             html += diasTexto;
             html += '</span>';
             html += '</div>';
+
+            if (alertaClass) {
+                var isCritico = alertaClass.indexOf('critico') !== -1;
+                html += '<div class="alerta-dev-badge' + (isCritico ? ' critico' : '') + '">';
+                html += isCritico
+                    ? '<i class="fas fa-exclamation-triangle"></i> Crítico: sem devolutiva há ' + Math.floor(dias) + ' dias'
+                    : '<i class="fas fa-clock"></i> Atenção: sem devolutiva há ' + Math.floor(dias) + ' dia(s)';
+                html += '</div>';
+            }
 
             html += '</div>';
             return html;
@@ -390,49 +597,65 @@
         // Secao: Status (selector)
         html += '<div class="detalhe-secao">';
         html += '<div class="detalhe-secao-titulo"><i class="fas fa-flag"></i> Status da Tratativa</div>';
-        html += '<div class="status-selector">';
-        var statuses = [
-            { v: 'pendente', l: 'Pendente', i: 'fas fa-exclamation-circle' },
-            { v: 'em_tratativa', l: 'Em Tratativa', i: 'fas fa-spinner' },
-            { v: 'regularizado', l: 'Regularizado', i: 'fas fa-check-circle' },
-            { v: 'cancelado', l: 'Cancelado', i: 'fas fa-ban' }
-        ];
-        statuses.forEach(function (s) {
-            var sel = (s.v === t.status) ? ' selected' : '';
-            html += '<button type="button" class="status-btn' + sel + '" data-status="' + s.v + '" onclick="window.P30.selecionarStatus(this)">';
-            html += '<i class="' + s.i + '"></i> ' + s.l;
-            html += '</button>';
-        });
-        html += '</div>';
+        if (estado.isAdmin) {
+            html += '<div class="status-selector">';
+            var statuses = [
+                { v: 'pendente', l: 'Pendente', i: 'fas fa-exclamation-circle' },
+                { v: 'em_tratativa', l: 'Em Tratativa', i: 'fas fa-spinner' },
+                { v: 'regularizado', l: 'Regularizado', i: 'fas fa-check-circle' },
+                { v: 'impossibilitado', l: 'Impossibilitado', i: 'fas fa-ban' },
+                { v: 'cancelado', l: 'Cancelado', i: 'fas fa-times-circle' }
+            ];
+            statuses.forEach(function (s) {
+                var sel = (s.v === t.status) ? ' selected' : '';
+                html += '<button type="button" class="status-btn' + sel + '" data-status="' + s.v + '" onclick="window.P30.selecionarStatus(this)">';
+                html += '<i class="' + s.i + '"></i> ' + s.l;
+                html += '</button>';
+            });
+            html += '</div>';
+        } else {
+            html += '<span class="badge-status badge-' + t.status + '">' + formatarStatus(t.status) + '</span>';
+        }
         html += '</div>';
 
         // Secao: Responsavel
         html += '<div class="detalhe-secao">';
         html += '<div class="detalhe-secao-titulo"><i class="fas fa-user-tie"></i> Responsavel</div>';
-        html += '<div class="detalhe-campo">';
-        html += '<label>Responsavel Cadastrado</label>';
-        html += '<select id="edit-responsavel-id">';
-        html += '<option value="">-- Sem responsavel cadastrado --</option>';
-        if (estado.responsaveisCache) {
-            estado.responsaveisCache.forEach(function (r) {
-                var sel = (r.id === t.responsavel_id) ? ' selected' : '';
-                html += '<option value="' + r.id + '"' + sel + '>' + escapeHtml(r.nome) + (r.cargo ? ' (' + escapeHtml(r.cargo) + ')' : '') + '</option>';
-            });
+        if (estado.isAdmin) {
+            html += '<div class="detalhe-campo">';
+            html += '<label>Responsavel Cadastrado</label>';
+            html += '<select id="edit-responsavel-id">';
+            html += '<option value="">-- Sem responsavel cadastrado --</option>';
+            if (estado.responsaveisCache) {
+                estado.responsaveisCache.forEach(function (r) {
+                    var sel = (r.id === t.responsavel_id) ? ' selected' : '';
+                    html += '<option value="' + r.id + '"' + sel + '>' + escapeHtml(r.nome) + (r.cargo ? ' (' + escapeHtml(r.cargo) + ')' : '') + '</option>';
+                });
+            }
+            html += '</select>';
+            html += '</div>';
+            html += '<div class="detalhe-campo">';
+            html += '<label>Ou Responsavel Manual (texto livre)</label>';
+            html += '<input type="text" id="edit-responsavel-manual" placeholder="Nome do responsavel" maxlength="200" value="' + escapeAttr(t.responsavel_nome_manual || '') + '">';
+            html += '</div>';
+        } else {
+            html += '<div class="detalhe-info-valor">' + escapeHtml(t.responsavel_display || 'Sem responsavel') + '</div>';
+            html += '<input type="hidden" id="edit-responsavel-id" value="' + escapeAttr(String(t.responsavel_id || '')) + '">';
+            html += '<input type="hidden" id="edit-responsavel-manual" value="' + escapeAttr(t.responsavel_nome_manual || '') + '">';
         }
-        html += '</select>';
-        html += '</div>';
-        html += '<div class="detalhe-campo">';
-        html += '<label>Ou Responsavel Manual (texto livre)</label>';
-        html += '<input type="text" id="edit-responsavel-manual" placeholder="Nome do responsavel" maxlength="200" value="' + escapeAttr(t.responsavel_nome_manual || '') + '">';
-        html += '</div>';
         html += '</div>';
 
         // Secao: Plano de acao
         html += '<div class="detalhe-secao">';
         html += '<div class="detalhe-secao-titulo"><i class="fas fa-clipboard-list"></i> Plano de Acao</div>';
-        html += '<div class="detalhe-campo">';
-        html += '<textarea id="edit-plano-acao" placeholder="Descreva o plano de acao para resolver este problema..." maxlength="2000">' + escapeHtml(t.plano_acao || '') + '</textarea>';
-        html += '</div>';
+        if (estado.isAdmin) {
+            html += '<div class="detalhe-campo">';
+            html += '<textarea id="edit-plano-acao" placeholder="Descreva o plano de acao para resolver este problema..." maxlength="2000">' + escapeHtml(t.plano_acao || '') + '</textarea>';
+            html += '</div>';
+        } else {
+            html += '<div class="detalhe-obs-leitura">' + escapeHtml(t.plano_acao || 'Nenhum plano registrado') + '</div>';
+            html += '<input type="hidden" id="edit-plano-acao" value="' + escapeAttr(t.plano_acao || '') + '">';
+        }
         html += '</div>';
 
         // Secao: Observacoes de resolucao (so se nao for pendente)
@@ -492,8 +715,17 @@
         var respId = document.getElementById('edit-responsavel-id').value;
         var respManual = (document.getElementById('edit-responsavel-manual').value || '').trim();
 
+        // Justificativa obrigatoria para status impossibilitado
+        var statusFinal = estado.isAdmin ? estado.statusSelecionado : estado.tratativaAtual.status;
+        if (statusFinal === 'impossibilitado' && !obsResolucao) {
+            mostrarToast('Informe a justificativa no campo Observacoes da Resolucao para marcar como Impossibilitado', 'erro');
+            var campoObs = document.getElementById('edit-obs-resolucao');
+            if (campoObs) { campoObs.focus(); campoObs.style.borderColor = 'var(--cor-primaria)'; }
+            return;
+        }
+
         var payload = {
-            status: estado.statusSelecionado,
+            status: statusFinal,
             plano_acao: planoAcao || null,
             observacoes_resolucao: obsResolucao || null,
             responsavel_id: respId ? parseInt(respId) : null,
@@ -765,7 +997,7 @@
     }
 
     function formatarStatus(s) {
-        return { 'pendente': 'Pendente', 'em_tratativa': 'Em Tratativa', 'regularizado': 'Regularizado', 'cancelado': 'Cancelado' }[s] || s;
+        return { 'pendente': 'Pendente', 'em_tratativa': 'Em Tratativa', 'regularizado': 'Regularizado', 'impossibilitado': 'Impossibilitado', 'cancelado': 'Cancelado' }[s] || s;
     }
 
     function atualizarHora() {

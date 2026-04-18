@@ -97,56 +97,124 @@
             </div>
         </div>
 
-        <!-- Conteudo Principal -->
-        <div class="dashboard-content">
+        <!-- Navegacao por abas -->
+        <div class="tabs-nav">
+            <button class="tab-nav-btn active" data-tab="resumo">
+                <i class="fas fa-chart-pie"></i> <span>Visão Geral</span>
+            </button>
+            <button class="tab-nav-btn" data-tab="criticos">
+                <i class="fas fa-exclamation-triangle"></i> <span>Críticos</span>
+            </button>
+            <button class="tab-nav-btn" data-tab="tratativas">
+                <i class="fas fa-tasks"></i> <span>Tratativas</span>
+            </button>
+        </div>
 
-            <!-- KPIs -->
-            <div class="stats-row">
-                <div class="stat-card stat-card-clickable" data-status="">
-                    <div class="stat-icon icon-total"><i class="fas fa-clipboard-list"></i></div>
-                    <h3 id="stat-total">0</h3>
-                    <p>Total</p>
-                </div>
-                <div class="stat-card stat-card-clickable stat-card-pendente" data-status="pendente">
-                    <div class="stat-icon icon-pendente"><i class="fas fa-exclamation-circle"></i></div>
-                    <h3 id="stat-pendentes">0</h3>
-                    <p>Pendentes</p>
-                </div>
-                <div class="stat-card stat-card-clickable" data-status="em_tratativa">
-                    <div class="stat-icon icon-tratativa"><i class="fas fa-spinner"></i></div>
-                    <h3 id="stat-em-tratativa">0</h3>
-                    <p>Em Tratativa</p>
-                </div>
-                <div class="stat-card stat-card-clickable" data-status="regularizado">
-                    <div class="stat-icon icon-regularizado"><i class="fas fa-check-circle"></i></div>
-                    <h3 id="stat-regularizadas">0</h3>
-                    <p>Regularizadas</p>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon icon-sem-resp"><i class="fas fa-user-slash"></i></div>
-                    <h3 id="stat-sem-responsavel">0</h3>
-                    <p>Sem Responsavel</p>
-                </div>
-                <div class="stat-card stat-card-alerta">
-                    <div class="stat-icon icon-atrasada"><i class="fas fa-clock"></i></div>
-                    <h3 id="stat-atrasadas">0</h3>
-                    <p>Atrasadas (3d+)</p>
+        <!-- Paineis das abas -->
+        <div class="tab-panels">
+
+            <!-- ABA: Visão Geral (Sintético) -->
+            <div class="tab-panel active" id="tab-resumo">
+                <div class="dashboard-content">
+
+                    <div class="resumo-toolbar">
+                        <div class="resumo-info">
+                            <i class="fas fa-circle-info"></i>
+                            <span>Tratativas abertas (pendente + em tratativa) agrupadas por setor e categoria</span>
+                        </div>
+                        <div class="resumo-periodo">
+                            <label>Período:</label>
+                            <select id="resumo-dias">
+                                <option value="7">7 dias</option>
+                                <option value="15">15 dias</option>
+                                <option value="30" selected>30 dias</option>
+                                <option value="60">60 dias</option>
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <span class="resumo-total-badge" id="resumo-total-badge">0 críticos</span>
+                    </div>
+
+                    <div id="resumo-sintetico-container">
+                        <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                    </div>
+
                 </div>
             </div>
 
-            <!-- Lista de Tratativas (cards) -->
-            <div class="tratativas-container">
-                <div class="tratativas-header">
-                    <h3><i class="fas fa-list"></i> Tratativas</h3>
-                    <span class="tratativas-total" id="tratativas-total">0 registros</span>
+            <!-- ABA: Críticos Detalhados (Analítico) -->
+            <div class="tab-panel" id="tab-criticos">
+                <div class="dashboard-content">
+
+                    <div class="resumo-toolbar">
+                        <div class="resumo-info">
+                            <i class="fas fa-list-ul"></i>
+                            <span>Detalhamento de cada item crítico registrado em aberto</span>
+                        </div>
+                        <span class="resumo-total-badge" id="analitico-total-badge">0 registros</span>
+                    </div>
+
+                    <div id="resumo-analitico-container">
+                        <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                    </div>
+
                 </div>
-                <div class="tratativas-lista" id="tratativas-lista">
-                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
-                </div>
-                <div class="tratativas-vazia" id="tratativas-vazia" style="display:none;">
-                    <i class="fas fa-inbox"></i>
-                    <p>Nenhuma tratativa encontrada</p>
-                    <small>Ajuste os filtros ou aguarde novos itens criticos</small>
+            </div>
+
+            <!-- ABA: Tratativas -->
+            <div class="tab-panel" id="tab-tratativas">
+                <div class="dashboard-content">
+
+                    <!-- KPIs -->
+                    <div class="stats-row">
+                        <div class="stat-card stat-card-clickable" data-status="">
+                            <div class="stat-icon icon-total"><i class="fas fa-clipboard-list"></i></div>
+                            <h3 id="stat-total">0</h3>
+                            <p>Total</p>
+                        </div>
+                        <div class="stat-card stat-card-clickable stat-card-pendente" data-status="pendente">
+                            <div class="stat-icon icon-pendente"><i class="fas fa-exclamation-circle"></i></div>
+                            <h3 id="stat-pendentes">0</h3>
+                            <p>Pendentes</p>
+                        </div>
+                        <div class="stat-card stat-card-clickable" data-status="em_tratativa">
+                            <div class="stat-icon icon-tratativa"><i class="fas fa-spinner"></i></div>
+                            <h3 id="stat-em-tratativa">0</h3>
+                            <p>Em Tratativa</p>
+                        </div>
+                        <div class="stat-card stat-card-clickable" data-status="regularizado">
+                            <div class="stat-icon icon-regularizado"><i class="fas fa-check-circle"></i></div>
+                            <h3 id="stat-regularizadas">0</h3>
+                            <p>Regularizadas</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon icon-sem-resp"><i class="fas fa-user-slash"></i></div>
+                            <h3 id="stat-sem-responsavel">0</h3>
+                            <p>Sem Responsavel</p>
+                        </div>
+                        <div class="stat-card stat-card-alerta">
+                            <div class="stat-icon icon-atrasada"><i class="fas fa-clock"></i></div>
+                            <h3 id="stat-atrasadas">0</h3>
+                            <p>Atrasadas (3d+)</p>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Tratativas (cards) -->
+                    <div class="tratativas-container">
+                        <div class="tratativas-header">
+                            <h3><i class="fas fa-list"></i> Tratativas</h3>
+                            <span class="tratativas-total" id="tratativas-total">0 registros</span>
+                        </div>
+                        <div class="tratativas-lista" id="tratativas-lista">
+                            <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                        </div>
+                        <div class="tratativas-vazia" id="tratativas-vazia" style="display:none;">
+                            <i class="fas fa-inbox"></i>
+                            <p>Nenhuma tratativa encontrada</p>
+                            <small>Ajuste os filtros ou aguarde novos itens criticos</small>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
