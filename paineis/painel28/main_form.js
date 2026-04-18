@@ -17,7 +17,9 @@
         apiVisitas: BASE_URL + '/api/paineis/painel28/visitas',
         apiImagens: BASE_URL + '/api/paineis/painel28/imagens',
         apiProximoPaciente: BASE_URL + '/api/paineis/painel28/proximo-paciente',
-        apiFilaPacientes: BASE_URL + '/api/paineis/painel28/fila-pacientes'
+        apiFilaPacientes: BASE_URL + '/api/paineis/painel28/fila-pacientes',
+        apiReservar: BASE_URL + '/api/paineis/painel28/reservar-paciente',
+        apiLiberar: BASE_URL + '/api/paineis/painel28/liberar-paciente'
     };
 
     var estado = {
@@ -226,8 +228,28 @@
             });
     }
 
+    function reservarPaciente(nr_atendimento) {
+        if (!nr_atendimento || !estado.duplaId) return;
+        fetch(CONFIG.apiReservar, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nr_atendimento: nr_atendimento, dupla_id: estado.duplaId })
+        }).catch(function () {});
+    }
+
+    function liberarPaciente() {
+        var pac = estado.pacienteAtual;
+        if (!pac || !pac.nr_atendimento || !estado.duplaId) return;
+        fetch(CONFIG.apiLiberar, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nr_atendimento: pac.nr_atendimento, dupla_id: estado.duplaId })
+        }).catch(function () {});
+    }
+
     function exibirPaciente(pac) {
         estado.pacienteAtual = pac;
+        reservarPaciente(pac.nr_atendimento);
 
         var dados = document.getElementById('paciente-dados');
         var vazio = document.getElementById('paciente-vazio');
@@ -271,6 +293,7 @@
             mostrarToast('Nenhum paciente na fila', 'info');
             return;
         }
+        liberarPaciente();
         estado.filaPosicao++;
         if (estado.filaPosicao >= estado.filaPacientes.length) {
             estado.filaPosicao = 0;
@@ -353,6 +376,7 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.success) {
+                liberarPaciente();
                 fecharModal('modal-impossibilitada');
                 mostrarToast('Registrado. Avancando para o proximo paciente.', 'sucesso');
                 limparFormularioVisita();
@@ -1021,6 +1045,7 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.success) {
+                liberarPaciente();
                 limparRascunho(pac);
                 if (editId) {
                     // Modo edicao: voltar para tela-ronda com resumo atualizado

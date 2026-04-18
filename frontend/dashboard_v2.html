@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Hub - Sistema de Paineis</title>
+    <meta name="theme-color" content="#dc3545">
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
+    <link rel="icon" href="/static/img/favicon.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <link rel="stylesheet" href="/frontend/dashboard_v2.css">
+</head>
+<body>
+    <div class="app-layout">
+        
+        <!-- SIDEBAR NAV -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-wrapper">
+                    <img src="/static/img/logo.png" alt="Hospital Anchieta" onerror="this.style.display='none'">
+                </div>
+                <h2>HAC Painéis</h2>
+                <button class="toggle-sidebar" id="toggle-sidebar" aria-label="Recolher menu">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li><button class="nav-item active" data-filter="all"><i class="fa-solid fa-layer-group"></i> <span>Todos os Painéis</span></button></li>
+                    <li class="nav-title">Categorias</li>
+                    <li><button class="nav-item" data-filter="ps"><i class="fa-solid fa-truck-medical"></i> <span>Pronto Socorro</span></button></li>
+                    <li><button class="nav-item" data-filter="internacao"><i class="fa-solid fa-bed"></i> <span>Internação e Clínica</span></button></li>
+                    <li><button class="nav-item" data-filter="ia"><i class="fa-solid fa-brain"></i> <span>Inteligência Artificial</span></button></li>
+                    <li><button class="nav-item" data-filter="sadt"><i class="fa-solid fa-microscope"></i> <span>Exames (SADT)</span></button></li>
+                    <li><button class="nav-item" data-filter="cirurgia"><i class="fa-solid fa-scalpel-line-dashed"></i> <span>Centro Cirúrgico</span></button></li>
+                    <li><button class="nav-item" data-filter="gestao"><i class="fa-solid fa-chart-pie"></i> <span>Gestão / Admin</span></button></li>
+                    <li><button class="nav-item" data-filter="apoio"><i class="fa-solid fa-boxes-stacked"></i> <span>Apoio / Suprimentos</span></button></li>
+                    <li><button class="nav-item" data-filter="ambulatorio"><i class="fa-solid fa-stethoscope"></i> <span>Ambulatório / Recepção</span></button></li>
+                    <li><button class="nav-item" data-filter="ti"><i class="fa-solid fa-laptop-code"></i> <span>Sistemas Auxiliares</span></button></li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+                    <div class="user-details">
+                        <span id="usuario-nome">Carregando...</span>
+                        <small>Usuário</small>
+                    </div>
+                </div>
+                <button id="btn-logout" class="btn-logout" title="Sair">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- SIDEBAR OVERLAY (mobile) -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+
+            <!-- TOP BAR -->
+            <header class="topbar">
+                <button type="button" id="btn-hamburger" class="hamburger-btn" aria-label="Abrir menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-container">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Buscar painéis por nome ou palavra-chave...">
+                    <button id="clear-search" class="clear-search" style="display: none;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="topbar-actions">
+                    <button type="button" id="btn-gestao-usuarios" class="action-btn admin-only" style="display: none;" title="Gestão de Usuários">
+                        <i class="fas fa-users-cog"></i>
+                    </button>
+                    <button type="button" id="btn-admin" class="action-btn admin-only" style="display: none;" title="Cadastrar Usuário">
+                        <i class="fas fa-user-plus"></i>
+                    </button>
+                    <button type="button" id="btn-tema" class="action-btn" title="Alternar Tema Escuro">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- DASHBOARD GRID -->
+            <div class="dashboard-body">
+                <div class="category-header">
+                    <h1 id="current-category-title">Todos os Painéis</h1>
+                    <span id="panels-count" class="badge">0 painéis</span>
+                </div>
+
+                <div id="paineis-grid" class="paineis-grid">
+                    
+                    <!-- Internacao -->
+                    <article class="painel-card" data-painel="painel2" data-category="internacao">
+                        <div class="painel-icon"><i class="fas fa-notes-medical"></i></div>
+                        <div class="painel-info">
+                            <h3>Evolução de Turno</h3>
+                            <p>Acompanhamento de evoluções médicas por turno</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- PS -->
+                    <article class="painel-card" data-painel="painel3" data-category="ps">
+                        <div class="painel-icon"><i class="fas fa-user-md"></i></div>
+                        <div class="painel-info">
+                            <h3>Médicos PS</h3>
+                            <p>Monitoramento de médicos logados nos consultórios</p>
+                        </div>
+                        <div class="painel-status status-active">Ativo</div>
+                    </article>
+
+                    <!-- Internacao -->
+                    <article class="painel-card" data-painel="painel4" data-category="internacao">
+                        <div class="painel-icon"><i class="fas fa-hospital"></i></div>
+                        <div class="painel-info">
+                            <h3>Ocupação Hospitalar</h3>
+                            <p>Ocupação de leitos por setor em tempo real</p>
+                        </div>
+                        <div class="painel-status status-active">Ativo</div>
+                    </article>
+
+                    <!-- Cirurgia -->
+                    <article class="painel-card" data-painel="painel5" data-category="cirurgia">
+                        <div class="painel-icon"><i class="fas fa-hospital-user"></i></div>
+                        <div class="painel-info">
+                            <h3>Cirurgias do Dia</h3>
+                            <p>Acompanhamento em tempo real das cirurgias agendadas</p>
+                        </div>
+                        <div class="painel-status status-active">Ativo</div>
+                    </article>
+
+                    <!-- IA -->
+                    <article class="painel-card" data-painel="painel6" data-category="ia">
+                        <div class="painel-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                        <div class="painel-info">
+                            <h3>Priorização Clínica</h3>
+                            <p>Análise de risco clínico via inteligência artificial</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <article class="painel-card" data-painel="painel7" data-category="ia">
+                        <div class="painel-icon"><i class="fas fa-virus"></i></div>
+                        <div class="painel-info">
+                            <h3>Análise Risco Sepse</h3>
+                            <p>Detecção e monitoramento de risco de sepse com IA</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- Internacao -->
+                    <article class="painel-card" data-painel="painel8" data-category="internacao">
+                        <div class="painel-icon"><i class="fas fa-bed"></i></div>
+                        <div class="painel-info">
+                            <h3>Situação Pacientes</h3>
+                            <p>Monitoramento clínico de pacientes internados</p>
+                        </div>
+                        <div class="painel-status status-active">Ativo</div>
+                    </article>
+
+                    <!-- SADT -->
+                    <article class="painel-card" data-painel="painel9" data-category="sadt">
+                        <div class="painel-icon"><i class="fas fa-microscope"></i></div>
+                        <div class="painel-info">
+                            <h3>Laboratório Pendente</h3>
+                            <p>Painel para monitorar pendências de laboratório</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- PS -->
+                    <article class="painel-card" data-painel="painel10" data-category="ps">
+                        <div class="painel-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="painel-info">
+                            <h3>Painel PS</h3>
+                            <p>Análise de desempenho do Pronto Socorro</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <article class="painel-card" data-painel="painel11" data-category="ps">
+                        <div class="painel-icon"><i class="fas fa-bed-pulse"></i></div>
+                        <div class="painel-info">
+                            <h3>Internação PS</h3>
+                            <p>Acompanhamento de internações no PS</p>
+                        </div>
+                        <div class="painel-status status-active">Ativo</div>
+                    </article>
+
+                    <!-- Gestao -->
+                    <article class="painel-card" data-painel="painel12" data-category="gestao">
+                        <div class="painel-icon"><i class="fas fa-bars-progress"></i></div>
+                        <div class="painel-info">
+                            <h3>Painel Gerencial</h3>
+                            <p>Informações gerenciais consolidadas</p>
+                        </div>
+                        <div class="painel-status status-active">Ativo</div>
+                    </article>
+
+                    <!-- Apoio -->
+                    <article class="painel-card" data-painel="painel13" data-category="apoio">
+                        <div class="painel-icon"><i class="fas fa-apple-alt"></i></div>
+                        <div class="painel-info">
+                            <h3>Mapa Nutrição</h3>
+                            <p>Informações de nutrição e dietas dos pacientes</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- TI -->
+                    <article class="painel-card" data-painel="painel14" data-category="ti">
+                        <div class="painel-icon"><i class="fas fa-headset"></i></div>
+                        <div class="painel-info">
+                            <h3>Gestão Chamados</h3>
+                            <p>Gerenciamento de chamados emergenciais</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <article class="painel-card" data-painel="painel15" data-category="ti">
+                        <div class="painel-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="painel-info">
+                            <h3>Abrir Chamados</h3>
+                            <p>Abertura de chamados emergenciais</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- Ambulatorio -->
+                    <article class="painel-card" data-painel="painel16" data-category="ambulatorio">
+                        <div class="painel-icon"><i class="fas fa-headset"></i></div>
+                        <div class="painel-info">
+                            <h3>Desempenho Recepção</h3>
+                            <p>Acompanhamento de atendimentos pela recepção</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- PS -->
+                    <article class="painel-card" data-painel="painel17" data-category="ps">
+                        <div class="painel-icon"><i class="fas fa-clock"></i></div>
+                        <div class="painel-info">
+                            <h3>Tempo PS</h3>
+                            <p>Painel de tempo médio no Pronto Socorro</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <article class="painel-card" data-painel="painel18" data-category="ps">
+                        <div class="painel-icon"><i class="fas fa-user-md"></i></div>
+                        <div class="painel-info">
+                            <h3>Desempenho Médico PS</h3>
+                            <p>Produtividade e tempo médico no PS</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- SADT -->
+                    <article class="painel-card" data-painel="painel19" data-category="sadt">
+                        <div class="painel-icon"><i class="fas fa-x-ray"></i></div>
+                        <div class="painel-info">
+                            <h3>Pendências Radiologia</h3>
+                            <p>Acompanhamento de exames da radiologia</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <article class="painel-card" data-painel="painel20" data-category="sadt">
+                        <div class="painel-icon"><i class="fas fa-x-ray"></i></div>
+                        <div class="painel-info">
+                            <h3>Radiologia no PS</h3>
+                            <p>Pendências da Radiologia no Pronto Socorro</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- Gestao -->
+                    <article class="painel-card" data-painel="painel21" data-category="gestao">
+                        <div class="painel-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <div class="painel-info">
+                            <h3>Status Contas</h3>
+                            <p>Acompanhamento de contas pendentes</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- PS -->
+                    <article class="painel-card" data-painel="painel22" data-category="ps">
+                        <div class="painel-icon"><i class="fas fa-heartbeat"></i></div>
+                        <div class="painel-info">
+                            <h3>Exames Pendentes PS</h3>
+                            <p>Exames pendentes de pacientes no PS</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- Ambulatorio -->
+                    <article class="painel-card" data-painel="painel23" data-category="ambulatorio">
+                        <div class="painel-icon"><i class="fas fa-stethoscope"></i></div>
+                        <div class="painel-info">
+                            <h3>Info Ambulatório</h3>
+                            <p>Acompanhamento do Ambulatório</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- Apoio -->
+                    <article class="painel-card" data-painel="painel24" data-category="apoio">
+                        <div class="painel-icon"><i class="fas fa-boxes-stacked"></i></div>
+                        <div class="painel-info">
+                            <h3>Estoque Dia</h3>
+                            <p>Acompanhamento do estoque diário na farmácia</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- PS -->
+                    <article class="painel-card" data-painel="painel25" data-category="ps">
+                        <div class="painel-icon"><i class="fas fa-user-md"></i></div>
+                        <div class="painel-info">
+                            <h3>Exames Médico PS</h3>
+                            <p>Resultados dos exames para os médicos do PS</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- TI -->
+                    <article class="painel-card" data-painel="painel26" data-category="ti">
+                        <div class="painel-icon"><i class="fas fa-bell"></i></div>
+                        <div class="painel-info">
+                            <h3>Central de Notificações</h3>
+                            <p>Configuração e envio de notificações</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- IA -->
+                    <article class="painel-card" data-painel="painel27" data-category="ia">
+                        <div class="painel-icon"><i class="fas fa-heartbeat"></i></div>
+                        <div class="painel-info">
+                            <h3>Deteriorização Pacientes</h3>
+                            <p>Séries temporais e evolução clínica</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- TI -->
+                    <article class="painel-card" data-painel="painel28" data-category="ti">
+                        <div class="painel-icon"><i class="fas fa-th-large"></i></div>
+                        <div class="painel-info">
+                            <h3>Hub de Serviços</h3>
+                            <p>Monitoramento de microsserviços</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <!-- IA -->
+                    <article class="painel-card" data-painel="painel31" data-category="ia">
+                        <div class="painel-icon"><i class="fas fa-brain"></i></div>
+                        <div class="painel-info">
+                            <h3>Hub de ML</h3>
+                            <p>Modelos de Machine Learning</p>
+                        </div>
+                        <div class="painel-status status-prototipo">Protótipo</div>
+                    </article>
+
+                    <article class="painel-card" data-painel="painel32" data-category="ia">
+                        <div class="painel-icon"><i class="fas fa-brain"></i></div>
+                        <div class="painel-info">
+                            <h3>Análise Sentir e Agir</h3>
+                            <p>Análise diária com uso de IA</p>
+                        </div>
+                        <div class="painel-status status-ativo">Ativo</div>
+                    </article>
+
+                </div>
+
+                <!-- Empty State -->
+                <div id="no-results" class="empty-state" style="display: none;">
+                    <div class="empty-icon"><i class="fa-solid fa-magnifying-glass-minus"></i></div>
+                    <h3>Nenhum painel encontrado</h3>
+                    <p>Sua busca não retornou resultados. Tente outros termos ou remova os filtros.</p>
+                    <button class="btn-clear" onclick="document.getElementById('clear-search').click()">Limpar Busca</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Cadastro -->
+    <div id="modal-cadastro" class="modal" role="dialog" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> Cadastrar Usuário</h2>
+                <button type="button" class="btn-close-modal" id="btn-fechar-modal">&times;</button>
+            </div>
+            <form id="form-cadastro" novalidate>
+                <div class="form-group">
+                    <label>Usuário (Login) *</label>
+                    <input type="text" id="novo-usuario" class="form-control" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="novo-email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha *</label>
+                    <input type="password" id="nova-senha" class="form-control" required minlength="8">
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Senha *</label>
+                    <input type="password" id="confirma-senha" class="form-control" required minlength="8">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="is-admin">
+                        <span>Administrador</span>
+                    </label>
+                </div>
+                <div id="mensagem-cadastro" class="alert" style="display: none;"></div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" id="btn-cancelar-cadastro">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="btn-enviar-cadastro">Cadastrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/frontend/dashboard_v2.js"></script>
+</body>
+</html>

@@ -15,22 +15,34 @@
     --cor-alerta: #ffc107;
     --cor-laranja: #fd7e14;
     --cor-roxo: #6f42c1;
-    --cor-fundo: #f0f2f5;
+    --cor-fundo: #f3f6f9;
     --cor-card: #ffffff;
-    --cor-texto: #333333;
-    --cor-texto-sec: #666666;
-    --cor-borda: #e0e0e0;
-    --sombra: 0 2px 12px rgba(0, 0, 0, 0.08);
-    --sombra-hover: 0 8px 28px rgba(0, 0, 0, 0.15);
-    --radius: 12px;
-    --header-height: 48px;
+    --cor-texto: #212529;
+    --cor-texto-sec: #6c757d;
+    --cor-borda: #e9ecef;
+    --sombra: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --sombra-hover: 0 8px 24px rgba(220, 53, 69, 0.14);
+    --radius: 14px;
+    --header-height: 64px;
+}
+
+/* Tema escuro */
+.tema-azul {
+    --cor-fundo: #121418;
+    --cor-card: #1e222b;
+    --cor-texto: #f8f9fa;
+    --cor-texto-sec: #a1aab3;
+    --cor-borda: #2c323f;
+    --sombra: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --sombra-hover: 0 8px 24px rgba(255, 75, 92, 0.2);
+    --cor-primaria: #ff4b5c;
 }
 
 html { height: 100%; }
 
 body {
     background: var(--cor-fundo);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     height: 100%; height: 100dvh;
     overflow: hidden;
     position: fixed;
@@ -52,16 +64,18 @@ body {
    ======================================== */
 
 .painel-header {
-    background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
-    color: white;
-    padding: 8px 16px;
+    background: var(--cor-card);
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 0 24px;
     flex-shrink: 0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
     z-index: 100;
     min-height: var(--header-height);
+    display: flex;
+    align-items: center;
 }
 
 .header-content {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -70,43 +84,53 @@ body {
 .header-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .header-left img {
-    max-height: 28px;
-    padding: 3px 5px;
-    background: white;
-    border-radius: 5px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    max-height: 32px;
+    width: 32px;
+    padding: 4px;
+    background: var(--cor-primaria);
+    border-radius: 8px;
+    filter: brightness(0) invert(1);
 }
 
 .painel-header h1 {
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 700;
+    color: var(--cor-texto);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.painel-header h1 i { font-size: 0.9rem; }
+.painel-header h1 i {
+    color: var(--cor-primaria);
+    font-size: 1rem;
+}
 
 .btn-header {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.6);
-    padding: 6px 12px;
-    border-radius: 6px;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    border: 1px solid var(--cor-borda);
+    padding: 8px 16px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     font-weight: 600;
-    transition: all 0.3s ease;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
 }
 
 .btn-header:hover,
 .btn-header:active {
-    background: white;
-    color: var(--cor-primaria);
+    background: var(--cor-primaria);
+    color: white;
+    border-color: var(--cor-primaria);
 }
 
 /* ========================================
@@ -139,7 +163,7 @@ body {
 
 .saudacao h2 {
     font-size: 1.4rem;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--cor-texto);
     margin-bottom: 4px;
 }
@@ -166,15 +190,15 @@ body {
     background: var(--cor-card);
     border-radius: var(--radius);
     box-shadow: var(--sombra);
-    padding: 22px 16px;
+    border: 1px solid var(--cor-borda);
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     position: relative;
     overflow: hidden;
     text-decoration: none;
@@ -191,17 +215,13 @@ body {
     right: 0;
     height: 4px;
     background: var(--servico-cor, var(--cor-primaria));
-    transition: height 0.3s ease;
+    border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .servico-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--sombra-hover);
     border-color: var(--servico-cor, var(--cor-primaria));
-}
-
-.servico-card:hover::before {
-    height: 6px;
 }
 
 .servico-card:active {
@@ -211,19 +231,18 @@ body {
 .servico-icone {
     width: 56px;
     height: 56px;
-    border-radius: 50%;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--servico-cor, var(--cor-primaria));
     color: white;
     font-size: 1.4rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: transform 0.3s ease;
+    transition: transform 0.25s ease;
 }
 
 .servico-card:hover .servico-icone {
-    transform: scale(1.1);
+    transform: scale(1.08);
 }
 
 .servico-nome {
@@ -234,7 +253,7 @@ body {
 }
 
 .servico-descricao {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     color: var(--cor-texto-sec);
     line-height: 1.4;
     display: -webkit-box;

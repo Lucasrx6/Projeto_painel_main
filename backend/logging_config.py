@@ -17,7 +17,6 @@ def setup_logging(app):
     """
     if not os.path.exists('logs'):
         os.mkdir('logs')
-
     log_level = getattr(logging, app.config.get('LOG_LEVEL', 'INFO'), logging.INFO)
 
     # Formato padronizado com mais informações

@@ -139,9 +139,10 @@ def painel31_detalhe(nome_modelo):
     if not nome_modelo.replace('_', '').isalnum():
         abort(400)
 
-    # Por enquanto so temos ps_volume; futuros modelos terao paginas proprias
     if nome_modelo == 'ps_volume':
         return send_from_directory('paineis/painel31', 'ps_volume.html')
+    if nome_modelo == 'internacoes':
+        return send_from_directory('paineis/painel31', 'internacoes.html')
 
     return send_from_directory('frontend', '404.html')
 
@@ -195,15 +196,23 @@ def api_painel31_modelos():
         for modelo in modelos:
             modelo_dict = dict(modelo)
 
+            # Determina qual tabela consultar baseado no nome_modelo
+            if modelo['nome_modelo'] == 'internacoes' or modelo['nome_modelo'].startswith('intern_'):
+                tabela_preds = 'ml_internacoes_predicoes'
+                condicao_id = "segmento = 'total'" # Usa o total como referencia
+            else:
+                tabela_preds = 'ml_ps_predicoes'
+                condicao_id = f"modelo_id = {modelo['id']}"
+
             # Busca metricas recentes (ultimos N dias) para calcular saude atual
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT valor_previsto, valor_realizado
-                FROM ml_ps_predicoes
-                WHERE modelo_id = %s
+                FROM {tabela_preds}
+                WHERE {condicao_id}
                   AND valor_realizado IS NOT NULL
-                  AND dt_alvo >= CURRENT_DATE - INTERVAL '%s days'
+                  AND dt_alvo >= CURRENT_DATE - INTERVAL '{JANELA_METRICAS_DIAS} days'
                 ORDER BY dt_alvo DESC
-            """, (modelo['id'], JANELA_METRICAS_DIAS))
+            """)
             preds_realizadas = cursor.fetchall()
 
             metricas_atuais = _calcular_metricas_janela(preds_realizadas)
@@ -211,19 +220,19 @@ def api_painel31_modelos():
             status_saude = _calcular_status_saude(mae_atual, float(modelo['mae_teste']) if modelo['mae_teste'] else None)
 
             # Conta total de predicoes ja geradas
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT COUNT(*) AS total
-                FROM ml_ps_predicoes
-                WHERE modelo_id = %s
-            """, (modelo['id'],))
+                FROM {tabela_preds}
+                WHERE {condicao_id}
+            """)
             total_preds = cursor.fetchone()['total']
 
             # Ultima execucao do worker
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT MAX(dt_geracao) AS ultima
-                FROM ml_ps_predicoes
-                WHERE modelo_id = %s
-            """, (modelo['id'],))
+                FROM {tabela_preds}
+                WHERE {condicao_id}
+            """)
             ultima_exec = cursor.fetchone()['ultima']
 
             modelo_dict.update({
@@ -546,14 +555,17 @@ def api_painel31_historico_real():
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
-            SELECT
-                DATE(dt_entrada) AS data,
-                COUNT(*)::int AS atendimentos
-            FROM ml_ps_historico_chegadas
-            WHERE dt_entrada >= CURRENT_DATE - INTERVAL '14 days'
-              AND dt_entrada < CURRENT_DATE
-            GROUP BY DATE(dt_entrada)
-            ORDER BY data
+            SELECT * FROM (
+                SELECT DISTINCT ON (dt_alvo)
+                    dt_alvo AS data,
+                    valor_realizado::int AS atendimentos
+                FROM ml_ps_predicoes
+                WHERE valor_realizado IS NOT NULL
+                  AND dt_alvo >= CURRENT_DATE - INTERVAL '14 days'
+                  AND dt_alvo < CURRENT_DATE
+                ORDER BY dt_alvo DESC, horizonte_dias ASC
+            ) sub
+            ORDER BY data ASC
         """)
         rows = cursor.fetchall()
 
@@ -692,3 +704,205 @@ def api_painel31_picos_hoje():
         if conn:
             conn.close()
         return jsonify({'success': False, 'error': 'Erro ao calcular picos'}), 500
+
+# =============================================================================
+# API - INTERNACOES (Previsoes, Metricas, Modelos, Historico)
+# =============================================================================
+
+@painel31_bp.route('/api/paineis/painel31/previsoes/internacoes', methods=['GET'])
+@login_required
+def api_painel31_previsoes_internacoes():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Previsoes futuras
+        cursor.execute("""
+            SELECT DISTINCT ON (dt_alvo, segmento)
+                dt_alvo, horizonte_dias, segmento,
+                valor_previsto, intervalo_inferior, intervalo_superior,
+                dt_geracao
+            FROM ml_internacoes_predicoes
+            WHERE dt_alvo >= CURRENT_DATE
+            ORDER BY dt_alvo, segmento, horizonte_dias ASC
+        """)
+        futuras = cursor.fetchall()
+
+        # Historico realizado
+        cursor.execute("""
+            SELECT DISTINCT ON (dt_alvo, segmento)
+                dt_alvo, horizonte_dias, segmento,
+                valor_previsto, valor_realizado,
+                erro_absoluto, erro_percentual,
+                intervalo_inferior, intervalo_superior
+            FROM ml_internacoes_predicoes
+            WHERE valor_realizado IS NOT NULL
+              AND dt_alvo >= CURRENT_DATE - INTERVAL '30 days'
+            ORDER BY dt_alvo DESC, segmento, horizonte_dias ASC
+        """)
+        historico = cursor.fetchall()
+
+        def serializar(rows):
+            resultado = []
+            for r in rows:
+                d = dict(r)
+                if d.get('dt_alvo'): d['dt_alvo'] = d['dt_alvo'].isoformat()
+                if d.get('dt_geracao'): d['dt_geracao'] = d['dt_geracao'].isoformat()
+                for k in ['valor_previsto', 'valor_realizado', 'intervalo_inferior', 'intervalo_superior', 'erro_absoluto', 'erro_percentual']:
+                    if d.get(k) is not None: d[k] = float(d[k])
+                resultado.append(d)
+            return resultado
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'previsoes_futuras': serializar(futuras),
+            'historico_realizado': serializar(list(reversed(historico))),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        current_app.logger.error(f'Erro ao buscar previsoes de internacoes: {e}', exc_info=True)
+        if conn: conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar previsoes'}), 500
+
+
+@painel31_bp.route('/api/paineis/painel31/historico-real/internacoes', methods=['GET'])
+@login_required
+def api_painel31_historico_real_internacoes():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT
+                DATE(i.dt_entrada) AS data,
+                COUNT(*)::int AS total,
+                SUM(CASE WHEN m.categoria_setor = 'UTI' THEN 1 ELSE 0 END)::int AS uti,
+                SUM(CASE WHEN m.categoria_setor = 'INTERNACAO' THEN 1 ELSE 0 END)::int AS enfermaria
+            FROM ml_internacoes i
+            LEFT JOIN ml_faturamento_setor_mapping m ON i.cd_setor_atendimento = m.cd_setor
+            WHERE i.dt_entrada >= CURRENT_DATE - INTERVAL '14 days'
+              AND i.dt_entrada < CURRENT_DATE
+            GROUP BY DATE(i.dt_entrada)
+            ORDER BY data
+        """)
+        rows = cursor.fetchall()
+        
+        historico = []
+        for r in rows:
+            historico.append({
+                'data': r['data'].isoformat(),
+                'total': r['total'],
+                'uti': r['uti'],
+                'enfermaria': r['enfermaria']
+            })
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'historico': historico})
+    except Exception as e:
+        current_app.logger.error(f'Erro ao buscar historico real de internacoes: {e}', exc_info=True)
+        if conn: conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500
+
+
+@painel31_bp.route('/api/paineis/painel31/modelo/internacoes', methods=['GET'])
+@login_required
+def api_painel31_modelo_internacoes():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        def fetch_model(nome):
+            cursor.execute("SELECT * FROM ml_modelos_registry WHERE nome_modelo = %s AND ie_ativo = TRUE ORDER BY dt_criacao DESC LIMIT 1", (nome,))
+            mod = cursor.fetchone()
+            if mod:
+                m = dict(mod)
+                for k in ['mae_teste', 'mape_teste', 'rmse_teste']:
+                    if m.get(k) is not None: m[k] = float(m[k])
+                for k in ['dt_treino', 'dt_criacao', 'periodo_treino_inicio', 'periodo_treino_fim']:
+                    if m.get(k): m[k] = m[k].isoformat()
+                return m
+            return None
+
+        modelos = {
+            'total': fetch_model('intern_total_v1'),
+            'uti': fetch_model('intern_uti_v1'),
+            'enfermaria': fetch_model('intern_enf_v1')
+        }
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'modelos': modelos})
+    except Exception as e:
+        current_app.logger.error(f'Erro ao buscar modelos de internacoes: {e}', exc_info=True)
+        if conn: conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar modelos'}), 500
+
+
+@painel31_bp.route('/api/paineis/painel31/metricas/internacoes', methods=['GET'])
+@login_required
+def api_painel31_metricas_internacoes():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
+
+    if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        def fetch_mae(nome):
+            cursor.execute("SELECT mae_teste, mape_teste FROM ml_modelos_registry WHERE nome_modelo = %s AND ie_ativo = TRUE ORDER BY dt_criacao DESC LIMIT 1", (nome,))
+            res = cursor.fetchone()
+            if res:
+                return {'mae': float(res['mae_teste']) if res['mae_teste'] else None, 'mape': float(res['mape_teste']) if res['mape_teste'] else None}
+            return None
+
+        metricas_treino = {
+            'total': fetch_mae('intern_total_v1'),
+            'uti': fetch_mae('intern_uti_v1'),
+            'enfermaria': fetch_mae('intern_enf_v1')
+        }
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'metricas_treino': metricas_treino})
+    except Exception as e:
+        current_app.logger.error(f'Erro ao buscar metricas de internacoes: {e}', exc_info=True)
+        if conn: conn.close()
+        return jsonify({'success': False, 'error': 'Erro ao buscar metricas'}), 500

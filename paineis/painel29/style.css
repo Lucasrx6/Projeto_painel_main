@@ -213,7 +213,7 @@ body {
    KPIs
    ======================================== */
 
-.stats-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; flex-shrink: 0; }
+.stats-row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; flex-shrink: 0; }
 
 .stat-card {
     background: var(--cor-card); border-radius: var(--radius);
@@ -234,11 +234,17 @@ body {
 .stat-icon i { font-size: 1.1rem; color: white; }
 
 .icon-visitas { background: linear-gradient(135deg, #17a2b8, #138496); }
-.icon-rondas { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
 .icon-criticos { background: linear-gradient(135deg, #dc3545, #c82333); }
 .icon-atencao { background: linear-gradient(135deg, #ffc107, #e0a800); }
 .icon-adequados { background: linear-gradient(135deg, #28a745, #1e7e34); }
 .icon-leitos { background: linear-gradient(135deg, #667eea, #764ba2); }
+.icon-trat-total { background: linear-gradient(135deg, #495057, #343a40); }
+.icon-pendente { background: linear-gradient(135deg, #dc3545, #c82333); }
+.icon-tratativa { background: linear-gradient(135deg, #fd7e14, #e8590c); }
+.icon-regularizado { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.icon-impossibilitado { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
+
+.col-paciente { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; }
 
 .stat-card-critico { border: 2px solid var(--cor-critico-bg); }
 
@@ -753,8 +759,12 @@ body {
    RESPONSIVIDADE
    ======================================== */
 
+@media (max-width: 1400px) {
+    .stats-row { grid-template-columns: repeat(5, 1fr); }
+}
+
 @media (max-width: 1100px) {
-    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .stats-row { grid-template-columns: repeat(5, 1fr); }
 }
 
 @media (max-width: 868px) {
@@ -762,7 +772,7 @@ body {
     .btn-header { padding: 4px 8px; font-size: 0.7rem; }
     .btn-text { display: none; }
     .dashboard-content { padding: 8px 10px; }
-    .stats-row { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stats-row { grid-template-columns: repeat(5, 1fr); gap: 6px; }
     .stat-card { padding: 8px 6px; }
     .stat-card h3 { font-size: 1.3rem; }
     .stat-icon { width: 34px; height: 34px; }
@@ -775,7 +785,7 @@ body {
 @media (max-width: 600px) {
     .painel-header { padding: 5px 8px; }
     .painel-header h1 { font-size: 0.75rem; }
-    .stats-row { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .stats-row { grid-template-columns: repeat(5, 1fr); gap: 4px; }
     .stat-card h3 { font-size: 1.1rem; }
     .stat-card p { font-size: 0.58rem; }
     .stat-icon { width: 28px; height: 28px; margin-bottom: 4px; }
@@ -786,7 +796,7 @@ body {
 }
 
 @media (max-width: 400px) {
-    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stats-row { grid-template-columns: repeat(5, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -801,17 +811,6 @@ body {
    TRATATIVAS — KPIs, coluna e modal
    ======================================== */
 
-/* Segunda linha de KPIs (tratativas) */
-.stats-row-tratativas {
-    grid-template-columns: repeat(4, 1fr);
-    margin-top: 0;
-}
-
-/* Icones para os KPI cards de tratativas */
-.icon-trat-total    { background: linear-gradient(135deg, #6c757d, #495057); }
-.icon-pendente      { background: linear-gradient(135deg, #dc3545, #a71d2a); }
-.icon-tratativa     { background: linear-gradient(135deg, #fd7e14, #d9620a); }
-.icon-regularizado  { background: linear-gradient(135deg, #28a745, #1e7e34); }
 
 .stat-card-pendente { border: 2px solid #fde8ea; }
 
@@ -883,10 +882,6 @@ body {
 }
 .trat-item-meta { font-size: 0.7rem; color: #888; margin-top: 4px; }
 
-@media (max-width: 1100px) {
-    .stats-row-tratativas { grid-template-columns: repeat(4, 1fr); }
-}
 @media (max-width: 480px) {
-    .stats-row-tratativas { grid-template-columns: repeat(2, 1fr); }
     .celula-tratativas .trat-counts { display: none; }
 }

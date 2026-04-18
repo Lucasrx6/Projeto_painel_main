@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Projeto Sentir e Agir - Hospital Anchieta</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/paineis/painel28/style_hub.css">
     <link rel="icon" href="/static/img/favicon.png">
@@ -13,116 +16,118 @@
     <style>
         .projeto-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            padding: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            padding: 20px 24px 32px;
             max-width: 960px;
             margin: 0 auto;
             width: 100%;
         }
 
         .projeto-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 36px 28px;
+            background: var(--cor-card);
+            border-radius: 14px;
+            padding: 32px 24px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
             cursor: pointer;
             text-decoration: none;
-            color: inherit;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-            border: 2px solid transparent;
-            transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
+            color: var(--cor-texto);
+            box-shadow: var(--sombra);
+            border: 1px solid var(--cor-borda);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Barra colorida no topo (mesmo padrão do servico-card) */
+        .projeto-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: var(--card-accent, var(--cor-primaria));
+            border-radius: 14px 14px 0 0;
         }
 
         .projeto-card:hover,
         .projeto-card:focus {
-            box-shadow: 0 8px 28px rgba(0,0,0,0.15);
-            transform: translateY(-3px);
+            transform: translateY(-4px);
+            box-shadow: var(--sombra-hover);
+            border-color: var(--card-accent, var(--cor-primaria));
             outline: none;
         }
 
         .projeto-card:active {
-            transform: translateY(0);
-            opacity: 0.85;
+            transform: translateY(-1px) scale(0.98);
         }
 
         .projeto-card-icone {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 1.8rem;
             color: #fff;
+            background: var(--card-accent, var(--cor-primaria));
             flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+
+        .projeto-card:hover .projeto-card-icone {
+            transform: scale(1.08);
         }
 
         .projeto-card-nome {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
             text-align: center;
-            color: #222;
+            color: var(--cor-texto);
             line-height: 1.3;
         }
 
         .projeto-card-descricao {
-            font-size: 0.85rem;
-            color: #666;
+            font-size: 0.82rem;
+            color: var(--cor-texto-sec);
             text-align: center;
             line-height: 1.5;
         }
 
         .projeto-card-seta {
             margin-top: auto;
-            font-size: 1.2rem;
-            opacity: 0.4;
+            font-size: 1rem;
+            color: var(--card-accent, var(--cor-primaria));
+            opacity: 0.7;
         }
 
-        /* Cores por card */
-        .card-formulario { border-color: #28a745; }
-        .card-formulario:hover { border-color: #28a745; }
-        .card-formulario .projeto-card-icone { background: linear-gradient(135deg, #28a745, #1e7e34); }
-        .card-formulario .projeto-card-seta { color: #28a745; }
+        /* Cor de destaque por card */
+        .card-formulario  { --card-accent: #28a745; }
+        .card-tratativas  { --card-accent: #dc3545; }
+        .card-gestao      { --card-accent: #17a2b8; }
+        .card-config      { --card-accent: #6f42c1; }
 
-        .card-tratativas { border-color: #dc3545; }
-        .card-tratativas:hover { border-color: #dc3545; }
-        .card-tratativas .projeto-card-icone { background: linear-gradient(135deg, #dc3545, #a71d2a); }
-        .card-tratativas .projeto-card-seta { color: #dc3545; }
-
-        .card-gestao { border-color: #17a2b8; }
-        .card-gestao:hover { border-color: #17a2b8; }
-        .card-gestao .projeto-card-icone { background: linear-gradient(135deg, #17a2b8, #0d6a7a); }
-        .card-gestao .projeto-card-seta { color: #17a2b8; }
-
-        .card-config { border-color: #6f42c1; }
-        .card-config:hover { border-color: #6f42c1; }
-        .card-config .projeto-card-icone { background: linear-gradient(135deg, #6f42c1, #4a2590); }
-        .card-config .projeto-card-seta { color: #6f42c1; }
-
-        /* Titulo do projeto */
         .projeto-titulo {
             text-align: center;
-            padding: 20px 24px 0;
+            padding: 20px 24px 4px;
         }
 
         .projeto-titulo h2 {
-            font-size: 1.4rem;
-            color: #333;
-            font-weight: 600;
+            font-size: 1.3rem;
+            color: var(--cor-texto);
+            font-weight: 700;
         }
 
         .projeto-titulo p {
-            font-size: 0.9rem;
-            color: #888;
+            font-size: 0.88rem;
+            color: var(--cor-texto-sec);
             margin-top: 4px;
         }
 
-        /* Scroll no main-content */
         .main-content {
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
@@ -131,27 +136,26 @@
         @media (max-width: 480px) {
             .projeto-grid {
                 grid-template-columns: 1fr;
-                padding: 16px;
-                gap: 16px;
+                padding: 12px 16px 24px;
+                gap: 12px;
             }
 
             .projeto-card {
-                padding: 28px 20px;
+                padding: 20px 18px;
                 flex-direction: row;
                 align-items: center;
                 text-align: left;
-                gap: 20px;
+                gap: 16px;
             }
 
             .projeto-card-nome,
-            .projeto-card-descricao {
-                text-align: left;
-            }
+            .projeto-card-descricao { text-align: left; }
 
             .projeto-card-icone {
-                width: 60px;
-                height: 60px;
-                font-size: 1.5rem;
+                width: 56px;
+                height: 56px;
+                font-size: 1.4rem;
+                border-radius: 14px;
                 flex-shrink: 0;
             }
 

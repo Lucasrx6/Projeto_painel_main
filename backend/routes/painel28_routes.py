@@ -6,6 +6,7 @@
 
 import os
 import uuid
+import threading
 import traceback
 from datetime import datetime, date
 from flask import Blueprint, request, jsonify, send_from_directory, session
@@ -19,6 +20,28 @@ painel28_bp = Blueprint(
     __name__,
     url_prefix='/api/paineis/painel28'
 )
+
+# ----------------------------------------------------------
+# LOCK EM MEMORIA: pacientes sendo visitados no momento
+# Chave: str(nr_atendimento), Valor: {dupla_id, ts}
+# TTL de 30 min — expira automaticamente
+# ----------------------------------------------------------
+_visita_lock = threading.Lock()
+_em_visita: dict = {}
+_EM_VISITA_TTL_SEG = 1800  # 30 minutos
+
+def _limpar_expirados():
+    agora = datetime.now()
+    with _visita_lock:
+        expirados = [k for k, v in _em_visita.items()
+                     if (agora - v['ts']).total_seconds() > _EM_VISITA_TTL_SEG]
+        for k in expirados:
+            del _em_visita[k]
+
+def _get_em_visita_agora() -> set:
+    _limpar_expirados()
+    with _visita_lock:
+        return set(_em_visita.keys())
 
 PAINEL_DIR = os.path.join(os.path.dirname(__file__))
 
@@ -443,6 +466,10 @@ def fila_pacientes():
                 item['qt_dia_permanencia'] = int(item['qt_dia_permanencia'])
             resultado.append(item)
 
+        # Filtrar pacientes que outra dupla esta visitando no momento
+        em_visita = _get_em_visita_agora()
+        resultado = [p for p in resultado if str(p['nr_atendimento']) not in em_visita]
+
         return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
         traceback.print_exc()
@@ -501,6 +528,11 @@ def proximo_paciente():
         if not paciente:
             return jsonify({'success': True, 'data': None, 'message': 'Nenhum paciente na fila'})
 
+        # Se o primeiro da fila esta sendo visitado por outra dupla, ignorar
+        em_visita = _get_em_visita_agora()
+        if str(paciente['nr_atendimento']) in em_visita:
+            return jsonify({'success': True, 'data': None, 'message': 'Paciente ja em visita por outra dupla'})
+
         item = dict(paciente)
         for campo in ('dt_entrada_unidade', 'ultima_ronda_em'):
             if item.get(campo):
@@ -516,6 +548,37 @@ def proximo_paciente():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: RESERVA TEMPORARIA DE PACIENTE (anti-duplicacao de fila)
+# ============================================================
+
+@painel28_bp.route('/reservar-paciente', methods=['POST'])
+@login_required
+def reservar_paciente():
+    """Marca que a dupla esta preenchendo o formulario para este paciente."""
+    dados = request.get_json() or {}
+    nr = str(dados.get('nr_atendimento', '')).strip()
+    dupla_id = dados.get('dupla_id')
+    if not nr:
+        return jsonify({'success': False, 'error': 'nr_atendimento obrigatorio'}), 400
+    with _visita_lock:
+        _em_visita[nr] = {'dupla_id': dupla_id, 'ts': datetime.now()}
+    return jsonify({'success': True})
+
+
+@painel28_bp.route('/liberar-paciente', methods=['POST'])
+@login_required
+def liberar_paciente():
+    """Remove a reserva de um paciente (visita salva, pulada ou cancelada)."""
+    dados = request.get_json() or {}
+    nr = str(dados.get('nr_atendimento', '')).strip()
+    if not nr:
+        return jsonify({'success': False, 'error': 'nr_atendimento obrigatorio'}), 400
+    with _visita_lock:
+        _em_visita.pop(nr, None)
+    return jsonify({'success': True})
 
 
 # ============================================================

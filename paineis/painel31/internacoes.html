@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previsao de Internacoes - Central de ML</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel31/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+    <div class="painel-container">
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-bed-pulse"></i> Previsao de Internacoes</h1>
+                        <span class="header-subtitle">Modelo preditivo de internacoes hospitalares — Total, UTI e Enfermaria</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-actions">
+                        <button id="btn-voltar" class="btn-header">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Hub ML</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="header-status">
+                        <span class="status-indicator status-loading" id="status-indicator"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs-container">
+            <button class="tab-btn ativo" data-tab="visao-geral">
+                <i class="fas fa-chart-simple"></i> Visao Geral
+            </button>
+            <button class="tab-btn" data-tab="tecnica">
+                <i class="fas fa-flask"></i> Analise Tecnica
+            </button>
+        </div>
+
+        <!-- ABA 1: VISAO GERAL -->
+        <div class="tab-content ativo" id="tab-visao-geral">
+            <div class="detalhe-main">
+
+                <!-- KPIs hoje: Total / UTI / Enfermaria -->
+                <div class="topo-row" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div class="destaque-hoje" style="border-left: 4px solid #3498db;">
+                        <div class="destaque-hoje-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                            <i class="fas fa-hospital"></i>
+                        </div>
+                        <div class="destaque-hoje-info">
+                            <span class="destaque-hoje-label">Total internacoes hoje</span>
+                            <span class="destaque-hoje-valor" id="hoje-total">--</span>
+                            <span class="destaque-hoje-unidade">internacoes previstas</span>
+                        </div>
+                        <div class="destaque-hoje-faixa">
+                            <span class="destaque-hoje-label-pequeno">Variacao esperada</span>
+                            <span class="destaque-hoje-valor-pequeno" id="hoje-total-faixa">-- a --</span>
+                        </div>
+                    </div>
+
+                    <div class="destaque-hoje" style="border-left: 4px solid #e74c3c;">
+                        <div class="destaque-hoje-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                            <i class="fas fa-heart-pulse"></i>
+                        </div>
+                        <div class="destaque-hoje-info">
+                            <span class="destaque-hoje-label">UTI hoje</span>
+                            <span class="destaque-hoje-valor" id="hoje-uti">--</span>
+                            <span class="destaque-hoje-unidade">internacoes UTI</span>
+                        </div>
+                        <div class="destaque-hoje-faixa">
+                            <span class="destaque-hoje-label-pequeno">Variacao</span>
+                            <span class="destaque-hoje-valor-pequeno" id="hoje-uti-faixa">-- a --</span>
+                        </div>
+                    </div>
+
+                    <div class="destaque-hoje" style="border-left: 4px solid #27ae60;">
+                        <div class="destaque-hoje-icon" style="background: linear-gradient(135deg, #27ae60, #1e8449);">
+                            <i class="fas fa-bed"></i>
+                        </div>
+                        <div class="destaque-hoje-info">
+                            <span class="destaque-hoje-label">Enfermaria hoje</span>
+                            <span class="destaque-hoje-valor" id="hoje-enf">--</span>
+                            <span class="destaque-hoje-unidade">internacoes enf.</span>
+                        </div>
+                        <div class="destaque-hoje-faixa">
+                            <span class="destaque-hoje-label-pequeno">Variacao</span>
+                            <span class="destaque-hoje-valor-pequeno" id="hoje-enf-faixa">-- a --</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparativo ontem/hoje/amanha -->
+                <div class="comparativo-row">
+                    <div class="comparativo-card comparativo-ontem">
+                        <div class="comparativo-header"><i class="fas fa-arrow-left"></i> Ontem</div>
+                        <div class="comparativo-valor" id="ontem-valor">--</div>
+                        <div class="comparativo-label">internacoes realizadas</div>
+                    </div>
+                    <div class="comparativo-card comparativo-hoje">
+                        <div class="comparativo-header"><i class="fas fa-circle-dot"></i> Hoje</div>
+                        <div class="comparativo-valor" id="hoje-valor-pequeno">--</div>
+                        <div class="comparativo-label">previsao total</div>
+                    </div>
+                    <div class="comparativo-card comparativo-amanha">
+                        <div class="comparativo-header">Amanha <i class="fas fa-arrow-right"></i></div>
+                        <div class="comparativo-valor" id="amanha-valor">--</div>
+                        <div class="comparativo-label">previsao total</div>
+                    </div>
+                </div>
+
+                <!-- Proximos 7 dias (3 segmentos em tabs) -->
+                <div class="previsoes-container">
+                    <div class="previsoes-header">
+                        <h2><i class="fas fa-calendar-week"></i> Previsao para os proximos 7 dias</h2>
+                        <div class="segmento-tabs">
+                            <button class="segmento-btn ativo" data-seg="total">Total</button>
+                            <button class="segmento-btn" data-seg="uti">UTI</button>
+                            <button class="segmento-btn" data-seg="enfermaria">Enfermaria</button>
+                        </div>
+                    </div>
+                    <div class="previsoes-grid" id="previsoes-grid">
+                        <div class="loading-container"><div class="loading-spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- Historico real 14 dias -->
+                <div class="previsoes-container">
+                    <div class="previsoes-header">
+                        <h2><i class="fas fa-clock-rotate-left"></i> Internacoes dos ultimos 14 dias</h2>
+                        <span class="previsoes-subtitle">Volume real de internacoes por dia</span>
+                    </div>
+                    <div class="historico-grid" id="historico-grid">
+                        <div class="loading-container"><div class="loading-spinner"></div></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ABA 2: ANALISE TECNICA -->
+        <div class="tab-content" id="tab-tecnica">
+            <div class="detalhe-main">
+                <div class="modelo-kpis">
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-azul"><i class="fas fa-bullseye"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-mae-total">--</span>
+                            <span class="kpi-label">MAE Total (treino)</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-vermelho"><i class="fas fa-bullseye"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-mae-uti">--</span>
+                            <span class="kpi-label">MAE UTI (treino)</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-verde"><i class="fas fa-bullseye"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-mae-enf">--</span>
+                            <span class="kpi-label">MAE Enf. (treino)</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon kpi-icon-roxo"><i class="fas fa-chart-pie"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-valor" id="kpi-mape-total">--</span>
+                            <span class="kpi-label">MAPE Total (treino)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grafico-container">
+                    <div class="grafico-header">
+                        <h2><i class="fas fa-chart-area"></i> Previsto vs Realizado + Previsoes Futuras</h2>
+                        <div class="segmento-tabs">
+                            <button class="segmento-btn-grafico ativo" data-seg-g="total">Total</button>
+                            <button class="segmento-btn-grafico" data-seg-g="uti">UTI</button>
+                            <button class="segmento-btn-grafico" data-seg-g="enfermaria">Enfermaria</button>
+                        </div>
+                    </div>
+                    <div class="grafico-body">
+                        <canvas id="grafico-previsao"></canvas>
+                    </div>
+                </div>
+
+                <div class="info-modelo-tecnica" id="info-modelo-tecnica"></div>
+            </div>
+        </div>
+
+        <div class="painel-footer">
+            <p><i class="fas fa-info-circle"></i> Modelos LightGBM treinados com historico de internacoes, calendario, feriados, dados climaticos e volume do PS. Atualizado diariamente.</p>
+        </div>
+    </div>
+
+    <script src="/paineis/painel31/internacoes.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

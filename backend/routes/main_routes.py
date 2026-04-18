@@ -19,6 +19,13 @@ def index():
     return send_from_directory('frontend', 'login.html')
 
 
+@main_bp.route('/dashboard-v2')
+@login_required
+def dashboard_v2():
+    """Nova versão do dashboard"""
+    return send_from_directory('frontend', 'dashboard_v2.html')
+
+
 @main_bp.route('/login')
 @main_bp.route('/login.html')
 def login_page():

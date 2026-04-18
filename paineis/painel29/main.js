@@ -96,11 +96,8 @@
         var btnToggleDashboard = document.getElementById('btn-toggle-dashboard');
         if (btnToggleDashboard) btnToggleDashboard.addEventListener('click', function () {
             estado.dashboardVisivel = !estado.dashboardVisivel;
-            var row1 = document.getElementById('stats-row');
-            var row2 = document.getElementById('stats-row-tratativas');
-            var display = estado.dashboardVisivel ? '' : 'none';
-            if (row1) row1.style.display = display;
-            if (row2) row2.style.display = display;
+            var row = document.getElementById('stats-row');
+            if (row) row.style.display = estado.dashboardVisivel ? '' : 'none';
             this.innerHTML = estado.dashboardVisivel
                 ? '<i class="fas fa-chart-bar"></i> <span class="btn-text">Dashboard</span>'
                 : '<i class="fas fa-eye-slash"></i> <span class="btn-text">Dashboard</span>';
@@ -160,7 +157,7 @@
     // ========================================
 
     function configurarFiltros() {
-        var seletores = ['filtro-dias', 'filtro-setor', 'filtro-dupla', 'filtro-avaliacao', 'filtro-status'];
+        var seletores = ['filtro-dias', 'filtro-setor', 'filtro-dupla', 'filtro-avaliacao', 'filtro-status', 'filtro-status-trat'];
         seletores.forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('change', function () {
@@ -200,6 +197,7 @@
             document.getElementById('filtro-dupla').value = '';
             document.getElementById('filtro-avaliacao').value = '';
             document.getElementById('filtro-status').value = '';
+            document.getElementById('filtro-status-trat').value = '';
             document.getElementById('filtro-busca').value = '';
             document.getElementById('filtro-dt-inicio').value = '';
             document.getElementById('filtro-dt-fim').value = '';
@@ -232,6 +230,9 @@
 
         var status = document.getElementById('filtro-status').value;
         if (status) params.push('status_ronda=' + encodeURIComponent(status));
+
+        var statusTrat = document.getElementById('filtro-status-trat').value;
+        if (statusTrat) params.push('status_trat=' + encodeURIComponent(statusTrat));
 
         var busca = document.getElementById('filtro-busca').value.trim();
         if (busca) params.push('busca=' + encodeURIComponent(busca));
@@ -292,7 +293,6 @@
                     var d = data.data;
                     estado.isAdmin = d.is_admin || false;
                     setTexto('stat-visitas', d.total_visitas || 0);
-                    setTexto('stat-rondas', d.total_rondas || 0);
                     setTexto('stat-criticos', d.total_criticos || 0);
                     setTexto('stat-atencao', d.total_atencao || 0);
                     setTexto('stat-adequados', d.total_adequados || 0);
@@ -302,6 +302,7 @@
                     setTexto('stat-trat-pendentes', d.trat_pendentes || 0);
                     setTexto('stat-trat-em-tratativa', d.trat_em_tratativa || 0);
                     setTexto('stat-trat-regularizadas', d.trat_regularizadas || 0);
+                    setTexto('stat-trat-impossibilitados', d.trat_impossibilitados || 0);
                 }
             })
             .catch(function (err) { console.error('Erro dashboard:', err); });
@@ -321,7 +322,7 @@
             .catch(function (err) {
                 console.error('Erro dados:', err);
                 var body = document.getElementById('tabela-body');
-                if (body) body.innerHTML = '<tr><td colspan="10" class="tabela-loading">Erro ao carregar</td></tr>';
+                if (body) body.innerHTML = '<tr><td colspan="12" class="tabela-loading">Erro ao carregar</td></tr>';
             });
     }
 
@@ -368,6 +369,9 @@
 
             // Nr Atendimento
             html += '<td>' + escapeHtml(v.nr_atendimento || '--') + '</td>';
+
+            // Paciente
+            html += '<td class="col-paciente">' + escapeHtml(v.nm_paciente || '--') + '</td>';
 
             // Avaliacao final
             html += '<td><span class="badge-avaliacao badge-' + v.avaliacao_final + '">' + formatarResultado(v.avaliacao_final) + '</span></td>';

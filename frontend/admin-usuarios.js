@@ -131,7 +131,7 @@ function realizarLogout() {
 
 function configurarEventos() {
     // Header
-    var btnVoltar = document.getElementById('btn-voltar-dashboard');
+    var btnVoltar = document.getElementById('btn-voltar-dashboard-v2');
     if (btnVoltar) {
         btnVoltar.addEventListener('click', function() {
             window.location.href = '/frontend/dashboard.html';
@@ -332,15 +332,15 @@ function renderizarTabela() {
         botoesAcao += '</div>';
 
         return '<tr>' +
-            '<td>' + user.id + '</td>' +
-            '<td><strong>' + escapeHtml(user.usuario) + '</strong></td>' +
-            '<td>' + escapeHtml(user.nome_completo || '-') + '</td>' +
-            '<td>' + escapeHtml(user.email || '-') + '</td>' +
-            '<td>' + escapeHtml(user.cargo || '-') + '</td>' +
-            '<td><span class="status-badge ' + statusClass + '">' + statusTexto + '</span></td>' +
-            '<td style="text-align: center;">' + adminBadge + '</td>' +
-            '<td>' + ultimoAcesso + '</td>' +
-            '<td>' + botoesAcao + '</td>' +
+            '<td data-label="ID">' + user.id + '</td>' +
+            '<td data-label="Usuario"><strong>' + escapeHtml(user.usuario) + '</strong></td>' +
+            '<td data-label="Nome">' + escapeHtml(user.nome_completo || '-') + '</td>' +
+            '<td data-label="Email">' + escapeHtml(user.email || '-') + '</td>' +
+            '<td data-label="Cargo">' + escapeHtml(user.cargo || '-') + '</td>' +
+            '<td data-label="Status"><span class="status-badge ' + statusClass + '">' + statusTexto + '</span></td>' +
+            '<td data-label="Admin" style="text-align: center;">' + adminBadge + '</td>' +
+            '<td data-label="Ultimo Acesso">' + ultimoAcesso + '</td>' +
+            '<td data-label="Acoes">' + botoesAcao + '</td>' +
         '</tr>';
     }).join('');
 
