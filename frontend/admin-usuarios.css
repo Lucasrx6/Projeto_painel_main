@@ -58,7 +58,8 @@ body {
 }
 
 .header-content {
-    max-width: 1400px;
+    max-width: 1800px;
+    width: 100%;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
@@ -123,7 +124,8 @@ body {
    ESTATISTICAS
    ============================================================================== */
 .stats-container {
-    max-width: 1400px;
+    max-width: 1800px;
+    width: 100%;
     margin: 40px auto;
     padding: 0 40px;
     display: grid;
@@ -177,7 +179,8 @@ body {
    CONTROLES (BUSCA E BOTOES)
    ============================================================================== */
 .controls-container {
-    max-width: 1400px;
+    max-width: 1800px;
+    width: 100%;
     margin: 0 auto 24px;
     padding: 0 40px;
     display: flex;
@@ -262,7 +265,8 @@ body {
    TABELA DE USUARIOS
    ============================================================================== */
 .table-container {
-    max-width: 1400px;
+    max-width: 1800px;
+    width: 100%;
     margin: 0 auto 40px;
     padding: 0 40px;
 }
@@ -278,26 +282,54 @@ body {
 .usuarios-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .usuarios-table th {
     background: rgba(0,0,0,0.02);
-    padding: 16px 20px;
+    padding: 12px 8px;
     text-align: left;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
+/* Definir larguras proporcionais para caber perfeitamente */
+.usuarios-table th:nth-child(1) { width: 45px; } /* ID */
+.usuarios-table th:nth-child(2) { width: 13%; }  /* Usuario */
+.usuarios-table th:nth-child(3) { width: 18%; }  /* Nome */
+.usuarios-table th:nth-child(4) { width: 18%; }  /* Email */
+.usuarios-table th:nth-child(5) { width: 12%; }  /* Cargo */
+.usuarios-table th:nth-child(6) { width: 85px; text-align: center; } /* Status */
+.usuarios-table th:nth-child(7) { width: 65px; text-align: center; } /* Admin */
+.usuarios-table th:nth-child(8) { width: 120px; } /* Ultimo Acesso */
+.usuarios-table th:nth-child(9) { width: 160px; text-align: center; } /* Acoes */
+
 .usuarios-table td {
-    padding: 16px 20px;
-    font-size: 0.95rem;
+    padding: 12px 8px;
+    font-size: 0.88rem;
     color: var(--text-main);
     border-bottom: 1px solid var(--border-color);
     vertical-align: middle;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.usuarios-table td:nth-child(6),
+.usuarios-table td:nth-child(7),
+.usuarios-table td:nth-child(9) {
+    text-align: center;
+}
+
+.usuarios-table th:last-child,
+.usuarios-table td:last-child {
+    white-space: nowrap;
 }
 
 .usuarios-table tbody tr:hover {

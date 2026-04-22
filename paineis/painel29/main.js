@@ -565,7 +565,7 @@
                     // Botao alterar status visivel para todos
                     if (btnAlterarStatus) btnAlterarStatus.style.display = 'flex';
 
-                    if (estado.isAdmin && btnEditar) {
+                    if (btnEditar) {
                         btnEditar.style.display = 'flex';
                     }
                 } else {
@@ -642,9 +642,16 @@
                         if (cat.permite_nao_aplica) {
                             html += '<option value="nao_aplica"' + (item.resultado === 'nao_aplica' ? ' selected' : '') + '>N/A</option>';
                         }
-                        html += '</select></span>';
+                        html += '</select>';
+                        if (item.tratativa_id) {
+                            html += '<textarea class="obs-critica-item" data-trat-id="' + item.tratativa_id + '" placeholder="Observacao da critica..." maxlength="500">' + escapeHtml(item.obs_item || '') + '</textarea>';
+                        }
+                        html += '</span>';
                     } else {
                         html += '<span class="detalhe-resultado resultado-' + item.resultado + '">' + formatarResultado(item.resultado) + '</span>';
+                        if (item.obs_item) {
+                            html += '<span class="detalhe-obs-critica"><i class="fas fa-comment-alt"></i> ' + escapeHtml(item.obs_item) + '</span>';
+                        }
                     }
 
                     html += '</div>';
@@ -742,7 +749,7 @@
     }
 
     function ativarModoEdicao() {
-        if (!estado.visitaAtual || !estado.isAdmin) return;
+        if (!estado.visitaAtual) return;
 
         estado.modoEdicao = true;
 
@@ -758,7 +765,7 @@
     }
 
     function salvarEdicao() {
-        if (!estado.visitaAtual || !estado.isAdmin) return;
+        if (!estado.visitaAtual) return;
 
         var leito = (document.getElementById('edit-leito').value || '').trim();
         var atendimento = (document.getElementById('edit-atendimento').value || '').trim();
@@ -766,14 +773,22 @@
         var observacoes = (document.getElementById('edit-observacoes').value || '').trim();
         var novoStatusRonda = document.getElementById('edit-status-ronda') ? document.getElementById('edit-status-ronda').value : null;
 
-        // Coletar avaliacoes editadas
+        // Coletar avaliacoes editadas (resultado + obs_item por critica)
         var avaliacoes = [];
         var selects = document.querySelectorAll('[data-avaliacao-id]');
         for (var i = 0; i < selects.length; i++) {
-            avaliacoes.push({
-                avaliacao_id: parseInt(selects[i].getAttribute('data-avaliacao-id')),
-                resultado: selects[i].value
-            });
+            var sel = selects[i];
+            var avItem = {
+                avaliacao_id: parseInt(sel.getAttribute('data-avaliacao-id')),
+                resultado: sel.value
+            };
+            var detalheItem = sel.closest ? sel.closest('.detalhe-item') : sel.parentElement.parentElement;
+            var obsTA = detalheItem ? detalheItem.querySelector('.obs-critica-item') : null;
+            if (obsTA) {
+                avItem.tratativa_id = parseInt(obsTA.getAttribute('data-trat-id'));
+                avItem.obs_item = obsTA.value.trim() || null;
+            }
+            avaliacoes.push(avItem);
         }
 
         var payload = {

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autorizações de Convênio - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel33/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- CABECALHO -->
+    <header class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="HAC" class="header-logo" onerror="this.style.display='none'">
+                <div class="header-title">
+                    <h1><i class="fas fa-shield-halved"></i> Autorizações de Convênio</h1>
+                    <span class="header-subtitle">Controle de autorizações e SLA por convênio</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="btn-toggle-filtros" class="btn-header">
+                    <i class="fas fa-filter"></i> <span class="btn-text">Filtros</span>
+                </button>
+                <button id="btn-export" class="btn-header" title="Exportar CSV">
+                    <i class="fas fa-file-csv"></i> <span class="btn-text">Exportar</span>
+                </button>
+                <button id="btn-autoscroll" class="btn-header ativo" title="Parar/Iniciar Auto-scroll">
+                    <i class="fas fa-arrows-up-down"></i> <span class="btn-text">Auto-scroll</span>
+                </button>
+                <button id="btn-refresh" class="btn-header" title="Atualizar">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="btn-voltar" class="btn-header" title="Voltar">
+                    <i class="fas fa-arrow-left"></i> <span class="btn-text">Voltar</span>
+                </button>
+                <div class="header-status">
+                    <span class="status-indicator" id="status-indicator"></span>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- FILTROS BAR (multi-select painel21 pattern) -->
+    <div class="filtros-bar" id="filtros-bar" style="display:none;">
+        <div class="filtros-content">
+
+            <!-- Grupo/Status - multi-select fixo -->
+            <div class="filtro-grupo">
+                <label>Grupo</label>
+                <div class="multi-select-container" id="ms-grupo" data-state-key="msGrupo" data-placeholder="Todos">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Todos</span>
+                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                    </button>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options">
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="autorizado"> <span class="multi-select-item-text">Autorizado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="aguardando"> <span class="multi-select-item-text">Aguardando</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="acao_hospital"> <span class="multi-select-item-text">Ação Hospital</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="negado"> <span class="multi-select-item-text">Negado/Cancelado</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Semáforo - multi-select fixo -->
+            <div class="filtro-grupo">
+                <label>Semáforo</label>
+                <div class="multi-select-container" id="ms-semaforo" data-state-key="msSemaforo" data-placeholder="Todos">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Todos</span>
+                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                    </button>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options">
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="verde"> <span class="multi-select-item-text">🟢 Verde</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="amarelo"> <span class="multi-select-item-text">🟡 Amarelo</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="laranja"> <span class="multi-select-item-text">🟠 Laranja</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="vermelho"> <span class="multi-select-item-text">🔴 Vermelho</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Convênio - multi-select dinâmico -->
+            <div class="filtro-grupo">
+                <label>Convênio</label>
+                <div class="multi-select-container" id="ms-convenio" data-state-key="msConvenio" data-placeholder="Todos">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Todos</span>
+                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                    </button>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tipo Guia - multi-select dinâmico -->
+            <div class="filtro-grupo">
+                <label>Tipo Guia</label>
+                <div class="multi-select-container" id="ms-tipo-guia" data-state-key="msTipoGuia" data-placeholder="Todos">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Todos</span>
+                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                    </button>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tipo Autor. - multi-select dinâmico -->
+            <div class="filtro-grupo">
+                <label>Tipo Autor.</label>
+                <div class="multi-select-container" id="ms-tipo-autor" data-state-key="msTipoAutor" data-placeholder="Todos">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Todos</span>
+                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                    </button>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Setor - multi-select dinâmico -->
+            <div class="filtro-grupo">
+                <label>Setor</label>
+                <div class="multi-select-container" id="ms-setor" data-state-key="msSetor" data-placeholder="Todos">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Todos</span>
+                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                    </button>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Médico - multi-select dinâmico -->
+            <div class="filtro-grupo">
+                <label>Médico</label>
+                <div class="multi-select-container" id="ms-medico" data-state-key="msMedico" data-placeholder="Todos">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Todos</span>
+                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                    </button>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Período - select simples -->
+            <div class="filtro-grupo">
+                <label>Período</label>
+                <select id="filtro-periodo" class="filtro-select">
+                    <option value="">Todos</option>
+                    <option value="7">7 dias</option>
+                    <option value="15">15 dias</option>
+                    <option value="30" selected>30 dias</option>
+                    <option value="60">60 dias</option>
+                    <option value="90">90 dias</option>
+                </select>
+            </div>
+
+            <!-- Busca -->
+            <div class="filtro-grupo filtro-busca-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="filtro-busca" placeholder="Buscar paciente, convênio, médico...">
+            </div>
+
+            <button id="btn-limpar" class="btn-header btn-limpar" title="Limpar filtros">
+                <i class="fas fa-eraser"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- KPIs (4 cards) -->
+    <section class="dashboard-resumo">
+        <div class="resumo-grid">
+            <article class="resumo-card card-total">
+                <div class="card-icon"><i class="fas fa-users"></i></div>
+                <div class="card-content">
+                    <span class="card-value" id="kpi-v-total">-</span>
+                    <span class="card-label">Pacientes</span>
+                </div>
+            </article>
+            <article class="resumo-card card-autorizado">
+                <div class="card-icon"><i class="fas fa-circle-check"></i></div>
+                <div class="card-content">
+                    <span class="card-value" id="kpi-v-autorizado">-</span>
+                    <span class="card-label">Autorizados</span>
+                </div>
+            </article>
+            <article class="resumo-card card-aguardando">
+                <div class="card-icon"><i class="fas fa-hourglass-half"></i></div>
+                <div class="card-content">
+                    <span class="card-value" id="kpi-v-aguardando">-</span>
+                    <span class="card-label">Aguardando</span>
+                </div>
+            </article>
+            <article class="resumo-card card-negado">
+                <div class="card-icon"><i class="fas fa-ban"></i></div>
+                <div class="card-content">
+                    <span class="card-value" id="kpi-v-negado">-</span>
+                    <span class="card-label">Negado/Cancel.</span>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- TABELA -->
+    <main class="painel-main" id="painel-main">
+        <div class="tabela-container">
+            <div class="tabela-topo">
+                <span class="tabela-total" id="tabela-total">0 registros</span>
+            </div>
+            <div class="tabela-scroll-x">
+                <table class="painel-table" id="painel-table">
+                    <thead>
+                        <tr>
+                            <th class="col-sem"></th>
+                            <th class="col-atend sortable" data-campo="nr_atendimento">Atend. <i class="fas fa-sort"></i></th>
+                            <th class="col-pac sortable" data-campo="nm_paciente">Paciente <i class="fas fa-sort"></i></th>
+                            <th class="col-conv sortable" data-campo="ds_convenio">Convênio <i class="fas fa-sort"></i></th>
+                            <th class="col-tguia sortable" data-campo="ds_tipo_guia">Tipo Guia <i class="fas fa-sort"></i></th>
+                            <th class="col-tautor sortable" data-campo="ds_tipo_autorizacao">Tipo Autor. <i class="fas fa-sort"></i></th>
+                            <th class="col-estagio sortable" data-campo="ds_estagio">Estágio <i class="fas fa-sort"></i></th>
+                            <th class="col-setor sortable" data-campo="ds_setor_origem">Setor <i class="fas fa-sort"></i></th>
+                            <th class="col-dtped sortable" data-campo="dt_pedido_medico">Pedido <i class="fas fa-sort"></i></th>
+                            <th class="col-dtaut sortable" data-campo="dt_autorizacao">Autorizado <i class="fas fa-sort"></i></th>
+                            <th class="col-sla sortable" data-campo="status_sla">SLA <i class="fas fa-sort"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-tbody">
+                        <tr><td colspan="11" class="loading-cell">
+                            <div class="loading-spinner"></div> Carregando...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="tabela-vazia" id="tabela-vazia" style="display:none;">
+                <i class="fas fa-inbox"></i>
+                <p>Nenhuma autorização encontrada</p>
+                <small>Ajuste os filtros para ampliar a busca</small>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/paineis/painel33/main.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

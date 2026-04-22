@@ -45,7 +45,7 @@
         carregarFiltrosOpcoes();
         carregarResumo();
         estado.refreshInterval = setInterval(function () {
-            if (estado.abaAtiva === 'resumo' || estado.abaAtiva === 'criticos') {
+            if (estado.abaAtiva === 'resumo') {
                 carregarResumo();
             } else {
                 carregarTudo();
@@ -88,7 +88,7 @@
         }
 
         // Carregar dados da aba selecionada na primeira vez
-        if (nomeTab === 'resumo' || nomeTab === 'criticos') {
+        if (nomeTab === 'resumo') {
             carregarResumo();
         } else if (nomeTab === 'tratativas') {
             carregarTudo();
@@ -290,14 +290,28 @@
 
         var html = '<div class="resumo-grid">';
         setores.forEach(function (s) {
-            html += '<div class="resumo-setor-card">';
-            html += '<div class="resumo-setor-header">';
+            var temAberto = s.total_aberto > 0;
+            var temTratado = s.total_tratado > 0;
+            html += '<div class="resumo-setor-card' + (!temAberto ? ' todos-tratados' : '') + '">';
+
+            // Header clicável → vai para Tratativas com filtro do setor
+            html += '<div class="resumo-setor-header resumo-setor-clicavel" onclick="window.P30.irParaTratativasSetor(' + s.setor_id + ')" title="Ver tratativas deste setor">';
             html += '<div class="resumo-setor-nome"><i class="fas fa-hospital"></i> ' + escapeHtml(s.setor_nome) + '</div>';
-            html += '<span class="resumo-setor-total">' + s.total + ' crítico' + (s.total !== 1 ? 's' : '') + '</span>';
+            html += '<div class="resumo-setor-badges">';
+            if (temAberto) {
+                html += '<span class="resumo-badge-aberto">' + s.total_aberto + ' em aberto</span>';
+            }
+            if (temTratado) {
+                html += '<span class="resumo-badge-tratado"><i class="fas fa-check"></i> ' + s.total_tratado + ' tratado' + (s.total_tratado !== 1 ? 's' : '') + '</span>';
+            }
+            html += '<i class="fas fa-arrow-right resumo-seta-ir"></i>';
             html += '</div>';
+            html += '</div>';
+
             html += '<div class="resumo-cats-lista">';
             s.categorias.forEach(function (cat) {
-                var pct = Math.round((cat.total / s.total) * 100);
+                var base = s.total_aberto || s.total || 1;
+                var pct = Math.round(((cat.total_aberto || 0) / base) * 100);
                 html += '<div class="resumo-cat-item">';
                 html += '<div class="resumo-cat-nome">';
                 if (cat.categoria_icone) html += '<i class="' + escapeHtml(cat.categoria_icone) + '"></i> ';
@@ -306,7 +320,10 @@
                 html += '<div class="resumo-cat-barra-wrap">';
                 html += '<div class="resumo-cat-barra" style="width:' + pct + '%"></div>';
                 html += '</div>';
-                html += '<span class="resumo-cat-total">' + cat.total + '</span>';
+                html += '<span class="resumo-cat-total">';
+                if ((cat.total_aberto || 0) > 0) html += '<span class="cat-num-aberto">' + cat.total_aberto + '</span>';
+                if ((cat.total_tratado || 0) > 0) html += '<span class="cat-num-tratado"> +' + cat.total_tratado + '✓</span>';
+                html += '</span>';
                 html += '</div>';
             });
             html += '</div>';
@@ -315,6 +332,19 @@
         html += '</div>';
 
         container.innerHTML = html;
+    }
+
+    function irParaTratativasSetor(setorId) {
+        var sel = document.getElementById('filtro-setor');
+        if (sel) sel.value = setorId;
+        var selStatus = document.getElementById('filtro-status');
+        if (selStatus) selStatus.value = '';
+        ativarTab('tratativas');
+        if (!estado.filtrosVisiveis) {
+            estado.filtrosVisiveis = true;
+            var bar = document.getElementById('filtros-bar');
+            if (bar) bar.style.display = 'block';
+        }
     }
 
     function renderizarAnalitico(itens) {
@@ -336,24 +366,42 @@
         });
 
         var html = '';
+        var STATUS_LABELS = {
+            'pendente': { label: 'Pendente', cls: 'an-st-pendente' },
+            'em_tratativa': { label: 'Em Tratativa', cls: 'an-st-em_tratativa' },
+            'regularizado': { label: 'Regularizado', cls: 'an-st-regularizado' },
+            'impossibilitado': { label: 'Impossibilitado', cls: 'an-st-impossibilitado' }
+        };
+
         setoresOrdem.forEach(function (setor) {
             var lista = setoresMap[setor];
+            var abertos = lista.filter(function (i) { return i.status === 'pendente' || i.status === 'em_tratativa'; }).length;
+            var tratados = lista.length - abertos;
             html += '<div class="analitico-setor">';
-            html += '<div class="analitico-setor-header"><i class="fas fa-hospital"></i> ' + escapeHtml(setor) + ' <span class="analitico-setor-count">' + lista.length + '</span></div>';
+            html += '<div class="analitico-setor-header"><i class="fas fa-hospital"></i> ' + escapeHtml(setor);
+            html += ' <span class="analitico-setor-count">' + abertos + ' em aberto</span>';
+            if (tratados > 0) html += ' <span class="analitico-setor-count-tratado">' + tratados + ' tratado' + (tratados !== 1 ? 's' : '') + '</span>';
+            html += '</div>';
             html += '<div class="analitico-itens">';
             lista.forEach(function (item) {
+                var tratado = item.status === 'regularizado' || item.status === 'impossibilitado';
                 var dias = item.dias_em_aberto || 0;
-                var diasTexto = dias < 1 ? 'hoje' : Math.floor(dias) + 'd em aberto';
-                var urgente = dias >= 2;
-                html += '<div class="analitico-card' + (urgente ? ' urgente' : '') + '">';
+                var diasTexto = dias < 1 ? 'hoje' : Math.floor(dias) + 'd';
+                var urgente = !tratado && dias >= 2;
+                var stInfo = STATUS_LABELS[item.status] || { label: item.status, cls: '' };
+
+                html += '<div class="analitico-card' + (urgente ? ' urgente' : '') + (tratado ? ' tratado' : '') + '">';
 
                 html += '<div class="analitico-card-header">';
                 html += '<span class="analitico-cat-badge">';
                 if (item.categoria_icone) html += '<i class="' + escapeHtml(item.categoria_icone) + '"></i> ';
                 html += escapeHtml(item.categoria_nome) + '</span>';
-                html += '<span class="analitico-dias' + (urgente ? ' urgente' : '') + '">';
-                if (urgente) html += '<i class="fas fa-clock"></i> ';
-                html += diasTexto + '</span>';
+                html += '<span class="analitico-status-badge ' + stInfo.cls + '">' + stInfo.label + '</span>';
+                if (!tratado) {
+                    html += '<span class="analitico-dias' + (urgente ? ' urgente' : '') + '">';
+                    if (urgente) html += '<i class="fas fa-clock"></i> ';
+                    html += diasTexto + ' em aberto</span>';
+                }
                 html += '</div>';
 
                 html += '<div class="analitico-item-desc"><i class="fas fa-exclamation-circle"></i> ' + escapeHtml(item.item_descricao) + '</div>';
@@ -1027,7 +1075,8 @@
         abrirTratativa: abrirTratativa,
         selecionarStatus: selecionarStatus,
         toggleResponsavel: toggleResponsavel,
-        editarResponsavel: editarResponsavel
+        editarResponsavel: editarResponsavel,
+        irParaTratativasSetor: irParaTratativasSetor
     };
 
     if (document.readyState === 'loading') {

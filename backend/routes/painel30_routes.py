@@ -349,6 +349,7 @@ def criticos_resumo():
 
         sql = """
             SELECT
+                s.id AS setor_id,
                 s.nome AS setor_nome,
                 s.sigla AS setor_sigla,
                 c.nome AS categoria_nome,
@@ -375,14 +376,14 @@ def criticos_resumo():
             JOIN sentir_agir_rondas ro ON ro.id = v.ronda_id
             JOIN sentir_agir_duplas d ON d.id = ro.dupla_id
             LEFT JOIN sentir_agir_responsaveis r ON r.id = t.responsavel_id
-            WHERE t.status IN ('pendente', 'em_tratativa')
+            WHERE t.status NOT IN ('cancelado')
         """
         params = []
         if dias:
             sql += " AND t.criado_em >= NOW() - %s * INTERVAL '1 day'"
             params.append(int(dias))
 
-        sql += " ORDER BY s.nome, c.nome, t.criado_em DESC"
+        sql += " ORDER BY s.nome, t.status, c.nome, t.criado_em DESC"
 
         cursor.execute(sql, params)
         rows = [serializar_linha(r) for r in cursor.fetchall()]
@@ -394,43 +395,63 @@ def criticos_resumo():
         cursor.close()
         conn.close()
 
+        STATUS_ABERTO = ('pendente', 'em_tratativa')
+
         # Agrupar por setor → categoria (sintético)
         from collections import OrderedDict
         setores_map = OrderedDict()
         for row in rows:
             sn = row['setor_nome']
             cn = row['categoria_nome']
+            eh_aberto = row['status'] in STATUS_ABERTO
             if sn not in setores_map:
                 setores_map[sn] = {
+                    'setor_id': row['setor_id'],
                     'setor_nome': sn,
                     'setor_sigla': row['setor_sigla'],
                     'total': 0,
+                    'total_aberto': 0,
+                    'total_tratado': 0,
                     'categorias': OrderedDict()
                 }
             if cn not in setores_map[sn]['categorias']:
                 setores_map[sn]['categorias'][cn] = {
                     'categoria_nome': cn,
                     'categoria_icone': row['categoria_icone'],
-                    'total': 0
+                    'total': 0,
+                    'total_aberto': 0,
+                    'total_tratado': 0,
                 }
             setores_map[sn]['categorias'][cn]['total'] += 1
             setores_map[sn]['total'] += 1
+            if eh_aberto:
+                setores_map[sn]['total_aberto'] += 1
+                setores_map[sn]['categorias'][cn]['total_aberto'] += 1
+            else:
+                setores_map[sn]['total_tratado'] += 1
+                setores_map[sn]['categorias'][cn]['total_tratado'] += 1
 
         sintetico = []
         for sn, sd in setores_map.items():
             sintetico.append({
+                'setor_id': sd['setor_id'],
                 'setor_nome': sd['setor_nome'],
                 'setor_sigla': sd['setor_sigla'],
                 'total': sd['total'],
+                'total_aberto': sd['total_aberto'],
+                'total_tratado': sd['total_tratado'],
                 'categorias': list(sd['categorias'].values())
             })
+
+        total_aberto = sum(1 for r in rows if r['status'] in STATUS_ABERTO)
 
         return jsonify({
             'success': True,
             'data': {
                 'sintetico': sintetico,
                 'analitico': rows,
-                'total': len(rows)
+                'total': total_aberto,
+                'total_geral': len(rows)
             }
         })
     except Exception as e:
