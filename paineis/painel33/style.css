@@ -594,18 +594,14 @@ body {
    6c. LINHAS DE PACIENTE E DETALHE
    ========================================================= */
 
-/* Larguras das 11 colunas (sem Médico) */
+/* Larguras das 7 colunas */
 .col-sem    { width: 5px;   padding: 0 !important; }
-.col-pac    { width: 18%; }
-.col-atend  { width: 80px; }
-.col-conv   { width: 12%; }
-.col-tguia  { width: 90px; }
-.col-tautor { width: 95px; }
-.col-estagio{ width: 120px; }
-.col-setor  { width: 11%; }
-.col-dtped  { width: 110px; }
-.col-dtaut  { width: 110px; }
-.col-sla    { width: 85px; }
+.col-atend  { width: 90px; }
+.col-pac    { width: 26%; }
+.col-conv   { width: 20%; }
+.col-tguia  { width: 210px; }
+.col-setor  { width: 18%; }
+.col-sla    { width: 90px; }
 
 /* Linha do paciente */
 .row-pac {
@@ -637,6 +633,30 @@ body {
     padding: 1px 5px;
     flex-shrink: 0;
 }
+
+/* Célula de resumo na linha principal do paciente */
+.col-resumo-pac { overflow: visible; }
+.pac-resumo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+.badge-resumo-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 5px;
+    border-radius: 8px;
+    font-size: .58rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.badge-resumo-aut  { background: var(--cor-primaria-light); color: var(--cor-primaria-dark); border: 1px solid var(--cor-primaria); }
+.badge-resumo-proc { background: #e8f5e9; color: #1b5e20; border: 1px solid #28a745; }
+.badge-resumo-mat  { background: #fff3e0; color: #e65100; border: 1px solid #fd7e14; }
+.badge-resumo-doc  { background: #e3f2fd; color: #0d47a1; border: 1px solid #1976d2; }
 
 /* Linha de detalhe */
 .row-pac-detalhe { display: block !important; width: 100%; }
@@ -1099,7 +1119,239 @@ body {
 .toast.aviso   { background: #78350f; }
 
 /* =========================================================
-   10. ANIMACOES
+   10. TABS E VISAO SINTETICA
+   ========================================================= */
+
+/* Abas */
+.tabs-nav {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--cor-borda);
+    padding: 0 var(--esp-md);
+    flex-shrink: 0;
+}
+.tab-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--cor-texto-secundario);
+    font-weight: 600;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: all var(--tr-rapida);
+    margin-bottom: -2px; /* overlap border */
+}
+.tab-nav-btn i { font-size: 1rem; }
+.tab-nav-btn:hover {
+    color: var(--cor-primaria);
+    background: rgba(220,53,69,.05);
+}
+.tab-nav-btn.active {
+    color: var(--cor-primaria-dark);
+    border-bottom-color: var(--cor-primaria);
+}
+
+/* Painéis das Abas */
+.tab-panels {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    background: var(--cor-fundo);
+}
+.tab-panel {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+}
+.tab-panel.active {
+    display: flex;
+}
+.dashboard-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cards da Visão Sintética (Por Setor) */
+.setor-card {
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-card);
+    border: 1px solid var(--cor-borda);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--tr-rapida), box-shadow var(--tr-rapida);
+}
+.setor-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-card-hover);
+}
+.setor-card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--cor-borda);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.setor-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--raio-full);
+    background: var(--cor-primaria);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.setor-title {
+    flex: 1;
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.2;
+}
+.setor-card-body {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+
+/* Linha de totais gerais no card do setor */
+.setor-stats-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+.setor-stat {
+    flex: 1;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-sm);
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--cor-borda-light);
+}
+.setor-stat-val {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+}
+.setor-stat-lbl {
+    display: block;
+    font-size: .6rem;
+    text-transform: uppercase;
+    color: var(--cor-texto-secundario);
+    margin-top: 2px;
+}
+
+/* Alerta de Documentos */
+.setor-alert-docs {
+    background: var(--cor-negado-light);
+    color: var(--cor-negado-dark);
+    padding: 6px 10px;
+    border-radius: var(--raio-sm);
+    font-size: .75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.setor-alert-docs i { color: var(--cor-negado); }
+
+/* Situação e SLA nos cards de setor */
+.setor-situacao {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.setor-situacao-row {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.setor-sit-item {
+    flex: 1;
+    min-width: 52px;
+    padding: 5px 4px;
+    border-radius: var(--raio-sm);
+    text-align: center;
+    border: 1px solid transparent;
+}
+.sit-val {
+    display: block;
+    font-size: .95rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.sit-lbl {
+    display: block;
+    font-size: .55rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    margin-top: 2px;
+    white-space: nowrap;
+}
+.sit-autorizado   { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+.sit-aguardando   { background: #fff8e1; color: #f57f17; border-color: #ffe082; }
+.sit-acao         { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
+.sit-negado       { background: #fde8e8; color: #c62828; border-color: #ef9a9a; }
+.sit-sla-dentro   { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+.sit-sla-atencao  { background: #fff8e1; color: #f57f17; border-color: #ffe082; }
+.sit-sla-atrasado { background: #fde8e8; color: #c62828; border-color: #ef9a9a; }
+
+/* Breakdown bars */
+.setor-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.breakdown-title {
+    font-size: .7rem;
+    text-transform: uppercase;
+    color: var(--cor-texto-muted);
+    font-weight: 700;
+    margin-bottom: -4px;
+    border-bottom: 1px solid var(--cor-borda-light);
+    padding-bottom: 2px;
+}
+.breakdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: .75rem;
+}
+.breakdown-item-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--cor-texto-secundario);
+}
+.bd-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--raio-full);
+}
+.breakdown-item-val {
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+/* =========================================================
+   11. ANIMACOES
    ========================================================= */
 
 @keyframes girar         { to { transform: rotate(360deg); } }
@@ -1108,7 +1360,7 @@ body {
 @keyframes slideInToast  { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
 /* =========================================================
-   11. RESPONSIVIDADE
+   12. RESPONSIVIDADE
    ========================================================= */
 
 @media (max-width: 1400px) {

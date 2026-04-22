@@ -8,7 +8,7 @@
         apiFiltros:   '/api/paineis/painel33/filtros',
         apiPaciente:  '/api/paineis/painel33/paciente',
         apiExport:    '/api/paineis/painel33/export',
-        intervaloRefresh: 390000,
+        intervaloRefresh: 190000,
         scrollPasso:      1,
         scrollIntervalo:  50,
         pausaNoFinal:     3000,
@@ -44,6 +44,7 @@
         ordemDir:   'desc',
 
         // UI
+        abaAtiva:            'resumo', // ou 'autorizacoes'
         carregando:          false,
         filtrosVisiveis:     false,
         dropdownAberto:      null,
@@ -62,6 +63,11 @@
         coletarDOM();
         configurarEventos();
         restaurarEstadoLocal();
+        if (estado.autoscrollDesativado) {
+            DOM.btnAutoscroll.classList.remove('ativo');
+            DOM.btnAutoscroll.querySelector('i').className = 'fas fa-pause';
+            DOM.btnAutoscroll.title = 'Iniciar Auto-scroll';
+        }
         carregarFiltros();
         carregarDados();
         carregarDashboard();
@@ -97,6 +103,10 @@
         DOM.statusIndicator   = document.getElementById('status-indicator');
         DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
         DOM.toastContainer    = document.getElementById('toast-container');
+
+        DOM.tabBtns      = document.querySelectorAll('.tab-nav-btn');
+        DOM.tabPanels    = document.querySelectorAll('.tab-panel');
+        DOM.resumoSintetico = document.getElementById('resumo-sintetico-container');
     }
 
     // ============================================================
@@ -144,6 +154,24 @@
                 var content = header.nextElementSibling;
                 if (content && content.classList.contains('pac-section-content')) {
                     content.classList.toggle('aberto');
+                }
+            }
+        });
+
+        // Abas
+        for (var t = 0; t < DOM.tabBtns.length; t++) {
+            DOM.tabBtns[t].addEventListener('click', function() {
+                mudarAba(this.getAttribute('data-tab'));
+            });
+        }
+
+        // Clique no card de setor na Visão Sintética
+        DOM.resumoSintetico.addEventListener('click', function(e) {
+            var card = e.target.closest('.setor-card');
+            if (card) {
+                var setor = card.getAttribute('data-setor');
+                if (setor && setor !== 'Não Informado') {
+                    filtrarPorSetorNaAbaAnalitica(setor);
                 }
             }
         });
@@ -200,6 +228,41 @@
             trs[j].setAttribute('aria-expanded', 'false');
         }
         estado.dropdownAberto = null;
+    }
+
+    function mudarAba(tabId) {
+        estado.abaAtiva = tabId;
+        salvarEstadoLocal();
+        for (var i = 0; i < DOM.tabBtns.length; i++) {
+            DOM.tabBtns[i].classList.toggle('active', DOM.tabBtns[i].getAttribute('data-tab') === tabId);
+        }
+        for (var j = 0; j < DOM.tabPanels.length; j++) {
+            DOM.tabPanels[j].classList.toggle('active', DOM.tabPanels[j].id === 'tab-' + tabId);
+        }
+
+        // Tratar auto-scroll da tabela
+        if (tabId === 'autorizacoes' && !estado.autoscrollDesativado && !estado.filtrosVisiveis) {
+            iniciarScrollAutomatico();
+        } else {
+            pararScrollAutomatico();
+        }
+
+        // Limpar filtros ao voltar para a Visão Sintética
+        if (tabId === 'resumo') {
+            var temFiltro = false;
+            var keys = ['msGrupo', 'msSemaforo', 'msConvenio', 'msTipoGuia', 'msTipoAutor', 'msSetor', 'msMedico'];
+            for (var k = 0; k < keys.length; k++) {
+                if (estado[keys[k]] && estado[keys[k]].length > 0) {
+                    temFiltro = true;
+                    break;
+                }
+            }
+            if (estado.busca !== '') temFiltro = true;
+
+            if (temFiltro) {
+                limparTudo();
+            }
+        }
     }
 
     // ============================================================
@@ -380,6 +443,18 @@
         carregarDashboard();
     }
 
+    function filtrarPorSetorNaAbaAnalitica(setor) {
+        resetarTodosMultiSelects();
+
+        estado.msSetor = [setor];
+        restaurarMultiSelect('ms-setor');
+        atualizarLabel('ms-setor');
+
+        salvarEstadoLocal();
+        mudarAba('autorizacoes');
+        recarregarTudo();
+    }
+
     // ============================================================
     // PERSISTENCIA LOCAL
     // ============================================================
@@ -387,17 +462,19 @@
     function salvarEstadoLocal() {
         try {
             var data = {
-                msGrupo:     estado.msGrupo,
-                msSemaforo:  estado.msSemaforo,
-                msConvenio:  estado.msConvenio,
-                msTipoGuia:  estado.msTipoGuia,
-                msTipoAutor: estado.msTipoAutor,
-                msSetor:     estado.msSetor,
-                msMedico:    estado.msMedico,
-                periodo:     estado.periodo,
-                busca:       estado.busca,
-                ordemCampo:  estado.ordemCampo,
-                ordemDir:    estado.ordemDir
+                msGrupo:              estado.msGrupo,
+                msSemaforo:           estado.msSemaforo,
+                msConvenio:           estado.msConvenio,
+                msTipoGuia:           estado.msTipoGuia,
+                msTipoAutor:          estado.msTipoAutor,
+                msSetor:              estado.msSetor,
+                msMedico:             estado.msMedico,
+                periodo:              estado.periodo,
+                busca:                estado.busca,
+                ordemCampo:           estado.ordemCampo,
+                ordemDir:             estado.ordemDir,
+                abaAtiva:             estado.abaAtiva,
+                autoscrollDesativado: estado.autoscrollDesativado
             };
             localStorage.setItem(CONFIG.storagePrefix + 'estado', JSON.stringify(data));
         } catch (e) {}
@@ -416,6 +493,11 @@
             if (d.busca)    { estado.busca    = d.busca;    DOM.filtroBusca.value    = d.busca; }
             if (d.ordemCampo) estado.ordemCampo = d.ordemCampo;
             if (d.ordemDir)   estado.ordemDir   = d.ordemDir;
+            if (d.autoscrollDesativado !== undefined) estado.autoscrollDesativado = !!d.autoscrollDesativado;
+            if (d.abaAtiva) {
+                estado.abaAtiva = d.abaAtiva;
+                mudarAba(d.abaAtiva);
+            }
         } catch (e) {}
     }
 
@@ -525,23 +607,27 @@
     function carregarDados() {
         if (estado.carregando) return;
         estado.carregando = true;
-        DOM.tabelaTbody.innerHTML = '<tr><td colspan="11" class="loading-cell">'
+        DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'
             + '<div class="loading-spinner"></div> Carregando...</td></tr>';
         DOM.tabelaVazia.style.display = 'none';
+        DOM.resumoSintetico.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>';
 
         fetchComRetry(CONFIG.apiDados, construirParams()).then(function (resp) {
             estado.carregando = false;
             if (resp.ok) {
                 renderizarTabela(resp.dados || []);
+                renderizarSintetico(resp.dados || []);
                 atualizarHora();
             } else {
-                DOM.tabelaTbody.innerHTML = '<tr><td colspan="11" class="loading-cell">'
+                DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'
                     + 'Erro: ' + esc(resp.detalhe || resp.erro) + '</td></tr>';
+                DOM.resumoSintetico.innerHTML = '<div class="loading">Erro ao carregar dados sintéticos.</div>';
             }
         }).catch(function (err) {
             estado.carregando = false;
-            DOM.tabelaTbody.innerHTML = '<tr><td colspan="11" class="loading-cell">'
+            DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'
                 + 'Falha: ' + esc(err.message) + '</td></tr>';
+            DOM.resumoSintetico.innerHTML = '<div class="loading">Falha de conexão.</div>';
         });
     }
 
@@ -642,18 +728,16 @@
             }
             html += '</div></td>';
             html += '<td class="col-conv" title="' + esc(pr.ds_convenio) + '">' + esc(pr.ds_convenio) + '</td>';
-            html += '<td class="col-tguia">' + esc(pr.ds_tipo_guia) + '</td>';
-            html += '<td class="col-tautor">' + esc(pr.ds_tipo_autorizacao) + '</td>';
-            html += '<td class="col-estagio">' + badgeGrupo(pr.grupo_estagio, pr.ds_estagio) + '</td>';
+            html += '<td class="col-tguia col-resumo-pac" id="pac-resumo-' + i + '">';
+            html += renderizarResumoPac(g, estado.pacienteCache[i] || null);
+            html += '</td>';
             html += '<td class="col-setor" title="' + esc(pr.ds_setor_origem) + '">' + esc(pr.ds_setor_origem) + '</td>';
-            html += '<td class="col-dtped">' + formatarDataHora(g.recentePedido) + '</td>';
-            html += '<td class="col-dtaut">' + formatarDataHora(g.recenteAut) + '</td>';
             html += '<td class="col-sla">' + badgeSla(g.piorSla) + '</td>';
             html += '</tr>';
 
             // Linha de detalhe do paciente (expandida por padrão)
             html += '<tr class="row-pac-detalhe' + (isExp ? '' : ' oculto') + '" data-idx="' + i + '">';
-            html += '<td colspan="11" class="td-pac-detalhe">';
+            html += '<td colspan="7" class="td-pac-detalhe">';
             if (isExp && estado.pacienteCache[i]) {
                 html += htmlPacienteDetalhe(i, estado.pacienteCache[i], g);
             } else if (isExp) {
@@ -682,6 +766,152 @@
         reiniciarScroll();
     }
 
+    // ============================================================
+    // VISÃO SINTÉTICA (POR SETOR)
+    // ============================================================
+
+    function renderizarSintetico(dados) {
+        if (!dados.length) {
+            DOM.resumoSintetico.innerHTML = '<div class="pac-vazio" style="grid-column: 1/-1; justify-content: center;"><i class="fas fa-inbox"></i> Nenhum dado para exibir.</div>';
+            return;
+        }
+
+        var setores = {};
+        for (var i = 0; i < dados.length; i++) {
+            var d = dados[i];
+            var nomeSetor = d.ds_setor_origem || 'Não Informado';
+            if (!setores[nomeSetor]) {
+                setores[nomeSetor] = {
+                    nome: nomeSetor,
+                    totalAut: 0,
+                    pacientesSet: {},
+                    semDocs: 0,
+                    tipos: {},
+                    estagios: {},
+                    grupoEstagio: { autorizado: 0, aguardando: 0, acao_hospital: 0, negado: 0 },
+                    slaStatus:    { dentro: 0, atencao: 0, atrasado: 0, sem_pedido: 0 }
+                };
+            }
+
+            var s = setores[nomeSetor];
+            s.totalAut++;
+
+            var keyPac = (d.cd_pessoa_fisica !== null && d.cd_pessoa_fisica !== undefined)
+                         ? String(d.cd_pessoa_fisica)
+                         : ('__' + (d.nm_paciente || 'desconhecido'));
+            s.pacientesSet[keyPac] = true;
+
+            // Se não há qt_documentos ou é 0, considera sem docs
+            if (!d.qt_documentos || d.qt_documentos === 0) {
+                s.semDocs++;
+            }
+
+            var tipo = d.ds_tipo_autorizacao || 'Outros';
+            s.tipos[tipo] = (s.tipos[tipo] || 0) + 1;
+
+            var estagio = d.ds_estagio || d.grupo_estagio || 'Sem Estágio';
+            s.estagios[estagio] = (s.estagios[estagio] || 0) + 1;
+
+            var ge = d.grupo_estagio;
+            if (ge && s.grupoEstagio[ge] !== undefined) s.grupoEstagio[ge]++;
+
+            var slaKey = d.status_sla;
+            if (slaKey && s.slaStatus[slaKey] !== undefined) s.slaStatus[slaKey]++;
+        }
+
+        // Ordenar setores com mais autorizações primeiro
+        var arraySetores = Object.keys(setores).map(function(k) { return setores[k]; });
+        arraySetores.sort(function(a, b) { return b.totalAut - a.totalAut; });
+
+        var html = '';
+        for (var j = 0; j < arraySetores.length; j++) {
+            var s = arraySetores[j];
+            var qtdPacientes = Object.keys(s.pacientesSet).length;
+
+            html += '<div class="setor-card" data-setor="' + esc(s.nome) + '" style="cursor: pointer;" title="Clique para ver os detalhes na aba Autorizações">';
+
+            // Header
+            html += '<div class="setor-card-header">';
+            html += '<div class="setor-icon"><i class="fas fa-layer-group"></i></div>';
+            html += '<div class="setor-title">' + esc(s.nome) + '</div>';
+            html += '</div>';
+
+            // Body
+            html += '<div class="setor-card-body">';
+
+            // Totais
+            html += '<div class="setor-stats-row">';
+            html += '<div class="setor-stat"><span class="setor-stat-val">' + s.totalAut + '</span><span class="setor-stat-lbl">Autorizações</span></div>';
+            html += '<div class="setor-stat"><span class="setor-stat-val">' + qtdPacientes + '</span><span class="setor-stat-lbl">Pacientes</span></div>';
+            html += '</div>';
+
+            // Situação (grupo estágio)
+            html += '<div class="setor-situacao">';
+            html += '<div class="breakdown-title">Situação</div>';
+            html += '<div class="setor-situacao-row">';
+            if (s.grupoEstagio.autorizado > 0)    html += '<div class="setor-sit-item sit-autorizado"><span class="sit-val">' + s.grupoEstagio.autorizado + '</span><span class="sit-lbl">Autorizado</span></div>';
+            if (s.grupoEstagio.aguardando > 0)    html += '<div class="setor-sit-item sit-aguardando"><span class="sit-val">' + s.grupoEstagio.aguardando + '</span><span class="sit-lbl">Aguardando</span></div>';
+            if (s.grupoEstagio.acao_hospital > 0) html += '<div class="setor-sit-item sit-acao"><span class="sit-val">' + s.grupoEstagio.acao_hospital + '</span><span class="sit-lbl">Ação Hosp.</span></div>';
+            if (s.grupoEstagio.negado > 0)        html += '<div class="setor-sit-item sit-negado"><span class="sit-val">' + s.grupoEstagio.negado + '</span><span class="sit-lbl">Negado</span></div>';
+            html += '</div></div>';
+
+            // SLA
+            var temSla = s.slaStatus.dentro + s.slaStatus.atencao + s.slaStatus.atrasado;
+            if (temSla > 0) {
+                html += '<div class="setor-situacao">';
+                html += '<div class="breakdown-title">SLA</div>';
+                html += '<div class="setor-situacao-row">';
+                if (s.slaStatus.dentro > 0)    html += '<div class="setor-sit-item sit-sla-dentro"><span class="sit-val">' + s.slaStatus.dentro + '</span><span class="sit-lbl">No Prazo</span></div>';
+                if (s.slaStatus.atencao > 0)   html += '<div class="setor-sit-item sit-sla-atencao"><span class="sit-val">' + s.slaStatus.atencao + '</span><span class="sit-lbl">Atenção</span></div>';
+                if (s.slaStatus.atrasado > 0)  html += '<div class="setor-sit-item sit-sla-atrasado"><span class="sit-val">' + s.slaStatus.atrasado + '</span><span class="sit-lbl">Atrasado</span></div>';
+                html += '</div></div>';
+            }
+
+            // Alerta sem docs
+            if (s.semDocs > 0) {
+                html += '<div class="setor-alert-docs">';
+                html += '<span><i class="fas fa-file-excel"></i> Sem documentos</span>';
+                html += '<span>' + s.semDocs + '</span>';
+                html += '</div>';
+            }
+
+            // Tipos
+            var tiposKeys = Object.keys(s.tipos).sort(function(a,b){return s.tipos[b]-s.tipos[a]});
+            if (tiposKeys.length > 0) {
+                html += '<div class="setor-breakdown">';
+                html += '<div class="breakdown-title">Por Tipo</div>';
+                for (var t = 0; t < tiposKeys.length; t++) {
+                    var tKey = tiposKeys[t];
+                    html += '<div class="breakdown-item">';
+                    html += '<div class="breakdown-item-label"><div class="bd-color-dot" style="background:var(--cor-primaria)"></div> ' + esc(tKey) + '</div>';
+                    html += '<div class="breakdown-item-val">' + s.tipos[tKey] + '</div>';
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            // Estagios
+            var estagiosKeys = Object.keys(s.estagios).sort(function(a,b){return s.estagios[b]-s.estagios[a]});
+            if (estagiosKeys.length > 0) {
+                html += '<div class="setor-breakdown">';
+                html += '<div class="breakdown-title">Por Estágio</div>';
+                for (var e = 0; e < estagiosKeys.length; e++) {
+                    var eKey = estagiosKeys[e];
+                    html += '<div class="breakdown-item">';
+                    html += '<div class="breakdown-item-label"><div class="bd-color-dot" style="background:var(--cor-texto-secundario)"></div> ' + esc(eKey) + '</div>';
+                    html += '<div class="breakdown-item-val">' + s.estagios[eKey] + '</div>';
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            html += '</div>'; // close body
+            html += '</div>'; // close card
+        }
+
+        DOM.resumoSintetico.innerHTML = html;
+    }
+
     function carregarDetalhePaciente(idx) {
         var key = estado.pacientesOrdem[idx];
         var g   = estado.pacientesGrupo[key];
@@ -699,6 +929,8 @@
                         td.innerHTML = htmlPacienteDetalhe(idx, resp, g);
                     }
                 }
+                var resumoCell = document.getElementById('pac-resumo-' + idx);
+                if (resumoCell) resumoCell.innerHTML = renderizarResumoPac(g, resp);
             }
         }).catch(function () {});
     }
@@ -739,6 +971,8 @@
                             td.innerHTML = htmlPacienteDetalhe(idx, resp, g);
                             vincularTabsPaciente(td, idx);
                         }
+                        var resumoCell = document.getElementById('pac-resumo-' + idx);
+                        if (resumoCell) resumoCell.innerHTML = renderizarResumoPac(g, resp);
                     } else {
                         rowDet.querySelector('.td-pac-detalhe').innerHTML =
                             '<div class="pac-erro">Erro: ' + esc(resp.detalhe || resp.erro) + '</div>';
@@ -820,7 +1054,7 @@
         html += '<div class="pac-section-content">';
         if (auts.length) {
             html += '<table class="pac-inner-table"><thead><tr>';
-            html += '<th>Atend.</th><th>Convênio</th><th>Tipo Guia</th><th>Tipo Autor.</th><th>Estágio</th><th>Setor</th><th>Pedido</th><th>Autorizado</th><th>SLA</th><th>Doc.</th>';
+            html += '<th>Atend.</th><th>Convênio</th><th>Tipo Guia</th><th>Tipo Autor.</th><th>Estágio</th><th>Setor</th><th>Pedido Médico</th><th>Pedido</th><th>SLA</th><th>Doc.</th>';
             html += '</tr></thead><tbody>';
             for (var i = 0; i < auts.length; i++) {
                 var a = auts[i];
@@ -834,8 +1068,8 @@
                 html += '<td>' + esc(a.ds_tipo_autorizacao) + '</td>';
                 html += '<td>' + badgeGrupo(a.grupo_estagio, a.ds_estagio) + '</td>';
                 html += '<td>' + esc(a.ds_setor_origem) + '</td>';
-                html += '<td>' + formatarDataHora(a.dt_pedido_medico) + '</td>';
                 html += '<td>' + formatarDataHora(a.dt_autorizacao) + '</td>';
+                html += '<td>' + formatarDataHora(a.dt_pedido_medico) + '</td>';
                 html += '<td>' + badgeSla(a.status_sla) + '</td>';
                 if (solicitadoSemDoc) {
                     html += '<td><span class="badge badge-sem-doc" title="Solicitado sem documento anexado"><i class="fas fa-triangle-exclamation"></i> Sem Doc.</span></td>';
@@ -940,6 +1174,39 @@
 
     function vincularTabsPaciente(container, idx) {
         // Seções unificadas - não precisa mais vincular tabs
+    }
+
+    // ============================================================
+    // RESUMO DO PACIENTE (CÉLULA PRINCIPAL)
+    // ============================================================
+
+    function renderizarResumoPac(grupo, cacheResp) {
+        var html = '<div class="pac-resumo-wrap">';
+        html += '<span class="badge-resumo-item badge-resumo-aut" title="Autorizações">';
+        html += '<i class="fas fa-shield-halved"></i> ' + grupo.autorizacoes.length + ' aut.';
+        html += '</span>';
+        if (cacheResp) {
+            var procs = (cacheResp.procedimentos || []).length;
+            var mats  = (cacheResp.materiais     || []).length;
+            var docs  = (cacheResp.documentos    || []).length;
+            if (procs > 0) {
+                html += '<span class="badge-resumo-item badge-resumo-proc" title="Procedimentos">';
+                html += '<i class="fas fa-stethoscope"></i> ' + procs + ' proc.';
+                html += '</span>';
+            }
+            if (mats > 0) {
+                html += '<span class="badge-resumo-item badge-resumo-mat" title="Materiais">';
+                html += '<i class="fas fa-box-open"></i> ' + mats + ' mat.';
+                html += '</span>';
+            }
+            if (docs > 0) {
+                html += '<span class="badge-resumo-item badge-resumo-doc" title="Documentos">';
+                html += '<i class="fas fa-paperclip"></i> ' + docs + ' doc.';
+                html += '</span>';
+            }
+        }
+        html += '</div>';
+        return html;
     }
 
     // ============================================================
@@ -1077,6 +1344,7 @@
             DOM.btnAutoscroll.title = 'Iniciar Auto-scroll';
             mostrarToast('Auto-scroll desativado', 'aviso');
         }
+        salvarEstadoLocal();
     }
 
     // ============================================================
