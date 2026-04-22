@@ -269,8 +269,16 @@ body {
 
 .resumo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 14px;
+}
+
+@media (min-width: 1600px) {
+    .resumo-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 900px) {
+    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .resumo-setor-card {
@@ -290,6 +298,47 @@ body {
     color: white;
 }
 
+.resumo-setor-clicavel {
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+
+.resumo-setor-clicavel:hover {
+    filter: brightness(1.12);
+}
+
+.resumo-setor-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.resumo-badge-aberto {
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.5);
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.resumo-badge-tratado {
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(40, 167, 69, 0.35);
+    border: 1px solid rgba(40, 167, 69, 0.7);
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.resumo-seta-ir {
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
 .resumo-setor-nome {
     font-size: 0.88rem;
     font-weight: 700;
@@ -298,13 +347,19 @@ body {
     gap: 7px;
 }
 
-.resumo-setor-total {
-    font-size: 0.75rem;
+.resumo-setor-card.todos-tratados .resumo-setor-header {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.cat-num-aberto {
     font-weight: 700;
-    background: rgba(255,255,255,0.2);
-    padding: 3px 10px;
-    border-radius: 12px;
-    white-space: nowrap;
+    color: var(--cor-texto);
+}
+
+.cat-num-tratado {
+    font-size: 0.65rem;
+    color: #28a745;
+    font-weight: 600;
 }
 
 .resumo-cats-lista {
@@ -421,11 +476,40 @@ body {
 .analitico-card:hover { background: #fafafa; }
 .analitico-card.urgente { border-left-color: var(--cor-pendente); background: #fff8f8; }
 .analitico-card.urgente:hover { background: #fff0f0; }
+.analitico-card.tratado { border-left-color: #28a745; background: #f8fffe; opacity: 0.82; }
+.analitico-card.tratado:hover { opacity: 1; background: #f0fff8; }
+
+.analitico-status-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.an-st-pendente      { background: #fde8ea; color: #c82333; }
+.an-st-em_tratativa  { background: #fff3e0; color: #d9620a; }
+.an-st-regularizado  { background: #e8f5e9; color: #1e7e34; }
+.an-st-impossibilitado { background: #ede7f6; color: #5e35b1; }
+
+.analitico-setor-count-tratado {
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: #e8f5e9;
+    color: #1e7e34;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-left: 4px;
+}
 
 .analitico-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
     margin-bottom: 6px;
     gap: 10px;
 }
@@ -1250,7 +1334,7 @@ body {
     .filtros-content { gap: 6px; }
     .status-selector { grid-template-columns: repeat(2, 1fr); }
     .tab-nav-btn { padding: 8px 12px; font-size: 0.75rem; }
-    .resumo-grid { grid-template-columns: 1fr; }
+    .resumo-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 600px) {

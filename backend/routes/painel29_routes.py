@@ -34,6 +34,14 @@ def _is_admin():
     return session.get('is_admin', False)
 
 
+def _extrair_obs_item_str(descricao_problema):
+    if not descricao_problema:
+        return None
+    if ' | Observacao do item: ' in descricao_problema:
+        return descricao_problema.split(' | Observacao do item: ', 1)[1].strip()
+    return None
+
+
 def _registrar_log(cursor, entidade, entidade_id, acao, usuario,
                    campo_alterado=None, valor_anterior=None, valor_novo=None,
                    ip_origem=None):
@@ -423,14 +431,20 @@ def detalhe_visita(visita_id):
             conn.close()
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
-        # Avaliações agrupadas por categoria
+        # Avaliações agrupadas por categoria (inclui tratativa_id e obs_item)
         cursor.execute("""
             SELECT
                 a.id AS avaliacao_id, a.item_id, a.resultado,
                 i.descricao AS item_descricao, i.ordem AS item_ordem,
                 c.id AS categoria_id, c.nome AS categoria_nome,
                 c.icone AS categoria_icone, c.cor AS categoria_cor,
-                c.ordem AS categoria_ordem, c.permite_nao_aplica
+                c.ordem AS categoria_ordem, c.permite_nao_aplica,
+                (SELECT t.id FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = a.visita_id AND t.item_id = a.item_id
+                   AND t.status NOT IN ('cancelado') ORDER BY t.id LIMIT 1) AS tratativa_id,
+                (SELECT t.descricao_problema FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = a.visita_id AND t.item_id = a.item_id
+                   AND t.status NOT IN ('cancelado') ORDER BY t.id LIMIT 1) AS trat_descricao_problema
             FROM sentir_agir_avaliacoes a
             JOIN sentir_agir_itens i ON i.id = a.item_id
             JOIN sentir_agir_categorias c ON c.id = i.categoria_id
@@ -509,7 +523,9 @@ def detalhe_visita(visita_id):
                 'avaliacao_id': av['avaliacao_id'],
                 'item_id': av['item_id'],
                 'descricao': av['item_descricao'],
-                'resultado': av['resultado']
+                'resultado': av['resultado'],
+                'tratativa_id': av['tratativa_id'],
+                'obs_item': _extrair_obs_item_str(av.get('trat_descricao_problema'))
             })
 
         visita_dict['categorias'] = categorias
@@ -534,11 +550,8 @@ def detalhe_visita(visita_id):
 @painel29_bp.route('/api/paineis/painel29/visitas/<int:visita_id>', methods=['PUT'])
 @login_required
 def editar_visita(visita_id):
-    """Edita uma visita. Apenas administradores."""
+    """Edita uma visita. Acessivel a qualquer usuario logado."""
     try:
-        if not _is_admin():
-            return jsonify({'success': False, 'error': 'Apenas administradores podem editar'}), 403
-
         dados = request.get_json()
         if not dados:
             return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
@@ -608,13 +621,15 @@ def editar_visita(visita_id):
                 set_params
             )
 
-        # Atualizar avaliações individuais
+        # Atualizar avaliações individuais e obs_item das críticas
         if 'avaliacoes' in dados and isinstance(dados['avaliacoes'], list):
             for av in dados['avaliacoes']:
                 av_id = av.get('avaliacao_id')
                 novo_resultado = av.get('resultado')
+                trat_id = av.get('tratativa_id')
+                novo_obs = (av.get('obs_item') or '').strip() or None
+
                 if av_id and novo_resultado:
-                    # Buscar valor anterior
                     cursor.execute(
                         "SELECT resultado FROM sentir_agir_avaliacoes WHERE id = %s AND visita_id = %s",
                         (av_id, visita_id)
@@ -630,6 +645,34 @@ def editar_visita(visita_id):
                             'anterior': av_atual['resultado'],
                             'novo': novo_resultado
                         })
+
+                # Atualizar obs_item na tratativa, se fornecido
+                if trat_id and 'obs_item' in av:
+                    cursor.execute(
+                        "SELECT descricao_problema FROM sentir_agir_tratativas WHERE id = %s AND visita_id = %s",
+                        (trat_id, visita_id)
+                    )
+                    trat = cursor.fetchone()
+                    if trat:
+                        desc_atual = trat['descricao_problema'] or ''
+                        obs_atual = _extrair_obs_item_str(desc_atual)
+                        if obs_atual != novo_obs:
+                            if ' | Observacao do item: ' in desc_atual:
+                                base_desc = desc_atual.split(' | Observacao do item: ')[0]
+                            elif ' | Observacao da visita: ' in desc_atual:
+                                base_desc = desc_atual.split(' | Observacao da visita: ')[0]
+                            else:
+                                base_desc = desc_atual
+                            nova_desc = base_desc + (' | Observacao do item: ' + novo_obs if novo_obs else '')
+                            cursor.execute(
+                                "UPDATE sentir_agir_tratativas SET descricao_problema = %s WHERE id = %s",
+                                (nova_desc, trat_id)
+                            )
+                            alteracoes.append({
+                                'campo': 'obs_critica_trat_' + str(trat_id),
+                                'anterior': obs_atual or '',
+                                'novo': novo_obs or ''
+                            })
 
         # Registrar logs
         for alt in alteracoes:
