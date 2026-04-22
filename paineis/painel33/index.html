@@ -212,77 +212,108 @@
         </div>
     </div>
 
-    <!-- KPIs (4 cards) -->
-    <section class="dashboard-resumo">
-        <div class="resumo-grid">
-            <article class="resumo-card card-total">
-                <div class="card-icon"><i class="fas fa-users"></i></div>
-                <div class="card-content">
-                    <span class="card-value" id="kpi-v-total">-</span>
-                    <span class="card-label">Pacientes</span>
-                </div>
-            </article>
-            <article class="resumo-card card-autorizado">
-                <div class="card-icon"><i class="fas fa-circle-check"></i></div>
-                <div class="card-content">
-                    <span class="card-value" id="kpi-v-autorizado">-</span>
-                    <span class="card-label">Autorizados</span>
-                </div>
-            </article>
-            <article class="resumo-card card-aguardando">
-                <div class="card-icon"><i class="fas fa-hourglass-half"></i></div>
-                <div class="card-content">
-                    <span class="card-value" id="kpi-v-aguardando">-</span>
-                    <span class="card-label">Aguardando</span>
-                </div>
-            </article>
-            <article class="resumo-card card-negado">
-                <div class="card-icon"><i class="fas fa-ban"></i></div>
-                <div class="card-content">
-                    <span class="card-value" id="kpi-v-negado">-</span>
-                    <span class="card-label">Negado/Cancel.</span>
-                </div>
-            </article>
-        </div>
-    </section>
+    <!-- NAVEGAÇÃO POR ABAS -->
+    <div class="tabs-nav">
+        <button class="tab-nav-btn active" data-tab="resumo">
+            <i class="fas fa-chart-pie"></i> <span>Visão Sintética</span>
+        </button>
+        <button class="tab-nav-btn" data-tab="autorizacoes">
+            <i class="fas fa-list"></i> <span>Autorizações</span>
+        </button>
+    </div>
 
-    <!-- TABELA -->
-    <main class="painel-main" id="painel-main">
-        <div class="tabela-container">
-            <div class="tabela-topo">
-                <span class="tabela-total" id="tabela-total">0 registros</span>
-            </div>
-            <div class="tabela-scroll-x">
-                <table class="painel-table" id="painel-table">
-                    <thead>
-                        <tr>
-                            <th class="col-sem"></th>
-                            <th class="col-atend sortable" data-campo="nr_atendimento">Atend. <i class="fas fa-sort"></i></th>
-                            <th class="col-pac sortable" data-campo="nm_paciente">Paciente <i class="fas fa-sort"></i></th>
-                            <th class="col-conv sortable" data-campo="ds_convenio">Convênio <i class="fas fa-sort"></i></th>
-                            <th class="col-tguia sortable" data-campo="ds_tipo_guia">Tipo Guia <i class="fas fa-sort"></i></th>
-                            <th class="col-tautor sortable" data-campo="ds_tipo_autorizacao">Tipo Autor. <i class="fas fa-sort"></i></th>
-                            <th class="col-estagio sortable" data-campo="ds_estagio">Estágio <i class="fas fa-sort"></i></th>
-                            <th class="col-setor sortable" data-campo="ds_setor_origem">Setor <i class="fas fa-sort"></i></th>
-                            <th class="col-dtped sortable" data-campo="dt_pedido_medico">Pedido <i class="fas fa-sort"></i></th>
-                            <th class="col-dtaut sortable" data-campo="dt_autorizacao">Autorizado <i class="fas fa-sort"></i></th>
-                            <th class="col-sla sortable" data-campo="status_sla">SLA <i class="fas fa-sort"></i></th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-tbody">
-                        <tr><td colspan="11" class="loading-cell">
-                            <div class="loading-spinner"></div> Carregando...
-                        </td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="tabela-vazia" id="tabela-vazia" style="display:none;">
-                <i class="fas fa-inbox"></i>
-                <p>Nenhuma autorização encontrada</p>
-                <small>Ajuste os filtros para ampliar a busca</small>
+    <!-- PAINEIS DAS ABAS -->
+    <div class="tab-panels">
+
+        <!-- ABA: Visão Sintética -->
+        <div class="tab-panel active" id="tab-resumo">
+            <div class="dashboard-content" style="padding: 0 var(--esp-sm);">
+                <div class="resumo-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; background: white; border-bottom: 1px solid var(--cor-borda); border-radius: var(--raio-md) var(--raio-md) 0 0; margin-bottom: 10px;">
+                    <div class="resumo-info" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--cor-texto-secundario);">
+                        <i class="fas fa-circle-info" style="color: var(--cor-primaria);"></i>
+                        <span>Visão sintética das autorizações agrupadas por setor de origem</span>
+                    </div>
+                </div>
+
+                <div id="resumo-sintetico-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; padding-bottom: 20px;">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
             </div>
         </div>
-    </main>
+
+        <!-- ABA: Autorizações (Conteúdo Antigo) -->
+        <div class="tab-panel" id="tab-autorizacoes">
+            <div class="dashboard-content" style="display: flex; flex-direction: column; height: 100%;">
+                <!-- KPIs (4 cards) -->
+                <section class="dashboard-resumo">
+                    <div class="resumo-grid">
+                        <article class="resumo-card card-total">
+                            <div class="card-icon"><i class="fas fa-users"></i></div>
+                            <div class="card-content">
+                                <span class="card-value" id="kpi-v-total">-</span>
+                                <span class="card-label">Pacientes</span>
+                            </div>
+                        </article>
+                        <article class="resumo-card card-autorizado">
+                            <div class="card-icon"><i class="fas fa-circle-check"></i></div>
+                            <div class="card-content">
+                                <span class="card-value" id="kpi-v-autorizado">-</span>
+                                <span class="card-label">Autorizados</span>
+                            </div>
+                        </article>
+                        <article class="resumo-card card-aguardando">
+                            <div class="card-icon"><i class="fas fa-hourglass-half"></i></div>
+                            <div class="card-content">
+                                <span class="card-value" id="kpi-v-aguardando">-</span>
+                                <span class="card-label">Aguardando</span>
+                            </div>
+                        </article>
+                        <article class="resumo-card card-negado">
+                            <div class="card-icon"><i class="fas fa-ban"></i></div>
+                            <div class="card-content">
+                                <span class="card-value" id="kpi-v-negado">-</span>
+                                <span class="card-label">Negado/Cancel.</span>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <!-- TABELA -->
+                <main class="painel-main" id="painel-main">
+                    <div class="tabela-container">
+                        <div class="tabela-topo">
+                            <span class="tabela-total" id="tabela-total">0 registros</span>
+                        </div>
+                        <div class="tabela-scroll-x">
+                            <table class="painel-table" id="painel-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-sem"></th>
+                                        <th class="col-atend sortable" data-campo="nr_atendimento">Atend. <i class="fas fa-sort"></i></th>
+                                        <th class="col-pac sortable" data-campo="nm_paciente">Paciente <i class="fas fa-sort"></i></th>
+                                        <th class="col-conv sortable" data-campo="ds_convenio">Convênio <i class="fas fa-sort"></i></th>
+                                        <th class="col-tguia">Resumo</th>
+                                        <th class="col-setor sortable" data-campo="ds_setor_origem">Setor <i class="fas fa-sort"></i></th>
+                                        <th class="col-sla sortable" data-campo="status_sla">SLA <i class="fas fa-sort"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-tbody">
+                                    <tr><td colspan="7" class="loading-cell">
+                                        <div class="loading-spinner"></div> Carregando...
+                                    </td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="tabela-vazia" id="tabela-vazia" style="display:none;">
+                            <i class="fas fa-inbox"></i>
+                            <p>Nenhuma autorização encontrada</p>
+                            <small>Ajuste os filtros para ampliar a busca</small>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- TOAST -->
