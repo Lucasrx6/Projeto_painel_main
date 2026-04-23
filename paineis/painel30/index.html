@@ -238,12 +238,24 @@
                         <input type="text" id="resp-telefone" placeholder="Telefone" maxlength="50">
                     </div>
                     <div class="resp-form-row">
-                        <select id="resp-categoria">
-                            <option value="">Categoria (opcional)</option>
-                        </select>
-                        <select id="resp-setor">
-                            <option value="">Setor (opcional)</option>
-                        </select>
+                        <div class="multi-select-wrapper" id="wrap-resp-categorias">
+                            <label class="multi-select-label"><i class="fas fa-tags"></i> Categorias</label>
+                            <div class="multi-select-trigger" id="trigger-resp-categorias" tabindex="0">
+                                <span class="multi-select-placeholder">Selecione categorias...</span>
+                                <span class="multi-select-badges" id="badges-resp-categorias"></span>
+                                <i class="fas fa-chevron-down multi-select-arrow"></i>
+                            </div>
+                            <div class="multi-select-dropdown" id="dropdown-resp-categorias"></div>
+                        </div>
+                        <div class="multi-select-wrapper" id="wrap-resp-setores">
+                            <label class="multi-select-label"><i class="fas fa-building"></i> Setores</label>
+                            <div class="multi-select-trigger" id="trigger-resp-setores" tabindex="0">
+                                <span class="multi-select-placeholder">Selecione setores...</span>
+                                <span class="multi-select-badges" id="badges-resp-setores"></span>
+                                <i class="fas fa-chevron-down multi-select-arrow"></i>
+                            </div>
+                            <div class="multi-select-dropdown" id="dropdown-resp-setores"></div>
+                        </div>
                     </div>
                     <input type="hidden" id="resp-edit-id" value="">
                     <div class="resp-form-acoes">

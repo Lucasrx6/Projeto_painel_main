@@ -1309,6 +1309,7 @@ body {
 .sit-aguardando   { background: #fff8e1; color: #f57f17; border-color: #ffe082; }
 .sit-acao         { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
 .sit-negado       { background: #fde8e8; color: #c62828; border-color: #ef9a9a; }
+.sit-outros       { background: #f5f5f5; color: #757575; border-color: #dee2e6; }
 .sit-sla-dentro   { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
 .sit-sla-atencao  { background: #fff8e1; color: #f57f17; border-color: #ffe082; }
 .sit-sla-atrasado { background: #fde8e8; color: #c62828; border-color: #ef9a9a; }

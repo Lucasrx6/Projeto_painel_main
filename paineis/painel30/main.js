@@ -645,65 +645,50 @@
         // Secao: Status (selector)
         html += '<div class="detalhe-secao">';
         html += '<div class="detalhe-secao-titulo"><i class="fas fa-flag"></i> Status da Tratativa</div>';
-        if (estado.isAdmin) {
-            html += '<div class="status-selector">';
-            var statuses = [
-                { v: 'pendente', l: 'Pendente', i: 'fas fa-exclamation-circle' },
-                { v: 'em_tratativa', l: 'Em Tratativa', i: 'fas fa-spinner' },
-                { v: 'regularizado', l: 'Regularizado', i: 'fas fa-check-circle' },
-                { v: 'impossibilitado', l: 'Impossibilitado', i: 'fas fa-ban' },
-                { v: 'cancelado', l: 'Cancelado', i: 'fas fa-times-circle' }
-            ];
-            statuses.forEach(function (s) {
-                var sel = (s.v === t.status) ? ' selected' : '';
-                html += '<button type="button" class="status-btn' + sel + '" data-status="' + s.v + '" onclick="window.P30.selecionarStatus(this)">';
-                html += '<i class="' + s.i + '"></i> ' + s.l;
-                html += '</button>';
-            });
-            html += '</div>';
-        } else {
-            html += '<span class="badge-status badge-' + t.status + '">' + formatarStatus(t.status) + '</span>';
-        }
+        html += '<div class="status-selector">';
+        var statuses = [
+            { v: 'pendente', l: 'Pendente', i: 'fas fa-exclamation-circle' },
+            { v: 'em_tratativa', l: 'Em Tratativa', i: 'fas fa-spinner' },
+            { v: 'regularizado', l: 'Regularizado', i: 'fas fa-check-circle' },
+            { v: 'impossibilitado', l: 'Impossibilitado', i: 'fas fa-ban' },
+            { v: 'cancelado', l: 'Cancelado', i: 'fas fa-times-circle' }
+        ];
+        statuses.forEach(function (s) {
+            var sel = (s.v === t.status) ? ' selected' : '';
+            html += '<button type="button" class="status-btn' + sel + '" data-status="' + s.v + '" onclick="window.P30.selecionarStatus(this)">';
+            html += '<i class="' + s.i + '"></i> ' + s.l;
+            html += '</button>';
+        });
+        html += '</div>';
         html += '</div>';
 
         // Secao: Responsavel
         html += '<div class="detalhe-secao">';
         html += '<div class="detalhe-secao-titulo"><i class="fas fa-user-tie"></i> Responsavel</div>';
-        if (estado.isAdmin) {
-            html += '<div class="detalhe-campo">';
-            html += '<label>Responsavel Cadastrado</label>';
-            html += '<select id="edit-responsavel-id">';
-            html += '<option value="">-- Sem responsavel cadastrado --</option>';
-            if (estado.responsaveisCache) {
-                estado.responsaveisCache.forEach(function (r) {
-                    var sel = (r.id === t.responsavel_id) ? ' selected' : '';
-                    html += '<option value="' + r.id + '"' + sel + '>' + escapeHtml(r.nome) + (r.cargo ? ' (' + escapeHtml(r.cargo) + ')' : '') + '</option>';
-                });
-            }
-            html += '</select>';
-            html += '</div>';
-            html += '<div class="detalhe-campo">';
-            html += '<label>Ou Responsavel Manual (texto livre)</label>';
-            html += '<input type="text" id="edit-responsavel-manual" placeholder="Nome do responsavel" maxlength="200" value="' + escapeAttr(t.responsavel_nome_manual || '') + '">';
-            html += '</div>';
-        } else {
-            html += '<div class="detalhe-info-valor">' + escapeHtml(t.responsavel_display || 'Sem responsavel') + '</div>';
-            html += '<input type="hidden" id="edit-responsavel-id" value="' + escapeAttr(String(t.responsavel_id || '')) + '">';
-            html += '<input type="hidden" id="edit-responsavel-manual" value="' + escapeAttr(t.responsavel_nome_manual || '') + '">';
+        html += '<div class="detalhe-campo">';
+        html += '<label>Responsavel Cadastrado</label>';
+        html += '<select id="edit-responsavel-id">';
+        html += '<option value="">-- Sem responsavel cadastrado --</option>';
+        if (estado.responsaveisCache) {
+            estado.responsaveisCache.forEach(function (r) {
+                var sel = (r.id === t.responsavel_id) ? ' selected' : '';
+                html += '<option value="' + r.id + '"' + sel + '>' + escapeHtml(r.nome) + (r.cargo ? ' (' + escapeHtml(r.cargo) + ')' : '') + '</option>';
+            });
         }
+        html += '</select>';
+        html += '</div>';
+        html += '<div class="detalhe-campo">';
+        html += '<label>Ou Responsavel Manual (texto livre)</label>';
+        html += '<input type="text" id="edit-responsavel-manual" placeholder="Nome do responsavel" maxlength="200" value="' + escapeAttr(t.responsavel_nome_manual || '') + '">';
+        html += '</div>';
         html += '</div>';
 
         // Secao: Plano de acao
         html += '<div class="detalhe-secao">';
         html += '<div class="detalhe-secao-titulo"><i class="fas fa-clipboard-list"></i> Plano de Acao</div>';
-        if (estado.isAdmin) {
-            html += '<div class="detalhe-campo">';
-            html += '<textarea id="edit-plano-acao" placeholder="Descreva o plano de acao para resolver este problema..." maxlength="2000">' + escapeHtml(t.plano_acao || '') + '</textarea>';
-            html += '</div>';
-        } else {
-            html += '<div class="detalhe-obs-leitura">' + escapeHtml(t.plano_acao || 'Nenhum plano registrado') + '</div>';
-            html += '<input type="hidden" id="edit-plano-acao" value="' + escapeAttr(t.plano_acao || '') + '">';
-        }
+        html += '<div class="detalhe-campo">';
+        html += '<textarea id="edit-plano-acao" placeholder="Descreva o plano de acao para resolver este problema..." maxlength="2000">' + escapeHtml(t.plano_acao || '') + '</textarea>';
+        html += '</div>';
         html += '</div>';
 
         // Secao: Observacoes de resolucao (so se nao for pendente)
@@ -764,7 +749,7 @@
         var respManual = (document.getElementById('edit-responsavel-manual').value || '').trim();
 
         // Justificativa obrigatoria para status impossibilitado
-        var statusFinal = estado.isAdmin ? estado.statusSelecionado : estado.tratativaAtual.status;
+        var statusFinal = estado.statusSelecionado || estado.tratativaAtual.status;
         if (statusFinal === 'impossibilitado' && !obsResolucao) {
             mostrarToast('Informe a justificativa no campo Observacoes da Resolucao para marcar como Impossibilitado', 'erro');
             var campoObs = document.getElementById('edit-obs-resolucao');
@@ -835,33 +820,143 @@
     }
 
     function popularSelectsResponsaveis() {
-        // Popular categoria e setor do form
-        var selCat = document.getElementById('resp-categoria');
-        var selSetor = document.getElementById('resp-setor');
-        if (selCat && selCat.options.length <= 1) {
+        // Popular multi-selects de categorias e setores
+        var dropCat = document.getElementById('dropdown-resp-categorias');
+        var dropSet = document.getElementById('dropdown-resp-setores');
+        if (dropCat && dropCat.children.length === 0) {
             fetch(CONFIG.apiFiltros).then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (data.success) {
-                        if (data.data.categorias) {
-                            data.data.categorias.forEach(function (c) {
-                                var opt = document.createElement('option');
-                                opt.value = c.id;
-                                opt.textContent = c.nome;
-                                selCat.appendChild(opt);
-                            });
-                        }
-                        if (data.data.setores && selSetor) {
-                            data.data.setores.forEach(function (s) {
-                                var opt = document.createElement('option');
-                                opt.value = s.id;
-                                opt.textContent = s.nome;
-                                selSetor.appendChild(opt);
-                            });
-                        }
-                    }
+                    if (!data.success) return;
+                    estado._categoriasOpcoes = data.data.categorias || [];
+                    estado._setoresOpcoes = data.data.setores || [];
+                    _renderMultiSelectOptions('resp-categorias', estado._categoriasOpcoes, 'nome');
+                    _renderMultiSelectOptions('resp-setores', estado._setoresOpcoes, 'nome');
                 });
         }
+        _initMultiSelectEvents('resp-categorias');
+        _initMultiSelectEvents('resp-setores');
     }
+
+    // ========================================
+    // MULTI-SELECT COMPONENT
+    // ========================================
+
+    function _renderMultiSelectOptions(name, opcoes, labelKey) {
+        var dropdown = document.getElementById('dropdown-' + name);
+        if (!dropdown) return;
+        var html = '';
+        opcoes.forEach(function (o) {
+            html += '<label class="multi-select-option">';
+            html += '<input type="checkbox" value="' + o.id + '" data-label="' + escapeAttr(o[labelKey]) + '">';
+            html += '<span class="ms-check"></span>';
+            html += '<span class="ms-label">' + escapeHtml(o[labelKey]) + '</span>';
+            html += '</label>';
+        });
+        dropdown.innerHTML = html;
+
+        // Bind change events
+        var checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+        for (var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].addEventListener('change', function () {
+                _updateMultiSelectBadges(name);
+            });
+        }
+    }
+
+    function _initMultiSelectEvents(name) {
+        var trigger = document.getElementById('trigger-' + name);
+        var dropdown = document.getElementById('dropdown-' + name);
+        var wrapper = document.getElementById('wrap-' + name);
+        if (!trigger || !dropdown || !wrapper) return;
+
+        // Evitar bind duplo
+        if (trigger._msBound) return;
+        trigger._msBound = true;
+
+        trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var isOpen = wrapper.classList.contains('open');
+            // Fechar todos os outros
+            var todos = document.querySelectorAll('.multi-select-wrapper.open');
+            for (var i = 0; i < todos.length; i++) todos[i].classList.remove('open');
+            if (!isOpen) wrapper.classList.add('open');
+        });
+
+        // Prevenir fechar ao clicar dentro do dropdown
+        dropdown.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+    }
+
+    // Fechar multi-selects ao clicar fora
+    document.addEventListener('click', function () {
+        var abertos = document.querySelectorAll('.multi-select-wrapper.open');
+        for (var i = 0; i < abertos.length; i++) abertos[i].classList.remove('open');
+    });
+
+    function _updateMultiSelectBadges(name) {
+        var dropdown = document.getElementById('dropdown-' + name);
+        var badgesEl = document.getElementById('badges-' + name);
+        var placeholder = document.querySelector('#trigger-' + name + ' .multi-select-placeholder');
+        if (!dropdown || !badgesEl) return;
+
+        var checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+        var html = '';
+        for (var i = 0; i < checked.length; i++) {
+            html += '<span class="ms-badge">' + escapeHtml(checked[i].getAttribute('data-label'));
+            html += '<i class="fas fa-times ms-badge-remove" data-val="' + checked[i].value + '" data-name="' + name + '"></i>';
+            html += '</span>';
+        }
+        badgesEl.innerHTML = html;
+
+        if (placeholder) {
+            placeholder.style.display = checked.length > 0 ? 'none' : 'inline';
+        }
+
+        // Bind remove buttons
+        var removes = badgesEl.querySelectorAll('.ms-badge-remove');
+        for (var j = 0; j < removes.length; j++) {
+            removes[j].addEventListener('click', function (e) {
+                e.stopPropagation();
+                var val = this.getAttribute('data-val');
+                var msName = this.getAttribute('data-name');
+                var cb = document.querySelector('#dropdown-' + msName + ' input[value="' + val + '"]');
+                if (cb) { cb.checked = false; }
+                _updateMultiSelectBadges(msName);
+            });
+        }
+    }
+
+    function _getMultiSelectValues(name) {
+        var dropdown = document.getElementById('dropdown-' + name);
+        if (!dropdown) return [];
+        var checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+        var vals = [];
+        for (var i = 0; i < checked.length; i++) vals.push(parseInt(checked[i].value));
+        return vals;
+    }
+
+    function _setMultiSelectValues(name, ids) {
+        var dropdown = document.getElementById('dropdown-' + name);
+        if (!dropdown) return;
+        var checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+        for (var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = ids.indexOf(parseInt(checkboxes[i].value)) !== -1;
+        }
+        _updateMultiSelectBadges(name);
+    }
+
+    function _clearMultiSelect(name) {
+        var dropdown = document.getElementById('dropdown-' + name);
+        if (!dropdown) return;
+        var checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+        for (var i = 0; i < checkboxes.length; i++) checkboxes[i].checked = false;
+        _updateMultiSelectBadges(name);
+    }
+
+    // ========================================
+    // RESPONSAVEIS: CARREGAR / RENDERIZAR
+    // ========================================
 
     function carregarResponsaveis() {
         var lista = document.getElementById('resp-lista');
@@ -898,8 +993,25 @@
             html += '<div class="resp-detalhes">';
             if (r.email) html += '<span><i class="fas fa-envelope"></i> ' + escapeHtml(r.email) + '</span>';
             if (r.telefone) html += '<span><i class="fas fa-phone"></i> ' + escapeHtml(r.telefone) + '</span>';
-            if (r.categoria_nome) html += '<span><i class="fas fa-tag"></i> ' + escapeHtml(r.categoria_nome) + '</span>';
-            if (r.setor_nome) html += '<span><i class="fas fa-building"></i> ' + escapeHtml(r.setor_nome) + '</span>';
+
+            // Mostrar multiplas categorias como badges
+            if (r.categorias && r.categorias.length > 0) {
+                html += '<span class="resp-multi-badges"><i class="fas fa-tags"></i> ';
+                r.categorias.forEach(function (c) {
+                    html += '<span class="resp-tag-badge cat">' + escapeHtml(c.nome) + '</span>';
+                });
+                html += '</span>';
+            }
+
+            // Mostrar multiplos setores como badges
+            if (r.setores && r.setores.length > 0) {
+                html += '<span class="resp-multi-badges"><i class="fas fa-building"></i> ';
+                r.setores.forEach(function (s) {
+                    html += '<span class="resp-tag-badge set">' + escapeHtml(s.nome) + '</span>';
+                });
+                html += '</span>';
+            }
+
             html += '</div>';
             html += '</div>';
             html += '<div class="resp-acoes">';
@@ -916,8 +1028,8 @@
         var email = (document.getElementById('resp-email').value || '').trim();
         var telefone = (document.getElementById('resp-telefone').value || '').trim();
         var cargo = (document.getElementById('resp-cargo').value || '').trim();
-        var categoria = document.getElementById('resp-categoria').value;
-        var setor = document.getElementById('resp-setor').value;
+        var categoriaIds = _getMultiSelectValues('resp-categorias');
+        var setorIds = _getMultiSelectValues('resp-setores');
         var editId = document.getElementById('resp-edit-id').value;
 
         if (!nome) { mostrarToast('Nome obrigatorio', 'erro'); return; }
@@ -927,8 +1039,8 @@
             email: email || null,
             telefone: telefone || null,
             cargo: cargo || null,
-            categoria_id: categoria ? parseInt(categoria) : null,
-            setor_id: setor ? parseInt(setor) : null
+            categoria_ids: categoriaIds,
+            setor_ids: setorIds
         };
 
         var isEdicao = !!editId;
@@ -966,8 +1078,12 @@
         document.getElementById('resp-email').value = r.email || '';
         document.getElementById('resp-telefone').value = r.telefone || '';
         document.getElementById('resp-cargo').value = r.cargo || '';
-        document.getElementById('resp-categoria').value = r.categoria_id || '';
-        document.getElementById('resp-setor').value = r.setor_id || '';
+
+        // Popular multi-selects com os IDs existentes
+        var catIds = (r.categorias || []).map(function (c) { return c.id; });
+        var setIds = (r.setores || []).map(function (s) { return s.id; });
+        _setMultiSelectValues('resp-categorias', catIds);
+        _setMultiSelectValues('resp-setores', setIds);
 
         var titulo = document.querySelector('.resp-form h4');
         if (titulo) titulo.innerHTML = '<i class="fas fa-edit"></i> Editando: ' + escapeHtml(r.nome);
@@ -992,8 +1108,8 @@
         document.getElementById('resp-email').value = '';
         document.getElementById('resp-telefone').value = '';
         document.getElementById('resp-cargo').value = '';
-        document.getElementById('resp-categoria').value = '';
-        document.getElementById('resp-setor').value = '';
+        _clearMultiSelect('resp-categorias');
+        _clearMultiSelect('resp-setores');
 
         var titulo = document.querySelector('.resp-form h4');
         if (titulo) titulo.innerHTML = '<i class="fas fa-plus-circle"></i> Adicionar Responsavel';

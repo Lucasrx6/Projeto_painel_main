@@ -443,6 +443,15 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_historico_criado ON historico_usuarios(criado_em);
         """)
 
+        # Migracoes incrementais: adicionar colunas que podem nao existir ainda
+        try:
+            cursor.execute("""
+                ALTER TABLE sentir_agir_itens
+                ADD COLUMN IF NOT EXISTS permite_nao_aplica BOOLEAN DEFAULT FALSE;
+            """)
+        except Exception:
+            pass  # tabela pode nao existir ainda (criada depois pelo painel)
+
         conn.commit()
         cursor.close()
         conn.close()

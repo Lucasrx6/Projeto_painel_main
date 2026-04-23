@@ -207,37 +207,43 @@ def buscar_visitas_atencao(conn):
 
 def buscar_responsaveis(conn, categoria_id, setor_id):
     """
-    Busca responsaveis com email cadastrado.
+    Busca responsaveis com email cadastrado via tabelas N:M.
 
     Para criticos (categoria_id informado):
-      - Somente responsaveis vinculados a categoria
-      - Se o responsavel NAO tiver setor, recebe sempre (responsavel geral da categoria)
-      - Se o responsavel TIVER setor, so recebe se bater com o setor do evento
+      - Somente responsaveis vinculados a categoria (via sentir_agir_responsavel_categorias)
+      - Se o responsavel NAO tiver nenhum setor vinculado, recebe sempre (responsavel geral da categoria)
+      - Se o responsavel TIVER setor(es) vinculado(s), so recebe se um deles bater com o setor do evento
 
     Para atencao (categoria_id None):
-      - Responsaveis vinculados ao setor diretamente
+      - Responsaveis vinculados ao setor diretamente (via sentir_agir_responsavel_setores)
     """
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     if categoria_id is not None:
         cursor.execute("""
-            SELECT DISTINCT nome, email
-            FROM sentir_agir_responsaveis
-            WHERE ativo = true
-              AND email IS NOT NULL
-              AND email <> ''
-              AND categoria_id = %s
-              AND (setor_id IS NULL OR setor_id = %s)
+            SELECT DISTINCT r.nome, r.email
+            FROM sentir_agir_responsaveis r
+            JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+            LEFT JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+            WHERE r.ativo = true
+              AND r.email IS NOT NULL
+              AND r.email <> ''
+              AND rc.categoria_id = %s
+              AND (
+                  NOT EXISTS (SELECT 1 FROM sentir_agir_responsavel_setores rs2 WHERE rs2.responsavel_id = r.id)
+                  OR rs.setor_id = %s
+              )
             LIMIT 10
         """, (categoria_id, setor_id))
     else:
         cursor.execute("""
-            SELECT DISTINCT nome, email
-            FROM sentir_agir_responsaveis
-            WHERE ativo = true
-              AND email IS NOT NULL
-              AND email <> ''
-              AND setor_id = %s
+            SELECT DISTINCT r.nome, r.email
+            FROM sentir_agir_responsaveis r
+            JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+            WHERE r.ativo = true
+              AND r.email IS NOT NULL
+              AND r.email <> ''
+              AND rs.setor_id = %s
             LIMIT 10
         """, (setor_id,))
 

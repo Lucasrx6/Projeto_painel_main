@@ -53,8 +53,8 @@
 
             <!-- Grupo/Status - multi-select fixo -->
             <div class="filtro-grupo">
-                <label>Grupo</label>
-                <div class="multi-select-container" id="ms-grupo" data-state-key="msGrupo" data-placeholder="Todos">
+                <label>Estágio</label>
+                <div class="multi-select-container" id="ms-estagio" data-state-key="msEstagio" data-placeholder="Todos">
                     <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
                         <span class="multi-select-label">Todos</span>
                         <i class="fas fa-chevron-down multi-select-arrow"></i>
@@ -65,10 +65,6 @@
                             <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
                         </div>
                         <div class="multi-select-options">
-                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="autorizado"> <span class="multi-select-item-text">Autorizado</span></label>
-                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="aguardando"> <span class="multi-select-item-text">Aguardando</span></label>
-                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="acao_hospital"> <span class="multi-select-item-text">Ação Hospital</span></label>
-                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="negado"> <span class="multi-select-item-text">Negado/Cancelado</span></label>
                         </div>
                     </div>
                 </div>
@@ -244,40 +240,6 @@
         <!-- ABA: Autorizações (Conteúdo Antigo) -->
         <div class="tab-panel" id="tab-autorizacoes">
             <div class="dashboard-content" style="display: flex; flex-direction: column; height: 100%;">
-                <!-- KPIs (4 cards) -->
-                <section class="dashboard-resumo">
-                    <div class="resumo-grid">
-                        <article class="resumo-card card-total">
-                            <div class="card-icon"><i class="fas fa-users"></i></div>
-                            <div class="card-content">
-                                <span class="card-value" id="kpi-v-total">-</span>
-                                <span class="card-label">Pacientes</span>
-                            </div>
-                        </article>
-                        <article class="resumo-card card-autorizado">
-                            <div class="card-icon"><i class="fas fa-circle-check"></i></div>
-                            <div class="card-content">
-                                <span class="card-value" id="kpi-v-autorizado">-</span>
-                                <span class="card-label">Autorizados</span>
-                            </div>
-                        </article>
-                        <article class="resumo-card card-aguardando">
-                            <div class="card-icon"><i class="fas fa-hourglass-half"></i></div>
-                            <div class="card-content">
-                                <span class="card-value" id="kpi-v-aguardando">-</span>
-                                <span class="card-label">Aguardando</span>
-                            </div>
-                        </article>
-                        <article class="resumo-card card-negado">
-                            <div class="card-icon"><i class="fas fa-ban"></i></div>
-                            <div class="card-content">
-                                <span class="card-value" id="kpi-v-negado">-</span>
-                                <span class="card-label">Negado/Cancel.</span>
-                            </div>
-                        </article>
-                    </div>
-                </section>
-
                 <!-- TABELA -->
                 <main class="painel-main" id="painel-main">
                     <div class="tabela-container">
@@ -319,7 +281,7 @@
 <!-- TOAST -->
 <div class="toast-container" id="toast-container"></div>
 
-<script src="/paineis/painel33/main.js"></script>
+<script src="/paineis/painel33/main.js?v=2.1"></script>
 <script src="/static/js/auto-auth.js"></script>
 </body>
 </html>

@@ -58,9 +58,13 @@ def _build_common_filters():
     condicoes = []
     params = []
 
-    grupo = request.args.get('grupo', '').strip()
-    if grupo:
-        _add_multi(condicoes, params, 'v.grupo_estagio', grupo)
+    # Regras de negocio fixas: somente estagios ativos (sem Autorizado, Cancelado, Negado)
+    condicoes.append("v.ds_estagio NOT IN ('Autorizado', 'Cancelado', 'Negado')")
+    condicoes.append("v.nr_seq_estagio NOT IN (1, 2, 7)")
+
+    estagio = request.args.get('estagio', '').strip()
+    if estagio:
+        _add_multi(condicoes, params, 'v.ds_estagio', estagio)
 
     semaforo = request.args.get('semaforo', '').strip()
     if semaforo:
@@ -80,15 +84,22 @@ def _build_common_filters():
 
     setor = request.args.get('setor', '').strip()
     if setor:
-        _add_multi(condicoes, params, 'v.ds_setor_origem', setor)
+        _add_multi(condicoes, params, 'v.ds_setor_atendimento', setor)
 
     medico = request.args.get('medico', '').strip()
     if medico:
         _add_multi(condicoes, params, 'v.nm_medico_solicitante', medico)
 
+    tipo_atendimento = request.args.get('tipo_atendimento', '').strip()
+    if tipo_atendimento:
+        _add_multi(condicoes, params, 'v.ds_tipo_atendimento', tipo_atendimento)
+
     periodo = request.args.get('periodo', '').strip()
     if periodo and periodo.isdigit():
-        condicoes.append("v.dt_pedido_medico >= CURRENT_DATE - INTERVAL '%s days'" % int(periodo))
+        condicoes.append(
+            "(v.dt_pedido_medico >= CURRENT_DATE - INTERVAL '%s days' OR v.dt_pedido_medico IS NULL)"
+            % int(periodo)
+        )
 
     busca = request.args.get('busca', '').strip()
     if busca:
@@ -140,9 +151,9 @@ def painel33_dashboard():
             SELECT
                 COUNT(DISTINCT v.cd_pessoa_fisica) AS total_pacientes,
                 COUNT(*) AS total_autorizacoes,
-                COUNT(*) FILTER (WHERE v.grupo_estagio = 'autorizado')    AS autorizados,
-                COUNT(*) FILTER (WHERE v.grupo_estagio = 'aguardando')    AS aguardando,
-                COUNT(*) FILTER (WHERE v.grupo_estagio = 'negado')        AS negados
+                COUNT(*) FILTER (WHERE v.status_semaforo = 'verde')                    AS autorizados,
+                COUNT(*) FILTER (WHERE v.status_semaforo IN ('amarelo', 'laranja'))    AS aguardando,
+                COUNT(*) FILTER (WHERE v.status_semaforo = 'vermelho')                AS negados
             FROM vw_painel33_autorizacoes v
             {where}
         """.format(where=where)
@@ -281,16 +292,22 @@ def painel33_filtros():
     try:
         sql = """
             SELECT
+                ARRAY(SELECT DISTINCT ds_estagio FROM vw_painel33_autorizacoes
+                      WHERE ds_estagio IS NOT NULL
+                        AND ds_estagio NOT IN ('Cancelado', 'Negado')
+                      ORDER BY ds_estagio)                                                    AS estagios,
                 ARRAY(SELECT DISTINCT ds_convenio FROM vw_painel33_autorizacoes
                       WHERE ds_convenio IS NOT NULL ORDER BY ds_convenio)                     AS convenios,
                 ARRAY(SELECT DISTINCT ds_tipo_guia FROM vw_painel33_autorizacoes
                       WHERE ds_tipo_guia IS NOT NULL ORDER BY ds_tipo_guia)                   AS tipos_guia,
                 ARRAY(SELECT DISTINCT ds_tipo_autorizacao FROM vw_painel33_autorizacoes
                       WHERE ds_tipo_autorizacao IS NOT NULL ORDER BY ds_tipo_autorizacao)     AS tipos_autorizacao,
-                ARRAY(SELECT DISTINCT ds_setor_origem FROM vw_painel33_autorizacoes
-                      WHERE ds_setor_origem IS NOT NULL ORDER BY ds_setor_origem)             AS setores,
+                ARRAY(SELECT DISTINCT ds_setor_atendimento FROM vw_painel33_autorizacoes
+                      WHERE ds_setor_atendimento IS NOT NULL ORDER BY ds_setor_atendimento)   AS setores,
                 ARRAY(SELECT DISTINCT nm_medico_solicitante FROM vw_painel33_autorizacoes
-                      WHERE nm_medico_solicitante IS NOT NULL ORDER BY nm_medico_solicitante) AS medicos
+                      WHERE nm_medico_solicitante IS NOT NULL ORDER BY nm_medico_solicitante) AS medicos,
+                ARRAY(SELECT DISTINCT ds_tipo_atendimento FROM vw_painel33_autorizacoes
+                      WHERE ds_tipo_atendimento IS NOT NULL ORDER BY ds_tipo_atendimento)     AS tipos_atendimento
         """
         with get_db_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
