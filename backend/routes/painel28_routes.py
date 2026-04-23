@@ -28,7 +28,7 @@ painel28_bp = Blueprint(
 # ----------------------------------------------------------
 _visita_lock = threading.Lock()
 _em_visita: dict = {}
-_EM_VISITA_TTL_SEG = 1800  # 30 minutos
+_EM_VISITA_TTL_SEG = 600  # 10 minutos
 
 def _limpar_expirados():
     agora = datetime.now()
@@ -86,12 +86,12 @@ def _is_admin():
 
 
 def _auto_finalizar_rondas_expiradas(cursor):
-    """Finaliza automaticamente rondas em_andamento com mais de 1 hora."""
+    """Finaliza automaticamente rondas em_andamento com mais de 10 minutos de inatividade."""
     cursor.execute("""
         UPDATE sentir_agir_rondas
         SET status = 'concluida', atualizado_em = NOW()
         WHERE status = 'em_andamento'
-          AND criado_em < NOW() - INTERVAL '1 hour'
+          AND atualizado_em < NOW() - INTERVAL '10 minutes'
     """)
 
 
@@ -443,7 +443,11 @@ def fila_pacientes():
                    ) AS dupla_em_visita
             FROM vw_sentir_agir_fila_pacientes f
             WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
+              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
+              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
+              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
+              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
             ORDER BY
                 CASE WHEN EXISTS (
                     SELECT 1 FROM sentir_agir_visitas v
@@ -451,8 +455,7 @@ def fila_pacientes():
                       AND v.avaliacao_final != 'impossibilitada'
                       AND v.criado_em >= CURRENT_DATE
                 ) THEN 1 ELSE 0 END ASC,
-                f.prioridade ASC,
-                f.horas_desde_ultima_ronda DESC NULLS LAST
+                COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
             LIMIT %s
         """, (limite,))
         pacientes = cursor.fetchall()
@@ -520,7 +523,11 @@ def proximo_paciente():
                    ) AS horas_desde_visita_hoje
             FROM vw_sentir_agir_fila_pacientes f
             WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
+              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
+              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
+              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
+              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
             ORDER BY
                 CASE WHEN EXISTS (
                     SELECT 1 FROM sentir_agir_visitas v
@@ -528,8 +535,7 @@ def proximo_paciente():
                       AND v.avaliacao_final != 'impossibilitada'
                       AND v.criado_em >= CURRENT_DATE
                 ) THEN 1 ELSE 0 END ASC,
-                f.prioridade ASC,
-                f.horas_desde_ultima_ronda DESC NULLS LAST
+                COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
             LIMIT 1
         """)
         paciente = cursor.fetchone()
