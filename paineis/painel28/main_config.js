@@ -114,7 +114,7 @@
                 cat.itens.forEach(function (item) {
                     var tipoClass = item.tipo === 'sim_nao' ? 'tipo-sim_nao' : 'tipo-semaforo';
                     var criticoLabel = item.tipo === 'sim_nao'
-                        ? (item.critico_quando === 'sim' ? ' · crítico: Sim' : ' · crítico: Não')
+                        ? (item.critico_quando === 'sim' ? ' · crítico: Sim' : ' · crítico: Não') + (item.permite_nao_aplica ? ' · N/A' : '')
                         : '';
                     var tipoLabel = item.tipo === 'sim_nao' ? ('Sim/Não' + criticoLabel) : 'Semáforo';
                     itensList += '<div class="item-row' + (item.ativo ? '' : ' inativo') + '" data-item-id="' + item.id + '">';
@@ -367,6 +367,8 @@
         var campo = $('campo-critico-quando');
         if (!campo) return;
         campo.style.display = tipo === 'sim_nao' ? 'block' : 'none';
+        var campoNA = $('campo-permite-na');
+        if (campoNA) campoNA.style.display = tipo === 'sim_nao' ? 'block' : 'none';
         _atualizarEstiloCriticoQuando();
     }
 
@@ -398,6 +400,8 @@
             if (selectTipo) selectTipo.value = 'semaforo';
             var radNaoC = $('critico-quando-nao');
             if (radNaoC) radNaoC.checked = true;
+            var checkNAC = $('item-permite-na');
+            if (checkNAC) checkNAC.checked = false;
             _atualizarCampoCriticoQuando('semaforo');
         } else {
             // editar — idParam é o item id
@@ -428,6 +432,8 @@
                 var radNaoE = $('critico-quando-nao');
                 if (radSimE) radSimE.checked = criticoVal === 'sim';
                 if (radNaoE) radNaoE.checked = criticoVal === 'nao';
+                var checkNAE = $('item-permite-na');
+                if (checkNAE) checkNAE.checked = !!itemEncontrado.permite_nao_aplica;
                 _atualizarCampoCriticoQuando(itemEncontrado.tipo || 'semaforo');
             }
         }
@@ -459,6 +465,8 @@
         var tipoVal = selectTipo ? selectTipo.value : 'semaforo';
         var radSimF = $('critico-quando-sim');
         var criticoQuandoVal = (tipoVal === 'sim_nao' && radSimF && radSimF.checked) ? 'sim' : 'nao';
+        var checkNAF = $('item-permite-na');
+        var permiteNaVal = tipoVal === 'sim_nao' && checkNAF && checkNAF.checked;
 
         var promise;
         if (modalItemMode === 'criar') {
@@ -466,13 +474,15 @@
                 categoria_id: modalItemCatId,
                 descricao: descricao,
                 tipo: tipoVal,
-                critico_quando: criticoQuandoVal
+                critico_quando: criticoQuandoVal,
+                permite_nao_aplica: permiteNaVal
             });
         } else {
             promise = apiPut(CONFIG.apiItens + '/' + modalItemId, {
                 descricao: descricao,
                 tipo: tipoVal,
-                critico_quando: criticoQuandoVal
+                critico_quando: criticoQuandoVal,
+                permite_nao_aplica: permiteNaVal
             });
         }
 

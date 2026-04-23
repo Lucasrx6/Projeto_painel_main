@@ -3,12 +3,11 @@
     'use strict';
 
     var CONFIG = {
-        apiDashboard: '/api/paineis/painel33/dashboard',
         apiDados:     '/api/paineis/painel33/dados',
         apiFiltros:   '/api/paineis/painel33/filtros',
         apiPaciente:  '/api/paineis/painel33/paciente',
         apiExport:    '/api/paineis/painel33/export',
-        intervaloRefresh: 190000,
+        intervaloRefresh: 390000,
         scrollPasso:      1,
         scrollIntervalo:  50,
         pausaNoFinal:     3000,
@@ -21,13 +20,14 @@
     // Multi-select state keys (mapeia data-state-key do HTML)
     var estado = {
         // Multi-selects
-        msGrupo:      [],
-        msSemaforo:   [],
-        msConvenio:   [],
-        msTipoGuia:   [],
-        msTipoAutor:  [],
-        msSetor:      [],
-        msMedico:     [],
+        msEstagio:       [],
+        msSemaforo:      [],
+        msConvenio:      [],
+        msTipoGuia:      [],
+        msTipoAutor:     [],
+        msSetor:         [],
+        msMedico:        [],
+        msTipoAtend:     ['Internado'],
 
         // Filtros simples
         periodo: '30',
@@ -70,12 +70,10 @@
         }
         carregarFiltros();
         carregarDados();
-        carregarDashboard();
 
         estado.intervalos.refresh = setInterval(function () {
             if (!estado.filtrosVisiveis) {
                 carregarDados();
-                carregarDashboard();
             }
         }, CONFIG.intervaloRefresh);
     }
@@ -90,11 +88,6 @@
         DOM.btnAutoscroll     = document.getElementById('btn-autoscroll');
         DOM.filtroPeriodo     = document.getElementById('filtro-periodo');
         DOM.filtroBusca       = document.getElementById('filtro-busca');
-
-        DOM.kpiTotal     = document.getElementById('kpi-v-total');
-        DOM.kpiAutorizado= document.getElementById('kpi-v-autorizado');
-        DOM.kpiAguardando= document.getElementById('kpi-v-aguardando');
-        DOM.kpiNegado    = document.getElementById('kpi-v-negado');
 
         DOM.tabelaTbody  = document.getElementById('tabela-tbody');
         DOM.tabelaTotal  = document.getElementById('tabela-total');
@@ -116,7 +109,7 @@
     function configurarEventos() {
         DOM.btnToggleFiltros.addEventListener('click', toggleFiltros);
         DOM.btnLimpar.addEventListener('click', limparTudo);
-        DOM.btnRefresh.addEventListener('click', function () { carregarDados(); carregarDashboard(); });
+        DOM.btnRefresh.addEventListener('click', function () { carregarDados(); });
         DOM.btnVoltar.addEventListener('click', function () { window.history.back(); });
         DOM.btnExport.addEventListener('click', exportarCSV);
         DOM.btnAutoscroll.addEventListener('click', toggleAutoscroll);
@@ -215,7 +208,6 @@
         }
 
         // Inicializar multi-selects fixos
-        vincularMultiSelect('ms-grupo');
         vincularMultiSelect('ms-semaforo');
     }
 
@@ -250,7 +242,7 @@
         // Limpar filtros ao voltar para a Visão Sintética
         if (tabId === 'resumo') {
             var temFiltro = false;
-            var keys = ['msGrupo', 'msSemaforo', 'msConvenio', 'msTipoGuia', 'msTipoAutor', 'msSetor', 'msMedico'];
+            var keys = ['msEstagio', 'msSemaforo', 'msConvenio', 'msTipoGuia', 'msTipoAutor', 'msSetor', 'msMedico'];
             for (var k = 0; k < keys.length; k++) {
                 if (estado[keys[k]] && estado[keys[k]].length > 0) {
                     temFiltro = true;
@@ -440,7 +432,6 @@
         estado.pacienteCache = {};
         estado.expandidos    = {};
         carregarDados();
-        carregarDashboard();
     }
 
     function filtrarPorSetorNaAbaAnalitica(setor) {
@@ -462,13 +453,14 @@
     function salvarEstadoLocal() {
         try {
             var data = {
-                msGrupo:              estado.msGrupo,
+                msEstagio:            estado.msEstagio,
                 msSemaforo:           estado.msSemaforo,
                 msConvenio:           estado.msConvenio,
                 msTipoGuia:           estado.msTipoGuia,
                 msTipoAutor:          estado.msTipoAutor,
                 msSetor:              estado.msSetor,
                 msMedico:             estado.msMedico,
+                msTipoAtend:          estado.msTipoAtend,
                 periodo:              estado.periodo,
                 busca:                estado.busca,
                 ordemCampo:           estado.ordemCampo,
@@ -485,7 +477,7 @@
             var saved = localStorage.getItem(CONFIG.storagePrefix + 'estado');
             if (!saved) return;
             var d = JSON.parse(saved);
-            var arrays = ['msGrupo','msSemaforo','msConvenio','msTipoGuia','msTipoAutor','msSetor','msMedico'];
+            var arrays = ['msEstagio','msSemaforo','msConvenio','msTipoGuia','msTipoAutor','msSetor','msMedico','msTipoAtend'];
             for (var i = 0; i < arrays.length; i++) {
                 if (Array.isArray(d[arrays[i]])) estado[arrays[i]] = d[arrays[i]];
             }
@@ -507,13 +499,14 @@
 
     function construirParams() {
         var p = {};
-        if (estado.msGrupo.length)     p.grupo          = estado.msGrupo.join(',');
-        if (estado.msSemaforo.length)  p.semaforo       = estado.msSemaforo.join(',');
-        if (estado.msConvenio.length)  p.convenio       = estado.msConvenio.join(',');
-        if (estado.msTipoGuia.length)  p.tipo_guia      = estado.msTipoGuia.join(',');
-        if (estado.msTipoAutor.length) p.tipo_autorizacao = estado.msTipoAutor.join(',');
-        if (estado.msSetor.length)     p.setor          = estado.msSetor.join(',');
-        if (estado.msMedico.length)    p.medico         = estado.msMedico.join(',');
+        if (estado.msEstagio.length)    p.estagio          = estado.msEstagio.join(',');
+        if (estado.msSemaforo.length)   p.semaforo         = estado.msSemaforo.join(',');
+        if (estado.msConvenio.length)   p.convenio         = estado.msConvenio.join(',');
+        if (estado.msTipoGuia.length)   p.tipo_guia        = estado.msTipoGuia.join(',');
+        if (estado.msTipoAutor.length)  p.tipo_autorizacao = estado.msTipoAutor.join(',');
+        if (estado.msSetor.length)      p.setor            = estado.msSetor.join(',');
+        if (estado.msMedico.length)     p.medico           = estado.msMedico.join(',');
+        if (estado.msTipoAtend.length)  p.tipo_atendimento = estado.msTipoAtend.join(',');
         if (estado.periodo)            p.periodo        = estado.periodo;
         if (estado.busca)              p.busca          = estado.busca;
         p.ordem = estado.ordemCampo;
@@ -553,31 +546,6 @@
     }
 
     // ============================================================
-    // DASHBOARD / KPIs
-    // ============================================================
-
-    function carregarDashboard() {
-        setStatusIndicator('loading');
-        fetchComRetry(CONFIG.apiDashboard, construirParams()).then(function (resp) {
-            if (resp.ok) {
-                var d = resp.dados;
-                DOM.kpiTotal.textContent      = d.total_pacientes  || 0;
-                DOM.kpiAutorizado.textContent = d.autorizados      || 0;
-                DOM.kpiAguardando.textContent = d.aguardando       || 0;
-                DOM.kpiNegado.textContent     = d.negados          || 0;
-                atualizarHora();
-                setStatusIndicator('online');
-            } else {
-                setStatusIndicator('offline');
-                mostrarToast('KPIs: ' + (resp.detalhe || resp.erro), 'erro');
-            }
-        }).catch(function (err) {
-            setStatusIndicator('offline');
-            mostrarToast('Falha: ' + err.message, 'erro');
-        });
-    }
-
-    // ============================================================
     // CARREGAR DADOS E AGRUPAR POR PACIENTE
     // ============================================================
 
@@ -585,17 +553,20 @@
         fetchComRetry(CONFIG.apiFiltros, {}).then(function (resp) {
             if (!resp.ok) return;
             var f = resp.filtros;
+            popularMultiSelectDinamico('ms-estagio',    f.estagios        || []);
             popularMultiSelectDinamico('ms-convenio',   f.convenios       || []);
             popularMultiSelectDinamico('ms-tipo-guia',  f.tipos_guia      || []);
             popularMultiSelectDinamico('ms-tipo-autor',  f.tipos_autorizacao || []);
             popularMultiSelectDinamico('ms-setor',      f.setores         || []);
             popularMultiSelectDinamico('ms-medico',     f.medicos         || []);
             // Restaurar seleções salvas
+            restaurarMultiSelect('ms-estagio');
             restaurarMultiSelect('ms-convenio');
             restaurarMultiSelect('ms-tipo-guia');
             restaurarMultiSelect('ms-tipo-autor');
             restaurarMultiSelect('ms-setor');
             restaurarMultiSelect('ms-medico');
+            atualizarLabel('ms-estagio');
             atualizarLabel('ms-convenio');
             atualizarLabel('ms-tipo-guia');
             atualizarLabel('ms-tipo-autor');
@@ -612,19 +583,23 @@
         DOM.tabelaVazia.style.display = 'none';
         DOM.resumoSintetico.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>';
 
+        setStatusIndicator('loading');
         fetchComRetry(CONFIG.apiDados, construirParams()).then(function (resp) {
             estado.carregando = false;
             if (resp.ok) {
                 renderizarTabela(resp.dados || []);
                 renderizarSintetico(resp.dados || []);
                 atualizarHora();
+                setStatusIndicator('online');
             } else {
+                setStatusIndicator('offline');
                 DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'
                     + 'Erro: ' + esc(resp.detalhe || resp.erro) + '</td></tr>';
                 DOM.resumoSintetico.innerHTML = '<div class="loading">Erro ao carregar dados sintéticos.</div>';
             }
         }).catch(function (err) {
             estado.carregando = false;
+            setStatusIndicator('offline');
             DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'
                 + 'Falha: ' + esc(err.message) + '</td></tr>';
             DOM.resumoSintetico.innerHTML = '<div class="loading">Falha de conexão.</div>';
@@ -664,8 +639,9 @@
             grupos[key].autorizacoes.push(d);
 
             var semAtual = prioSem[grupos[key].piorSemaforo] || 0;
-            var semNovo  = prioSem[d.status_semaforo] || 0;
-            if (semNovo > semAtual) grupos[key].piorSemaforo = d.status_semaforo;
+            var semCalc  = calcularSemaforoPrazo(d.ds_estagio, d.horas_em_aberto);
+            var semNovo  = prioSem[semCalc] || 0;
+            if (semNovo > semAtual) grupos[key].piorSemaforo = semCalc;
 
             var slaAtual = prioSla[grupos[key].piorSla] || 0;
             var slaNovo  = prioSla[d.status_sla] || 0;
@@ -731,7 +707,7 @@
             html += '<td class="col-tguia col-resumo-pac" id="pac-resumo-' + i + '">';
             html += renderizarResumoPac(g, estado.pacienteCache[i] || null);
             html += '</td>';
-            html += '<td class="col-setor" title="' + esc(pr.ds_setor_origem) + '">' + esc(pr.ds_setor_origem) + '</td>';
+            html += '<td class="col-setor" title="' + esc(pr.ds_setor_atendimento) + '">' + esc(pr.ds_setor_atendimento) + '</td>';
             html += '<td class="col-sla">' + badgeSla(g.piorSla) + '</td>';
             html += '</tr>';
 
@@ -779,17 +755,17 @@
         var setores = {};
         for (var i = 0; i < dados.length; i++) {
             var d = dados[i];
-            var nomeSetor = d.ds_setor_origem || 'Não Informado';
+            var nomeSetor = d.ds_setor_atendimento || 'Não Informado';
             if (!setores[nomeSetor]) {
                 setores[nomeSetor] = {
                     nome: nomeSetor,
                     totalAut: 0,
                     pacientesSet: {},
+                    atendimentosSet: {},
                     semDocs: 0,
                     tipos: {},
-                    estagios: {},
-                    grupoEstagio: { autorizado: 0, aguardando: 0, acao_hospital: 0, negado: 0 },
-                    slaStatus:    { dentro: 0, atencao: 0, atrasado: 0, sem_pedido: 0 }
+                    estagiosDiretos: {},
+                    slaStatus: { verde: 0, amarelo: 0, vermelho: 0 }
                 };
             }
 
@@ -801,6 +777,8 @@
                          : ('__' + (d.nm_paciente || 'desconhecido'));
             s.pacientesSet[keyPac] = true;
 
+            if (d.nr_atendimento) s.atendimentosSet[String(d.nr_atendimento)] = true;
+
             // Se não há qt_documentos ou é 0, considera sem docs
             if (!d.qt_documentos || d.qt_documentos === 0) {
                 s.semDocs++;
@@ -809,14 +787,12 @@
             var tipo = d.ds_tipo_autorizacao || 'Outros';
             s.tipos[tipo] = (s.tipos[tipo] || 0) + 1;
 
-            var estagio = d.ds_estagio || d.grupo_estagio || 'Sem Estágio';
-            s.estagios[estagio] = (s.estagios[estagio] || 0) + 1;
+            var semCalcSint = calcularSemaforoPrazo(d.ds_estagio, d.horas_em_aberto);
+            var dsEst = d.ds_estagio || 'Não Informado';
+            if (!s.estagiosDiretos[dsEst]) s.estagiosDiretos[dsEst] = { count: 0, sem: semCalcSint };
+            s.estagiosDiretos[dsEst].count++;
 
-            var ge = d.grupo_estagio;
-            if (ge && s.grupoEstagio[ge] !== undefined) s.grupoEstagio[ge]++;
-
-            var slaKey = d.status_sla;
-            if (slaKey && s.slaStatus[slaKey] !== undefined) s.slaStatus[slaKey]++;
+            s.slaStatus[semCalcSint] = (s.slaStatus[semCalcSint] || 0) + 1;
         }
 
         // Ordenar setores com mais autorizações primeiro
@@ -826,7 +802,7 @@
         var html = '';
         for (var j = 0; j < arraySetores.length; j++) {
             var s = arraySetores[j];
-            var qtdPacientes = Object.keys(s.pacientesSet).length;
+            var qtdAtendimentos = Object.keys(s.atendimentosSet).length;
 
             html += '<div class="setor-card" data-setor="' + esc(s.nome) + '" style="cursor: pointer;" title="Clique para ver os detalhes na aba Autorizações">';
 
@@ -842,28 +818,36 @@
             // Totais
             html += '<div class="setor-stats-row">';
             html += '<div class="setor-stat"><span class="setor-stat-val">' + s.totalAut + '</span><span class="setor-stat-lbl">Autorizações</span></div>';
-            html += '<div class="setor-stat"><span class="setor-stat-val">' + qtdPacientes + '</span><span class="setor-stat-lbl">Pacientes</span></div>';
+            html += '<div class="setor-stat"><span class="setor-stat-val">' + qtdAtendimentos + '</span><span class="setor-stat-lbl">Atendimentos</span></div>';
             html += '</div>';
 
-            // Situação (grupo estágio)
-            html += '<div class="setor-situacao">';
-            html += '<div class="breakdown-title">Situação</div>';
-            html += '<div class="setor-situacao-row">';
-            if (s.grupoEstagio.autorizado > 0)    html += '<div class="setor-sit-item sit-autorizado"><span class="sit-val">' + s.grupoEstagio.autorizado + '</span><span class="sit-lbl">Autorizado</span></div>';
-            if (s.grupoEstagio.aguardando > 0)    html += '<div class="setor-sit-item sit-aguardando"><span class="sit-val">' + s.grupoEstagio.aguardando + '</span><span class="sit-lbl">Aguardando</span></div>';
-            if (s.grupoEstagio.acao_hospital > 0) html += '<div class="setor-sit-item sit-acao"><span class="sit-val">' + s.grupoEstagio.acao_hospital + '</span><span class="sit-lbl">Ação Hosp.</span></div>';
-            if (s.grupoEstagio.negado > 0)        html += '<div class="setor-sit-item sit-negado"><span class="sit-val">' + s.grupoEstagio.negado + '</span><span class="sit-lbl">Negado</span></div>';
-            html += '</div></div>';
+            // Situação (ds_estagio direto, ordenado por count desc)
+            var semToCls = { verde: 'sit-autorizado', amarelo: 'sit-aguardando', laranja: 'sit-acao', vermelho: 'sit-negado' };
+            var estKeys = Object.keys(s.estagiosDiretos).sort(function(a, b) {
+                return s.estagiosDiretos[b].count - s.estagiosDiretos[a].count;
+            });
+            if (estKeys.length > 0) {
+                html += '<div class="setor-situacao">';
+                html += '<div class="breakdown-title">Situação</div>';
+                html += '<div class="setor-situacao-row">';
+                for (var ek = 0; ek < estKeys.length; ek++) {
+                    var estK = estKeys[ek];
+                    var estD = s.estagiosDiretos[estK];
+                    var sitCls = semToCls[estD.sem] || 'sit-outros';
+                    html += '<div class="setor-sit-item ' + sitCls + '"><span class="sit-val">' + estD.count + '</span><span class="sit-lbl">' + esc(estK) + '</span></div>';
+                }
+                html += '</div></div>';
+            }
 
-            // SLA
-            var temSla = s.slaStatus.dentro + s.slaStatus.atencao + s.slaStatus.atrasado;
+            // SLA (5 dias: verde <48h, amarelo 48-120h, vermelho >120h)
+            var temSla = s.slaStatus.verde + s.slaStatus.amarelo + s.slaStatus.vermelho;
             if (temSla > 0) {
                 html += '<div class="setor-situacao">';
-                html += '<div class="breakdown-title">SLA</div>';
+                html += '<div class="breakdown-title">SLA (5 dias)</div>';
                 html += '<div class="setor-situacao-row">';
-                if (s.slaStatus.dentro > 0)    html += '<div class="setor-sit-item sit-sla-dentro"><span class="sit-val">' + s.slaStatus.dentro + '</span><span class="sit-lbl">No Prazo</span></div>';
-                if (s.slaStatus.atencao > 0)   html += '<div class="setor-sit-item sit-sla-atencao"><span class="sit-val">' + s.slaStatus.atencao + '</span><span class="sit-lbl">Atenção</span></div>';
-                if (s.slaStatus.atrasado > 0)  html += '<div class="setor-sit-item sit-sla-atrasado"><span class="sit-val">' + s.slaStatus.atrasado + '</span><span class="sit-lbl">Atrasado</span></div>';
+                if (s.slaStatus.verde > 0)    html += '<div class="setor-sit-item sit-sla-dentro"><span class="sit-val">' + s.slaStatus.verde + '</span><span class="sit-lbl">No Prazo</span></div>';
+                if (s.slaStatus.amarelo > 0)  html += '<div class="setor-sit-item sit-sla-atencao"><span class="sit-val">' + s.slaStatus.amarelo + '</span><span class="sit-lbl">Atenção</span></div>';
+                if (s.slaStatus.vermelho > 0) html += '<div class="setor-sit-item sit-sla-atrasado"><span class="sit-val">' + s.slaStatus.vermelho + '</span><span class="sit-lbl">Vencido</span></div>';
                 html += '</div></div>';
             }
 
@@ -890,20 +874,6 @@
                 html += '</div>';
             }
 
-            // Estagios
-            var estagiosKeys = Object.keys(s.estagios).sort(function(a,b){return s.estagios[b]-s.estagios[a]});
-            if (estagiosKeys.length > 0) {
-                html += '<div class="setor-breakdown">';
-                html += '<div class="breakdown-title">Por Estágio</div>';
-                for (var e = 0; e < estagiosKeys.length; e++) {
-                    var eKey = estagiosKeys[e];
-                    html += '<div class="breakdown-item">';
-                    html += '<div class="breakdown-item-label"><div class="bd-color-dot" style="background:var(--cor-texto-secundario)"></div> ' + esc(eKey) + '</div>';
-                    html += '<div class="breakdown-item-val">' + s.estagios[eKey] + '</div>';
-                    html += '</div>';
-                }
-                html += '</div>';
-            }
 
             html += '</div>'; // close body
             html += '</div>'; // close card
@@ -1034,11 +1004,21 @@
             }
         }
 
+        var ESTAGIO_ENCERRADO = [
+            'Autorizado',
+            'Cancelado',
+            'Negado',
+            'Carência Contratual',
+            'Autorizado (Aguard. Agendamento)',
+            'Autorizado Parcialmente',
+            'Sem Cobertura pelo Convênio'
+        ];
+
         var qtdSemDoc = 0;
         for (var idxAut = 0; idxAut < auts.length; idxAut++) {
             var a = auts[idxAut];
-            var estagio = (a.ds_estagio || '').toLowerCase();
-            if ((estagio.indexOf('solicitado') !== -1) && !docsAtendSet[String(a.nr_atendimento)]) {
+            var isAtivo = ESTAGIO_ENCERRADO.indexOf(a.ds_estagio) === -1;
+            if (isAtivo && !docsAtendSet[String(a.nr_atendimento)]) {
                 qtdSemDoc++;
             }
         }
@@ -1058,21 +1038,20 @@
             html += '</tr></thead><tbody>';
             for (var i = 0; i < auts.length; i++) {
                 var a = auts[i];
-                var estagio = (a.ds_estagio || '').toLowerCase();
                 var atendKey = String(a.nr_atendimento);
-                var solicitadoSemDoc = (estagio.indexOf('solicitado') !== -1) && !docsAtendSet[atendKey];
+                var solicitadoSemDoc = (ESTAGIO_ENCERRADO.indexOf(a.ds_estagio) === -1) && !docsAtendSet[atendKey];
                 html += '<tr' + (solicitadoSemDoc ? ' class="row-sem-doc"' : '') + '>';
                 html += '<td>' + esc(a.nr_atendimento) + '</td>';
                 html += '<td>' + esc(a.ds_convenio) + '</td>';
                 html += '<td>' + esc(a.ds_tipo_guia) + '</td>';
                 html += '<td>' + esc(a.ds_tipo_autorizacao) + '</td>';
-                html += '<td>' + badgeGrupo(a.grupo_estagio, a.ds_estagio) + '</td>';
-                html += '<td>' + esc(a.ds_setor_origem) + '</td>';
+                html += '<td>' + badgeEstagio(a.ds_estagio, calcularSemaforoPrazo(a.ds_estagio, a.horas_em_aberto)) + '</td>';
+                html += '<td>' + esc(a.ds_setor_atendimento) + '</td>';
                 html += '<td>' + formatarDataHora(a.dt_autorizacao) + '</td>';
                 html += '<td>' + formatarDataHora(a.dt_pedido_medico) + '</td>';
                 html += '<td>' + badgeSla(a.status_sla) + '</td>';
                 if (solicitadoSemDoc) {
-                    html += '<td><span class="badge badge-sem-doc" title="Solicitado sem documento anexado"><i class="fas fa-triangle-exclamation"></i> Sem Doc.</span></td>';
+                    html += '<td><span class="badge badge-sem-doc" title="Autorização em aberto sem documento anexado"><i class="fas fa-triangle-exclamation"></i> Sem Doc.</span></td>';
                 } else {
                     html += '<td><span class="badge badge-doc-ok"><i class="fas fa-check"></i></span></td>';
                 }
@@ -1387,6 +1366,19 @@
         return '<span class="badge ' + info.cls + '" title="' + label + '">' + label + '</span>';
     }
 
+    function badgeEstagio(estagio, semaforo) {
+        var mapa = {
+            verde:     'badge-autorizado',
+            amarelo:   'badge-aguardando',
+            laranja:   'badge-acao-hospital',
+            vermelho:  'badge-negado',
+            encerrado: 'badge-outros'
+        };
+        var cls   = mapa[semaforo] || 'badge-outros';
+        var label = esc(estagio || '--');
+        return '<span class="badge ' + cls + '" title="' + label + '">' + label + '</span>';
+    }
+
     function badgeSla(s) {
         if (!s) return '--';
         var mapa = {
@@ -1397,6 +1389,15 @@
         };
         var info = mapa[s] || { cls: 'badge-outros', label: s };
         return '<span class="badge ' + info.cls + '">' + info.label + '</span>';
+    }
+
+    // SLA prazo: 5 dias corridos. Solicitado = STOP, sempre verde.
+    function calcularSemaforoPrazo(estagio, horasEmAberto) {
+        if (estagio === 'Solicitado') return 'verde';
+        var horas = parseFloat(horasEmAberto) || 0;
+        if (horas >= 120) return 'vermelho'; // vencido
+        if (horas >= 48)  return 'amarelo';  // dentro de 3 dias do vencimento
+        return 'verde';
     }
 
     function setStatusIndicator(st) {

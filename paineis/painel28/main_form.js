@@ -208,9 +208,19 @@
                 if (loading) loading.style.display = 'none';
 
                 if (data.success && data.data && data.data.length > 0) {
-                    estado.filaPacientes = data.data;
-                    estado.filaPosicao = 0;
-                    exibirPaciente(estado.filaPacientes[0]);
+                    // Filtrar fila para ignorar os que já estão em visita por outra dupla
+                    estado.filaPacientes = data.data.filter(function(p) {
+                        return !p.dupla_em_visita;
+                    });
+
+                    if (estado.filaPacientes.length > 0) {
+                        estado.filaPosicao = 0;
+                        exibirPaciente(estado.filaPacientes[0]);
+                    } else {
+                        estado.filaPacientes = [];
+                        estado.pacienteAtual = null;
+                        if (vazio) vazio.style.display = 'block';
+                    }
                 } else {
                     estado.filaPacientes = [];
                     estado.pacienteAtual = null;
@@ -229,12 +239,20 @@
     }
 
     function reservarPaciente(nr_atendimento) {
-        if (!nr_atendimento || !estado.duplaId) return;
-        fetch(CONFIG.apiReservar, {
+        if (!nr_atendimento || !estado.duplaId) return Promise.resolve(false);
+        var nomeDupla = '';
+        var sel = document.getElementById('select-dupla');
+        if (sel && sel.options[sel.selectedIndex]) nomeDupla = sel.options[sel.selectedIndex].text;
+
+        return fetch(CONFIG.apiReservar, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nr_atendimento: nr_atendimento, dupla_id: estado.duplaId })
-        }).catch(function () {});
+            body: JSON.stringify({
+                nr_atendimento: nr_atendimento,
+                dupla_id: estado.duplaId,
+                nome_dupla: nomeDupla
+            })
+        }).then(function(r) { return r.json(); }).catch(function() { return {success: true}; }); // default pra true em caso de erro de rede
     }
 
     function liberarPaciente() {
@@ -248,13 +266,29 @@
     }
 
     function exibirPaciente(pac) {
-        estado.pacienteAtual = pac;
-        reservarPaciente(pac.nr_atendimento);
+        if (!pac) return;
 
-        var dados = document.getElementById('paciente-dados');
+        var loading = document.getElementById('paciente-loading');
         var vazio = document.getElementById('paciente-vazio');
-        if (vazio) vazio.style.display = 'none';
-        if (dados) dados.style.display = 'block';
+        var dados = document.getElementById('paciente-dados');
+
+        if (loading) loading.style.display = 'block';
+        if (dados) dados.style.display = 'none';
+
+        reservarPaciente(pac.nr_atendimento).then(function(reserva) {
+            if (reserva && !reserva.success) {
+                // Outra dupla pegou no meio tempo!
+                mostrarToast('O paciente ' + (pac.nm_paciente || pac.leito) + ' já está sendo atendido por ' + (reserva.dupla_em_visita || 'outra dupla') + '. Pulando...', 'alerta');
+                pularPacienteSemLiberar(); // Pular sem chamar liberarPaciente para nao remover o lock do outro!
+                return;
+            }
+
+            // Sucesso na reserva
+            estado.pacienteAtual = pac;
+
+            if (loading) loading.style.display = 'none';
+            if (vazio) vazio.style.display = 'none';
+            if (dados) dados.style.display = 'block';
 
         setTexto('pac-nome', pac.nm_paciente || 'N/I');
         setTexto('pac-atendimento', pac.nr_atendimento || '--');
@@ -286,6 +320,18 @@
         if (!estado.editandoVisitaId) {
             setTimeout(function () { restaurarRascunho(pac); }, 80);
         }
+        }); // Fecha o .then() do reservarPaciente
+    }
+
+    function pularPacienteSemLiberar() {
+        if (estado.filaPacientes.length === 0) return;
+        estado.filaPosicao++;
+        if (estado.filaPosicao >= estado.filaPacientes.length) {
+            carregarProximoPaciente();
+            return;
+        }
+        exibirPaciente(estado.filaPacientes[estado.filaPosicao]);
+        limparRespostasCategorias();
     }
 
     function pularPaciente() {
@@ -731,6 +777,11 @@
                     html += '    <button type="button" class="btn-semaforo btn-nao" data-item="' + item.id + '" data-valor="nao" onclick="window.FORM.selecionarSemaforo(this)">';
                     html += '      <i class="fas fa-times"></i> Não';
                     html += '    </button>';
+                    if (item.permite_nao_aplica) {
+                        html += '    <button type="button" class="btn-semaforo nao-aplica" data-item="' + item.id + '" data-valor="nao_aplica" onclick="window.FORM.selecionarSemaforo(this)">';
+                        html += '      <i class="fas fa-minus"></i> N/A';
+                        html += '    </button>';
+                    }
                 } else {
                     html += '    <button type="button" class="btn-semaforo critico" data-item="' + item.id + '" data-valor="critico" onclick="window.FORM.selecionarSemaforo(this)">';
                     html += '      <i class="fas fa-circle"></i> Critico';
@@ -772,7 +823,7 @@
         // Para itens sim_nao: colorir conforme critico_quando (armazenado no .item-semaforo)
         var semaforo = btn.closest('.item-semaforo');
         var criticoQuando = semaforo ? semaforo.getAttribute('data-critico-quando') : null;
-        if (criticoQuando) {
+        if (criticoQuando && valor !== 'nao_aplica') {
             btn.classList.add('selecionado', valor === criticoQuando ? 'sel-critico' : 'sel-adequado');
         } else {
             btn.classList.add('selecionado');
@@ -783,7 +834,7 @@
         if (itemEl) {
             var obsDiv = itemEl.querySelector('.item-obs-critico');
             if (obsDiv) {
-                var ehCritico = criticoQuando ? (valor === criticoQuando) : (valor === 'critico');
+                var ehCritico = (valor !== 'nao_aplica') && (criticoQuando ? (valor === criticoQuando) : (valor === 'critico'));
                 obsDiv.style.display = ehCritico ? 'block' : 'none';
                 if (!ehCritico) {
                     var ta = obsDiv.querySelector('.item-obs-critico-textarea');

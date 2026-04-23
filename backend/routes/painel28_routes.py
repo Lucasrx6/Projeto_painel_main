@@ -30,6 +30,7 @@ _visita_lock = threading.Lock()
 _em_visita: dict = {}
 _EM_VISITA_TTL_SEG = 1800  # 30 minutos
 
+
 def _limpar_expirados():
     agora = datetime.now()
     with _visita_lock:
@@ -38,10 +39,18 @@ def _limpar_expirados():
         for k in expirados:
             del _em_visita[k]
 
+
 def _get_em_visita_agora() -> set:
     _limpar_expirados()
     with _visita_lock:
         return set(_em_visita.keys())
+
+
+def _get_em_visita_agora_dict() -> dict:
+    _limpar_expirados()
+    with _visita_lock:
+        return dict(_em_visita)
+
 
 PAINEL_DIR = os.path.join(os.path.dirname(__file__))
 
@@ -230,7 +239,8 @@ def editar_dupla(dupla_id):
         ip = _get_ip()
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome_visitante_1, nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s", (dupla_id,))
+        cursor.execute("SELECT id, nome_visitante_1, nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s",
+                       (dupla_id,))
         dupla = cursor.fetchone()
         if not dupla:
             cursor.close()
@@ -267,7 +277,8 @@ def toggle_dupla(dupla_id):
             conn.close()
             return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
         novo_status = not dupla['ativo']
-        cursor.execute("UPDATE sentir_agir_duplas SET ativo = %s, atualizado_em = NOW() WHERE id = %s", (novo_status, dupla_id))
+        cursor.execute("UPDATE sentir_agir_duplas SET ativo = %s, atualizado_em = NOW() WHERE id = %s",
+                       (novo_status, dupla_id))
         _registrar_log(cursor, 'dupla', dupla_id, 'alteracao_status', usuario,
                        campo_alterado='ativo', valor_anterior=str(dupla['ativo']),
                        valor_novo=str(novo_status), ip_origem=ip)
@@ -321,7 +332,8 @@ def listar_categorias_itens():
         cursor.execute("""
             SELECT id, categoria_id, descricao, ordem,
                    COALESCE(tipo, 'semaforo') AS tipo,
-                   COALESCE(critico_quando, 'nao') AS critico_quando
+                   COALESCE(critico_quando, 'nao') AS critico_quando,
+                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica
             FROM sentir_agir_itens WHERE ativo = TRUE ORDER BY ordem
         """)
         itens = cursor.fetchall()
@@ -338,7 +350,8 @@ def listar_categorias_itens():
                 'descricao': item['descricao'],
                 'ordem': item['ordem'],
                 'tipo': item['tipo'],
-                'critico_quando': item['critico_quando']
+                'critico_quando': item['critico_quando'],
+                'permite_nao_aplica': item['permite_nao_aplica']
             })
 
         resultado = []
@@ -466,9 +479,13 @@ def fila_pacientes():
                 item['qt_dia_permanencia'] = int(item['qt_dia_permanencia'])
             resultado.append(item)
 
-        # Filtrar pacientes que outra dupla esta visitando no momento
-        em_visita = _get_em_visita_agora()
-        resultado = [p for p in resultado if str(p['nr_atendimento']) not in em_visita]
+        # Obter pacientes sendo visitados neste exato momento (lock em memoria)
+        em_visita_dict = _get_em_visita_agora_dict()
+        for p in resultado:
+            nr = str(p['nr_atendimento'])
+            if nr in em_visita_dict:
+                # Sobrescrever o dupla_em_visita (que era do SQL) com a informação mais recente da RAM
+                p['dupla_em_visita'] = em_visita_dict[nr].get('nome_dupla', 'Dupla em visita')
 
         return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
@@ -561,10 +578,39 @@ def reservar_paciente():
     dados = request.get_json() or {}
     nr = str(dados.get('nr_atendimento', '')).strip()
     dupla_id = dados.get('dupla_id')
+    nome_dupla = dados.get('nome_dupla')
+
     if not nr:
         return jsonify({'success': False, 'error': 'nr_atendimento obrigatorio'}), 400
+
+    if dupla_id and not nome_dupla:
+        # Tenta buscar o nome caso o frontend não mande
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT nome_visitante_1 || ' e ' || nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s",
+                           (dupla_id,))
+            row = cursor.fetchone()
+            if row:
+                nome_dupla = row[0]
+            cursor.close()
+            conn.close()
+        except Exception:
+            pass
+
     with _visita_lock:
-        _em_visita[nr] = {'dupla_id': dupla_id, 'ts': datetime.now()}
+        if nr in _em_visita and str(_em_visita[nr]['dupla_id']) != str(dupla_id):
+            return jsonify({
+                'success': False,
+                'error': 'Paciente ja esta em visita por outra dupla',
+                'dupla_em_visita': _em_visita[nr].get('nome_dupla', 'Outra dupla')
+            }), 409
+
+        _em_visita[nr] = {
+            'dupla_id': dupla_id,
+            'nome_dupla': nome_dupla or 'Dupla em visita',
+            'ts': datetime.now()
+        }
     return jsonify({'success': True})
 
 
@@ -661,7 +707,8 @@ def concluir_ronda(ronda_id):
             cursor.close()
             conn.close()
             return jsonify({'success': True, 'message': 'Ronda ja esta concluida'})
-        cursor.execute("UPDATE sentir_agir_rondas SET status = 'concluida', atualizado_em = NOW() WHERE id = %s", (ronda_id,))
+        cursor.execute("UPDATE sentir_agir_rondas SET status = 'concluida', atualizado_em = NOW() WHERE id = %s",
+                       (ronda_id,))
         _registrar_log(cursor, 'ronda', ronda_id, 'alteracao_status', usuario,
                        campo_alterado='status', valor_anterior=ronda['status'],
                        valor_novo='concluida', ip_origem=ip)
@@ -677,7 +724,6 @@ def concluir_ronda(ronda_id):
 # ============================================================
 # API: VISITAS - REGISTRAR (V2 com campos expandidos + sim/nao)
 # ============================================================
-
 
 
 @painel28_bp.route('/visitas', methods=['POST'])
@@ -811,8 +857,8 @@ def registrar_visita():
             resultado = av['resultado']
             item_cfg = critico_quando_map.get(av['item_id'], {})
             eh_critico = (
-                resultado == 'critico' or
-                (item_cfg.get('tipo') == 'sim_nao' and resultado == item_cfg.get('critico_quando', 'nao'))
+                    resultado == 'critico' or
+                    (item_cfg.get('tipo') == 'sim_nao' and resultado == item_cfg.get('critico_quando', 'nao'))
             )
             if eh_critico:
                 obs_item = (av.get('obs_item') or '').strip() or None
@@ -837,22 +883,24 @@ def registrar_visita():
                 if not item_info:
                     continue
 
-                # Tentar encontrar responsável: primeiro por categoria, depois por setor
+                # Tentar encontrar responsável: primeiro por categoria (N:M), depois por setor (N:M)
                 responsavel_id = None
                 cursor.execute("""
-                    SELECT id FROM sentir_agir_responsaveis
-                    WHERE categoria_id = %s AND ativo = TRUE
-                    ORDER BY id LIMIT 1
+                    SELECT r.id FROM sentir_agir_responsaveis r
+                    JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+                    WHERE rc.categoria_id = %s AND r.ativo = TRUE
+                    ORDER BY r.id LIMIT 1
                 """, (item_info['categoria_id'],))
                 resp = cursor.fetchone()
                 if resp:
                     responsavel_id = resp['id']
                 else:
-                    # Fallback: por setor
+                    # Fallback: por setor (N:M)
                     cursor.execute("""
-                        SELECT id FROM sentir_agir_responsaveis
-                        WHERE setor_id = %s AND ativo = TRUE
-                        ORDER BY id LIMIT 1
+                        SELECT r.id FROM sentir_agir_responsaveis r
+                        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+                        WHERE rs.setor_id = %s AND r.ativo = TRUE
+                        ORDER BY r.id LIMIT 1
                     """, (setor_id,))
                     resp = cursor.fetchone()
                     if resp:
@@ -993,7 +1041,8 @@ def upload_imagem():
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'success': True, 'data': {'id': imagem_id, 'caminho': caminho_relativo}, 'message': 'Imagem enviada'}), 201
+        return jsonify(
+            {'success': True, 'data': {'id': imagem_id, 'caminho': caminho_relativo}, 'message': 'Imagem enviada'}), 201
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1321,16 +1370,18 @@ def atualizar_visita(visita_id):
                     continue
                 responsavel_id = None
                 cursor.execute("""
-                    SELECT id FROM sentir_agir_responsaveis
-                    WHERE categoria_id = %s AND ativo = TRUE ORDER BY id LIMIT 1
+                    SELECT r.id FROM sentir_agir_responsaveis r
+                    JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+                    WHERE rc.categoria_id = %s AND r.ativo = TRUE ORDER BY r.id LIMIT 1
                 """, (item_info['categoria_id'],))
                 resp = cursor.fetchone()
                 if resp:
                     responsavel_id = resp['id']
                 else:
                     cursor.execute("""
-                        SELECT id FROM sentir_agir_responsaveis
-                        WHERE setor_id = %s AND ativo = TRUE ORDER BY id LIMIT 1
+                        SELECT r.id FROM sentir_agir_responsaveis r
+                        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+                        WHERE rs.setor_id = %s AND r.ativo = TRUE ORDER BY r.id LIMIT 1
                     """, (visita['setor_id'],))
                     resp = cursor.fetchone()
                     if resp:
@@ -1532,7 +1583,8 @@ def listar_categorias():
         cursor.execute("""
             SELECT id, categoria_id, descricao, ordem, ativo,
                    COALESCE(tipo, 'semaforo') AS tipo,
-                   COALESCE(critico_quando, 'nao') AS critico_quando
+                   COALESCE(critico_quando, 'nao') AS critico_quando,
+                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica
             FROM sentir_agir_itens ORDER BY ordem
         """)
         itens = cursor.fetchall()
@@ -1733,6 +1785,7 @@ def criar_item():
         critico_quando = dados.get('critico_quando', 'nao')
         if critico_quando not in ('sim', 'nao'):
             critico_quando = 'nao'
+        permite_nao_aplica = bool(dados.get('permite_nao_aplica', False)) if tipo == 'sim_nao' else False
         usuario = _get_usuario()
         ip = _get_ip()
         conn = get_db_connection()
@@ -1748,9 +1801,9 @@ def criar_item():
         """, (categoria_id,))
         prox_ordem = cursor.fetchone()['prox']
         cursor.execute("""
-            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, critico_quando, ordem, ativo)
-            VALUES (%s, %s, %s, %s, %s, TRUE) RETURNING id
-        """, (categoria_id, descricao, tipo, critico_quando, prox_ordem))
+            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, ordem, ativo)
+            VALUES (%s, %s, %s, %s, %s, %s, TRUE) RETURNING id
+        """, (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, prox_ordem))
         item_id = cursor.fetchone()['id']
         _registrar_log(cursor, 'item', item_id, 'criacao', usuario,
                        valor_novo=descricao, ip_origem=ip)
@@ -1779,6 +1832,7 @@ def editar_item(item_id):
         critico_quando = dados.get('critico_quando', 'nao')
         if critico_quando not in ('sim', 'nao'):
             critico_quando = 'nao'
+        permite_nao_aplica = bool(dados.get('permite_nao_aplica', False)) if tipo == 'sim_nao' else False
         usuario = _get_usuario()
         ip = _get_ip()
         conn = get_db_connection()
@@ -1791,9 +1845,9 @@ def editar_item(item_id):
             return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
         cursor.execute("""
             UPDATE sentir_agir_itens
-            SET descricao = %s, tipo = %s, critico_quando = %s
+            SET descricao = %s, tipo = %s, critico_quando = %s, permite_nao_aplica = %s
             WHERE id = %s
-        """, (descricao, tipo, critico_quando, item_id))
+        """, (descricao, tipo, critico_quando, permite_nao_aplica, item_id))
         _registrar_log(cursor, 'item', item_id, 'edicao', usuario,
                        campo_alterado='descricao', valor_anterior=item['descricao'],
                        valor_novo=descricao, ip_origem=ip)

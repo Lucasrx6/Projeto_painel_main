@@ -752,12 +752,8 @@ def listar_responsaveis():
         todas = request.args.get('todas', '0')
         sql = """
             SELECT r.id, r.nome, r.email, r.telefone, r.cargo,
-                   r.categoria_id, c.nome AS categoria_nome,
-                   r.setor_id, s.nome AS setor_nome,
                    r.observacoes, r.ativo, r.criado_em
             FROM sentir_agir_responsaveis r
-            LEFT JOIN sentir_agir_categorias c ON c.id = r.categoria_id
-            LEFT JOIN sentir_agir_setores s ON s.id = r.setor_id
         """
         if todas != '1':
             sql += " WHERE r.ativo = TRUE"
@@ -765,10 +761,43 @@ def listar_responsaveis():
 
         cursor.execute(sql)
         rows = cursor.fetchall()
+
+        # Buscar categorias e setores N:M para cada responsavel
+        resultado = []
+        for row in rows:
+            item = serializar_linha(row)
+            resp_id = row['id']
+
+            cursor.execute("""
+                SELECT c.id, c.nome
+                FROM sentir_agir_responsavel_categorias rc
+                JOIN sentir_agir_categorias c ON c.id = rc.categoria_id
+                WHERE rc.responsavel_id = %s
+                ORDER BY c.ordem
+            """, (resp_id,))
+            item['categorias'] = [dict(c) for c in cursor.fetchall()]
+
+            cursor.execute("""
+                SELECT s.id, s.nome, s.sigla
+                FROM sentir_agir_responsavel_setores rs
+                JOIN sentir_agir_setores s ON s.id = rs.setor_id
+                WHERE rs.responsavel_id = %s
+                ORDER BY s.ordem
+            """, (resp_id,))
+            item['setores'] = [dict(s) for s in cursor.fetchall()]
+
+            # Retrocompatibilidade: campos singulares para filtros
+            item['categoria_id'] = item['categorias'][0]['id'] if item['categorias'] else None
+            item['categoria_nome'] = item['categorias'][0]['nome'] if item['categorias'] else None
+            item['setor_id'] = item['setores'][0]['id'] if item['setores'] else None
+            item['setor_nome'] = item['setores'][0]['nome'] if item['setores'] else None
+
+            resultado.append(item)
+
         cursor.close()
         conn.close()
 
-        return jsonify({'success': True, 'data': [serializar_linha(r) for r in rows]})
+        return jsonify({'success': True, 'data': resultado})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -792,9 +821,16 @@ def criar_responsavel():
         email = (dados.get('email') or '').strip() or None
         telefone = (dados.get('telefone') or '').strip() or None
         cargo = (dados.get('cargo') or '').strip() or None
-        categoria_id = dados.get('categoria_id')
-        setor_id = dados.get('setor_id')
         observacoes = (dados.get('observacoes') or '').strip() or None
+
+        # Suporte a multiplas categorias e setores (N:M)
+        categoria_ids = dados.get('categoria_ids', [])
+        setor_ids = dados.get('setor_ids', [])
+        # Retrocompatibilidade: campo singular
+        if not categoria_ids and dados.get('categoria_id'):
+            categoria_ids = [dados['categoria_id']]
+        if not setor_ids and dados.get('setor_id'):
+            setor_ids = [dados['setor_id']]
 
         usuario = _get_usuario()
         ip = _get_ip()
@@ -804,11 +840,27 @@ def criar_responsavel():
 
         cursor.execute("""
             INSERT INTO sentir_agir_responsaveis
-                (nome, email, telefone, cargo, categoria_id, setor_id, observacoes, ativo)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
+                (nome, email, telefone, cargo, observacoes, ativo)
+            VALUES (%s, %s, %s, %s, %s, TRUE)
             RETURNING id
-        """, (nome, email, telefone, cargo, categoria_id, setor_id, observacoes))
+        """, (nome, email, telefone, cargo, observacoes))
         resp_id = cursor.fetchone()['id']
+
+        # Inserir vinculos N:M de categorias
+        for cat_id in categoria_ids:
+            if cat_id:
+                cursor.execute("""
+                    INSERT INTO sentir_agir_responsavel_categorias (responsavel_id, categoria_id)
+                    VALUES (%s, %s) ON CONFLICT DO NOTHING
+                """, (resp_id, int(cat_id)))
+
+        # Inserir vinculos N:M de setores
+        for set_id in setor_ids:
+            if set_id:
+                cursor.execute("""
+                    INSERT INTO sentir_agir_responsavel_setores (responsavel_id, setor_id)
+                    VALUES (%s, %s) ON CONFLICT DO NOTHING
+                """, (resp_id, int(set_id)))
 
         _registrar_log(cursor, 'responsavel', resp_id, 'criacao', usuario, ip_origem=ip)
 
@@ -848,7 +900,7 @@ def editar_responsavel(resp_id):
 
         sets = []
         params = []
-        campos = ['nome', 'email', 'telefone', 'cargo', 'categoria_id', 'setor_id', 'observacoes']
+        campos = ['nome', 'email', 'telefone', 'cargo', 'observacoes']
         for campo in campos:
             if campo in dados:
                 valor = dados[campo]
@@ -857,18 +909,39 @@ def editar_responsavel(resp_id):
                 sets.append(campo + " = %s")
                 params.append(valor)
 
-        if not sets:
-            cursor.close()
-            conn.close()
-            return jsonify({'success': True, 'message': 'Nenhuma alteracao'})
+        if sets:
+            sets.append("atualizado_em = NOW()")
+            params.append(resp_id)
+            cursor.execute(
+                "UPDATE sentir_agir_responsaveis SET " + ", ".join(sets) + " WHERE id = %s",
+                params
+            )
 
-        sets.append("atualizado_em = NOW()")
-        params.append(resp_id)
+        # Atualizar vinculos N:M de categorias
+        if 'categoria_ids' in dados:
+            cursor.execute(
+                "DELETE FROM sentir_agir_responsavel_categorias WHERE responsavel_id = %s",
+                (resp_id,)
+            )
+            for cat_id in (dados['categoria_ids'] or []):
+                if cat_id:
+                    cursor.execute("""
+                        INSERT INTO sentir_agir_responsavel_categorias (responsavel_id, categoria_id)
+                        VALUES (%s, %s) ON CONFLICT DO NOTHING
+                    """, (resp_id, int(cat_id)))
 
-        cursor.execute(
-            "UPDATE sentir_agir_responsaveis SET " + ", ".join(sets) + " WHERE id = %s",
-            params
-        )
+        # Atualizar vinculos N:M de setores
+        if 'setor_ids' in dados:
+            cursor.execute(
+                "DELETE FROM sentir_agir_responsavel_setores WHERE responsavel_id = %s",
+                (resp_id,)
+            )
+            for set_id in (dados['setor_ids'] or []):
+                if set_id:
+                    cursor.execute("""
+                        INSERT INTO sentir_agir_responsavel_setores (responsavel_id, setor_id)
+                        VALUES (%s, %s) ON CONFLICT DO NOTHING
+                    """, (resp_id, int(set_id)))
 
         _registrar_log(cursor, 'responsavel', resp_id, 'edicao', usuario, ip_origem=ip)
 
