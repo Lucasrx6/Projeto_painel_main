@@ -85,6 +85,64 @@ def _is_admin():
     return session.get('is_admin', False)
 
 
+def _encontrar_responsavel_auto(cursor, categoria_id, setor_id):
+    """
+    Encontra o responsavel ativo mais adequado para uma tratativa.
+    Prioridade:
+    1. Vinculado a categoria E setor (match exato)
+    2. Vinculado a categoria sem restricao de setor (responsavel geral)
+    3. Vinculado a categoria (qualquer setor)
+    4. Fallback: vinculado apenas ao setor
+    """
+    # 1. Match exato: categoria + setor
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+        WHERE rc.categoria_id = %s AND rs.setor_id = %s AND r.ativo = TRUE
+        ORDER BY r.nome LIMIT 1
+    """, (categoria_id, setor_id))
+    resp = cursor.fetchone()
+    if resp:
+        return resp['id']
+
+    # 2. Categoria sem restricao de setor (responsavel geral da categoria)
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+        WHERE rc.categoria_id = %s AND r.ativo = TRUE
+          AND NOT EXISTS (
+              SELECT 1 FROM sentir_agir_responsavel_setores rs2
+              WHERE rs2.responsavel_id = r.id
+          )
+        ORDER BY r.nome LIMIT 1
+    """, (categoria_id,))
+    resp = cursor.fetchone()
+    if resp:
+        return resp['id']
+
+    # 3. Qualquer responsavel da categoria
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+        WHERE rc.categoria_id = %s AND r.ativo = TRUE
+        ORDER BY r.nome LIMIT 1
+    """, (categoria_id,))
+    resp = cursor.fetchone()
+    if resp:
+        return resp['id']
+
+    # 4. Fallback: responsavel do setor
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+        WHERE rs.setor_id = %s AND r.ativo = TRUE
+        ORDER BY r.nome LIMIT 1
+    """, (setor_id,))
+    resp = cursor.fetchone()
+    return resp['id'] if resp else None
+
+
 def _auto_finalizar_rondas_expiradas(cursor):
     """Finaliza automaticamente rondas em_andamento com mais de 10 minutos de inatividade."""
     cursor.execute("""
@@ -882,28 +940,8 @@ def registrar_visita():
                 if not item_info:
                     continue
 
-                # Tentar encontrar responsável: primeiro por categoria (N:M), depois por setor (N:M)
-                responsavel_id = None
-                cursor.execute("""
-                    SELECT r.id FROM sentir_agir_responsaveis r
-                    JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
-                    WHERE rc.categoria_id = %s AND r.ativo = TRUE
-                    ORDER BY r.id LIMIT 1
-                """, (item_info['categoria_id'],))
-                resp = cursor.fetchone()
-                if resp:
-                    responsavel_id = resp['id']
-                else:
-                    # Fallback: por setor (N:M)
-                    cursor.execute("""
-                        SELECT r.id FROM sentir_agir_responsaveis r
-                        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
-                        WHERE rs.setor_id = %s AND r.ativo = TRUE
-                        ORDER BY r.id LIMIT 1
-                    """, (setor_id,))
-                    resp = cursor.fetchone()
-                    if resp:
-                        responsavel_id = resp['id']
+                # Auto-atribuir responsavel: categoria + setor (logica de prioridade)
+                responsavel_id = _encontrar_responsavel_auto(cursor, item_info['categoria_id'], setor_id)
 
                 # Montar descricao do problema — prioriza obs específica do item
                 desc = 'Item critico: ' + item_info['item_descricao']
@@ -1366,24 +1404,8 @@ def atualizar_visita(visita_id):
                 item_info = cursor.fetchone()
                 if not item_info:
                     continue
-                responsavel_id = None
-                cursor.execute("""
-                    SELECT r.id FROM sentir_agir_responsaveis r
-                    JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
-                    WHERE rc.categoria_id = %s AND r.ativo = TRUE ORDER BY r.id LIMIT 1
-                """, (item_info['categoria_id'],))
-                resp = cursor.fetchone()
-                if resp:
-                    responsavel_id = resp['id']
-                else:
-                    cursor.execute("""
-                        SELECT r.id FROM sentir_agir_responsaveis r
-                        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
-                        WHERE rs.setor_id = %s AND r.ativo = TRUE ORDER BY r.id LIMIT 1
-                    """, (visita['setor_id'],))
-                    resp = cursor.fetchone()
-                    if resp:
-                        responsavel_id = resp['id']
+                # Auto-atribuir responsavel: categoria + setor (logica de prioridade)
+                responsavel_id = _encontrar_responsavel_auto(cursor, item_info['categoria_id'], visita['setor_id'])
 
                 desc = 'Item critico: ' + item_info['item_descricao']
                 desc += ' | Categoria: ' + item_info['categoria_nome']

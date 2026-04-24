@@ -44,6 +44,7 @@
         configurarResponsaveis();
         carregarFiltrosOpcoes();
         carregarResumo();
+        _verificarAbrirPorParam();
         estado.refreshInterval = setInterval(function () {
             if (estado.abaAtiva === 'resumo') {
                 carregarResumo();
@@ -681,6 +682,15 @@
         html += '<label>Ou Responsavel Manual (texto livre)</label>';
         html += '<input type="text" id="edit-responsavel-manual" placeholder="Nome do responsavel" maxlength="200" value="' + escapeAttr(t.responsavel_nome_manual || '') + '">';
         html += '</div>';
+        var idTrat = t.tratativa_id || t.id;
+        html += '<div style="margin-top:10px;">';
+        html += '<button type="button" class="btn-atualizar-resp" id="btn-atualizar-resp" onclick="window.P30.atualizarResponsavelAuto(' + idTrat + ')">';
+        html += '<i class="fas fa-sync-alt"></i> Atualizar Responsavel Automaticamente';
+        html += '</button>';
+        html += '<small style="display:block;margin-top:5px;color:#888;font-size:0.72rem;">';
+        html += 'Busca e atribui o responsavel correto pela categoria/setor e reenvia o email de notificacao.';
+        html += '</small>';
+        html += '</div>';
         html += '</div>';
 
         // Secao: Plano de acao
@@ -800,6 +810,51 @@
         estado.statusSelecionado = null;
         var modal = document.getElementById('modal-tratativa');
         if (modal) modal.classList.remove('ativo');
+    }
+
+    function atualizarResponsavelAuto(tratativaId) {
+        var btn = document.getElementById('btn-atualizar-resp');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+        }
+
+        fetch(CONFIG.apiTratativas + '/' + tratativaId + '/atualizar-responsavel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                mostrarToast(data.message, 'sucesso');
+                // Reabrir tratativa para refletir mudanca
+                abrirTratativa(tratativaId);
+                carregarTudo();
+            } else {
+                mostrarToast(data.error || 'Erro ao atualizar responsavel', 'erro');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Responsavel Automaticamente';
+                }
+            }
+        })
+        .catch(function () {
+            mostrarToast('Erro de comunicacao', 'erro');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Responsavel Automaticamente';
+            }
+        });
+    }
+
+    function _verificarAbrirPorParam() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var abrirId = params.get('abrir');
+            if (abrirId && !isNaN(parseInt(abrirId))) {
+                abrirTratativa(parseInt(abrirId));
+            }
+        } catch (e) { /* URLSearchParams nao suportado */ }
     }
 
     // ========================================
@@ -1192,7 +1247,8 @@
         selecionarStatus: selecionarStatus,
         toggleResponsavel: toggleResponsavel,
         editarResponsavel: editarResponsavel,
-        irParaTratativasSetor: irParaTratativasSetor
+        irParaTratativasSetor: irParaTratativasSetor,
+        atualizarResponsavelAuto: atualizarResponsavelAuto
     };
 
     if (document.readyState === 'loading') {
