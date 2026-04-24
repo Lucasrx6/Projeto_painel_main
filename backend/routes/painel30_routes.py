@@ -5,6 +5,7 @@
 # ============================================================
 
 import os
+import json
 import traceback
 from datetime import datetime, date, timedelta
 from decimal import Decimal
@@ -13,6 +14,13 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+
+try:
+    import apprise as _apprise_lib
+    from urllib.parse import quote as _url_encode
+    _APPRISE_OK = True
+except ImportError:
+    _APPRISE_OK = False
 
 painel30_bp = Blueprint('painel30', __name__)
 
@@ -97,6 +105,164 @@ def _atualizar_status_visita(cursor, visita_id):
     """, (novo_status, visita_id))
 
     return novo_status
+
+
+def _encontrar_responsavel_auto(cursor, categoria_id, setor_id):
+    """
+    Encontra o responsavel ativo mais adequado para uma tratativa.
+    Prioridade:
+    1. Vinculado a categoria E setor (match exato)
+    2. Vinculado a categoria sem restricao de setor (responsavel geral)
+    3. Vinculado a categoria (qualquer setor)
+    4. Fallback: vinculado apenas ao setor
+    """
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+        WHERE rc.categoria_id = %s AND rs.setor_id = %s AND r.ativo = TRUE
+        ORDER BY r.nome LIMIT 1
+    """, (categoria_id, setor_id))
+    resp = cursor.fetchone()
+    if resp:
+        return resp['id']
+
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+        WHERE rc.categoria_id = %s AND r.ativo = TRUE
+          AND NOT EXISTS (
+              SELECT 1 FROM sentir_agir_responsavel_setores rs2
+              WHERE rs2.responsavel_id = r.id
+          )
+        ORDER BY r.nome LIMIT 1
+    """, (categoria_id,))
+    resp = cursor.fetchone()
+    if resp:
+        return resp['id']
+
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
+        WHERE rc.categoria_id = %s AND r.ativo = TRUE
+        ORDER BY r.nome LIMIT 1
+    """, (categoria_id,))
+    resp = cursor.fetchone()
+    if resp:
+        return resp['id']
+
+    cursor.execute("""
+        SELECT r.id FROM sentir_agir_responsaveis r
+        JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
+        WHERE rs.setor_id = %s AND r.ativo = TRUE
+        ORDER BY r.nome LIMIT 1
+    """, (setor_id,))
+    resp = cursor.fetchone()
+    return resp['id'] if resp else None
+
+
+def _enviar_notificacao_tratativa(dados):
+    """
+    Envia email de notificacao para responsaveis de uma tratativa via Apprise.
+    dados deve conter: tratativa_id, item_descricao, categoria_nome, setor_nome,
+                       nm_paciente, nr_atendimento, leito, data_ronda_fmt, dupla_nome,
+                       destinatarios=[{email, nome}]
+    """
+    if not _APPRISE_OK:
+        return False, 'Apprise nao disponivel'
+
+    smtp_host = os.getenv('SMTP_HOST', '')
+    smtp_port = os.getenv('SMTP_PORT', '587')
+    smtp_user = os.getenv('SMTP_USER', '')
+    smtp_pass = os.getenv('SMTP_PASS', '')
+    smtp_from = os.getenv('SMTP_FROM', '') or smtp_user
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        return False, 'SMTP nao configurado'
+
+    destinatarios = dados.get('destinatarios', [])
+    if not destinatarios:
+        return False, 'Sem destinatarios'
+
+    app_base_url = os.getenv('APP_BASE_URL', '').rstrip('/')
+    cor = '#dc3545'
+    bloco_link = ''
+    if app_base_url:
+        link = '{}/painel/painel30?abrir={}'.format(app_base_url, dados['tratativa_id'])
+        bloco_link = (
+            '<div style="text-align:center;margin-top:18px;">'
+            '<a href="{link}" style="display:inline-block;padding:10px 24px;'
+            'background:{cor};color:white;border-radius:6px;font-weight:bold;'
+            'text-decoration:none;font-size:14px;">Abrir Tratativa</a></div>'
+        ).format(link=link, cor=cor)
+
+    titulo = 'Sentir e Agir - CRITICO - {} - {}'.format(
+        dados.get('categoria_nome', '-'), dados.get('setor_nome', '-')
+    )
+
+    html = (
+        '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;'
+        'max-width:600px;margin:0 auto;padding:20px;">'
+        '<div style="background:{cor};color:white;padding:15px 20px;border-radius:8px 8px 0 0;">'
+        '<h2 style="margin:0;font-size:18px;">Nova Tratativa - CRITICO</h2>'
+        '<p style="margin:5px 0 0;font-size:13px;opacity:0.9;">Hospital Anchieta Ceilandia - Projeto Sentir e Agir</p>'
+        '</div>'
+        '<div style="border:1px solid #dee2e6;border-top:none;padding:20px;border-radius:0 0 8px 8px;">'
+        '<div style="background:#fff0f0;border-left:4px solid {cor};padding:12px 16px;border-radius:4px;margin-bottom:16px;">'
+        '<strong style="color:{cor};font-size:15px;">{item}</strong><br>'
+        '<small style="color:#555;margin-top:4px;display:block;">Categoria: {categoria}</small>'
+        '</div>'
+        '<table style="width:100%%;border-collapse:collapse;font-size:14px;margin-top:8px;">'
+        '<tr><td style="padding:6px 0;color:#6c757d;width:130px;">Paciente:</td>'
+        '<td style="padding:6px 0;font-weight:bold;">{paciente}</td></tr>'
+        '<tr><td style="padding:6px 0;color:#6c757d;">Atendimento:</td>'
+        '<td style="padding:6px 0;">{atendimento}</td></tr>'
+        '<tr><td style="padding:6px 0;color:#6c757d;">Setor:</td>'
+        '<td style="padding:6px 0;">{setor}</td></tr>'
+        '<tr><td style="padding:6px 0;color:#6c757d;">Leito:</td>'
+        '<td style="padding:6px 0;">{leito}</td></tr>'
+        '<tr><td style="padding:6px 0;color:#6c757d;">Data da Ronda:</td>'
+        '<td style="padding:6px 0;">{data_ronda}</td></tr>'
+        '<tr><td style="padding:6px 0;color:#6c757d;">Dupla:</td>'
+        '<td style="padding:6px 0;">{dupla}</td></tr>'
+        '</table>'
+        '{bloco_link}'
+        '<hr style="border:none;border-top:1px solid #eee;margin:18px 0;">'
+        '<p style="font-size:11px;color:#999;margin:0;text-align:center;">'
+        'Notificacao automatica - Sistema de Paineis HAC<br>Enviado em {enviado_em}</p>'
+        '</div></div>'
+    ).format(
+        cor=cor,
+        item=dados.get('item_descricao', '-'),
+        categoria=dados.get('categoria_nome', '-'),
+        paciente=dados.get('nm_paciente', 'N/I'),
+        atendimento=dados.get('nr_atendimento', '--') or '--',
+        setor=dados.get('setor_nome', '-'),
+        leito=dados.get('leito', '-'),
+        data_ronda=dados.get('data_ronda_fmt', '--'),
+        dupla=dados.get('dupla_nome', '-'),
+        bloco_link=bloco_link,
+        enviado_em=datetime.now().strftime('%d/%m/%Y %H:%M')
+    )
+
+    try:
+        ap = _apprise_lib.Apprise()
+        user_enc = _url_encode(smtp_user, safe='')
+        pass_enc = _url_encode(smtp_pass, safe='')
+        for dest in destinatarios:
+            url = 'mailtos://{u}:{p}@{h}:{port}?from={f}&to={t}&name=Notificacao+HAC'.format(
+                u=user_enc, p=pass_enc, h=smtp_host, port=smtp_port,
+                f=_url_encode(smtp_from, safe=''), t=_url_encode(dest['email'], safe='')
+            )
+            ap.add(url)
+        ok = ap.notify(
+            title=titulo, body=html,
+            body_format=_apprise_lib.NotifyFormat.HTML,
+            notify_type=_apprise_lib.NotifyType.WARNING
+        )
+        return ok, 'OK' if ok else 'Falha no envio'
+    except Exception as e:
+        return False, str(e)
 
 
 def _build_filtros_tratativas():
@@ -690,6 +856,343 @@ def atualizar_tratativa(tratativa_id):
             'alteracoes': len(alteracoes),
             'novo_status_visita': novo_status_visita
         })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: RECLASSIFICAR CRÍTICA (mover para outro item) — admin
+# ============================================================
+
+@painel30_bp.route('/api/paineis/painel30/categorias-itens', methods=['GET'])
+@login_required
+def categorias_itens():
+    if not _is_admin():
+        return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT c.id AS categoria_id, c.nome AS categoria_nome,
+                   i.id AS item_id, i.descricao AS item_descricao
+            FROM sentir_agir_itens i
+            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+            WHERE i.ativo = TRUE AND c.ativo = TRUE
+            ORDER BY c.ordem, c.nome, i.ordem, i.descricao
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        cats = {}
+        cats_ordem = []
+        for row in rows:
+            cid = row['categoria_id']
+            if cid not in cats:
+                cats[cid] = {'id': cid, 'nome': row['categoria_nome'], 'itens': []}
+                cats_ordem.append(cid)
+            cats[cid]['itens'].append({'id': row['item_id'], 'descricao': row['item_descricao']})
+
+        return jsonify({'success': True, 'data': [cats[c] for c in cats_ordem]})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel30_bp.route('/api/paineis/painel30/tratativas/<int:tratativa_id>/mover', methods=['POST'])
+@login_required
+def mover_tratativa(tratativa_id):
+    """
+    Admin: move a tratativa para outro item.
+    Atualiza: sentir_agir_tratativas (item_id, categoria_id, descricao_problema, responsavel_id)
+              sentir_agir_avaliacoes (item_id) para manter integridade historica
+    """
+    if not _is_admin():
+        return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
+
+    dados = request.get_json()
+    if not dados:
+        return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+    novo_item_id = dados.get('item_id')
+    motivo = (dados.get('motivo') or '').strip()
+
+    if not novo_item_id:
+        return jsonify({'success': False, 'error': 'item_id obrigatorio'}), 400
+
+    try:
+        usuario = _get_usuario()
+        ip = _get_ip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT t.id, t.avaliacao_id, t.item_id, t.categoria_id,
+                   t.descricao_problema, t.visita_id,
+                   i.descricao AS item_descricao,
+                   c.nome AS categoria_nome,
+                   v.setor_id
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_itens i ON i.id = t.item_id
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            JOIN sentir_agir_visitas v ON v.id = t.visita_id
+            WHERE t.id = %s
+        """, (tratativa_id,))
+        tratativa = cursor.fetchone()
+
+        if not tratativa:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Tratativa nao encontrada'}), 404
+
+        if tratativa['item_id'] == int(novo_item_id):
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Item ja atribuido a esta tratativa'}), 400
+
+        cursor.execute("""
+            SELECT i.id, i.descricao, i.categoria_id, c.nome AS categoria_nome
+            FROM sentir_agir_itens i
+            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+            WHERE i.id = %s AND i.ativo = TRUE
+        """, (int(novo_item_id),))
+        novo_item = cursor.fetchone()
+
+        if not novo_item:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Item nao encontrado ou inativo'}), 404
+
+        # Reconstruir descricao_problema preservando sufixo (Paciente, Leito, Obs)
+        old_desc = tratativa.get('descricao_problema', '') or ''
+        idx = old_desc.find(' | Paciente:')
+        suffix = old_desc[idx:] if idx != -1 else ''
+        nova_desc = 'Item critico: {item} | Categoria: {cat}{suffix}'.format(
+            item=novo_item['descricao'],
+            cat=novo_item['categoria_nome'],
+            suffix=suffix
+        )
+        if motivo:
+            nova_desc += ' | Reclassificado: ' + motivo
+
+        # Auto-atribuir responsavel para nova categoria/setor
+        novo_resp_id = _encontrar_responsavel_auto(cursor, novo_item['categoria_id'], tratativa['setor_id'])
+
+        # Atualizar tratativa
+        cursor.execute("""
+            UPDATE sentir_agir_tratativas
+            SET item_id = %s, categoria_id = %s, descricao_problema = %s,
+                responsavel_id = %s, atualizado_em = NOW()
+            WHERE id = %s
+        """, (novo_item['id'], novo_item['categoria_id'], nova_desc, novo_resp_id, tratativa_id))
+
+        # Corrigir avaliacao original para apontar ao item correto
+        if tratativa.get('avaliacao_id'):
+            cursor.execute("""
+                UPDATE sentir_agir_avaliacoes
+                SET item_id = %s
+                WHERE id = %s
+            """, (novo_item['id'], tratativa['avaliacao_id']))
+
+        # Log da reclassificacao
+        _registrar_log(
+            cursor, 'tratativa', tratativa_id, 'reclassificacao', usuario,
+            campo_alterado='item_id',
+            valor_anterior='{} [cat: {}]'.format(
+                tratativa['item_descricao'], tratativa['categoria_nome']
+            )[:500],
+            valor_novo='{} [cat: {}]'.format(
+                novo_item['descricao'], novo_item['categoria_nome']
+            )[:500],
+            ip_origem=ip
+        )
+        if motivo:
+            _registrar_log(
+                cursor, 'tratativa', tratativa_id, 'reclassificacao', usuario,
+                campo_alterado='motivo', valor_novo=motivo[:500], ip_origem=ip
+            )
+
+        # Permitir renotificacao com novo item
+        cursor.execute(
+            "DELETE FROM notificacoes_log WHERE chave_evento = %s",
+            ('sentir_agir_trat_{}'.format(tratativa_id),)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Critica reclassificada para: ' + novo_item['descricao'],
+            'novo_item_id': novo_item['id'],
+            'nova_categoria_id': novo_item['categoria_id']
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: ATUALIZAR RESPONSÁVEL AUTOMATICAMENTE
+# ============================================================
+
+@painel30_bp.route('/api/paineis/painel30/tratativas/<int:tratativa_id>/atualizar-responsavel', methods=['POST'])
+@login_required
+def atualizar_responsavel_auto(tratativa_id):
+    """
+    Busca automaticamente o melhor responsavel para a tratativa
+    (categoria → setor), atribui e reenvia o email de notificacao.
+    """
+    try:
+        usuario = _get_usuario()
+        ip = _get_ip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT
+                t.id, t.responsavel_id, t.categoria_id, t.visita_id,
+                t.descricao_problema,
+                i.descricao AS item_descricao,
+                c.nome AS categoria_nome,
+                v.setor_id,
+                v.nm_paciente, v.nr_atendimento, v.leito,
+                s.nome AS setor_nome,
+                ro.data_ronda,
+                d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_visitas v ON v.id = t.visita_id
+            JOIN sentir_agir_itens i ON i.id = t.item_id
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            JOIN sentir_agir_rondas ro ON ro.id = v.ronda_id
+            JOIN sentir_agir_duplas d ON d.id = ro.dupla_id
+            WHERE t.id = %s
+        """, (tratativa_id,))
+        tratativa = cursor.fetchone()
+
+        if not tratativa:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Tratativa nao encontrada'}), 404
+
+        novo_resp_id = _encontrar_responsavel_auto(cursor, tratativa['categoria_id'], tratativa['setor_id'])
+
+        responsavel_nome = None
+        destinatarios = []
+        if novo_resp_id:
+            cursor.execute(
+                "SELECT id, nome, email FROM sentir_agir_responsaveis WHERE id = %s",
+                (novo_resp_id,)
+            )
+            resp_row = cursor.fetchone()
+            if resp_row:
+                responsavel_nome = resp_row['nome']
+                if resp_row.get('email'):
+                    destinatarios = [{'email': resp_row['email'], 'nome': resp_row['nome']}]
+
+        anterior_resp_id = tratativa['responsavel_id']
+        if novo_resp_id != anterior_resp_id:
+            cursor.execute("""
+                UPDATE sentir_agir_tratativas
+                SET responsavel_id = %s, atualizado_em = NOW()
+                WHERE id = %s
+            """, (novo_resp_id, tratativa_id))
+            _registrar_log(
+                cursor, 'tratativa', tratativa_id, 'auto_atribuicao', usuario,
+                campo_alterado='responsavel_id',
+                valor_anterior=str(anterior_resp_id or ''),
+                valor_novo=str(novo_resp_id or ''),
+                ip_origem=ip
+            )
+
+        # Remover log de notificacao anterior para permitir reenvio pelo notificador
+        cursor.execute(
+            "DELETE FROM notificacoes_log WHERE chave_evento = %s",
+            ('sentir_agir_trat_{}'.format(tratativa_id),)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        email_enviado = False
+        email_msg = 'Sem destinatario com email cadastrado'
+
+        if destinatarios:
+            dr = tratativa.get('data_ronda')
+            if hasattr(dr, 'strftime'):
+                data_ronda_fmt = dr.strftime('%d/%m/%Y')
+            elif dr:
+                partes = str(dr).split('T')[0].split('-')
+                data_ronda_fmt = '{}/{}/{}'.format(partes[2], partes[1], partes[0]) if len(partes) == 3 else str(dr)
+            else:
+                data_ronda_fmt = '--'
+
+            dados_email = {
+                'tratativa_id': tratativa_id,
+                'item_descricao': tratativa.get('item_descricao', '-'),
+                'categoria_nome': tratativa.get('categoria_nome', '-'),
+                'setor_nome': tratativa.get('setor_nome', '-'),
+                'nm_paciente': tratativa.get('nm_paciente', 'N/I'),
+                'nr_atendimento': tratativa.get('nr_atendimento'),
+                'leito': tratativa.get('leito', '-'),
+                'data_ronda_fmt': data_ronda_fmt,
+                'dupla_nome': tratativa.get('dupla_nome', '-'),
+                'destinatarios': destinatarios
+            }
+            email_enviado, email_msg = _enviar_notificacao_tratativa(dados_email)
+
+            if email_enviado:
+                try:
+                    conn2 = get_db_connection()
+                    cur2 = conn2.cursor()
+                    agora = datetime.now()
+                    cur2.execute("""
+                        INSERT INTO notificacoes_log
+                            (tipo_evento, chave_evento, nr_atendimento, nm_setor,
+                             dados_extra, topico_ntfy, status, dt_detectado,
+                             dt_primeira_notificacao, dt_ultima_notificacao,
+                             qt_notificacoes, resposta_ntfy)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        'sentir_agir_tratativa',
+                        'sentir_agir_trat_{}'.format(tratativa_id),
+                        str(tratativa.get('nr_atendimento') or ''),
+                        tratativa.get('setor_nome', ''),
+                        json.dumps({
+                            'destinatarios_email': ', '.join(d['email'] for d in destinatarios),
+                            'categoria': tratativa.get('categoria_nome', ''),
+                            'setor': tratativa.get('setor_nome', ''),
+                            'acao_manual': True
+                        }, ensure_ascii=False),
+                        '', 'notificado', agora, agora, agora, 1, email_msg
+                    ))
+                    conn2.commit()
+                    cur2.close()
+                    conn2.close()
+                except Exception:
+                    traceback.print_exc()
+
+        msg = 'Responsavel atualizado'
+        if email_enviado:
+            msg += ' e email enviado para ' + responsavel_nome
+        elif destinatarios:
+            msg += ' (falha no email: ' + email_msg + ')'
+
+        return jsonify({
+            'success': True,
+            'responsavel_id': novo_resp_id,
+            'responsavel_nome': responsavel_nome or 'Nenhum responsavel encontrado',
+            'email_enviado': email_enviado,
+            'message': msg
+        })
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

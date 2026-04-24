@@ -97,6 +97,9 @@ SMTP_FROM = os.getenv('SMTP_FROM', '')
 # Intervalo de verificacao
 INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_SENTIR_AGIR_INTERVALO_MIN', '5'))
 
+# URL base da aplicacao (para links diretos nas notificacoes)
+APP_BASE_URL = os.getenv('APP_BASE_URL', '').rstrip('/')
+
 
 # =========================================================
 # CONEXAO COM BANCO
@@ -291,7 +294,6 @@ def montar_email_html(t):
     cor = '#dc3545'
     label = 'CRITICO'
 
-    # Observacao especifica do item (nova funcionalidade)
     tipo_obs, texto_obs = _extrair_obs_item(t.get('descricao_problema', ''))
     bloco_obs_item = ''
     if texto_obs:
@@ -306,10 +308,20 @@ def montar_email_html(t):
             '</div>'
         )
 
+    bloco_link = ''
+    if APP_BASE_URL:
+        link = '{}/painel/painel30?abrir={}'.format(APP_BASE_URL, t.get('tratativa_id', ''))
+        bloco_link = (
+            '<div style="text-align:center;margin-top:18px;">'
+            '<a href="{link}" style="display:inline-block;padding:10px 24px;background:{cor};'
+            'color:white;border-radius:6px;font-weight:bold;text-decoration:none;font-size:14px;">'
+            'Abrir Tratativa</a></div>'
+        ).format(link=link, cor=cor)
+
     html = """
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: {cor}; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
-            <h2 style="margin: 0; font-size: 18px;">&#x26A0; Nova Tratativa - {label}</h2>
+            <h2 style="margin: 0; font-size: 18px;">Nova Tratativa - {label}</h2>
             <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Hospital Anchieta Ceilandia - Projeto Sentir e Agir</p>
         </div>
 
@@ -355,6 +367,8 @@ def montar_email_html(t):
                 </tr>
             </table>
 
+            {bloco_link}
+
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
                 Notificacao automatica - Sistema de Paineis HAC<br>
@@ -368,6 +382,7 @@ def montar_email_html(t):
         item=t.get('item_descricao', '-'),
         categoria=t.get('categoria_nome', '-'),
         bloco_obs_item=bloco_obs_item,
+        bloco_link=bloco_link,
         paciente=t.get('nm_paciente', 'Nao informado'),
         atendimento=t.get('nr_atendimento', '--') or '--',
         setor=t.get('setor_nome', '-'),
@@ -417,7 +432,7 @@ def montar_email_html_atencao(v):
     html = """
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: {cor}; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
-            <h2 style="margin: 0; font-size: 18px;">&#x1F4CB; Alerta de Atencao - Visita</h2>
+            <h2 style="margin: 0; font-size: 18px;">Alerta de Atencao - Visita</h2>
             <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Hospital Anchieta Ceilandia - Projeto Sentir e Agir</p>
         </div>
 
