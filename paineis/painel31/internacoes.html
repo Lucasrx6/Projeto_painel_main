@@ -54,9 +54,9 @@
             <div class="detalhe-main">
 
                 <!-- KPIs hoje: Total / UTI / Enfermaria -->
-                <div class="topo-row" style="grid-template-columns: 1fr 1fr 1fr;">
-                    <div class="destaque-hoje" style="border-left: 4px solid #3498db;">
-                        <div class="destaque-hoje-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                <div class="topo-row topo-row-internacoes">
+                    <div class="destaque-hoje destaque-azul">
+                        <div class="destaque-hoje-icon icon-azul">
                             <i class="fas fa-hospital"></i>
                         </div>
                         <div class="destaque-hoje-info">
@@ -70,8 +70,8 @@
                         </div>
                     </div>
 
-                    <div class="destaque-hoje" style="border-left: 4px solid #e74c3c;">
-                        <div class="destaque-hoje-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                    <div class="destaque-hoje destaque-vermelho">
+                        <div class="destaque-hoje-icon icon-vermelho">
                             <i class="fas fa-heart-pulse"></i>
                         </div>
                         <div class="destaque-hoje-info">
@@ -85,8 +85,8 @@
                         </div>
                     </div>
 
-                    <div class="destaque-hoje" style="border-left: 4px solid #27ae60;">
-                        <div class="destaque-hoje-icon" style="background: linear-gradient(135deg, #27ae60, #1e8449);">
+                    <div class="destaque-hoje destaque-verde">
+                        <div class="destaque-hoje-icon icon-verde">
                             <i class="fas fa-bed"></i>
                         </div>
                         <div class="destaque-hoje-info">
@@ -185,11 +185,20 @@
 
                 <div class="grafico-container">
                     <div class="grafico-header">
-                        <h2><i class="fas fa-chart-area"></i> Previsto vs Realizado + Previsoes Futuras</h2>
-                        <div class="segmento-tabs">
-                            <button class="segmento-btn-grafico ativo" data-seg-g="total">Total</button>
-                            <button class="segmento-btn-grafico" data-seg-g="uti">UTI</button>
-                            <button class="segmento-btn-grafico" data-seg-g="enfermaria">Enfermaria</button>
+                        <div class="grafico-header-esq">
+                            <h2><i class="fas fa-chart-area"></i> Previsto vs Realizado + Previsoes Futuras</h2>
+                            <span class="grafico-subtitle" id="grafico-subtitle">Ultimos 30 dias e proximos 7 dias</span>
+                            <div class="segmento-tabs" style="margin-top: 10px;">
+                                <button class="segmento-btn-grafico ativo" data-seg-g="total">Total</button>
+                                <button class="segmento-btn-grafico" data-seg-g="uti">UTI</button>
+                                <button class="segmento-btn-grafico" data-seg-g="enfermaria">Enfermaria</button>
+                            </div>
+                        </div>
+                        <div class="grafico-periodo">
+                            <button class="btn-periodo" data-dias="7">7d</button>
+                            <button class="btn-periodo ativo" data-dias="30">30d</button>
+                            <button class="btn-periodo" data-dias="60">60d</button>
+                            <button class="btn-periodo" data-dias="90">90d</button>
                         </div>
                     </div>
                     <div class="grafico-body">

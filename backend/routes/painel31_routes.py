@@ -712,11 +712,14 @@ def api_painel31_picos_hoje():
 @painel31_bp.route('/api/paineis/painel31/previsoes/internacoes', methods=['GET'])
 @login_required
 def api_painel31_previsoes_internacoes():
+    from flask import request
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
 
     if not is_admin and not verificar_permissao_painel(usuario_id, 'painel31'):
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    dias = request.args.get('dias', 30, type=int)
 
     conn = get_db_connection()
     if not conn:
@@ -746,9 +749,9 @@ def api_painel31_previsoes_internacoes():
                 intervalo_inferior, intervalo_superior
             FROM ml_internacoes_predicoes
             WHERE valor_realizado IS NOT NULL
-              AND dt_alvo >= CURRENT_DATE - INTERVAL '30 days'
+              AND dt_alvo >= CURRENT_DATE - %s * INTERVAL '1 day'
             ORDER BY dt_alvo DESC, segmento, horizonte_dias ASC
-        """)
+        """, (dias,))
         historico = cursor.fetchall()
 
         def serializar(rows):

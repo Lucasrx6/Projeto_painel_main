@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Projeto Sentir e Agir - Hospital Anchieta</title>
+    <title>Gestão de Chamados de TI - Hospital Anchieta</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -43,7 +43,6 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Barra colorida no topo (mesmo padrão do servico-card) */
         .projeto-card::before {
             content: '';
             position: absolute;
@@ -106,11 +105,8 @@
         }
 
         /* Cor de destaque por card */
-        .card-formulario  { --card-accent: #28a745; }
-        .card-tratativas  { --card-accent: #dc3545; }
         .card-gestao      { --card-accent: #17a2b8; }
-        .card-config      { --card-accent: #6f42c1; }
-        .card-analise     { --card-accent: #fd7e14; }
+        .card-abertura    { --card-accent: #dc3545; }
 
         .projeto-titulo {
             text-align: center;
@@ -177,7 +173,7 @@
             <div class="header-content">
                 <div class="header-left">
                     <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
-                    <h1><i class="fas fa-heart-pulse"></i> Projeto Sentir e Agir</h1>
+                    <h1><i class="fas fa-headset"></i> Gestão de Chamados de TI</h1>
                 </div>
                 <div class="header-right">
                     <button id="btn-voltar" class="btn-header" title="Voltar para Central de Servicos">
@@ -192,101 +188,45 @@
 
             <div class="projeto-titulo">
                 <h2>Selecione uma Área</h2>
-                <p>Pesquisa de experiência do paciente durante internação</p>
+                <p>Abertura e monitoramento de chamados emergenciais</p>
             </div>
 
             <div class="projeto-grid">
 
-                <!-- Card 1: Formulario -->
-                <a class="projeto-card card-formulario"
-                   href="/paineis/painel28/formulario.html"
-                   role="button"
-                   tabindex="0"
-                   aria-label="Acessar formulario Sentir e Agir">
-                    <div class="projeto-card-icone">
-                        <i class="fas fa-heart-pulse"></i>
-                    </div>
-                    <div class="projeto-card-nome">Formulário Sentir e Agir</div>
-                    <div class="projeto-card-descricao">
-                        Registrar visitas e avaliações de pacientes durante internação
-                    </div>
-                    <div class="projeto-card-seta">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-
-                <!-- Card 2: Central de Tratativas -->
-                <a class="projeto-card card-tratativas"
-                   href="/painel/painel30"
-                   data-painel="painel30"
+                <!-- Card 1: Abrir Chamados (Painel 15) -->
+                <a class="projeto-card card-abertura"
+                   href="/painel/painel15"
+                   data-painel="painel15"
                    role="button"
                    tabindex="0"
                    style="display: none;"
-                   aria-label="Acessar Central de Tratativas">
+                   aria-label="Acessar Abertura de Chamados">
                     <div class="projeto-card-icone">
-                        <i class="fas fa-tasks"></i>
+                        <i class="fas fa-triangle-exclamation"></i>
                     </div>
-                    <div class="projeto-card-nome">Central de Tratativas</div>
+                    <div class="projeto-card-nome">Abrir Chamados</div>
                     <div class="projeto-card-descricao">
-                        Acompanhar e gerenciar tratativas de itens críticos identificados
+                        Abertura de chamados emergenciais para a equipe de TI
                     </div>
                     <div class="projeto-card-seta">
                         <i class="fas fa-arrow-right"></i>
                     </div>
                 </a>
 
-                <!-- Card 3: Gestao Formularios -->
+                <!-- Card 2: Gestao Chamados (Painel 14) -->
                 <a class="projeto-card card-gestao"
-                   href="/painel/painel29"
-                   data-painel="painel29"
+                   href="/painel/painel14"
+                   data-painel="painel14"
                    role="button"
                    tabindex="0"
                    style="display: none;"
-                   aria-label="Acessar Gestao de Formularios">
+                   aria-label="Acessar Gestão de Chamados">
                     <div class="projeto-card-icone">
-                        <i class="fas fa-chart-bar"></i>
+                        <i class="fas fa-headset"></i>
                     </div>
-                    <div class="projeto-card-nome">Gestão Formulários</div>
+                    <div class="projeto-card-nome">Gestão de Chamados</div>
                     <div class="projeto-card-descricao">
-                        Visualizar, filtrar e exportar visitas registradas e indicadores
-                    </div>
-                    <div class="projeto-card-seta">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-
-                <!-- Card 5: Analise IA -->
-                <a class="projeto-card card-analise"
-                   href="/painel/painel32"
-                   data-painel="painel32"
-                   role="button"
-                   tabindex="0"
-                   style="display: none;"
-                   aria-label="Acessar Análise Sentir e Agir com IA">
-                    <div class="projeto-card-icone">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    <div class="projeto-card-nome">Análise com IA</div>
-                    <div class="projeto-card-descricao">
-                        Análise diária de sentimentos e indicadores com uso de Inteligência Artificial
-                    </div>
-                    <div class="projeto-card-seta">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-
-                <!-- Card 4: Configurar Formulario -->
-                <a class="projeto-card card-config"
-                   href="/paineis/painel28/formulario_config.html"
-                   role="button"
-                   tabindex="0"
-                   aria-label="Configurar categorias e itens do formulario">
-                    <div class="projeto-card-icone">
-                        <i class="fas fa-sliders"></i>
-                    </div>
-                    <div class="projeto-card-nome">Configurar Formulário</div>
-                    <div class="projeto-card-descricao">
-                        Adicionar, editar e remover categorias e perguntas do formulário
+                        Painel de monitoramento e gerenciamento de chamados abertos
                     </div>
                     <div class="projeto-card-seta">
                         <i class="fas fa-arrow-right"></i>
@@ -300,13 +240,10 @@
         <div class="hub-footer">
             <span>Hospital Anchieta Ceilandia</span>
             <span class="footer-sep">|</span>
-            <span>Projeto Sentir e Agir</span>
+            <span>Gestão de Chamados de TI</span>
         </div>
 
     </div>
-
-    <!-- Toast -->
-    <div class="toast-container" id="toast-container"></div>
 
     <script>
         (function () {
@@ -339,7 +276,6 @@
                     })
                     .catch(function(err) {
                         console.error('Erro ao buscar permissões:', err);
-                        // Em caso de erro de rede, mantém escondido por segurança
                     });
             });
         })();
