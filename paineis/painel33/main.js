@@ -3,10 +3,14 @@
     'use strict';
 
     var CONFIG = {
-        apiDados:     '/api/paineis/painel33/dados',
-        apiFiltros:   '/api/paineis/painel33/filtros',
-        apiPaciente:  '/api/paineis/painel33/paciente',
-        apiExport:    '/api/paineis/painel33/export',
+        apiDados:           '/api/paineis/painel33/dados',
+        apiFiltros:         '/api/paineis/painel33/filtros',
+        apiPaciente:        '/api/paineis/painel33/paciente',
+        apiExport:          '/api/paineis/painel33/export',
+        apiVisaoGeral:      '/api/paineis/painel33/visao-geral',
+        apiValoresDash:     '/api/paineis/painel33/valores/dashboard',
+        apiValoresLista:    '/api/paineis/painel33/valores/lista',
+        apiValoresDetalhe:  '/api/paineis/painel33/valores/detalhe',
         intervaloRefresh: 390000,
         scrollPasso:      1,
         scrollIntervalo:  50,
@@ -30,21 +34,30 @@
         msTipoAtend:     ['Internado'],
 
         // Filtros simples
-        periodo: '30',
+        periodo: '7',
         busca:   '',
 
         // Dados e agrupamento
-        pacientesOrdem:  [],
-        pacientesGrupo:  {},
-        pacienteCache:   {},  // idx -> resp data
-        expandidos:      {},  // idx -> bool
+        pacientesOrdem:    [],
+        pacientesGrupo:    {},
+        pacienteCache:     {},  // idx -> resp data
+        expandidos:        {},  // idx -> bool
+        _filaDetalhes:     [],  // fila de idx aguardando fetch
+        _emFlightDetalhes: 0,   // requisicoes paralelas em andamento
+
+        // Aba Valores Pendentes
+        valoresPagina:      1,
+        valoresTotalPag:    1,
+        valoresFiltros:     { vlMinimo: 0, apenasAltoRisco: false, apenasComConta: false },
+        drawerValoresAberto: false,
 
         // Ordem
         ordemCampo: 'dt_pedido_medico',
         ordemDir:   'desc',
 
         // UI
-        abaAtiva:            'resumo', // ou 'autorizacoes'
+        isAdmin:             false,
+        abaAtiva:            'visao-geral',
         carregando:          false,
         filtrosVisiveis:     false,
         dropdownAberto:      null,
@@ -70,10 +83,12 @@
         }
         carregarFiltros();
         carregarDados();
+        carregarVisaoGeral();
 
         estado.intervalos.refresh = setInterval(function () {
             if (!estado.filtrosVisiveis) {
                 carregarDados();
+                if (estado.abaAtiva === 'visao-geral') carregarVisaoGeral();
             }
         }, CONFIG.intervaloRefresh);
     }
@@ -100,6 +115,37 @@
         DOM.tabBtns      = document.querySelectorAll('.tab-nav-btn');
         DOM.tabPanels    = document.querySelectorAll('.tab-panel');
         DOM.resumoSintetico = document.getElementById('resumo-sintetico-container');
+
+        // Aba Visão Geral
+        DOM.vgKpis            = document.getElementById('vg-kpis');
+        DOM.vgConveniosTbody  = document.getElementById('vg-convenios-tbody');
+        DOM.vgAnaliticaTbody  = document.getElementById('vg-analitica-tbody');
+        DOM.tabBtnValores     = document.getElementById('tab-btn-valores');
+        // Modal Responsáveis
+        DOM.modalResp         = document.getElementById('modal-resp');
+        DOM.modalRespOverlay  = document.getElementById('modal-resp-overlay');
+        DOM.modalRespFechar   = document.getElementById('modal-resp-fechar');
+        DOM.modalRespBody     = document.getElementById('modal-resp-body');
+        DOM.btnAbrirResp      = document.getElementById('btn-abrir-responsaveis');
+
+        // Aba Valores
+        DOM.valoresKpis       = document.getElementById('valores-kpis');
+        DOM.valoresChartConv  = document.getElementById('chart-convenios');
+        DOM.valoresChartSet   = document.getElementById('chart-setores');
+        DOM.valoresTbody      = document.getElementById('valores-tbody');
+        DOM.valoresPagLabel   = document.getElementById('valores-total-label');
+        DOM.valoresPaginacao  = document.getElementById('valores-paginacao');
+        DOM.vfVlMin           = document.getElementById('vf-vlmin');
+        DOM.vfVlMinDisplay    = document.getElementById('vf-vlmin-display');
+        DOM.vfAltoRisco       = document.getElementById('vf-alto-risco');
+        DOM.vfComConta        = document.getElementById('vf-com-conta');
+        // Drawer valores
+        DOM.drawerValores        = document.getElementById('drawer-valores');
+        DOM.drawerValoresOverlay = document.getElementById('drawer-valores-overlay');
+        DOM.drawerValoresFechar  = document.getElementById('drawer-valores-fechar');
+        DOM.drawerValoresBody    = document.getElementById('drawer-valores-body');
+        DOM.drawerValoresSeq     = document.getElementById('drawer-valores-seq');
+        DOM.drawerValoresTabNav  = document.getElementById('drawer-valores-tabnav');
     }
 
     // ============================================================
@@ -209,6 +255,48 @@
 
         // Inicializar multi-selects fixos
         vincularMultiSelect('ms-semaforo');
+
+        // Filtros extras da aba valores
+        DOM.vfVlMin.addEventListener('input', function () {
+            estado.valoresFiltros.vlMinimo = parseInt(this.value, 10) || 0;
+            DOM.vfVlMinDisplay.textContent = formatarBRL(estado.valoresFiltros.vlMinimo, true);
+        });
+        DOM.vfVlMin.addEventListener('change', function () {
+            estado.valoresPagina = 1;
+            carregarValoresLista(1);
+        });
+        DOM.vfAltoRisco.addEventListener('change', function () {
+            estado.valoresFiltros.apenasAltoRisco = this.checked;
+            estado.valoresPagina = 1;
+            carregarValoresLista(1);
+        });
+        DOM.vfComConta.addEventListener('change', function () {
+            estado.valoresFiltros.apenasComConta = this.checked;
+            estado.valoresPagina = 1;
+            carregarValoresLista(1);
+        });
+
+        // Modal Responsáveis
+        if (DOM.btnAbrirResp)    DOM.btnAbrirResp.addEventListener('click', abrirModalResponsaveis);
+        if (DOM.modalRespFechar) DOM.modalRespFechar.addEventListener('click', fecharModalResponsaveis);
+        if (DOM.modalRespOverlay) DOM.modalRespOverlay.addEventListener('click', fecharModalResponsaveis);
+
+        // Drawer valores — fechar
+        DOM.drawerValoresFechar.addEventListener('click', fecharDrawerValores);
+        DOM.drawerValoresOverlay.addEventListener('click', fecharDrawerValores);
+
+        // Tabs internas do drawer valores
+        DOM.drawerValoresTabNav.addEventListener('click', function (e) {
+            var btn = e.target.closest('.det-tab-btn');
+            if (!btn) return;
+            var dtab = btn.getAttribute('data-dtab');
+            var btns = DOM.drawerValoresTabNav.querySelectorAll('.det-tab-btn');
+            for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i] === btn);
+            var panels = DOM.drawerValoresBody.querySelectorAll('.fin-tab-panel');
+            for (var j = 0; j < panels.length; j++) {
+                panels[j].classList.toggle('active', panels[j].getAttribute('data-dtab') === dtab);
+            }
+        });
     }
 
     function fecharTodosDropdowns() {
@@ -237,6 +325,15 @@
             iniciarScrollAutomatico();
         } else {
             pararScrollAutomatico();
+        }
+
+        // Carregar aba ao entrar nela
+        if (tabId === 'visao-geral') {
+            carregarVisaoGeral();
+        }
+        if (tabId === 'valores') {
+            carregarValoresDashboard();
+            carregarValoresLista(1);
         }
 
         // Limpar filtros ao voltar para a Visão Sintética
@@ -420,9 +517,9 @@
 
     function limparTudo() {
         resetarTodosMultiSelects();
-        estado.periodo = '30';
+        estado.periodo = '7';
         estado.busca   = '';
-        DOM.filtroPeriodo.value = '30';
+        DOM.filtroPeriodo.value = '7';
         DOM.filtroBusca.value   = '';
         salvarEstadoLocal();
         recarregarTudo();
@@ -432,6 +529,11 @@
         estado.pacienteCache = {};
         estado.expandidos    = {};
         carregarDados();
+        carregarVisaoGeral();
+        if (estado.abaAtiva === 'valores') {
+            carregarValoresDashboard();
+            carregarValoresLista(1);
+        }
     }
 
     function filtrarPorSetorNaAbaAnalitica(setor) {
@@ -732,10 +834,12 @@
             })(linhasPac[j]));
         }
 
-        // Auto-carregar detalhes de todos os pacientes expandidos
+        // Enfileirar detalhes (máx MAX_DETALHES_PARALELOS simultâneos)
+        estado._filaDetalhes     = [];
+        estado._emFlightDetalhes = 0;
         for (var ai = 0; ai < agrupado.ordem.length; ai++) {
             if (estado.expandidos[ai] && !estado.pacienteCache[ai]) {
-                carregarDetalhePaciente(ai);
+                enfileirarDetalhePaciente(ai);
             }
         }
 
@@ -821,34 +925,48 @@
             html += '<div class="setor-stat"><span class="setor-stat-val">' + qtdAtendimentos + '</span><span class="setor-stat-lbl">Atendimentos</span></div>';
             html += '</div>';
 
-            // Situação (ds_estagio direto, ordenado por count desc)
-            var semToCls = { verde: 'sit-autorizado', amarelo: 'sit-aguardando', laranja: 'sit-acao', vermelho: 'sit-negado' };
+            // SLA (5 dias) — tira compacta horizontal
+            var temSla = s.slaStatus.verde + s.slaStatus.amarelo + s.slaStatus.vermelho;
+            if (temSla > 0) {
+                html += '<div class="setor-sla-strip">';
+                if (s.slaStatus.verde > 0)    html += '<div class="sla-seg sla-seg-verde"><span class="sla-seg-num">' + s.slaStatus.verde + '</span><span class="sla-seg-lbl">No Prazo</span></div>';
+                if (s.slaStatus.amarelo > 0)  html += '<div class="sla-seg sla-seg-amarelo"><span class="sla-seg-num">' + s.slaStatus.amarelo + '</span><span class="sla-seg-lbl">Atenção</span></div>';
+                if (s.slaStatus.vermelho > 0) html += '<div class="sla-seg sla-seg-vermelho"><span class="sla-seg-num">' + s.slaStatus.vermelho + '</span><span class="sla-seg-lbl">Vencido</span></div>';
+                html += '</div>';
+            }
+
+            // Estágios — lista vertical, Solicitado separado no topo
             var estKeys = Object.keys(s.estagiosDiretos).sort(function(a, b) {
                 return s.estagiosDiretos[b].count - s.estagiosDiretos[a].count;
             });
-            if (estKeys.length > 0) {
-                html += '<div class="setor-situacao">';
-                html += '<div class="breakdown-title">Situação</div>';
-                html += '<div class="setor-situacao-row">';
-                for (var ek = 0; ek < estKeys.length; ek++) {
-                    var estK = estKeys[ek];
-                    var estD = s.estagiosDiretos[estK];
-                    var sitCls = semToCls[estD.sem] || 'sit-outros';
-                    html += '<div class="setor-sit-item ' + sitCls + '"><span class="sit-val">' + estD.count + '</span><span class="sit-lbl">' + esc(estK) + '</span></div>';
-                }
-                html += '</div></div>';
-            }
+            var solicitadoData = s.estagiosDiretos['Solicitado'] || null;
+            var outrosEst = estKeys.filter(function(k) { return k !== 'Solicitado'; });
 
-            // SLA (5 dias: verde <48h, amarelo 48-120h, vermelho >120h)
-            var temSla = s.slaStatus.verde + s.slaStatus.amarelo + s.slaStatus.vermelho;
-            if (temSla > 0) {
-                html += '<div class="setor-situacao">';
-                html += '<div class="breakdown-title">SLA (5 dias)</div>';
-                html += '<div class="setor-situacao-row">';
-                if (s.slaStatus.verde > 0)    html += '<div class="setor-sit-item sit-sla-dentro"><span class="sit-val">' + s.slaStatus.verde + '</span><span class="sit-lbl">No Prazo</span></div>';
-                if (s.slaStatus.amarelo > 0)  html += '<div class="setor-sit-item sit-sla-atencao"><span class="sit-val">' + s.slaStatus.amarelo + '</span><span class="sit-lbl">Atenção</span></div>';
-                if (s.slaStatus.vermelho > 0) html += '<div class="setor-sit-item sit-sla-atrasado"><span class="sit-val">' + s.slaStatus.vermelho + '</span><span class="sit-lbl">Vencido</span></div>';
-                html += '</div></div>';
+            if (estKeys.length > 0) {
+                html += '<div class="setor-estagio-list">';
+
+                if (solicitadoData) {
+                    html += '<div class="est-row est-stop">';
+                    html += '<span class="est-count">' + solicitadoData.count + '</span>';
+                    html += '<span class="est-nome">Solicitado</span>';
+                    html += '<span class="est-stop-tag">STOP</span>';
+                    html += '</div>';
+                    if (outrosEst.length > 0) {
+                        html += '<div class="est-divider">Pendentes</div>';
+                    }
+                }
+
+                var semToEstCls = { verde: 'est-verde', amarelo: 'est-amarelo', vermelho: 'est-vermelho' };
+                for (var ek = 0; ek < outrosEst.length; ek++) {
+                    var estK = outrosEst[ek];
+                    var estD = s.estagiosDiretos[estK];
+                    var estCls = semToEstCls[estD.sem] || 'est-neutro';
+                    html += '<div class="est-row ' + estCls + '">';
+                    html += '<span class="est-count">' + estD.count + '</span>';
+                    html += '<span class="est-nome">' + esc(estK) + '</span>';
+                    html += '</div>';
+                }
+                html += '</div>';
             }
 
             // Alerta sem docs
@@ -882,11 +1000,33 @@
         DOM.resumoSintetico.innerHTML = html;
     }
 
-    function carregarDetalhePaciente(idx) {
+    var MAX_DETALHES_PARALELOS = 3;
+
+    function enfileirarDetalhePaciente(idx) {
+        if (estado.pacienteCache[idx]) return;
+        if (estado._filaDetalhes.indexOf(idx) === -1) {
+            estado._filaDetalhes.push(idx);
+        }
+        _processarFilaDetalhes();
+    }
+
+    function _processarFilaDetalhes() {
+        while (estado._emFlightDetalhes < MAX_DETALHES_PARALELOS && estado._filaDetalhes.length > 0) {
+            var nextIdx = estado._filaDetalhes.shift();
+            if (estado.pacienteCache[nextIdx]) { continue; }
+            estado._emFlightDetalhes++;
+            carregarDetalhePaciente(nextIdx, function () {
+                estado._emFlightDetalhes = Math.max(0, estado._emFlightDetalhes - 1);
+                _processarFilaDetalhes();
+            });
+        }
+    }
+
+    function carregarDetalhePaciente(idx, onComplete) {
         var key = estado.pacientesOrdem[idx];
         var g   = estado.pacientesGrupo[key];
         var cd  = g.cd;
-        if (!cd) return;
+        if (!cd) { if (onComplete) onComplete(); return; }
         var params = construirParams();
         params.cd  = String(cd);
         fetchComRetry(CONFIG.apiPaciente, params).then(function (resp) {
@@ -902,7 +1042,10 @@
                 var resumoCell = document.getElementById('pac-resumo-' + idx);
                 if (resumoCell) resumoCell.innerHTML = renderizarResumoPac(g, resp);
             }
-        }).catch(function () {});
+            if (onComplete) onComplete();
+        }).catch(function () {
+            if (onComplete) onComplete();
+        });
     }
 
     // ============================================================
@@ -1407,6 +1550,690 @@
     function atualizarHora() {
         var agora = new Date();
         DOM.ultimaAtualizacao.textContent = pad(agora.getHours()) + ':' + pad(agora.getMinutes());
+    }
+
+    // ============================================================
+    // VISÃO GERAL
+    // ============================================================
+
+    function calcularUrgencia(estagio, horas) {
+        if (estagio === 'Solicitado') return 'sol';
+        var h = parseFloat(horas) || 0;
+        if (h >= 120) return 'ven';
+        if (h >= 96)  return 'ate';
+        if (h >= 48)  return 'amarelo';
+        return 'verde';
+    }
+
+    function carregarVisaoGeral() {
+        fetchComRetry(CONFIG.apiVisaoGeral, construirParams()).then(function (resp) {
+            if (!resp.ok) return;
+            if (resp.is_admin !== undefined) {
+                estado.isAdmin = !!resp.is_admin;
+                if (DOM.tabBtnValores) DOM.tabBtnValores.style.display = estado.isAdmin ? '' : 'none';
+            }
+            renderizarKpisVG(resp.kpis || {});
+            renderizarConveniosVG(resp.convenios || []);
+            renderizarAnaliticaVG(resp.analitica || []);
+        }).catch(function () {
+            DOM.vgKpis.innerHTML = '<div class="pac-vazio"><i class="fas fa-exclamation-triangle"></i> Falha ao carregar.</div>';
+        });
+    }
+
+    function renderizarKpisVG(k) {
+        var cards = [
+            {
+                cls: 'vgk-sol', icon: 'fa-pause-circle',
+                lbl: 'Solicitado', sub: 'Aguardando resposta da operadora',
+                qt: k.qt_solicitado || 0, vl: k.vl_solicitado || 0
+            },
+            {
+                cls: 'vgk-ate', icon: 'fa-triangle-exclamation',
+                lbl: 'Atenção', sub: 'Vencendo em até 24h',
+                qt: k.qt_atencao || 0, vl: k.vl_atencao || 0
+            },
+            {
+                cls: 'vgk-ven', icon: 'fa-circle-xmark',
+                lbl: 'Vencido', sub: 'SLA expirado (≥ 120h)',
+                qt: k.qt_vencido || 0, vl: k.vl_vencido || 0
+            }
+        ];
+        var html = '';
+        for (var i = 0; i < cards.length; i++) {
+            var c = cards[i];
+            html += '<div class="vg-kpi-card ' + c.cls + '">';
+            html += '<div class="vg-kpi-icon"><i class="fas ' + c.icon + '"></i></div>';
+            html += '<div class="vg-kpi-body">';
+            html += '<div class="vg-kpi-header">' + esc(c.lbl) + '</div>';
+            html += '<div class="vg-kpi-num">' + c.qt + '</div>';
+            html += '<div class="vg-kpi-sub">' + formatarBRL(c.vl) + '</div>';
+            html += '<div class="vg-kpi-sub">' + esc(c.sub) + '</div>';
+            html += '</div></div>';
+        }
+        DOM.vgKpis.innerHTML = html;
+    }
+
+    function renderizarConveniosVG(rows) {
+        if (!rows.length) {
+            DOM.vgConveniosTbody.innerHTML = '<tr><td colspan="5" style="padding:12px;text-align:center;color:#999;font-size:.75rem"><i class="fas fa-inbox"></i> Nenhum dado no período.</td></tr>';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<tr>';
+            html += '<td class="vg-conv-nome">' + esc(r.ds_convenio || '—') + '</td>';
+            html += '<td class="vg-conv-cell"><span class="vg-conv-qt" style="color:#495057">' + (r.qt_total || 0) + '</span></td>';
+            html += '<td class="vg-conv-cell">';
+            html += '<span class="vg-conv-qt vg-conv-qt-sol">' + (r.qt_solicitado || 0) + '</span>';
+            html += '<span class="vg-conv-vl">' + formatarBRL(r.vl_solicitado, true) + '</span>';
+            html += '</td>';
+            html += '<td class="vg-conv-cell">';
+            html += '<span class="vg-conv-qt vg-conv-qt-ate">' + (r.qt_atencao || 0) + '</span>';
+            html += '<span class="vg-conv-vl">' + formatarBRL(r.vl_atencao, true) + '</span>';
+            html += '</td>';
+            html += '<td class="vg-conv-cell">';
+            html += '<span class="vg-conv-qt vg-conv-qt-ven">' + (r.qt_vencido || 0) + '</span>';
+            html += '<span class="vg-conv-vl">' + formatarBRL(r.vl_vencido, true) + '</span>';
+            html += '</td>';
+            html += '</tr>';
+        }
+        DOM.vgConveniosTbody.innerHTML = html;
+    }
+
+    function renderizarAnaliticaVG(rows) {
+        if (!rows.length) {
+            DOM.vgAnaliticaTbody.innerHTML = '<tr><td colspan="8" style="padding:12px;text-align:center;color:#999;font-size:.75rem"><i class="fas fa-inbox"></i> Nenhuma autorização.</td></tr>';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var urg = calcularUrgencia(r.ds_estagio, r.horas_em_aberto);
+            var rowCls = urg === 'ven' ? 'vg-row-ven' : (urg === 'ate' ? 'vg-row-ate' : '');
+            var badgeCls = 'vg-badge vg-badge-' + urg;
+            var semDot = 'vg-sem-' + (urg === 'ven' ? 'vermelho' : (urg === 'ate' || urg === 'amarelo' ? 'amarelo' : 'verde'));
+            var horas = parseFloat(r.horas_em_aberto) || 0;
+            var prazoStr, prazoCls;
+            if (r.ds_estagio === 'Solicitado') {
+                prazoStr = '—';
+                prazoCls = 'color:#aaa';
+            } else {
+                var diasRestantes = (120 - horas) / 24;
+                if (diasRestantes <= 0) {
+                    prazoStr = 'Vencido';
+                    prazoCls = 'color:#c62828;font-weight:700';
+                } else if (diasRestantes < 1) {
+                    prazoStr = Math.round(diasRestantes * 24) + 'h';
+                    prazoCls = 'color:#e65100;font-weight:700';
+                } else {
+                    prazoStr = diasRestantes.toFixed(1).replace('.', ',') + 'd';
+                    prazoCls = diasRestantes <= 1 ? 'color:#e65100;font-weight:600' : 'color:#2e7d32';
+                }
+            }
+            var dtPedido = r.dt_pedido_medico ? formatarData(r.dt_pedido_medico) : '—';
+            var qtAutor = parseInt(r.qt_autorizacoes) || 1;
+            var qtBadge = qtAutor > 1
+                ? ' <span style="display:inline-block;background:#e9ecef;color:#495057;border-radius:99px;padding:0 5px;font-size:.62rem;font-weight:700;vertical-align:middle">' + qtAutor + '</span>'
+                : '';
+
+            html += '<tr class="' + rowCls + '">';
+            html += '<td><span class="vg-sem-dot ' + semDot + '"></span></td>';
+            html += '<td><div style="font-weight:600;font-size:.75rem">' + esc(r.nm_paciente || '—') + qtBadge + '</div><div style="font-size:.67rem;color:#888">Atend. ' + (r.nr_atendimento || '—') + '</div></td>';
+            html += '<td style="font-size:.72rem">' + esc(r.ds_convenio || '—') + '</td>';
+            html += '<td><span class="' + badgeCls + '">' + esc(r.ds_estagio || '—') + '</span></td>';
+            html += '<td style="font-size:.7rem">' + esc(r.ds_setor_atendimento || '—') + '</td>';
+            html += '<td style="font-size:.7rem">' + dtPedido + '</td>';
+            html += '<td class="tc" style="font-size:.7rem;' + prazoCls + '">' + prazoStr + '</td>';
+            var respStr = r.responsavel || '—';
+            html += '<td><span class="vg-resp-nome" title="' + esc(respStr) + '">' + esc(respStr) + '</span></td>';
+            html += '</tr>';
+        }
+        DOM.vgAnaliticaTbody.innerHTML = html;
+    }
+
+    // ============================================================
+    // CRUD: RESPONSÁVEIS POR CONVÊNIO
+    // ============================================================
+
+    var CONFIG_RESP = {
+        apiListar:  '/api/paineis/painel33/responsaveis',
+        apiSalvar:  '/api/paineis/painel33/responsaveis/salvar',
+        apiExcluir: '/api/paineis/painel33/responsaveis/excluir'
+    };
+
+    function abrirModalResponsaveis() {
+        DOM.modalResp.classList.add('aberto');
+        DOM.modalRespOverlay.classList.add('aberto');
+        carregarResponsaveis();
+    }
+
+    function fecharModalResponsaveis() {
+        DOM.modalResp.classList.remove('aberto');
+        DOM.modalRespOverlay.classList.remove('aberto');
+    }
+
+    function carregarResponsaveis() {
+        DOM.modalRespBody.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+        fetchComRetry(CONFIG_RESP.apiListar, {}).then(function (resp) {
+            if (!resp.ok) {
+                DOM.modalRespBody.innerHTML = '<div class="pac-vazio">Erro ao carregar responsáveis.</div>';
+                return;
+            }
+            renderizarResponsaveis(resp.responsaveis || []);
+        }).catch(function () {
+            DOM.modalRespBody.innerHTML = '<div class="pac-vazio">Falha de conexão.</div>';
+        });
+    }
+
+    function renderizarResponsaveis(lista) {
+        var html = '<div class="mr-list-wrap">';
+        html += '<div class="mr-list-header">';
+        html += '<span>Responsáveis cadastrados</span>';
+        html += '<button class="mr-btn-novo" id="mr-btn-novo"><i class="fas fa-plus"></i> Novo</button>';
+        html += '</div>';
+
+        if (!lista.length) {
+            html += '<div class="mr-empty"><i class="fas fa-user-slash"></i> Nenhum responsável cadastrado.</div>';
+        } else {
+            html += '<table class="mr-table"><thead><tr><th>Nome</th><th>Convênios</th><th></th></tr></thead><tbody>';
+            for (var i = 0; i < lista.length; i++) {
+                var r = lista[i];
+                var convs = r.convenios || [];
+                var pillsHtml = '';
+                for (var j = 0; j < convs.length; j++) {
+                    pillsHtml += '<span class="mr-conv-pill">' + esc(convs[j]) + '</span>';
+                }
+                html += '<tr>';
+                html += '<td class="mr-nome">' + esc(r.nm_responsavel) + '</td>';
+                html += '<td>' + (pillsHtml || '<span style="color:#aaa;font-size:.72rem">—</span>') + '</td>';
+                html += '<td class="mr-acoes">'
+                    + '<button class="mr-btn-acao mr-btn-editar" data-nome="' + esc(r.nm_responsavel) + '" data-convs="' + esc(JSON.stringify(convs)) + '" title="Editar"><i class="fas fa-pencil"></i></button>'
+                    + '<button class="mr-btn-acao mr-btn-excluir" data-nome="' + esc(r.nm_responsavel) + '" title="Excluir"><i class="fas fa-trash"></i></button>'
+                    + '</td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+        }
+        html += '</div>';
+        html += '<div id="mr-form-wrap"></div>';
+        DOM.modalRespBody.innerHTML = html;
+
+        document.getElementById('mr-btn-novo').addEventListener('click', function () {
+            mostrarFormResponsavel(null, []);
+        });
+
+        var btnsEditar = DOM.modalRespBody.querySelectorAll('.mr-btn-editar');
+        for (var e = 0; e < btnsEditar.length; e++) {
+            btnsEditar[e].addEventListener('click', (function (btn) {
+                return function () {
+                    var nome = btn.getAttribute('data-nome');
+                    var convs = JSON.parse(btn.getAttribute('data-convs') || '[]');
+                    mostrarFormResponsavel(nome, convs);
+                };
+            })(btnsEditar[e]));
+        }
+
+        var btnsExcluir = DOM.modalRespBody.querySelectorAll('.mr-btn-excluir');
+        for (var x = 0; x < btnsExcluir.length; x++) {
+            btnsExcluir[x].addEventListener('click', (function (btn) {
+                return function () {
+                    excluirResponsavel(btn.getAttribute('data-nome'));
+                };
+            })(btnsExcluir[x]));
+        }
+    }
+
+    function mostrarFormResponsavel(nomeAtual, convsAtuais) {
+        var formWrap = document.getElementById('mr-form-wrap');
+        if (!formWrap) return;
+
+        // Obter lista de convênios disponíveis do multi-select
+        var convDisp = [];
+        var msConvEl = document.getElementById('ms-convenio');
+        if (msConvEl) {
+            var opts = msConvEl.querySelectorAll('.multi-select-checkbox');
+            for (var i = 0; i < opts.length; i++) {
+                convDisp.push(opts[i].value);
+            }
+        }
+
+        var checksHtml = '';
+        if (!convDisp.length) {
+            checksHtml = '<p style="font-size:.75rem;color:#888">Nenhum convênio disponível. Atualize os filtros primeiro.</p>';
+        } else {
+            for (var j = 0; j < convDisp.length; j++) {
+                var checked = convsAtuais.indexOf(convDisp[j]) !== -1 ? ' checked' : '';
+                checksHtml += '<label class="mr-check-item">'
+                    + '<input type="checkbox" class="mr-conv-cb" value="' + esc(convDisp[j]) + '"' + checked + '>'
+                    + '<span>' + esc(convDisp[j]) + '</span>'
+                    + '</label>';
+            }
+        }
+
+        var titulo = nomeAtual ? 'Editar: ' + nomeAtual : 'Novo Responsável';
+        formWrap.innerHTML = '<div class="mr-form">'
+            + '<div class="mr-form-title">' + esc(titulo) + '</div>'
+            + '<label class="mr-form-label">Nome do Responsável</label>'
+            + '<input type="text" id="mr-input-nome" class="mr-input" placeholder="Ex: Maria Silva" value="' + esc(nomeAtual || '') + '" ' + (nomeAtual ? 'readonly' : '') + '>'
+            + '<label class="mr-form-label">Convênios</label>'
+            + '<div class="mr-conv-checks">' + checksHtml + '</div>'
+            + '<div class="mr-form-btns">'
+            + '<button class="mr-btn-salvar" id="mr-btn-salvar"><i class="fas fa-save"></i> Salvar</button>'
+            + '<button class="mr-btn-cancelar" id="mr-btn-cancelar"><i class="fas fa-times"></i> Cancelar</button>'
+            + '</div>'
+            + '</div>';
+
+        document.getElementById('mr-btn-salvar').addEventListener('click', function () {
+            salvarResponsavel(nomeAtual);
+        });
+        document.getElementById('mr-btn-cancelar').addEventListener('click', function () {
+            formWrap.innerHTML = '';
+        });
+
+        formWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function salvarResponsavel(nomeOriginal) {
+        var nomeInput = document.getElementById('mr-input-nome');
+        if (!nomeInput) return;
+        var nome = nomeInput.value.trim();
+        if (!nome) { mostrarToast('Informe o nome do responsável.', 'aviso'); return; }
+
+        var cbs = document.querySelectorAll('.mr-conv-cb:checked');
+        var convs = [];
+        for (var i = 0; i < cbs.length; i++) convs.push(cbs[i].value);
+
+        var payload = { nm_responsavel: nome, convenios: convs };
+
+        fetch(CONFIG_RESP.apiSalvar, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(function (r) { return r.json(); }).then(function (resp) {
+            if (!resp.ok) { mostrarToast('Erro: ' + (resp.erro || ''), 'erro'); return; }
+            mostrarToast('Responsável salvo com sucesso.', 'sucesso');
+            carregarResponsaveis();
+            carregarVisaoGeral();
+        }).catch(function () {
+            mostrarToast('Falha ao salvar.', 'erro');
+        });
+    }
+
+    function excluirResponsavel(nome) {
+        if (!confirm('Excluir responsável "' + nome + '"?')) return;
+        fetch(CONFIG_RESP.apiExcluir, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nm_responsavel: nome })
+        }).then(function (r) { return r.json(); }).then(function (resp) {
+            if (!resp.ok) { mostrarToast('Erro: ' + (resp.erro || ''), 'erro'); return; }
+            mostrarToast('Responsável excluído.', 'sucesso');
+            carregarResponsaveis();
+            carregarVisaoGeral();
+        }).catch(function () {
+            mostrarToast('Falha ao excluir.', 'erro');
+        });
+    }
+
+    // ============================================================
+    // FORMATADORES FINANCEIROS
+    // ============================================================
+
+    function formatarBRL(v, semCentavos) {
+        if (v === null || v === undefined || v === '') return '--';
+        var n = parseFloat(v);
+        if (isNaN(n)) return '--';
+        if (semCentavos) {
+            return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatarData(v) {
+        if (!v) return '--';
+        try {
+            var d = new Date(v);
+            return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+        } catch (e) { return v; }
+    }
+
+    // ============================================================
+    // ABA: VALORES PENDENTES — DASHBOARD
+    // ============================================================
+
+    function construirParamsValores(extra) {
+        var p = construirParams();
+        if (estado.valoresFiltros.vlMinimo > 0)       p.vl_minimo        = estado.valoresFiltros.vlMinimo;
+        if (estado.valoresFiltros.apenasAltoRisco)    p.apenas_alto_risco = '1';
+        if (estado.valoresFiltros.apenasComConta)     p.apenas_com_conta  = '1';
+        if (extra) { for (var k in extra) p[k] = extra[k]; }
+        return p;
+    }
+
+    function carregarValoresDashboard() {
+        DOM.valoresKpis.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Carregando KPIs...</p></div>';
+        fetchComRetry(CONFIG.apiValoresDash, construirParams()).then(function (resp) {
+            if (!resp.ok) {
+                DOM.valoresKpis.innerHTML = '<div class="loading">Erro ao carregar KPIs.</div>';
+                return;
+            }
+            renderizarKpisValores(resp.kpis);
+            renderizarBarras(DOM.valoresChartConv, resp.top_convenios, 'ds_convenio', 'vl_pendente');
+            renderizarBarras(DOM.valoresChartSet,  resp.top_setores,   'ds_setor',    'vl_pendente');
+        }).catch(function () {
+            DOM.valoresKpis.innerHTML = '<div class="loading">Falha de conexão.</div>';
+        });
+    }
+
+    function renderizarKpisValores(k) {
+        var kpis = [
+            { cls: 'kpi-total',       icon: 'fa-money-bill-trend-up',   val: formatarBRL(k.vl_total_pendente_geral),            lbl: 'Valor Pendente Total' },
+            { cls: 'kpi-acao',        icon: 'fa-triangle-exclamation',  val: formatarBRL(k.vl_total_pendente_acao_hospital),    lbl: 'Pendente — Ação Hospital' },
+            { cls: 'kpi-aguardando',  icon: 'fa-hourglass-half',        val: formatarBRL(k.vl_total_pendente_aguardando),       lbl: 'Pendente — Aguard. Operadora' },
+            { cls: 'kpi-risco',       icon: 'fa-fire',                  val: (k.qt_autorizacoes_alto_risco || 0) + ' autorizações', lbl: 'Alto Risco (> R$10k)' },
+            { cls: 'kpi-contas',      icon: 'fa-file-invoice-dollar',   val: formatarBRL(k.vl_em_contas_abertas),               lbl: 'Total em Contas Abertas' },
+            { cls: 'kpi-medio',       icon: 'fa-calculator',            val: formatarBRL(k.vl_medio),                          lbl: 'Ticket Médio / Autorização' }
+        ];
+        var html = '';
+        for (var i = 0; i < kpis.length; i++) {
+            var c = kpis[i];
+            html += '<div class="vkpi-card ' + c.cls + '">';
+            html += '<div class="vkpi-icon"><i class="fas ' + c.icon + '"></i></div>';
+            html += '<div class="vkpi-body">';
+            html += '<span class="vkpi-val">' + esc(c.val) + '</span>';
+            html += '<span class="vkpi-lbl">' + esc(c.lbl) + '</span>';
+            html += '</div></div>';
+        }
+        DOM.valoresKpis.innerHTML = html;
+    }
+
+    function renderizarBarras(containerEl, items, labelKey, valKey) {
+        if (!containerEl) return;
+        if (!items || !items.length) {
+            containerEl.innerHTML = '<div class="chart-empty">Sem dados</div>';
+            return;
+        }
+        var max = 0;
+        for (var i = 0; i < items.length; i++) {
+            var v = parseFloat(items[i][valKey]) || 0;
+            if (v > max) max = v;
+        }
+        if (max === 0) max = 1;
+        var html = '';
+        for (var j = 0; j < items.length; j++) {
+            var row = items[j];
+            var val = parseFloat(row[valKey]) || 0;
+            var pct = Math.round((val / max) * 100);
+            html += '<div class="chart-row">';
+            html += '<span class="chart-lbl" title="' + esc(row[labelKey]) + '">' + esc(row[labelKey] || '—') + '</span>';
+            html += '<div class="chart-bar-track"><div class="chart-bar-fill" style="width:' + pct + '%"></div></div>';
+            html += '<span class="chart-val">' + formatarBRL(val) + '</span>';
+            html += '</div>';
+        }
+        containerEl.innerHTML = html;
+    }
+
+    // ============================================================
+    // ABA: VALORES PENDENTES — LISTA
+    // ============================================================
+
+    function carregarValoresLista(pagina) {
+        pagina = pagina || 1;
+        estado.valoresPagina = pagina;
+        if (DOM.valoresTbody) {
+            DOM.valoresTbody.innerHTML = '<tr><td colspan="12" class="loading-cell"><div class="loading-spinner"></div> Carregando...</td></tr>';
+        }
+        var params = construirParamsValores({ pagina: pagina, por_pagina: 100 });
+        fetchComRetry(CONFIG.apiValoresLista, params).then(function (resp) {
+            if (!resp.ok) {
+                if (DOM.valoresTbody) DOM.valoresTbody.innerHTML = '<tr><td colspan="12" class="loading-cell">Erro ao carregar.</td></tr>';
+                return;
+            }
+            estado.valoresTotalPag = resp.total_paginas || 1;
+            renderizarTabelaValores(resp.items || [], resp.total || 0);
+            renderizarPaginacaoValores(pagina, resp.total_paginas || 1, resp.total || 0);
+        }).catch(function (err) {
+            if (DOM.valoresTbody) DOM.valoresTbody.innerHTML = '<tr><td colspan="12" class="loading-cell">Falha: ' + esc(err.message) + '</td></tr>';
+        });
+    }
+
+    function renderizarTabelaValores(items, total) {
+        if (DOM.valoresPagLabel) {
+            DOM.valoresPagLabel.textContent = total + ' registro' + (total !== 1 ? 's' : '');
+        }
+        if (!items.length) {
+            DOM.valoresTbody.innerHTML = '<tr><td colspan="12" class="loading-cell" style="padding:2rem">Nenhum registro encontrado.</td></tr>';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+            var d = items[i];
+            var semCls = calcularSemaforoPrazo(d.ds_estagio, d.horas_em_aberto);
+            var altoRisco = d.flag_alto_risco;
+            var vlPend = parseFloat(d.vl_pendente_autorizacao) || 0;
+            var rowCls = altoRisco ? ' class="vt-row-risco"' : '';
+
+            // Conta / Período
+            var contaHtml;
+            if (d.nr_interno_conta) {
+                contaHtml = '<span title="Conta ' + esc(d.nr_interno_conta) + '">'
+                    + esc(d.nr_interno_conta) + '</span>';
+            } else {
+                contaHtml = '<span class="vt-sem-conta">— sem conta —</span>';
+            }
+
+            html += '<tr' + rowCls + '>';
+            html += '<td class="vt-sem" style="padding:0"><span class="sem-bar sem-' + semCls + '"></span></td>';
+            html += '<td class="vt-atend"><strong>' + esc(d.nr_atendimento) + '</strong></td>';
+            html += '<td class="vt-pac" title="' + esc(d.nm_paciente) + '">' + esc(d.nm_paciente) + '</td>';
+            html += '<td class="vt-conv" title="' + esc(d.ds_convenio) + '">' + esc(d.ds_convenio) + '</td>';
+            html += '<td class="vt-est">' + badgeEstagio(d.ds_estagio, calcularSemaforoPrazo(d.ds_estagio, d.horas_em_aberto)) + '</td>';
+            html += '<td class="vt-conta">' + contaHtml + '</td>';
+            html += '<td class="vt-vl ' + vlCls(d.vl_total_conta) + '">' + vlFmt(d.vl_total_conta) + '</td>';
+            html += '<td class="vt-vl ' + vlCls(d.vl_total_executado_conta) + '">' + vlFmt(d.vl_total_executado_conta) + '</td>';
+            html += '<td class="vt-vl ' + vlCls(d.vl_total_vinculado) + '">' + vlFmt(d.vl_total_vinculado) + '</td>';
+            html += '<td class="vt-vl ' + vlCls(d.vl_total_por_codigo) + '">' + vlFmt(d.vl_total_por_codigo) + '</td>';
+            html += '<td class="vt-vl vt-pendente">'
+                + (altoRisco ? '<i class="fas fa-fire" style="color:#e65100;margin-right:3px" title="Alto risco"></i>' : '')
+                + vlFmt(d.vl_pendente_autorizacao)
+                + '</td>';
+            html += '<td class="vt-acao"><button class="btn-detalhe-fin" data-seq="' + esc(d.nr_sequencia) + '" title="Detalhe financeiro"><i class="fas fa-eye"></i></button></td>';
+            html += '</tr>';
+        }
+        DOM.valoresTbody.innerHTML = html;
+
+        // Bind botões de detalhe
+        var btns = DOM.valoresTbody.querySelectorAll('.btn-detalhe-fin');
+        for (var b = 0; b < btns.length; b++) {
+            btns[b].addEventListener('click', (function (btn) {
+                return function (e) {
+                    e.stopPropagation();
+                    abrirDrawerValoresDetalhe(parseInt(btn.getAttribute('data-seq'), 10));
+                };
+            })(btns[b]));
+        }
+    }
+
+    function vlFmt(v) {
+        var n = parseFloat(v);
+        if (!v && v !== 0) return '<span class="vt-vl-zero">—</span>';
+        if (isNaN(n) || n === 0) return '<span class="vt-vl-zero">—</span>';
+        var cls = n >= 5000 ? ' class="vt-vl-alto"' : '';
+        return '<span' + cls + '>' + formatarBRL(n) + '</span>';
+    }
+
+    function vlCls(v) {
+        var n = parseFloat(v);
+        if (isNaN(n) || n === 0) return 'vt-vl-zero';
+        return n >= 5000 ? 'vt-vl-alto' : '';
+    }
+
+    function renderizarPaginacaoValores(pagina, totalPag, total) {
+        if (!DOM.valoresPaginacao) return;
+        if (totalPag <= 1) { DOM.valoresPaginacao.innerHTML = ''; return; }
+        var html = '';
+        html += '<button class="pag-btn" ' + (pagina <= 1 ? 'disabled' : '') + ' data-pag="' + (pagina - 1) + '">&#8249; Ant.</button>';
+        var inicio = Math.max(1, pagina - 2);
+        var fim    = Math.min(totalPag, pagina + 2);
+        if (inicio > 1) html += '<button class="pag-btn" data-pag="1">1</button>' + (inicio > 2 ? '<span class="pag-info">…</span>' : '');
+        for (var p = inicio; p <= fim; p++) {
+            html += '<button class="pag-btn' + (p === pagina ? ' active' : '') + '" data-pag="' + p + '">' + p + '</button>';
+        }
+        if (fim < totalPag) html += (fim < totalPag - 1 ? '<span class="pag-info">…</span>' : '') + '<button class="pag-btn" data-pag="' + totalPag + '">' + totalPag + '</button>';
+        html += '<button class="pag-btn" ' + (pagina >= totalPag ? 'disabled' : '') + ' data-pag="' + (pagina + 1) + '">Próx. &#8250;</button>';
+        html += '<span class="pag-info">' + total + ' registros</span>';
+        DOM.valoresPaginacao.innerHTML = html;
+        var pagBtns = DOM.valoresPaginacao.querySelectorAll('[data-pag]');
+        for (var i = 0; i < pagBtns.length; i++) {
+            pagBtns[i].addEventListener('click', (function (btn) {
+                return function () {
+                    if (btn.disabled) return;
+                    carregarValoresLista(parseInt(btn.getAttribute('data-pag'), 10));
+                };
+            })(pagBtns[i]));
+        }
+    }
+
+    // ============================================================
+    // DRAWER DETALHE FINANCEIRO
+    // ============================================================
+
+    function abrirDrawerValoresDetalhe(nrSeq) {
+        DOM.drawerValores.classList.add('aberto');
+        DOM.drawerValoresOverlay.classList.add('visivel');
+        DOM.drawerValoresSeq.textContent = 'Seq. ' + nrSeq;
+        DOM.drawerValoresBody.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div>';
+        estado.drawerValoresAberto = true;
+
+        // Resetar tabs
+        var dtBtns = DOM.drawerValoresTabNav.querySelectorAll('.det-tab-btn');
+        for (var i = 0; i < dtBtns.length; i++) dtBtns[i].classList.toggle('active', i === 0);
+
+        fetchComRetry(CONFIG.apiValoresDetalhe + '/' + nrSeq, {}).then(function (resp) {
+            if (!resp.ok) {
+                DOM.drawerValoresBody.innerHTML = '<div class="pac-erro" style="padding:20px">Erro: ' + esc(resp.erro) + '</div>';
+                return;
+            }
+            renderizarDrawerValoresDetalhe(resp);
+        }).catch(function (err) {
+            DOM.drawerValoresBody.innerHTML = '<div class="pac-erro" style="padding:20px">Falha: ' + esc(err.message) + '</div>';
+        });
+    }
+
+    function fecharDrawerValores() {
+        DOM.drawerValores.classList.remove('aberto');
+        DOM.drawerValoresOverlay.classList.remove('visivel');
+        estado.drawerValoresAberto = false;
+    }
+
+    function renderizarDrawerValoresDetalhe(resp) {
+        var a    = resp.autorizacao  || {};
+        var c    = resp.conta        || null;
+        var tot  = resp.totais       || {};
+        var md   = resp.materiais_match_direto    || [];
+        var mc   = resp.materiais_match_codigo    || [];
+        var pd   = resp.procedimentos_match_direto || [];
+        var pc   = resp.procedimentos_match_codigo || [];
+        var cntDir = md.length + pd.length;
+        var cntCod = mc.length + pc.length;
+
+        // Atualiza contadores nas tabs
+        var cntDirEl = document.getElementById('dtab-cnt-direto');
+        var cntCodEl = document.getElementById('dtab-cnt-codigo');
+        if (cntDirEl) cntDirEl.textContent = cntDir;
+        if (cntCodEl) cntCodEl.textContent = cntCod;
+
+        // Tab Resumo
+        var htmlResumo = '<div class="fin-tab-panel active" data-dtab="resumo-fin">';
+
+        // Cartões de totais
+        htmlResumo += '<div class="fin-totais-row">';
+        htmlResumo += '<div class="fin-total-card"><span class="fin-total-val">' + formatarBRL(tot.vl_match_direto) + '</span><span class="fin-total-lbl">Vinculado direto</span></div>';
+        htmlResumo += '<div class="fin-total-card"><span class="fin-total-val">' + formatarBRL(tot.vl_match_codigo) + '</span><span class="fin-total-lbl">Por código</span></div>';
+        htmlResumo += '<div class="fin-total-card destaque"><span class="fin-total-val">' + formatarBRL(tot.vl_pendente_estimado) + '</span><span class="fin-total-lbl">Pendente estimado</span></div>';
+        htmlResumo += '</div>';
+
+        // Dados da conta
+        if (c) {
+            htmlResumo += '<div class="fin-conta-box">';
+            htmlResumo += '<span><b>Conta:</b> ' + esc(c.nr_interno_conta) + '</span>';
+            htmlResumo += '<span><b>Período:</b> ' + formatarData(c.dt_periodo_inicial) + ' a ' + formatarData(c.dt_periodo_final) + '</span>';
+            htmlResumo += '<span><b>Total conta:</b> ' + formatarBRL(c.vl_total_conta) + '</span>';
+            htmlResumo += '</div>';
+        } else {
+            htmlResumo += '<div class="fin-sem-conta"><i class="fas fa-info-circle"></i> Nenhuma conta identificada para esta autorização.</div>';
+        }
+
+        // Dados da autorização
+        htmlResumo += '<div class="det-info-grid">';
+        htmlResumo += '<div class="det-field"><label>Paciente</label><span>' + esc(a.nm_paciente) + '</span></div>';
+        htmlResumo += '<div class="det-field"><label>Atendimento</label><span>' + esc(a.nr_atendimento) + '</span></div>';
+        htmlResumo += '<div class="det-field"><label>Convênio</label><span>' + esc(a.ds_convenio) + '</span></div>';
+        htmlResumo += '<div class="det-field"><label>Estágio</label><span>' + badgeEstagio(a.ds_estagio, calcularSemaforoPrazo(a.ds_estagio, a.horas_em_aberto)) + '</span></div>';
+        htmlResumo += '<div class="det-field"><label>Setor</label><span>' + esc(a.ds_setor_atendimento) + '</span></div>';
+        htmlResumo += '<div class="det-field"><label>Dt. Pedido</label><span>' + formatarData(a.dt_pedido_medico) + '</span></div>';
+        htmlResumo += '<div class="det-field"><label>Executado conta</label><span>' + formatarBRL(a.vl_total_executado_conta) + '</span></div>';
+        htmlResumo += '<div class="det-field"><label>Pendente view</label><span style="font-weight:700;color:#c62828">' + formatarBRL(a.vl_pendente_autorizacao) + '</span></div>';
+        htmlResumo += '</div>';
+        htmlResumo += '</div>';
+
+        // Tab Itens Vinculados
+        var htmlDir = '<div class="fin-tab-panel" data-dtab="itens-direto">';
+        htmlDir += _htmlItensFin(md, pd, 'Materiais com vínculo direto', 'Procedimentos com vínculo direto');
+        htmlDir += '</div>';
+
+        // Tab Itens por Código
+        var htmlCod = '<div class="fin-tab-panel" data-dtab="itens-codigo">';
+        htmlCod += _htmlItensFin(mc, pc, 'Materiais por código', 'Procedimentos por código');
+        htmlCod += '</div>';
+
+        // Tab Comparativo
+        var vDir = parseFloat(tot.vl_match_direto)  || 0;
+        var vCod = parseFloat(tot.vl_match_codigo)  || 0;
+        var vExec = parseFloat(a.vl_total_executado_conta) || 0;
+        var vNaoId = Math.max(0, vExec - Math.max(vDir, vCod));
+        var total3 = vDir + vCod + vNaoId;
+        var pDir = total3 > 0 ? Math.round(vDir / total3 * 100) : 0;
+        var pCod = total3 > 0 ? Math.round(vCod / total3 * 100) : 0;
+        var pNao = 100 - pDir - pCod;
+        var htmlComp = '<div class="fin-tab-panel" data-dtab="comparativo" style="padding:var(--esp-md)">';
+        htmlComp += '<div class="fin-donut-wrap">';
+        htmlComp += '<div class="fin-donut" style="background: conic-gradient(#28a745 0% ' + pDir + '%, #ffc107 ' + pDir + '% ' + (pDir+pCod) + '%, #dee2e6 ' + (pDir+pCod) + '% 100%)"></div>';
+        htmlComp += '<div class="fin-legenda">';
+        htmlComp += '<div class="fin-leg-item"><div class="fin-leg-dot" style="background:#28a745"></div> Vinculado direto: <strong>' + formatarBRL(vDir) + '</strong></div>';
+        htmlComp += '<div class="fin-leg-item"><div class="fin-leg-dot" style="background:#ffc107"></div> Por código: <strong>' + formatarBRL(vCod) + '</strong></div>';
+        htmlComp += '<div class="fin-leg-item"><div class="fin-leg-dot" style="background:#dee2e6"></div> Não identificado: <strong>' + formatarBRL(vNaoId) + '</strong></div>';
+        htmlComp += '</div></div>';
+        htmlComp += '<div class="fin-comparativo-note"><strong>Atenção:</strong> o "Por código" pode incluir itens de outras autorizações do mesmo atendimento — esse comportamento é esperado e reflete a visão mais conservadora do risco financeiro. O valor pendente estimado usa o <em>maior</em> dos dois totais.</div>';
+        htmlComp += '</div>';
+
+        DOM.drawerValoresBody.innerHTML = htmlResumo + htmlDir + htmlCod + htmlComp;
+    }
+
+    function _htmlItensFin(mats, procs, lblMats, lblProcs) {
+        if (!mats.length && !procs.length) {
+            return '<div class="pac-vazio" style="padding:20px"><i class="fas fa-inbox"></i> Nenhum item encontrado.</div>';
+        }
+        var html = '<table class="fin-item-table"><thead><tr><th>Código</th><th>Descrição</th><th>Qt.</th><th class="td-val">Valor</th></tr></thead><tbody>';
+        if (mats.length) {
+            html += '<tr><td colspan="4"><span class="fin-table-section"><i class="fas fa-box-open"></i> ' + esc(lblMats) + '</span></td></tr>';
+            for (var i = 0; i < mats.length; i++) {
+                var m = mats[i];
+                html += '<tr><td>' + esc(m.cd_material) + '</td><td>' + esc(m.ds_material) + '</td><td>' + (m.qt || '—') + '</td><td class="td-val">' + formatarBRL(m.vl_item) + '</td></tr>';
+            }
+        }
+        if (procs.length) {
+            html += '<tr><td colspan="4"><span class="fin-table-section"><i class="fas fa-stethoscope"></i> ' + esc(lblProcs) + '</span></td></tr>';
+            for (var j = 0; j < procs.length; j++) {
+                var p = procs[j];
+                html += '<tr><td>' + esc(p.cd_procedimento) + '</td><td>' + esc(p.ds_procedimento) + '</td><td>' + (p.qt || '—') + '</td><td class="td-val">' + formatarBRL(p.vl_item) + '</td></tr>';
+            }
+        }
+        html += '</tbody></table>';
+        return html;
     }
 
     // ============================================================

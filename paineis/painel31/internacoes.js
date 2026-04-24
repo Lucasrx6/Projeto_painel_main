@@ -17,11 +17,13 @@ var previsoesAtuais = [];
 var historicoAtual = [];
 var segmentoAtualGrid = 'total';
 var segmentoAtualGrafico = 'total';
+var diasHistorico = 30;
 
 function inicializar() {
     console.log('Inicializando Internacoes...');
     configurarBotoes();
     configurarTabs();
+    configurarSeletorPeriodo();
     carregarTudo();
     setInterval(carregarTudo, CONFIG.intervaloRefresh);
 }
@@ -46,7 +48,6 @@ function configurarBotoes() {
         });
     }
 
-    // Tabs de segmento na visao geral
     var segBtns = document.querySelectorAll('.segmento-btn');
     segBtns.forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -54,6 +55,7 @@ function configurarBotoes() {
             btn.classList.add('ativo');
             segmentoAtualGrid = btn.getAttribute('data-seg');
             renderizarPrevisoesGrid(previsoesAtuais, segmentoAtualGrid);
+            renderizarHistoricoGridComAcerto(historicoAtual, segmentoAtualGrid);
         });
     });
 
@@ -84,9 +86,36 @@ function configurarTabs() {
     });
 }
 
+function configurarSeletorPeriodo() {
+    var botoes = document.querySelectorAll('.btn-periodo');
+    botoes.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var dias = parseInt(btn.getAttribute('data-dias'));
+            if (dias === diasHistorico) return;
+            diasHistorico = dias;
+            botoes.forEach(function(b) { b.classList.remove('ativo'); });
+            btn.classList.add('ativo');
+
+            var sub = document.getElementById('grafico-subtitle');
+            if (sub) sub.textContent = 'Ultimos ' + dias + ' dias e proximos 7 dias';
+
+            // Recarrega os dados do grafico
+            fetch(CONFIG.apiPrevisoes + '?dias=' + dias, { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        previsoesAtuais = data.previsoes_futuras;
+                        historicoAtual = data.historico_realizado;
+                        renderizarGrafico(historicoAtual, previsoesAtuais, segmentoAtualGrafico);
+                    }
+                });
+        });
+    });
+}
+
 function carregarTudo() {
     Promise.all([
-        fetch(CONFIG.apiPrevisoes,     { credentials: 'include' }).then(function(r) { return r.json(); }),
+        fetch(CONFIG.apiPrevisoes + '?dias=' + diasHistorico, { credentials: 'include' }).then(function(r) { return r.json(); }),
         fetch(CONFIG.apiMetricas,      { credentials: 'include' }).then(function(r) { return r.json(); }),
         fetch(CONFIG.apiModelo,        { credentials: 'include' }).then(function(r) { return r.json(); }),
         fetch(CONFIG.apiHistoricoReal, { credentials: 'include' }).then(function(r) { return r.json(); })
@@ -100,8 +129,8 @@ function carregarTudo() {
             renderizarComparativo(previsoesAtuais, hist.success ? hist.historico : []);
             renderizarPrevisoesGrid(previsoesAtuais, segmentoAtualGrid);
             renderizarGrafico(historicoAtual, previsoesAtuais, segmentoAtualGrafico);
+            renderizarHistoricoGridComAcerto(historicoAtual, segmentoAtualGrid);
         }
-        if (hist.success)  renderizarHistoricoGrid(hist.historico);
         if (met.success)   renderizarKPIsMetricas(met);
         if (mod.success)   renderizarInfoTecnica(mod.modelos);
 
@@ -211,27 +240,56 @@ function renderizarPrevisoesGrid(futuras, segmento) {
     grid.innerHTML = html;
 }
 
-// ----- HISTORICO 14 DIAS -----
-function renderizarHistoricoGrid(historico) {
+// ----- HISTORICO 14 DIAS COM ACERTO -----
+function renderizarHistoricoGridComAcerto(historicoTodos, segmento) {
     var grid = document.getElementById('historico-grid');
     if (!grid) return;
-    if (!historico || historico.length === 0) {
-        grid.innerHTML = '<div class="mensagem-vazia"><i class="fas fa-clock"></i><p>Sem historico disponivel</p></div>';
+
+    var historicoApenas = historicoTodos.filter(function(h) { return h.segmento === segmento; }).slice(-14);
+
+    if (!historicoApenas || historicoApenas.length === 0) {
+        grid.innerHTML = '<div class="mensagem-vazia"><i class="fas fa-clock"></i><p>Sem historico disponivel para ' + segmento + '</p></div>';
         return;
     }
 
     var dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
     var html = '';
-    historico.forEach(function(h) {
-        var d = new Date(h.data + 'T00:00:00');
+
+    historicoApenas.forEach(function(c) {
+        if (c.valor_realizado === null) return;
+
+        var d = new Date(c.dt_alvo + 'T00:00:00');
         var nomeDia = dias[d.getDay()];
         var dataStr = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+
+        var blocoAcerto = '';
+        if (c.valor_previsto !== null && c.erro_percentual !== null) {
+            var acerto_pct = Math.max(0, 100 - c.erro_percentual).toFixed(1);
+            var status_acerto = 'vermelho';
+            if (acerto_pct >= 90) status_acerto = 'verde';
+            else if (acerto_pct >= 75) status_acerto = 'amarelo';
+
+            var classeAcerto = 'acerto-' + status_acerto;
+            var icone = status_acerto === 'verde' ? 'fa-check-circle' :
+                        status_acerto === 'amarelo' ? 'fa-circle-exclamation' : 'fa-triangle-exclamation';
+
+            blocoAcerto =
+                '<div class="historico-dia-comparativo">' +
+                '  <div class="historico-dia-previsto">Previsto: ' + Math.round(c.valor_previsto) + '</div>' +
+                '  <div class="historico-dia-acerto ' + classeAcerto + '">' +
+                '    <i class="fas ' + icone + '"></i> ' + acerto_pct + '% acerto' +
+                '  </div>' +
+                '</div>';
+        } else if (c.valor_previsto === null) {
+            blocoAcerto = '<div class="historico-dia-comparativo"><div class="historico-dia-semprev">Sem previsao</div></div>';
+        }
 
         html += '<div class="historico-dia">';
         html += '  <div class="historico-dia-data">' + dataStr + '</div>';
         html += '  <div class="historico-dia-nome">' + nomeDia + '</div>';
-        html += '  <div class="historico-dia-valor">' + h.total + '</div>';
+        html += '  <div class="historico-dia-valor">' + Math.round(c.valor_realizado) + '</div>';
         html += '  <div class="historico-dia-unidade">int.</div>';
+        html += blocoAcerto;
         html += '</div>';
     });
     grid.innerHTML = html;
@@ -356,7 +414,25 @@ function renderizarGrafico(historicoTodos, futurasTodas, segmento) {
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { position: 'top', labels: { filter: function(item) { return item.text.indexOf('Faixa') === -1; }, font: { size: 11 } } },
-                tooltip: { callbacks: { label: function(ctx) { if (ctx.parsed.y === null) return null; return ctx.dataset.label + ': ' + Math.round(ctx.parsed.y) + ' intern.'; } } }
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            if (ctx.parsed.y === null) return null;
+                            return ctx.dataset.label + ': ' + Math.round(ctx.parsed.y) + ' intern.';
+                        },
+                        afterBody: function(items) {
+                            if (items.length < 2) return null;
+                            var idx = items[0].dataIndex;
+                            var real = realizadoData[idx];
+                            var prev = previstoHistData[idx];
+                            if (real !== null && prev !== null && real > 0) {
+                                var acerto = Math.max(0, Math.min(100, 100 - Math.abs(prev - real) / real * 100));
+                                return 'Acerto: ' + acerto.toFixed(1) + '%';
+                            }
+                            return null;
+                        }
+                    }
+                }
             },
             scales: {
                 y: { beginAtZero: true, title: { display: true, text: 'Internacoes/dia' } },

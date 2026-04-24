@@ -188,9 +188,9 @@
                 <label>Período</label>
                 <select id="filtro-periodo" class="filtro-select">
                     <option value="">Todos</option>
-                    <option value="7">7 dias</option>
+                    <option value="7" selected>7 dias</option>
                     <option value="15">15 dias</option>
-                    <option value="30" selected>30 dias</option>
+                    <option value="30">30 dias</option>
                     <option value="60">60 dias</option>
                     <option value="90">90 dias</option>
                 </select>
@@ -210,19 +210,87 @@
 
     <!-- NAVEGAÇÃO POR ABAS -->
     <div class="tabs-nav">
-        <button class="tab-nav-btn active" data-tab="resumo">
+        <button class="tab-nav-btn active" data-tab="visao-geral">
+            <i class="fas fa-gauge-high"></i> <span>Visão Geral</span>
+        </button>
+        <button class="tab-nav-btn" data-tab="resumo">
             <i class="fas fa-chart-pie"></i> <span>Visão Sintética</span>
         </button>
         <button class="tab-nav-btn" data-tab="autorizacoes">
             <i class="fas fa-list"></i> <span>Autorizações</span>
+        </button>
+        <button class="tab-nav-btn" data-tab="valores" id="tab-btn-valores" style="display:none">
+            <i class="fas fa-money-bill-trend-up"></i> <span>Valores Pendentes</span>
         </button>
     </div>
 
     <!-- PAINEIS DAS ABAS -->
     <div class="tab-panels">
 
+        <!-- ABA: Visão Geral -->
+        <div class="tab-panel active" id="tab-visao-geral">
+            <div class="vg-layout">
+
+                <!-- 3 KPI Cards -->
+                <div class="vg-kpis" id="vg-kpis">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
+
+                <!-- Top 5 Convênios -->
+                <div class="vg-section">
+                    <div class="vg-section-title"><i class="fas fa-building-columns"></i> Top 5 Convênios — Urgência</div>
+                    <div class="vg-table-wrap">
+                        <table class="vg-table-conv">
+                            <thead>
+                                <tr>
+                                    <th>Convênio</th>
+                                    <th class="th-tot tc">Total</th>
+                                    <th class="th-sol tc">Solicitado</th>
+                                    <th class="th-ate tc">Atenção</th>
+                                    <th class="th-ven tc">Vencido</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vg-convenios-tbody">
+                                <tr><td colspan="5" class="loading-cell"><div class="loading-spinner"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabela Analítica -->
+                <div class="vg-section">
+                    <div class="vg-section-title">
+                        <i class="fas fa-table-list"></i> Autorizações — Visão Analítica
+                        <button id="btn-abrir-responsaveis" class="vg-btn-config" title="Gerenciar Responsáveis">
+                            <i class="fas fa-users-gear"></i> Responsáveis
+                        </button>
+                    </div>
+                    <div class="vg-table-wrap">
+                        <table class="vg-table vg-table-analitica">
+                            <thead>
+                                <tr>
+                                    <th class="vg-th-sem"></th>
+                                    <th>Paciente / Atend.</th>
+                                    <th>Convênio</th>
+                                    <th>Estágio</th>
+                                    <th>Setor</th>
+                                    <th>Pedido</th>
+                                    <th class="tc">Prazo</th>
+                                    <th class="vg-th-resp">Responsável</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vg-analitica-tbody">
+                                <tr><td colspan="8" class="loading-cell"><div class="loading-spinner"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
         <!-- ABA: Visão Sintética -->
-        <div class="tab-panel active" id="tab-resumo">
+        <div class="tab-panel" id="tab-resumo">
             <div class="dashboard-content" style="padding: 0 var(--esp-sm);">
                 <div class="resumo-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; background: white; border-bottom: 1px solid var(--cor-borda); border-radius: var(--raio-md) var(--raio-md) 0 0; margin-bottom: 10px;">
                     <div class="resumo-info" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--cor-texto-secundario);">
@@ -275,6 +343,110 @@
                 </main>
             </div>
         </div>
+            <!-- ABA: Valores Pendentes -->
+        <div class="tab-panel" id="tab-valores">
+            <div class="valores-layout">
+
+                <!-- KPIs financeiros -->
+                <div class="valores-kpis" id="valores-kpis">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
+
+                <!-- Filtros extras da aba valores -->
+                <div class="valores-filtros-extra">
+                    <label class="vf-label">
+                        <i class="fas fa-filter"></i> Valor mínimo pendente:
+                        <strong id="vf-vlmin-display">R$ 0</strong>
+                    </label>
+                    <input type="range" id="vf-vlmin" min="0" max="50000" step="500" value="0" class="vf-slider">
+                    <label class="vf-check">
+                        <input type="checkbox" id="vf-alto-risco"> <i class="fas fa-fire" style="color:#dc3545"></i> Só alto risco (&gt; R$10k)
+                    </label>
+                    <label class="vf-check">
+                        <input type="checkbox" id="vf-com-conta"> <i class="fas fa-file-invoice"></i> Só com conta identificada
+                    </label>
+                    <span class="vf-total" id="valores-total-label">— registros</span>
+                </div>
+
+                <!-- Gráficos de barras -->
+                <div class="valores-charts" id="valores-charts">
+                    <div class="chart-card">
+                        <div class="chart-title"><i class="fas fa-building-columns"></i> Top 10 Convênios — Valor Pendente</div>
+                        <div class="chart-bars" id="chart-convenios"></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title"><i class="fas fa-hospital"></i> Top 10 Setores — Valor Pendente</div>
+                        <div class="chart-bars" id="chart-setores"></div>
+                    </div>
+                </div>
+
+                <!-- Tabela financeira -->
+                <div class="valores-tabela-wrap">
+                    <table class="valores-table" id="valores-table">
+                        <thead>
+                            <tr>
+                                <th class="vt-sem"></th>
+                                <th class="vt-atend">Atend.</th>
+                                <th class="vt-pac">Paciente</th>
+                                <th class="vt-conv">Convênio</th>
+                                <th class="vt-est">Estágio</th>
+                                <th class="vt-conta">Conta / Período</th>
+                                <th class="vt-vl">Vl. Conta</th>
+                                <th class="vt-vl">Executado</th>
+                                <th class="vt-vl">Vinculado</th>
+                                <th class="vt-vl">Por Código</th>
+                                <th class="vt-vl vt-pendente">Pendente</th>
+                                <th class="vt-acao"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="valores-tbody">
+                            <tr><td colspan="12" class="loading-cell">
+                                <div class="loading-spinner"></div> Carregando...
+                            </td></tr>
+                        </tbody>
+                    </table>
+                    <div class="valores-paginacao" id="valores-paginacao"></div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- DRAWER: Detalhe Financeiro -->
+<div class="drawer-overlay" id="drawer-valores-overlay"></div>
+<div class="drawer-detalhe" id="drawer-valores">
+    <div class="drawer-header">
+        <div class="drawer-titulo-wrap">
+            <h2><i class="fas fa-money-bill-trend-up"></i> Detalhe Financeiro</h2>
+            <span class="drawer-seq" id="drawer-valores-seq"></span>
+        </div>
+        <button class="drawer-fechar" id="drawer-valores-fechar"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="det-tabs-nav" id="drawer-valores-tabnav">
+        <button class="det-tab-btn active" data-dtab="resumo-fin">Resumo</button>
+        <button class="det-tab-btn" data-dtab="itens-direto">Vinculados <span class="det-tab-count" id="dtab-cnt-direto">0</span></button>
+        <button class="det-tab-btn" data-dtab="itens-codigo">Por Código <span class="det-tab-count" id="dtab-cnt-codigo">0</span></button>
+        <button class="det-tab-btn" data-dtab="comparativo">Comparativo</button>
+    </div>
+    <div class="drawer-body" id="drawer-valores-body">
+        <div class="loading-container"><div class="loading-spinner"></div></div>
+    </div>
+</div>
+
+<!-- MODAL: Responsáveis por Convênio -->
+<div class="modal-overlay" id="modal-resp-overlay"></div>
+<div class="modal-resp" id="modal-resp">
+    <div class="modal-resp-header">
+        <div style="display:flex;align-items:center;gap:8px">
+            <i class="fas fa-users-gear" style="color:var(--cor-primaria)"></i>
+            <strong>Responsáveis por Convênio</strong>
+        </div>
+        <button class="modal-resp-fechar" id="modal-resp-fechar"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-resp-body" id="modal-resp-body">
+        <div class="loading"><div class="loading-spinner"></div></div>
     </div>
 </div>
 

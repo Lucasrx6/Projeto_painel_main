@@ -379,3 +379,538 @@ def painel33_export():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'ok': False, 'erro': 'Erro ao exportar', 'detalhe': str(e)}), 500
+
+
+# ============================================================
+# CRUD: RESPONSÁVEIS POR CONVÊNIO
+# ============================================================
+
+def _ensure_responsaveis_table(cur):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS painel33_responsaveis_convenio (
+            id            SERIAL PRIMARY KEY,
+            nm_responsavel VARCHAR(200) NOT NULL,
+            ds_convenio    VARCHAR(200) NOT NULL,
+            ativo          BOOLEAN      DEFAULT TRUE,
+            dt_criacao     TIMESTAMP    DEFAULT NOW()
+        )
+    """)
+
+
+@painel33_bp.route('/api/paineis/painel33/responsaveis', methods=['GET'])
+@login_required
+def painel33_responsaveis_listar():
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                _ensure_responsaveis_table(cur)
+                conn.commit()
+                cur.execute("""
+                    SELECT nm_responsavel,
+                           ARRAY_AGG(ds_convenio ORDER BY ds_convenio) AS convenios,
+                           MIN(id) AS id
+                    FROM painel33_responsaveis_convenio
+                    WHERE ativo = TRUE
+                    GROUP BY nm_responsavel
+                    ORDER BY nm_responsavel
+                """)
+                rows = cur.fetchall()
+        return jsonify({'ok': True, 'responsaveis': [dict(r) for r in rows]})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': str(e)}), 500
+
+
+@painel33_bp.route('/api/paineis/painel33/responsaveis/salvar', methods=['POST'])
+@login_required
+def painel33_responsaveis_salvar():
+    try:
+        dados = request.get_json(force=True) or {}
+        nm   = (dados.get('nm_responsavel') or '').strip()
+        convs = [c.strip() for c in (dados.get('convenios') or []) if str(c).strip()]
+        if not nm:
+            return jsonify({'ok': False, 'erro': 'Nome obrigatório'}), 400
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                _ensure_responsaveis_table(cur)
+                cur.execute(
+                    "DELETE FROM painel33_responsaveis_convenio WHERE nm_responsavel = %s", (nm,)
+                )
+                if convs:
+                    cur.executemany(
+                        "INSERT INTO painel33_responsaveis_convenio (nm_responsavel, ds_convenio) VALUES (%s, %s)",
+                        [(nm, c) for c in convs]
+                    )
+            conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': str(e)}), 500
+
+
+@painel33_bp.route('/api/paineis/painel33/responsaveis/excluir', methods=['POST'])
+@login_required
+def painel33_responsaveis_excluir():
+    try:
+        dados = request.get_json(force=True) or {}
+        nm = (dados.get('nm_responsavel') or '').strip()
+        if not nm:
+            return jsonify({'ok': False, 'erro': 'Nome obrigatório'}), 400
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM painel33_responsaveis_convenio WHERE nm_responsavel = %s", (nm,)
+                )
+            conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': str(e)}), 500
+
+
+# ============================================================
+# API: VISÃO GERAL
+# ============================================================
+
+@painel33_bp.route('/api/paineis/painel33/visao-geral', methods=['GET'])
+@login_required
+def painel33_visao_geral():
+    try:
+        from flask import session as flask_session
+        is_admin = flask_session.get('is_admin', False)
+
+        condicoes, params = _build_common_filters()
+        where           = ('WHERE ' + ' AND '.join(condicoes)) if condicoes else ''
+        where_analitica = ('WHERE ' + ' AND '.join(condicoes + ['v.nr_atendimento IS NOT NULL'])) if condicoes else 'WHERE v.nr_atendimento IS NOT NULL'
+        join_val      = 'LEFT JOIN vw_painel33_valores_por_autorizacao val ON val.nr_sequencia_autorizacao = v.nr_sequencia'
+
+        # KPIs: Solicitado / Atenção (≥96h e <120h) / Vencido (≥120h)  +  valores
+        sql_kpis = """
+            SELECT
+                COUNT(*) FILTER (WHERE v.ds_estagio = 'Solicitado')                                                         AS qt_solicitado,
+                COALESCE(SUM(val.vl_pendente_autorizacao) FILTER (WHERE v.ds_estagio = 'Solicitado'), 0)                     AS vl_solicitado,
+                COUNT(*) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96 AND v.horas_em_aberto < 120) AS qt_atencao,
+                COALESCE(SUM(val.vl_pendente_autorizacao) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96 AND v.horas_em_aberto < 120), 0) AS vl_atencao,
+                COUNT(*) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 120)                            AS qt_vencido,
+                COALESCE(SUM(val.vl_pendente_autorizacao) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 120), 0) AS vl_vencido
+            FROM vw_painel33_autorizacoes v
+            {join_val}
+            {where}
+        """.format(join_val=join_val, where=where)
+
+        # Top 5 convênios com mais Atenção + Vencido  +  valores
+        sql_convenios = """
+            SELECT
+                v.ds_convenio,
+                COUNT(*)                                                                                                     AS qt_total,
+                COUNT(*) FILTER (WHERE v.ds_estagio = 'Solicitado')                                                         AS qt_solicitado,
+                COALESCE(SUM(val.vl_pendente_autorizacao) FILTER (WHERE v.ds_estagio = 'Solicitado'), 0)                     AS vl_solicitado,
+                COUNT(*) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96 AND v.horas_em_aberto < 120) AS qt_atencao,
+                COALESCE(SUM(val.vl_pendente_autorizacao) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96 AND v.horas_em_aberto < 120), 0) AS vl_atencao,
+                COUNT(*) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 120)                            AS qt_vencido,
+                COALESCE(SUM(val.vl_pendente_autorizacao) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 120), 0) AS vl_vencido
+            FROM vw_painel33_autorizacoes v
+            {join_val}
+            {where}
+            GROUP BY v.ds_convenio
+            ORDER BY (COUNT(*) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96)
+                    ) DESC NULLS LAST
+            LIMIT 5
+        """.format(join_val=join_val, where=where)
+
+        # Tabela analítica: top 10 pacientes agrupados, autorização mais urgente por paciente
+        sql_analitica = """
+            WITH base AS (
+                SELECT
+                    v.cd_pessoa_fisica,
+                    v.nm_paciente,
+                    v.nr_atendimento,
+                    v.ds_convenio,
+                    v.ds_estagio,
+                    v.ds_setor_atendimento,
+                    v.dt_pedido_medico,
+                    v.horas_em_aberto,
+                    v.status_semaforo,
+                    CASE
+                        WHEN v.ds_estagio = 'Solicitado'                                         THEN 4
+                        WHEN v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 120           THEN 1
+                        WHEN v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96            THEN 2
+                        ELSE 3
+                    END AS ordem_urgencia
+                FROM vw_painel33_autorizacoes v
+                {where}
+            ),
+            contagem AS (
+                SELECT cd_pessoa_fisica, COUNT(*) AS qt_autorizacoes
+                FROM base
+                GROUP BY cd_pessoa_fisica
+            ),
+            mais_urgente AS (
+                SELECT DISTINCT ON (b.cd_pessoa_fisica)
+                    b.cd_pessoa_fisica, b.nm_paciente, b.nr_atendimento,
+                    b.ds_convenio, b.ds_estagio, b.ds_setor_atendimento,
+                    b.dt_pedido_medico, b.horas_em_aberto, b.status_semaforo,
+                    b.ordem_urgencia
+                FROM base b
+                ORDER BY b.cd_pessoa_fisica, b.ordem_urgencia ASC, b.horas_em_aberto DESC NULLS LAST
+            )
+            SELECT m.*, c.qt_autorizacoes,
+                   COALESCE(resp.nm_responsavel, '') AS responsavel
+            FROM mais_urgente m
+            JOIN contagem c ON c.cd_pessoa_fisica = m.cd_pessoa_fisica
+            LEFT JOIN (
+                SELECT ds_convenio,
+                       STRING_AGG(nm_responsavel, ', ' ORDER BY nm_responsavel) AS nm_responsavel
+                FROM painel33_responsaveis_convenio
+                WHERE ativo = TRUE
+                GROUP BY ds_convenio
+            ) resp ON resp.ds_convenio = m.ds_convenio
+            ORDER BY m.ordem_urgencia ASC, m.horas_em_aberto DESC NULLS LAST
+            LIMIT 10
+        """.format(where=where_analitica)
+
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                _ensure_responsaveis_table(cur)
+                conn.commit()
+                cur.execute(sql_kpis, params)
+                kpis = cur.fetchone()
+                cur.execute(sql_convenios, params)
+                convenios = cur.fetchall()
+                cur.execute(sql_analitica, params)
+                analitica = cur.fetchall()
+
+        return jsonify({
+            'ok':        True,
+            'is_admin':  bool(is_admin),
+            'kpis':      _serial_row(dict(kpis)) if kpis else {},
+            'convenios': [_serial_row(dict(r)) for r in convenios],
+            'analitica': [_serial_row(dict(r)) for r in analitica],
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': 'Erro ao carregar visão geral', 'detalhe': str(e)}), 500
+
+
+# ============================================================
+# API: DIAGNÓSTICO - Colunas da view (temporário)
+# ============================================================
+
+@painel33_bp.route('/api/paineis/painel33/debug/view-colunas', methods=['GET'])
+@login_required
+def painel33_debug_view_colunas():
+    try:
+        tabelas = [
+            'vw_painel33_autorizacoes',
+            'vw_painel33_valores_por_autorizacao',
+            'painel33_contas_paciente',
+            'painel33_materiais_conta',
+            'painel33_procedimentos_conta',
+        ]
+        resultado = {}
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                for t in tabelas:
+                    cur.execute("""
+                        SELECT column_name, data_type
+                        FROM information_schema.columns
+                        WHERE table_name = %s
+                        ORDER BY ordinal_position
+                    """, (t,))
+                    resultado[t] = [{'nome': r[0], 'tipo': r[1]} for r in cur.fetchall()]
+                # Amostra de 1 linha da view de valores
+                cur.execute('SELECT * FROM vw_painel33_valores_por_autorizacao LIMIT 1')
+                row = cur.fetchone()
+                cols = [d[0] for d in cur.description] if cur.description else []
+                resultado['_amostra_valores'] = dict(zip(cols, [str(v) for v in (row or [])])) if row else {}
+        return jsonify({'ok': True, 'tabelas': resultado})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': str(e)}), 500
+
+
+# ============================================================
+# API: VALORES - DASHBOARD (KPIs Financeiros)
+# ============================================================
+
+@painel33_bp.route('/api/paineis/painel33/valores/dashboard', methods=['GET'])
+@login_required
+def painel33_valores_dashboard():
+    try:
+        condicoes, params = _build_common_filters()
+        where = ('WHERE ' + ' AND '.join(condicoes)) if condicoes else ''
+
+        join = 'JOIN vw_painel33_valores_por_autorizacao val ON val.nr_sequencia_autorizacao = v.nr_sequencia'
+
+        sql_kpis = """
+            SELECT
+                COALESCE(SUM(val.vl_pendente_autorizacao), 0)                                         AS vl_total_pendente_geral,
+                COALESCE(SUM(CASE WHEN v.grupo_estagio = 'acao_hospital'
+                                  THEN val.vl_pendente_autorizacao ELSE 0 END), 0)                    AS vl_total_pendente_acao_hospital,
+                COALESCE(SUM(CASE WHEN v.grupo_estagio = 'aguardando'
+                                  THEN val.vl_pendente_autorizacao ELSE 0 END), 0)                    AS vl_total_pendente_aguardando,
+                COUNT(*) FILTER (WHERE val.flag_alto_risco)                                           AS qt_autorizacoes_alto_risco,
+                COALESCE(SUM(CASE WHEN v.grupo_estagio IN ('acao_hospital','aguardando')
+                                  THEN val.vl_total_executado_conta ELSE 0 END), 0)                   AS vl_em_contas_abertas,
+                COALESCE(AVG(NULLIF(val.vl_pendente_autorizacao, 0)), 0)                              AS vl_medio
+            FROM vw_painel33_autorizacoes v
+            {join}
+            {where}
+        """.format(join=join, where=where)
+
+        sql_convenios = """
+            SELECT v.ds_convenio,
+                   COALESCE(SUM(val.vl_pendente_autorizacao), 0) AS vl_pendente,
+                   COUNT(*)                                       AS qt_autorizacoes
+            FROM vw_painel33_autorizacoes v
+            {join}
+            {where}
+            GROUP BY v.ds_convenio
+            ORDER BY vl_pendente DESC NULLS LAST
+            LIMIT 10
+        """.format(join=join, where=where)
+
+        sql_setores = """
+            SELECT v.ds_setor_atendimento                         AS ds_setor,
+                   COALESCE(SUM(val.vl_pendente_autorizacao), 0) AS vl_pendente,
+                   COUNT(*)                                       AS qt_autorizacoes
+            FROM vw_painel33_autorizacoes v
+            {join}
+            {where}
+            GROUP BY v.ds_setor_atendimento
+            ORDER BY vl_pendente DESC NULLS LAST
+            LIMIT 10
+        """.format(join=join, where=where)
+
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(sql_kpis, params)
+                kpis = cur.fetchone()
+                cur.execute(sql_convenios, params)
+                convenios = cur.fetchall()
+                cur.execute(sql_setores, params)
+                setores = cur.fetchall()
+
+        return jsonify({
+            'ok': True,
+            'kpis':          _serial_row(dict(kpis)) if kpis else {},
+            'top_convenios': [_serial_row(dict(r)) for r in convenios],
+            'top_setores':   [_serial_row(dict(r)) for r in setores]
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': 'Erro ao carregar dashboard de valores', 'detalhe': str(e)}), 500
+
+
+# ============================================================
+# API: VALORES - LISTA PAGINADA
+# ============================================================
+
+@painel33_bp.route('/api/paineis/painel33/valores/lista', methods=['GET'])
+@login_required
+def painel33_valores_lista():
+    try:
+        condicoes, params = _build_common_filters()
+
+        vl_minimo = request.args.get('vl_minimo', '').strip()
+        if vl_minimo:
+            try:
+                vl_min = float(vl_minimo)
+                if vl_min > 0:
+                    condicoes.append('val.vl_pendente_autorizacao >= %s')
+                    params.append(vl_min)
+            except ValueError:
+                pass
+
+        if request.args.get('apenas_alto_risco', '').lower() in ('1', 'true'):
+            condicoes.append('val.flag_alto_risco = TRUE')
+
+        if request.args.get('apenas_com_conta', '').lower() in ('1', 'true'):
+            condicoes.append('val.nr_interno_conta IS NOT NULL')
+
+        where = ('WHERE ' + ' AND '.join(condicoes)) if condicoes else ''
+        join  = 'JOIN vw_painel33_valores_por_autorizacao val ON val.nr_sequencia_autorizacao = v.nr_sequencia'
+
+        try:
+            pagina = max(1, int(request.args.get('pagina', 1) or 1))
+        except (ValueError, TypeError):
+            pagina = 1
+        try:
+            por_pagina = min(200, max(10, int(request.args.get('por_pagina', 100) or 100)))
+        except (ValueError, TypeError):
+            por_pagina = 100
+        offset = (pagina - 1) * por_pagina
+
+        sql_count = """
+            SELECT COUNT(*) AS total
+            FROM vw_painel33_autorizacoes v
+            {join}
+            {where}
+        """.format(join=join, where=where)
+
+        sql_lista = """
+            SELECT
+                v.nr_sequencia, v.nr_atendimento, v.nm_paciente,
+                v.cd_pessoa_fisica, v.ds_convenio, v.ds_estagio, v.grupo_estagio,
+                v.ds_setor_atendimento, v.dt_pedido_medico, v.dt_autorizacao,
+                v.status_semaforo, v.horas_em_aberto,
+                val.nr_interno_conta,
+                ROUND(val.vl_total_conta::NUMERIC,            2) AS vl_total_conta,
+                ROUND(val.vl_total_executado_conta::NUMERIC,  2) AS vl_total_executado_conta,
+                ROUND(val.vl_total_vinculado::NUMERIC,        2) AS vl_total_vinculado,
+                ROUND(val.vl_total_por_codigo::NUMERIC,       2) AS vl_total_por_codigo,
+                ROUND(val.vl_pendente_autorizacao::NUMERIC,   2) AS vl_pendente_autorizacao,
+                val.flag_alto_risco
+            FROM vw_painel33_autorizacoes v
+            {join}
+            {where}
+            ORDER BY val.vl_pendente_autorizacao DESC NULLS LAST
+            LIMIT {lim} OFFSET {off}
+        """.format(join=join, where=where, lim=por_pagina, off=offset)
+
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(sql_count, params)
+                total = int((cur.fetchone() or {}).get('total', 0))
+                cur.execute(sql_lista, params)
+                rows = cur.fetchall()
+
+        total_paginas = max(1, (total + por_pagina - 1) // por_pagina)
+
+        return jsonify({
+            'ok': True,
+            'items':         [_serial_row(dict(r)) for r in rows],
+            'total':         total,
+            'pagina':        pagina,
+            'total_paginas': total_paginas
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': 'Erro ao carregar lista de valores', 'detalhe': str(e)}), 500
+
+
+# ============================================================
+# API: VALORES - DETALHE POR AUTORIZAÇÃO
+# ============================================================
+
+@painel33_bp.route('/api/paineis/painel33/valores/detalhe/<int:nr_sequencia>', methods=['GET'])
+@login_required
+def painel33_valores_detalhe(nr_sequencia):
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+
+                cur.execute("""
+                    SELECT
+                        v.nr_sequencia, v.nr_atendimento, v.nm_paciente, v.ds_convenio,
+                        v.ds_estagio, v.grupo_estagio, v.ds_setor_atendimento,
+                        v.dt_pedido_medico, v.dt_autorizacao, v.status_semaforo, v.horas_em_aberto,
+                        v.nr_seq_autorizacao,
+                        val.nr_interno_conta,
+                        ROUND(val.vl_total_conta::NUMERIC,            2) AS vl_total_conta,
+                        ROUND(val.vl_total_executado_conta::NUMERIC,  2) AS vl_total_executado_conta,
+                        ROUND(val.vl_total_vinculado::NUMERIC,        2) AS vl_total_vinculado,
+                        ROUND(val.vl_total_por_codigo::NUMERIC,       2) AS vl_total_por_codigo,
+                        ROUND(val.vl_pendente_autorizacao::NUMERIC,   2) AS vl_pendente_autorizacao,
+                        val.flag_alto_risco,
+                        val.status_conta, val.protocolo_conta,
+                        val.dt_conta_inicial, val.dt_conta_final
+                    FROM vw_painel33_autorizacoes v
+                    JOIN vw_painel33_valores_por_autorizacao val ON val.nr_sequencia_autorizacao = v.nr_sequencia
+                    WHERE v.nr_sequencia = %s
+                """, (nr_sequencia,))
+                aut = cur.fetchone()
+                if not aut:
+                    return jsonify({'ok': False, 'erro': 'Autorização não encontrada'}), 404
+                aut = _serial_row(dict(aut))
+
+                nr_interno_conta  = aut.get('nr_interno_conta')
+                nr_seq_autorizacao = aut.get('nr_seq_autorizacao')
+                conta = None
+                materiais_direto = procedimentos_direto = []
+                materiais_codigo = procedimentos_codigo = []
+
+                if nr_interno_conta:
+                    cur.execute("""
+                        SELECT nr_interno_conta, dt_periodo_inicial, dt_periodo_final,
+                               ROUND(vl_conta::NUMERIC, 2) AS vl_total_conta
+                        FROM painel33_contas_paciente
+                        WHERE nr_interno_conta = %s LIMIT 1
+                    """, (nr_interno_conta,))
+                    row_conta = cur.fetchone()
+                    if row_conta:
+                        conta = _serial_row(dict(row_conta))
+
+                    cur.execute("""
+                        SELECT cd_material, ds_material,
+                               qt_material AS qt,
+                               ROUND(vl_material::NUMERIC, 2) AS vl_item
+                        FROM painel33_materiais_conta
+                        WHERE nr_interno_conta = %s AND nr_seq_mat_autor = %s
+                        ORDER BY vl_material DESC NULLS LAST
+                    """, (nr_interno_conta, nr_sequencia))
+                    materiais_direto = [_serial_row(dict(r)) for r in cur.fetchall()]
+
+                    if nr_seq_autorizacao:
+                        cur.execute("""
+                            SELECT cd_material, ds_material,
+                                   qt_material AS qt,
+                                   ROUND(vl_material::NUMERIC, 2) AS vl_item
+                            FROM painel33_materiais_conta
+                            WHERE nr_interno_conta = %s
+                              AND nr_seq_autorizacao = %s
+                              AND (nr_seq_mat_autor IS NULL OR nr_seq_mat_autor <> %s)
+                            ORDER BY vl_material DESC NULLS LAST
+                        """, (nr_interno_conta, nr_seq_autorizacao, nr_sequencia))
+                        materiais_codigo = [_serial_row(dict(r)) for r in cur.fetchall()]
+
+                    cur.execute("""
+                        SELECT cd_procedimento, ds_procedimento, ie_origem_proced,
+                               qt_procedimento AS qt,
+                               ROUND(vl_procedimento::NUMERIC, 2) AS vl_item
+                        FROM painel33_procedimentos_conta
+                        WHERE nr_interno_conta = %s AND nr_seq_proc_autor = %s
+                        ORDER BY vl_procedimento DESC NULLS LAST
+                    """, (nr_interno_conta, nr_sequencia))
+                    procedimentos_direto = [_serial_row(dict(r)) for r in cur.fetchall()]
+
+                    if nr_seq_autorizacao:
+                        cur.execute("""
+                            SELECT cd_procedimento, ds_procedimento, ie_origem_proced,
+                                   qt_procedimento AS qt,
+                                   ROUND(vl_procedimento::NUMERIC, 2) AS vl_item
+                            FROM painel33_procedimentos_conta
+                            WHERE nr_interno_conta = %s
+                              AND nr_seq_autorizacao = %s
+                              AND (nr_seq_proc_autor IS NULL OR nr_seq_proc_autor <> %s)
+                            ORDER BY vl_procedimento DESC NULLS LAST
+                        """, (nr_interno_conta, nr_seq_autorizacao, nr_sequencia))
+                        procedimentos_codigo = [_serial_row(dict(r)) for r in cur.fetchall()]
+
+                def _soma(lst):
+                    return round(sum(float(r.get('vl_item') or 0) for r in lst), 2)
+
+                vl_direto = _soma(materiais_direto) + _soma(procedimentos_direto)
+                vl_codigo = _soma(materiais_codigo) + _soma(procedimentos_codigo)
+
+                return jsonify({
+                    'ok': True,
+                    'autorizacao':                aut,
+                    'conta':                      conta,
+                    'materiais_match_direto':     materiais_direto,
+                    'materiais_match_codigo':     materiais_codigo,
+                    'procedimentos_match_direto': procedimentos_direto,
+                    'procedimentos_match_codigo': procedimentos_codigo,
+                    'totais': {
+                        'vl_match_direto':      vl_direto,
+                        'vl_match_codigo':      vl_codigo,
+                        'vl_pendente_estimado': round(max(vl_direto, vl_codigo), 2)
+                    }
+                })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'ok': False, 'erro': 'Erro ao carregar detalhe de valores', 'detalhe': str(e)}), 500
