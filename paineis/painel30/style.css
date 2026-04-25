@@ -931,6 +931,27 @@ body {
 .btn-atualizar-resp:hover { background: #0d6efd; color: white; }
 .btn-atualizar-resp:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.detalhe-secao-admin {
+    border: 1.5px dashed #d4bbff;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #fdf8ff;
+    margin-bottom: 16px;
+}
+
+.detalhe-admin-toggle:hover { opacity: 0.85; }
+
+.btn-reclassificar {
+    margin-top: 4px;
+    padding: 8px 16px; border: none; border-radius: 6px;
+    background: #6f42c1; color: white;
+    font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; font-family: inherit;
+    transition: filter 0.15s;
+}
+.btn-reclassificar:hover { filter: brightness(1.15); }
+.btn-reclassificar:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* ========================================
    DETALHE DA TRATATIVA NO MODAL
    ======================================== */

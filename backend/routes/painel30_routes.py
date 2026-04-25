@@ -862,6 +862,181 @@ def atualizar_tratativa(tratativa_id):
 
 
 # ============================================================
+# API: RECLASSIFICAR CRÍTICA (mover para outro item) — admin
+# ============================================================
+
+@painel30_bp.route('/api/paineis/painel30/categorias-itens', methods=['GET'])
+@login_required
+def categorias_itens():
+    if not _is_admin():
+        return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT c.id AS categoria_id, c.nome AS categoria_nome,
+                   i.id AS item_id, i.descricao AS item_descricao
+            FROM sentir_agir_itens i
+            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+            WHERE i.ativo = TRUE AND c.ativo = TRUE
+            ORDER BY c.ordem, c.nome, i.ordem, i.descricao
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        cats = {}
+        cats_ordem = []
+        for row in rows:
+            cid = row['categoria_id']
+            if cid not in cats:
+                cats[cid] = {'id': cid, 'nome': row['categoria_nome'], 'itens': []}
+                cats_ordem.append(cid)
+            cats[cid]['itens'].append({'id': row['item_id'], 'descricao': row['item_descricao']})
+
+        return jsonify({'success': True, 'data': [cats[c] for c in cats_ordem]})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel30_bp.route('/api/paineis/painel30/tratativas/<int:tratativa_id>/mover', methods=['POST'])
+@login_required
+def mover_tratativa(tratativa_id):
+    """
+    Admin: move a tratativa para outro item.
+    Atualiza: sentir_agir_tratativas (item_id, categoria_id, descricao_problema, responsavel_id)
+              sentir_agir_avaliacoes (item_id) para manter integridade historica
+    """
+    if not _is_admin():
+        return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
+
+    dados = request.get_json()
+    if not dados:
+        return jsonify({'success': False, 'error': 'Dados nao fornecidos'}), 400
+
+    novo_item_id = dados.get('item_id')
+    motivo = (dados.get('motivo') or '').strip()
+
+    if not novo_item_id:
+        return jsonify({'success': False, 'error': 'item_id obrigatorio'}), 400
+
+    try:
+        usuario = _get_usuario()
+        ip = _get_ip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT t.id, t.avaliacao_id, t.item_id, t.categoria_id,
+                   t.descricao_problema, t.visita_id,
+                   i.descricao AS item_descricao,
+                   c.nome AS categoria_nome,
+                   v.setor_id
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_itens i ON i.id = t.item_id
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            JOIN sentir_agir_visitas v ON v.id = t.visita_id
+            WHERE t.id = %s
+        """, (tratativa_id,))
+        tratativa = cursor.fetchone()
+
+        if not tratativa:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Tratativa nao encontrada'}), 404
+
+        if tratativa['item_id'] == int(novo_item_id):
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Item ja atribuido a esta tratativa'}), 400
+
+        cursor.execute("""
+            SELECT i.id, i.descricao, i.categoria_id, c.nome AS categoria_nome
+            FROM sentir_agir_itens i
+            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+            WHERE i.id = %s AND i.ativo = TRUE
+        """, (int(novo_item_id),))
+        novo_item = cursor.fetchone()
+
+        if not novo_item:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Item nao encontrado ou inativo'}), 404
+
+        # Reconstruir descricao_problema preservando sufixo (Paciente, Leito, Obs)
+        old_desc = tratativa.get('descricao_problema', '') or ''
+        idx = old_desc.find(' | Paciente:')
+        suffix = old_desc[idx:] if idx != -1 else ''
+        nova_desc = 'Item critico: {item} | Categoria: {cat}{suffix}'.format(
+            item=novo_item['descricao'],
+            cat=novo_item['categoria_nome'],
+            suffix=suffix
+        )
+        if motivo:
+            nova_desc += ' | Reclassificado: ' + motivo
+
+        # Auto-atribuir responsavel para nova categoria/setor
+        novo_resp_id = _encontrar_responsavel_auto(cursor, novo_item['categoria_id'], tratativa['setor_id'])
+
+        # Atualizar tratativa
+        cursor.execute("""
+            UPDATE sentir_agir_tratativas
+            SET item_id = %s, categoria_id = %s, descricao_problema = %s,
+                responsavel_id = %s, atualizado_em = NOW()
+            WHERE id = %s
+        """, (novo_item['id'], novo_item['categoria_id'], nova_desc, novo_resp_id, tratativa_id))
+
+        # Corrigir avaliacao original para apontar ao item correto
+        if tratativa.get('avaliacao_id'):
+            cursor.execute("""
+                UPDATE sentir_agir_avaliacoes
+                SET item_id = %s
+                WHERE id = %s
+            """, (novo_item['id'], tratativa['avaliacao_id']))
+
+        # Log da reclassificacao
+        _registrar_log(
+            cursor, 'tratativa', tratativa_id, 'reclassificacao', usuario,
+            campo_alterado='item_id',
+            valor_anterior='{} [cat: {}]'.format(
+                tratativa['item_descricao'], tratativa['categoria_nome']
+            )[:500],
+            valor_novo='{} [cat: {}]'.format(
+                novo_item['descricao'], novo_item['categoria_nome']
+            )[:500],
+            ip_origem=ip
+        )
+        if motivo:
+            _registrar_log(
+                cursor, 'tratativa', tratativa_id, 'reclassificacao', usuario,
+                campo_alterado='motivo', valor_novo=motivo[:500], ip_origem=ip
+            )
+
+        # Permitir renotificacao com novo item
+        cursor.execute(
+            "DELETE FROM notificacoes_log WHERE chave_evento = %s",
+            ('sentir_agir_trat_{}'.format(tratativa_id),)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Critica reclassificada para: ' + novo_item['descricao'],
+            'novo_item_id': novo_item['id'],
+            'nova_categoria_id': novo_item['categoria_id']
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
 # API: ATUALIZAR RESPONSÁVEL AUTOMATICAMENTE
 # ============================================================
 

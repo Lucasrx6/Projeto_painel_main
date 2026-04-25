@@ -201,12 +201,25 @@ def servir_main_form():
 @login_required
 def listar_servicos():
     try:
+        usuario_id = session.get('usuario_id')
+        is_admin = session.get('is_admin', False)
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
             SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem
-            FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
-        """)
+            FROM hub_servicos
+            WHERE ativo = TRUE
+              AND (
+                permissao_requerida IS NULL
+                OR %s = TRUE
+                OR EXISTS (
+                    SELECT 1 FROM permissoes_paineis
+                    WHERE usuario_id = %s
+                      AND painel_nome = hub_servicos.permissao_requerida
+                )
+              )
+            ORDER BY ordem, nome
+        """, (is_admin, usuario_id))
         servicos = cursor.fetchall()
         cursor.close()
         conn.close()

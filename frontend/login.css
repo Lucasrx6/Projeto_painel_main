@@ -373,25 +373,230 @@ body {
 }
 
 /* ==============================================================================
-   LINK "ESQUECI MINHA SENHA" (OPCIONAL)
+   LINK "ESQUECI MINHA SENHA"
    ============================================================================== */
 
 .forgot-password {
-    text-align: right;
-    margin-bottom: 15px;
+    text-align: center;
+    margin-top: 15px;
+    margin-bottom: 0;
 }
 
 .forgot-password a {
     color: #dc3545;
     font-size: 0.85rem;
     text-decoration: none;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .forgot-password a:hover {
     color: #a71d2a;
     text-decoration: underline;
 }
+
+.forgot-password a i {
+    font-size: 0.8rem;
+}
+
+/* ==============================================================================
+   RESET DE SENHA — CONTAINERS
+   ============================================================================== */
+
+.reset-container {
+    animation: fadeIn 0.4s ease;
+}
+
+.reset-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.reset-icon {
+    font-size: 2.5rem;
+    color: #dc3545;
+    margin-bottom: 12px;
+    display: block;
+    animation: pulseIcon 2s ease-in-out infinite;
+}
+
+@keyframes pulseIcon {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.reset-header h2 {
+    font-size: 1.4rem;
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.reset-header p {
+    color: #666;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.reset-header p strong {
+    color: #dc3545;
+}
+
+/* ==============================================================================
+   PIN INPUTS
+   ============================================================================== */
+
+.pin-inputs-container {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 25px 0;
+}
+
+.pin-input {
+    width: 58px;
+    height: 64px;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #f8f9fa;
+    color: #333;
+    transition: all 0.3s ease;
+    caret-color: #dc3545;
+}
+
+.pin-input:focus {
+    outline: none;
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+    background: white;
+    transform: scale(1.05);
+}
+
+.pin-input.filled {
+    border-color: #28a745;
+    background: #f0fff4;
+    color: #28a745;
+}
+
+.pin-input.error {
+    border-color: #dc3545;
+    background: #fff5f5;
+    animation: shake 0.5s ease;
+}
+
+/* ==============================================================================
+   TIMER DE REENVIO
+   ============================================================================== */
+
+.reset-timer {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.reset-timer a {
+    color: #dc3545;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.reset-timer a:hover {
+    color: #a71d2a;
+    text-decoration: underline;
+}
+
+/* ==============================================================================
+   VOLTAR AO LOGIN
+   ============================================================================== */
+
+.reset-voltar {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.reset-voltar a {
+    color: #666;
+    font-size: 0.85rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.3s ease;
+}
+
+.reset-voltar a:hover {
+    color: #dc3545;
+}
+
+/* ==============================================================================
+   REQUISITOS DE SENHA
+   ============================================================================== */
+
+.senha-requisitos {
+    margin-bottom: 15px;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    border-left: 3px solid #ffc107;
+}
+
+.senha-requisitos small {
+    color: #666;
+    font-size: 0.78rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.4;
+}
+
+.senha-requisitos small i {
+    color: #ffc107;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* ==============================================================================
+   RESPONSIVO - PIN INPUTS
+   ============================================================================== */
+
+@media (max-width: 480px) {
+    .pin-inputs-container {
+        gap: 8px;
+    }
+
+    .pin-input {
+        width: 50px;
+        height: 56px;
+        font-size: 1.5rem;
+        border-radius: 10px;
+    }
+
+    .reset-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .reset-icon {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .pin-input {
+        width: 44px;
+        height: 50px;
+        font-size: 1.3rem;
+    }
+}
+
 
 /* ==============================================================================
    RESPONSIVIDADE - TABLETS (481px - 768px)

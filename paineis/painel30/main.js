@@ -30,6 +30,8 @@
         resumoCarregado: false
     };
 
+    var _categoriasItensCache = null;
+
     // ========================================
     // INICIALIZACAO
     // ========================================
@@ -715,6 +717,43 @@
         }
         html += '</div>';
 
+        // Secao Admin: Reclassificar Critica
+        if (estado.isAdmin) {
+            html += '<div class="detalhe-secao detalhe-secao-admin">';
+            html += '<div class="detalhe-secao-titulo detalhe-admin-toggle" onclick="window.P30.toggleReclassificar()" style="cursor:pointer;user-select:none;">';
+            html += '<i class="fas fa-exchange-alt" style="color:#6f42c1;"></i>';
+            html += '<span style="color:#6f42c1;">[Admin] Reclassificar para outro Item</span>';
+            html += '<i class="fas fa-chevron-down" id="icon-reclassificar" style="margin-left:auto;font-size:0.68rem;color:#aaa;transition:transform 0.2s;"></i>';
+            html += '</div>';
+            html += '<div id="painel-reclassificar" style="display:none;">';
+            html += '<p style="font-size:0.72rem;color:#888;margin-bottom:12px;padding:8px 10px;background:#f8f0ff;border-radius:5px;border-left:3px solid #6f42c1;">';
+            html += '<i class="fas fa-info-circle" style="color:#6f42c1;"></i> ';
+            html += 'Corrige o item desta critica em todos os paineis (28, 29 e 30). ';
+            html += 'A avaliacao original tambem sera corrigida.';
+            html += '</p>';
+            html += '<div class="detalhe-campo">';
+            html += '<label>Nova Categoria</label>';
+            html += '<select id="reclassif-categoria" onchange="window.P30.atualizarItensReclassif()">';
+            html += '<option value="">-- Carregando categorias... --</option>';
+            html += '</select>';
+            html += '</div>';
+            html += '<div class="detalhe-campo">';
+            html += '<label>Novo Item</label>';
+            html += '<select id="reclassif-item">';
+            html += '<option value="">-- Selecione a categoria primeiro --</option>';
+            html += '</select>';
+            html += '</div>';
+            html += '<div class="detalhe-campo">';
+            html += '<label>Motivo da Reclassificacao (opcional)</label>';
+            html += '<input type="text" id="reclassif-motivo" placeholder="Ex: item registrado incorretamente pelo formulario" maxlength="200">';
+            html += '</div>';
+            html += '<button type="button" class="btn-reclassificar" id="btn-reclassificar" onclick="window.P30.confirmarReclassificar(' + idTrat + ')">';
+            html += '<i class="fas fa-exchange-alt"></i> Confirmar Reclassificacao';
+            html += '</button>';
+            html += '</div>';
+            html += '</div>';
+        }
+
         // Secao: Historico
         if (t.historico && t.historico.length > 0) {
             html += '<div class="detalhe-secao">';
@@ -855,6 +894,130 @@
                 abrirTratativa(parseInt(abrirId));
             }
         } catch (e) { /* URLSearchParams nao suportado */ }
+    }
+
+    // ========================================
+    // RECLASSIFICAR CRITICA (admin)
+    // ========================================
+
+    function toggleReclassificar() {
+        var painel = document.getElementById('painel-reclassificar');
+        var icon = document.getElementById('icon-reclassificar');
+        if (!painel) return;
+        var aberto = painel.style.display !== 'none';
+        painel.style.display = aberto ? 'none' : 'block';
+        if (icon) icon.style.transform = aberto ? '' : 'rotate(180deg)';
+
+        if (!aberto) {
+            if (!_categoriasItensCache) {
+                _carregarCategoriasItens();
+            } else {
+                _popularDropdownCategorias();
+            }
+        }
+    }
+
+    function _carregarCategoriasItens() {
+        var selCat = document.getElementById('reclassif-categoria');
+        if (selCat) selCat.innerHTML = '<option value="">Carregando...</option>';
+
+        fetch(BASE_URL + '/api/paineis/painel30/categorias-itens')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    _categoriasItensCache = data.data;
+                    _popularDropdownCategorias();
+                } else {
+                    if (selCat) selCat.innerHTML = '<option value="">Erro ao carregar</option>';
+                }
+            })
+            .catch(function () {
+                if (selCat) selCat.innerHTML = '<option value="">Erro ao carregar</option>';
+            });
+    }
+
+    function _popularDropdownCategorias() {
+        var selCat = document.getElementById('reclassif-categoria');
+        if (!selCat || !_categoriasItensCache) return;
+
+        var html = '<option value="">-- Selecione a categoria --</option>';
+        _categoriasItensCache.forEach(function (cat) {
+            html += '<option value="' + cat.id + '">' + escapeHtml(cat.nome) + '</option>';
+        });
+        selCat.innerHTML = html;
+
+        if (estado.tratativaAtual && estado.tratativaAtual.categoria_id) {
+            selCat.value = estado.tratativaAtual.categoria_id;
+            atualizarItensReclassif();
+        }
+    }
+
+    function atualizarItensReclassif() {
+        var selCat = document.getElementById('reclassif-categoria');
+        var selItem = document.getElementById('reclassif-item');
+        if (!selCat || !selItem || !_categoriasItensCache) return;
+
+        var catId = parseInt(selCat.value);
+        var cat = null;
+        for (var i = 0; i < _categoriasItensCache.length; i++) {
+            if (_categoriasItensCache[i].id === catId) { cat = _categoriasItensCache[i]; break; }
+        }
+
+        if (!cat) {
+            selItem.innerHTML = '<option value="">-- Selecione a categoria primeiro --</option>';
+            return;
+        }
+
+        var itemAtualId = estado.tratativaAtual ? (estado.tratativaAtual.item_id || estado.tratativaAtual.id) : null;
+        var html = '<option value="">-- Selecione o item destino --</option>';
+        cat.itens.forEach(function (item) {
+            var isAtual = item.id === itemAtualId;
+            html += '<option value="' + item.id + '"' + (isAtual ? ' disabled' : '') + '>';
+            html += escapeHtml(item.descricao) + (isAtual ? ' (item atual)' : '');
+            html += '</option>';
+        });
+        selItem.innerHTML = html;
+    }
+
+    function confirmarReclassificar(tratativaId) {
+        var selItem = document.getElementById('reclassif-item');
+        var novoItemId = selItem ? selItem.value : '';
+        var motivo = (document.getElementById('reclassif-motivo') ? document.getElementById('reclassif-motivo').value : '').trim();
+        var selCat = document.getElementById('reclassif-categoria');
+        var catNome = selCat && selCat.selectedOptions[0] ? selCat.selectedOptions[0].text : '';
+        var itemNome = selItem && selItem.selectedOptions[0] ? selItem.selectedOptions[0].text : '';
+
+        if (!novoItemId) {
+            mostrarToast('Selecione um item de destino', 'erro');
+            return;
+        }
+
+        var confirmMsg = 'Reclassificar esta critica para:\n\nCategoria: ' + catNome + '\nItem: ' + itemNome + '\n\nEsta acao sera registrada no historico e refletira em todos os paineis (28, 29 e 30).\n\nConfirmar?';
+        if (!window.confirm(confirmMsg)) return;
+
+        var btn = document.getElementById('btn-reclassificar');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reclassificando...'; }
+
+        fetch(CONFIG.apiTratativas + '/' + tratativaId + '/mover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: parseInt(novoItemId), motivo: motivo || null })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                mostrarToast(data.message, 'sucesso');
+                abrirTratativa(tratativaId);
+                carregarTudo();
+            } else {
+                mostrarToast(data.error || 'Erro ao reclassificar', 'erro');
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-exchange-alt"></i> Confirmar Reclassificacao'; }
+            }
+        })
+        .catch(function () {
+            mostrarToast('Erro de comunicacao', 'erro');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-exchange-alt"></i> Confirmar Reclassificacao'; }
+        });
     }
 
     // ========================================
@@ -1248,7 +1411,10 @@
         toggleResponsavel: toggleResponsavel,
         editarResponsavel: editarResponsavel,
         irParaTratativasSetor: irParaTratativasSetor,
-        atualizarResponsavelAuto: atualizarResponsavelAuto
+        atualizarResponsavelAuto: atualizarResponsavelAuto,
+        toggleReclassificar: toggleReclassificar,
+        atualizarItensReclassif: atualizarItensReclassif,
+        confirmarReclassificar: confirmarReclassificar
     };
 
     if (document.readyState === 'loading') {
