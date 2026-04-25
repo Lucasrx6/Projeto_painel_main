@@ -15,6 +15,8 @@ import bcrypt
 import re
 import logging
 import secrets
+import random
+import os
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
@@ -333,7 +335,8 @@ def verificar_usuario(usuario: str, senha: str) -> Dict[str, Any]:
     try:
         with get_db_cursor(commit=True) as (cursor, conn):
             cursor.execute("""
-                SELECT id, usuario, senha_hash, is_admin, ativo
+                SELECT id, usuario, senha_hash, is_admin, ativo,
+                       COALESCE(force_reset_senha, FALSE) AS force_reset_senha
                 FROM usuarios
                 WHERE LOWER(usuario) = %s
             """, (usuario,))
@@ -345,7 +348,7 @@ def verificar_usuario(usuario: str, senha: str) -> Dict[str, Any]:
                 _registrar_falha_login(usuario, 'usuario_inexistente')
                 return _resposta_falha_login(usuario)
 
-            usuario_id, usuario_nome, senha_hash, is_admin, ativo = resultado
+            usuario_id, usuario_nome, senha_hash, is_admin, ativo, force_reset = resultado
 
             # Verifica se usuario esta ativo
             if not ativo:
@@ -373,7 +376,8 @@ def verificar_usuario(usuario: str, senha: str) -> Dict[str, Any]:
                     'success': True,
                     'usuario_id': usuario_id,
                     'usuario': usuario_nome,
-                    'is_admin': is_admin
+                    'is_admin': is_admin,
+                    'force_reset': bool(force_reset)
                 }
             else:
                 # Senha incorreta
@@ -791,3 +795,402 @@ def limpar_bloqueio(usuario: str, admin_confirmado: bool = False) -> bool:
 
     security_logger.info(f'Bloqueio removido manualmente para usuario: {usuario}')
     return True
+
+
+# ==============================================================================
+# RESET DE SENHA VIA PIN DE 4 DIGITOS
+# ==============================================================================
+
+# Rate limiter para envio de PIN (1 por minuto por usuario)
+_pin_rate_limiter = RateLimiter()
+_pin_rate_limiter._lock = Lock()
+
+# Controle simples de cooldown para envio de PIN
+_pin_cooldowns: Dict[str, datetime] = {}
+_pin_cooldown_lock = Lock()
+PIN_COOLDOWN_SECONDS = 60
+PIN_EXPIRATION_MINUTES = 10
+
+
+def _mascarar_email(email: str) -> str:
+    """
+    Mascara um email para exibicao publica.
+    Exemplo: lucas@email.com -> l***@email.com
+    """
+    if not email or '@' not in email:
+        return '***@***'
+
+    partes = email.split('@')
+    usuario = partes[0]
+    dominio = partes[1]
+
+    if len(usuario) <= 2:
+        mascarado = usuario[0] + '***'
+    else:
+        mascarado = usuario[0] + '***' + usuario[-1]
+
+    return f'{mascarado}@{dominio}'
+
+
+def solicitar_pin_reset(usuario: str) -> Dict[str, Any]:
+    """
+    Gera um PIN de 4 digitos, salva hash na tabela usuarios,
+    e envia por email usando Apprise (SMTP do .env).
+
+    Args:
+        usuario: Nome de usuario
+
+    Returns:
+        dict: {success, email_mascarado} ou {success, error}
+    """
+    if not usuario or not isinstance(usuario, str):
+        return {'success': False, 'error': 'Usuario invalido'}
+
+    usuario = usuario.strip().lower()
+
+    # Verifica cooldown de envio
+    with _pin_cooldown_lock:
+        agora = datetime.now()
+        ultimo_envio = _pin_cooldowns.get(usuario)
+        if ultimo_envio:
+            diff = (agora - ultimo_envio).total_seconds()
+            if diff < PIN_COOLDOWN_SECONDS:
+                restante = int(PIN_COOLDOWN_SECONDS - diff)
+                return {
+                    'success': False,
+                    'error': f'Aguarde {restante} segundos para solicitar novo codigo',
+                    'cooldown': restante
+                }
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            # Busca usuario e email
+            cursor.execute("""
+                SELECT id, usuario, email, ativo
+                FROM usuarios
+                WHERE LOWER(usuario) = %s
+            """, (usuario,))
+
+            resultado = cursor.fetchone()
+
+            if not resultado:
+                # Retorna sucesso generico para nao revelar se usuario existe
+                time.sleep(0.5)
+                return {
+                    'success': True,
+                    'email_mascarado': '***@***',
+                    'message': 'Se o usuario existir, um codigo sera enviado para o email cadastrado'
+                }
+
+            usuario_id, usuario_nome, email, ativo = resultado
+
+            if not ativo:
+                return {'success': False, 'error': ERRO_USUARIO_INATIVO}
+
+            if not email:
+                return {
+                    'success': False,
+                    'error': 'Nenhum email cadastrado. Entre em contato com o administrador'
+                }
+
+            # Gera PIN de 4 digitos
+            pin = f'{random.randint(0, 9999):04d}'
+
+            # Hash do PIN
+            pin_hash = bcrypt.hashpw(
+                pin.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+
+            # Salva hash + expiracao no banco
+            expiracao = datetime.now() + timedelta(minutes=PIN_EXPIRATION_MINUTES)
+            cursor.execute("""
+                UPDATE usuarios
+                SET reset_pin_hash = %s,
+                    reset_pin_expira = %s
+                WHERE id = %s
+            """, (pin_hash, expiracao, usuario_id))
+
+            # Envia email
+            sucesso_email, msg_email = _enviar_email_pin(email, usuario_nome, pin)
+
+            if not sucesso_email:
+                logger.error(f'Falha ao enviar email de reset para usuario={usuario} | Erro: {msg_email}')
+                return {'success': False, 'error': f'Falha no envio de email: {msg_email}'}
+
+            # Registra cooldown
+            with _pin_cooldown_lock:
+                _pin_cooldowns[usuario] = datetime.now()
+
+            security_logger.info(f'PIN de reset gerado | usuario={usuario}')
+
+            return {
+                'success': True,
+                'email_mascarado': _mascarar_email(email),
+                'message': 'Codigo enviado com sucesso'
+            }
+
+    except ConnectionError as e:
+        return {'success': False, 'error': ERRO_CONEXAO}
+    except Exception as e:
+        logger.error(f'Erro ao solicitar PIN de reset: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def verificar_pin_reset(usuario: str, pin: str) -> Dict[str, Any]:
+    """
+    Verifica se o PIN informado e valido para o usuario.
+
+    Args:
+        usuario: Nome de usuario
+        pin: PIN de 4 digitos
+
+    Returns:
+        dict: {success: bool, error: str}
+    """
+    if not usuario or not pin:
+        return {'success': False, 'error': 'Dados invalidos'}
+
+    usuario = usuario.strip().lower()
+    pin = pin.strip()
+
+    if len(pin) != 4 or not pin.isdigit():
+        return {'success': False, 'error': 'Codigo deve ter 4 digitos'}
+
+    try:
+        with get_db_cursor() as (cursor, conn):
+            cursor.execute("""
+                SELECT reset_pin_hash, reset_pin_expira
+                FROM usuarios
+                WHERE LOWER(usuario) = %s AND ativo = TRUE
+            """, (usuario,))
+
+            resultado = cursor.fetchone()
+
+            if not resultado:
+                time.sleep(0.3)
+                return {'success': False, 'error': 'Codigo invalido ou expirado'}
+
+            pin_hash, pin_expira = resultado
+
+            if not pin_hash or not pin_expira:
+                return {'success': False, 'error': 'Nenhum codigo solicitado'}
+
+            # Verifica expiracao
+            if datetime.now() > pin_expira:
+                return {'success': False, 'error': 'Codigo expirado. Solicite um novo'}
+
+            # Verifica PIN
+            if not _verificar_senha_segura(pin, pin_hash):
+                security_logger.warning(f'PIN de reset incorreto | usuario={usuario}')
+                return {'success': False, 'error': 'Codigo invalido'}
+
+            return {'success': True}
+
+    except Exception as e:
+        logger.error(f'Erro ao verificar PIN de reset: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def resetar_senha_com_pin(
+    usuario: str,
+    pin: str,
+    nova_senha: str
+) -> Dict[str, Any]:
+    """
+    Reseta a senha do usuario apos verificar o PIN.
+
+    Args:
+        usuario: Nome de usuario
+        pin: PIN de 4 digitos
+        nova_senha: Nova senha
+
+    Returns:
+        dict: {success: bool, message/error: str}
+    """
+    # Valida nova senha
+    senha_valida, erro_senha = validar_senha_forte(nova_senha)
+    if not senha_valida:
+        return {'success': False, 'error': erro_senha}
+
+    # Verifica PIN primeiro
+    resultado_pin = verificar_pin_reset(usuario, pin)
+    if not resultado_pin['success']:
+        return resultado_pin
+
+    usuario = usuario.strip().lower()
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            # Hash da nova senha
+            nova_senha_hash = bcrypt.hashpw(
+                nova_senha.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+
+            # Atualiza senha, limpa PIN e force_reset
+            cursor.execute("""
+                UPDATE usuarios
+                SET senha_hash = %s,
+                    reset_pin_hash = NULL,
+                    reset_pin_expira = NULL,
+                    force_reset_senha = FALSE,
+                    atualizado_em = %s
+                WHERE LOWER(usuario) = %s AND ativo = TRUE
+            """, (nova_senha_hash, datetime.now(), usuario))
+
+            if cursor.rowcount == 0:
+                return {'success': False, 'error': 'Usuario nao encontrado'}
+
+            security_logger.info(f'Senha resetada via PIN | usuario={usuario}')
+
+            return {'success': True, 'message': 'Senha alterada com sucesso'}
+
+    except ConnectionError as e:
+        return {'success': False, 'error': ERRO_CONEXAO}
+    except Exception as e:
+        logger.error(f'Erro ao resetar senha com PIN: {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+def resetar_senha_force_reset(
+    usuario_id: int,
+    nova_senha: str
+) -> Dict[str, Any]:
+    """
+    Reseta a senha quando force_reset_senha esta ativo (primeiro acesso).
+    Nao exige PIN, mas exige que o usuario esteja autenticado.
+
+    Args:
+        usuario_id: ID do usuario
+        nova_senha: Nova senha
+
+    Returns:
+        dict: {success: bool, message/error: str}
+    """
+    senha_valida, erro_senha = validar_senha_forte(nova_senha)
+    if not senha_valida:
+        return {'success': False, 'error': erro_senha}
+
+    try:
+        with get_db_cursor(commit=True) as (cursor, conn):
+            nova_senha_hash = bcrypt.hashpw(
+                nova_senha.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+
+            cursor.execute("""
+                UPDATE usuarios
+                SET senha_hash = %s,
+                    force_reset_senha = FALSE,
+                    atualizado_em = %s
+                WHERE id = %s AND ativo = TRUE
+            """, (nova_senha_hash, datetime.now(), usuario_id))
+
+            if cursor.rowcount == 0:
+                return {'success': False, 'error': 'Usuario nao encontrado'}
+
+            security_logger.info(f'Senha alterada via force_reset | usuario_id={usuario_id}')
+            return {'success': True, 'message': 'Senha alterada com sucesso'}
+
+    except Exception as e:
+        logger.error(f'Erro ao resetar senha (force): {e}')
+        return {'success': False, 'error': ERRO_CONEXAO}
+
+
+# ==============================================================================
+# ENVIO DE EMAIL COM PIN
+# ==============================================================================
+
+def _enviar_email_pin(email_destino: str, usuario: str, pin: str) -> Tuple[bool, str]:
+    """
+    Envia email com PIN de reset usando Apprise (SMTP do .env).
+
+    Args:
+        email_destino: Email do usuario
+        usuario: Nome do usuario
+        pin: PIN de 4 digitos
+
+    Returns:
+        tuple: (True/False, Mensagem de Erro ou Sucesso)
+    """
+    try:
+        from dotenv import load_dotenv
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        # Carrega o .env explicitamente do diretorio raiz
+        env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+        load_dotenv(env_path)
+
+        smtp_host = os.getenv('SMTP_HOST', '')
+        smtp_port = os.getenv('SMTP_PORT', '587')
+        smtp_user = os.getenv('SMTP_USER', '')
+        smtp_pass = os.getenv('SMTP_PASS', '')
+        smtp_from = os.getenv('SMTP_FROM', '') or smtp_user
+
+        if not smtp_user or not smtp_pass or not smtp_host:
+            logger.error('SMTP nao configurado no .env para reset de senha')
+            return False, 'Credenciais de email nao configuradas no servidor'
+
+        # Monta corpo HTML do email
+        corpo_html = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 20px 25px; border-radius: 12px 12px 0 0; text-align: center;">
+                <h2 style="margin: 0; font-size: 20px;">Codigo de Verificacao</h2>
+                <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Sistema de Paineis - Hospital Anchieta</p>
+            </div>
+
+            <div style="border: 1px solid #dee2e6; border-top: none; padding: 30px 25px; border-radius: 0 0 12px 12px; text-align: center;">
+
+                <p style="font-size: 15px; color: #333; margin-bottom: 5px;">Ola, <strong>{usuario}</strong></p>
+                <p style="font-size: 14px; color: #666; margin-bottom: 25px;">Use o codigo abaixo para redefinir sua senha:</p>
+
+                <div style="background: #f8f9fa; border: 2px dashed #dc3545; border-radius: 12px; padding: 20px; margin: 0 auto; max-width: 220px;">
+                    <span style="font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #dc3545; font-family: 'Courier New', monospace;">{pin}</span>
+                </div>
+
+                <p style="font-size: 13px; color: #999; margin-top: 20px;">
+                    Este codigo expira em <strong>{PIN_EXPIRATION_MINUTES} minutos</strong>.
+                </p>
+                <p style="font-size: 12px; color: #bbb; margin-top: 10px;">
+                    Se voce nao solicitou esta redefinicao, ignore este email.
+                </p>
+
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 11px; color: #999; margin: 0;">
+                    Notificacao automatica - Sistema de Paineis HAC<br>
+                    {datetime.now().strftime('%d/%m/%Y %H:%M')}
+                </p>
+            </div>
+        </div>
+        """
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Codigo de Verificacao - Sistema de Paineis HAC'
+        msg['From'] = f"Sistema Paineis HAC <{smtp_from}>"
+        msg['To'] = email_destino
+
+        part_html = MIMEText(corpo_html, 'html')
+        msg.attach(part_html)
+
+        try:
+            port = int(smtp_port)
+        except ValueError:
+            port = 587
+
+        # Conecta no SMTP
+        server = smtplib.SMTP(smtp_host, port)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+
+        server.send_message(msg)
+        server.quit()
+
+        logger.info(f'Email PIN enviado para: {_mascarar_email(email_destino)}')
+        return True, 'Enviado com sucesso'
+
+    except Exception as e:
+        logger.error(f'Erro ao enviar email PIN: {e}')
+        return False, str(e)

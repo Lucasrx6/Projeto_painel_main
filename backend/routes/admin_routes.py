@@ -195,7 +195,7 @@ def api_resetar_senha(usuario_id):
     """
     Reseta a senha de um usuário
     PUT /api/admin/usuarios/<id>/senha
-    Body: {"nova_senha": "..."}
+    Body: {"nova_senha": "...", "force_reset_senha": false}
     """
     try:
         dados = request.get_json()
@@ -205,8 +205,25 @@ def api_resetar_senha(usuario_id):
             return jsonify({'success': False, 'error': 'Campo "nova_senha" é obrigatório'}), 400
 
         nova_senha = dados['nova_senha']
+        force_reset = dados.get('force_reset_senha', False)
 
         resultado = resetar_senha(usuario_id, nova_senha, admin_id)
+
+        if resultado['success'] and force_reset:
+            try:
+                from backend.database import get_db_connection
+                conn = get_db_connection()
+                if conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "UPDATE usuarios SET force_reset_senha = TRUE WHERE id = %s",
+                        (usuario_id,)
+                    )
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+            except Exception as e:
+                current_app.logger.error(f'Erro ao definir force_reset: {e}')
 
         if resultado['success']:
             return jsonify(resultado), 200
@@ -215,6 +232,51 @@ def api_resetar_senha(usuario_id):
 
     except Exception as e:
         current_app.logger.error(f'Erro ao resetar senha: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno'}), 500
+
+
+@admin_bp.route('/admin/usuarios/<int:usuario_id>/force-reset', methods=['PUT'])
+@admin_required
+def api_force_reset_toggle(usuario_id):
+    """
+    Ativa/desativa force_reset_senha para um usuário
+    PUT /api/admin/usuarios/<id>/force-reset
+    Body: {"force_reset_senha": true}
+    """
+    try:
+        dados = request.get_json()
+        if 'force_reset_senha' not in dados:
+            return jsonify({'success': False, 'error': 'Campo obrigatório'}), 400
+
+        force_reset = bool(dados['force_reset_senha'])
+
+        from backend.database import get_db_connection
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
+
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE usuarios SET force_reset_senha = %s WHERE id = %s",
+            (force_reset, usuario_id)
+        )
+
+        if cur.rowcount == 0:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Usuário não encontrado'}), 404
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        status = 'ativado' if force_reset else 'desativado'
+        return jsonify({
+            'success': True,
+            'message': f'Force reset {status} com sucesso'
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f'Erro ao toggle force_reset: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno'}), 500
 
 

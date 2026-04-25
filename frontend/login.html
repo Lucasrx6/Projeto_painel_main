@@ -44,7 +44,7 @@
                          onerror="this.style.display='none'">
                 </div>
                 <h1>Sistema de Paineis</h1>
-                <p>Faca login para continuar</p>
+                <p id="login-subtitle">Faca login para continuar</p>
             </header>
 
             <!-- ============================================================
@@ -117,10 +117,191 @@
                 </button>
             </form>
 
+            <!-- Link Esqueci minha senha -->
+            <div class="forgot-password">
+                <a href="#" id="link-esqueci-senha" onclick="mostrarFormReset(); return false;">
+                    <i class="fas fa-question-circle"></i> Esqueci minha senha
+                </a>
+            </div>
+
             <!-- ============================================================
-                 FOOTER (OPCIONAL)
+                 RESET DE SENHA — ETAPA 1: Solicitar PIN
                  ============================================================ -->
-            <footer class="login-footer">
+            <div id="reset-step-1" class="reset-container" style="display: none;">
+                <div class="reset-header">
+                    <i class="fas fa-key reset-icon"></i>
+                    <h2>Redefinir Senha</h2>
+                    <p>Informe seu usuario para receber o codigo de verificacao por email</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="reset-usuario">
+                        <i class="fas fa-user" aria-hidden="true"></i> Usuario
+                    </label>
+                    <input type="text"
+                           id="reset-usuario"
+                           class="form-control"
+                           placeholder="Digite seu usuario"
+                           autocomplete="username"
+                           autocapitalize="none"
+                           autocorrect="off"
+                           maxlength="50">
+                </div>
+
+                <div id="mensagem-reset-1" class="alert" style="display: none;" role="alert"></div>
+
+                <button type="button" class="btn-login" id="btn-enviar-pin" onclick="solicitarPinReset()">
+                    <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                    <span>Enviar Codigo</span>
+                </button>
+
+                <div class="reset-voltar">
+                    <a href="#" onclick="voltarParaLogin(); return false;">
+                        <i class="fas fa-arrow-left"></i> Voltar ao login
+                    </a>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 RESET DE SENHA — ETAPA 2: Digitar PIN
+                 ============================================================ -->
+            <div id="reset-step-2" class="reset-container" style="display: none;">
+                <div class="reset-header">
+                    <i class="fas fa-envelope-open-text reset-icon"></i>
+                    <h2>Codigo Enviado</h2>
+                    <p>Digite o codigo de 4 digitos enviado para <strong id="reset-email-mascarado"></strong></p>
+                </div>
+
+                <div class="pin-inputs-container">
+                    <input type="text" class="pin-input" id="pin-1" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
+                    <input type="text" class="pin-input" id="pin-2" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="text" class="pin-input" id="pin-3" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    <input type="text" class="pin-input" id="pin-4" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                </div>
+
+                <div id="mensagem-reset-2" class="alert" style="display: none;" role="alert"></div>
+
+                <button type="button" class="btn-login" id="btn-verificar-pin" onclick="verificarPinReset()">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    <span>Verificar Codigo</span>
+                </button>
+
+                <div class="reset-timer" id="reset-timer">
+                    <span id="timer-texto">Reenviar codigo em <strong id="timer-contagem">60</strong>s</span>
+                    <a href="#" id="link-reenviar" style="display: none;" onclick="reenviarPin(); return false;">
+                        <i class="fas fa-redo"></i> Reenviar codigo
+                    </a>
+                </div>
+
+                <div class="reset-voltar">
+                    <a href="#" onclick="voltarParaLogin(); return false;">
+                        <i class="fas fa-arrow-left"></i> Voltar ao login
+                    </a>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 RESET DE SENHA — ETAPA 3: Nova senha
+                 ============================================================ -->
+            <div id="reset-step-3" class="reset-container" style="display: none;">
+                <div class="reset-header">
+                    <i class="fas fa-shield-alt reset-icon"></i>
+                    <h2>Nova Senha</h2>
+                    <p>Defina sua nova senha de acesso</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="reset-nova-senha">
+                        <i class="fas fa-lock" aria-hidden="true"></i> Nova Senha
+                    </label>
+                    <input type="password"
+                           id="reset-nova-senha"
+                           class="form-control"
+                           placeholder="Minimo 8 caracteres"
+                           maxlength="128"
+                           autocomplete="new-password">
+                </div>
+
+                <div class="form-group">
+                    <label for="reset-confirma-senha">
+                        <i class="fas fa-lock" aria-hidden="true"></i> Confirmar Senha
+                    </label>
+                    <input type="password"
+                           id="reset-confirma-senha"
+                           class="form-control"
+                           placeholder="Repita a nova senha"
+                           maxlength="128"
+                           autocomplete="new-password">
+                </div>
+
+                <div class="senha-requisitos">
+                    <small><i class="fas fa-info-circle"></i> A senha deve conter: 8+ caracteres, maiuscula, minuscula, numero e caractere especial</small>
+                </div>
+
+                <div id="mensagem-reset-3" class="alert" style="display: none;" role="alert"></div>
+
+                <button type="button" class="btn-login" id="btn-confirmar-reset" onclick="confirmarResetSenha()">
+                    <i class="fas fa-save" aria-hidden="true"></i>
+                    <span>Alterar Senha</span>
+                </button>
+
+                <div class="reset-voltar">
+                    <a href="#" onclick="voltarParaLogin(); return false;">
+                        <i class="fas fa-arrow-left"></i> Voltar ao login
+                    </a>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 FORCE RESET — Modal de troca obrigatória
+                 ============================================================ -->
+            <div id="force-reset-container" class="reset-container" style="display: none;">
+                <div class="reset-header">
+                    <i class="fas fa-exclamation-triangle reset-icon" style="color: #ffc107;"></i>
+                    <h2>Troca de Senha Obrigatoria</h2>
+                    <p>O administrador solicitou que voce defina uma nova senha antes de continuar</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="force-nova-senha">
+                        <i class="fas fa-lock" aria-hidden="true"></i> Nova Senha
+                    </label>
+                    <input type="password"
+                           id="force-nova-senha"
+                           class="form-control"
+                           placeholder="Minimo 8 caracteres"
+                           maxlength="128"
+                           autocomplete="new-password">
+                </div>
+
+                <div class="form-group">
+                    <label for="force-confirma-senha">
+                        <i class="fas fa-lock" aria-hidden="true"></i> Confirmar Senha
+                    </label>
+                    <input type="password"
+                           id="force-confirma-senha"
+                           class="form-control"
+                           placeholder="Repita a nova senha"
+                           maxlength="128"
+                           autocomplete="new-password">
+                </div>
+
+                <div class="senha-requisitos">
+                    <small><i class="fas fa-info-circle"></i> A senha deve conter: 8+ caracteres, maiuscula, minuscula, numero e caractere especial</small>
+                </div>
+
+                <div id="mensagem-force-reset" class="alert" style="display: none;" role="alert"></div>
+
+                <button type="button" class="btn-login" id="btn-force-reset" onclick="confirmarForceReset()">
+                    <i class="fas fa-save" aria-hidden="true"></i>
+                    <span>Definir Nova Senha</span>
+                </button>
+            </div>
+
+            <!-- ============================================================
+                 FOOTER
+                 ============================================================ -->
+            <footer class="login-footer" id="login-footer">
                 <p><strong>Hospital Anchieta</strong> - Ceilandia</p>
             </footer>
         </div>

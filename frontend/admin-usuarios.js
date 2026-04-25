@@ -425,7 +425,8 @@ function criarUsuario(e) {
         usuario: usuario,
         email: email,
         senha: senha,
-        is_admin: isAdmin
+        is_admin: isAdmin,
+        force_reset_senha: document.getElementById('novo-force-reset') ? document.getElementById('novo-force-reset').checked : false
     };
 
     fetch(CONFIG.endpoints.cadastro, {
@@ -641,7 +642,10 @@ function salvarResetSenha(e) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ nova_senha: novaSenha })
+        body: JSON.stringify({
+            nova_senha: novaSenha,
+            force_reset_senha: document.getElementById('reset-force-reset') ? document.getElementById('reset-force-reset').checked : false
+        })
     })
     .then(function(response) {
         return response.json();
