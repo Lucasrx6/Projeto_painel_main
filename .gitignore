@@ -3,3 +3,4 @@
 .claude
 logs/
 __pycache__/
+scripts/
