@@ -44,7 +44,8 @@ def api_minhas_permissoes():
                     'painel18', 'painel19', 'painel20', 'painel21',
                     'painel22', 'painel23', 'painel24', 'painel25',
                     'painel26', 'painel27', 'painel28', 'painel29',
-                    'painel30', 'painel31', 'painel32', 'painel33'
+                    'painel30', 'painel31', 'painel32', 'painel33',
+                    'painel34', 'painel35', 'painel36'
                 ],
                 'is_admin': True
             })
@@ -445,6 +446,12 @@ def api_listar_paineis():
              'descricao': 'Analise diaria das visitas do Projeto Sentir e Agir com IA por setor', 'ativo': True},
             {'nome': 'painel33', 'titulo': 'Autorizacoes de Convenio',
              'descricao': 'Controle de autorizacoes de planos de saude com SLA e semaforo de prazo', 'ativo': True},
+            {'nome': 'painel34', 'titulo': 'Padioleiro - Solicitacao',
+             'descricao': '[Sistema Auxiliar] Solicitacao de transporte de pacientes pelo padioleiro', 'ativo': True},
+            {'nome': 'painel35', 'titulo': 'Padioleiro - Tela Operacional',
+             'descricao': '[Sistema Auxiliar] Tela do padioleiro para gerenciar fila e executar transportes', 'ativo': True},
+            {'nome': 'painel36', 'titulo': 'Padioleiro - Gestao',
+             'descricao': '[Sistema Auxiliar] Gestao, relatorios e configuracoes do sistema padioleiro', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200
