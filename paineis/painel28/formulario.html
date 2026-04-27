@@ -165,6 +165,9 @@
                                 <button type="button" class="btn-impossibilitada" id="btn-impossibilitada" title="Nao foi possivel realizar a visita">
                                     <i class="fas fa-ban"></i> <span class="btn-text">Impossibilitada</span>
                                 </button>
+                                <button type="button" class="btn-precaucao-contato" id="btn-precaucao-contato" title="Paciente em precaucao de contato — remove da fila">
+                                    <i class="fas fa-shield-virus"></i> <span class="btn-text">Prec. Contato</span>
+                                </button>
                                 <button type="button" class="btn-pular-paciente" id="btn-pular" title="Pular para proximo">
                                     <i class="fas fa-forward"></i> Proximo
                                 </button>
@@ -406,6 +409,36 @@
                 <button class="btn-cancelar" id="btn-cancelar-impossibilitada">Cancelar</button>
                 <button class="btn-confirmar-impossibilitada" id="btn-confirmar-impossibilitada">
                     <i class="fas fa-check"></i> Confirmar e Avançar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Precaucao de Contato -->
+    <div class="modal-overlay" id="modal-precaucao-contato">
+        <div class="modal">
+            <div class="modal-header modal-header-precaucao">
+                <h2><i class="fas fa-shield-virus"></i> Precaução de Contato</h2>
+                <button class="modal-fechar" id="btn-modal-fechar-precaucao">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="precaucao-paciente-info" id="precaucao-paciente-info"></div>
+                <p class="precaucao-aviso">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    O paciente será <strong>removido permanentemente da fila</strong> enquanto estiver em precaução de contato.
+                    Nenhuma nova visita será indicada para este paciente até que a marcação seja revertida na gestão.
+                </p>
+                <div class="form-group">
+                    <label for="input-obs-precaucao">
+                        <i class="fas fa-comment-dots"></i> Observação <small>(opcional)</small>
+                    </label>
+                    <textarea id="input-obs-precaucao" rows="2" maxlength="300" placeholder="Motivo da precaução de contato..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-cancelar-precaucao">Cancelar</button>
+                <button class="btn-confirmar-precaucao" id="btn-confirmar-precaucao">
+                    <i class="fas fa-shield-virus"></i> Confirmar Precaução
                 </button>
             </div>
         </div>

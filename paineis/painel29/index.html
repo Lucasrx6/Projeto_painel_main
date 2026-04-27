@@ -183,6 +183,16 @@
                     <h3 id="stat-trat-impossibilitados">0</h3>
                     <p>Impossibilitado</p>
                 </div>
+                <div class="stat-card" id="stat-card-impossibilitadas">
+                    <div class="stat-icon" style="background:#fff3e0;color:#e65100;"><i class="fas fa-ban"></i></div>
+                    <h3 id="stat-impossibilitadas">0</h3>
+                    <p>Visit. Impossibi.</p>
+                </div>
+                <div class="stat-card" id="stat-card-precaucao" style="cursor:pointer;" title="Clique para gerenciar precaução de contato">
+                    <div class="stat-icon" style="background:#ede7f6;color:#673ab7;"><i class="fas fa-shield-virus"></i></div>
+                    <h3 id="stat-precaucao-contato">0</h3>
+                    <p>Precau. Contato</p>
+                </div>
             </div>
 
             <!-- Tabela de Visitas -->
@@ -278,6 +288,38 @@
                 <button class="btn-confirmar-status" id="btn-confirmar-status-ronda">
                     <i class="fas fa-check"></i> Confirmar
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gerenciar Precaução de Contato -->
+    <div class="modal-overlay" id="modal-gerenciar-precaucao">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-shield-virus"></i> Gerenciar Precaução de Contato</h2>
+                <button class="modal-fechar" id="btn-fechar-gerenciar-precaucao">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Pacientes listados abaixo estão ocultos da fila de rondas do Painel 28. Para permitir que um paciente volte a receber visitas, clique em "Remover".</p>
+                <div class="tabela-wrapper" style="margin-top: 15px;">
+                    <table class="tabela-dados" id="tabela-precaucao">
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>Atendimento</th>
+                                <th>Marcado Por</th>
+                                <th>Data</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-precaucao-body">
+                            <tr><td colspan="5" class="tabela-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="btn-cancelar-gerenciar-precaucao">Fechar</button>
             </div>
         </div>
     </div>

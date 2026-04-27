@@ -504,7 +504,17 @@ def fila_pacientes():
                          AND r2.status = 'em_andamento'
                          AND v2.criado_em >= CURRENT_DATE
                        ORDER BY v2.criado_em DESC LIMIT 1
-                   ) AS dupla_em_visita
+                   ) AS dupla_em_visita,
+                   (
+                       SELECT d2.id
+                       FROM sentir_agir_visitas v2
+                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                       WHERE v2.nr_atendimento = f.nr_atendimento
+                         AND r2.status = 'em_andamento'
+                         AND v2.criado_em >= CURRENT_DATE
+                       ORDER BY v2.criado_em DESC LIMIT 1
+                   ) AS dupla_id_em_visita
             FROM vw_sentir_agir_fila_pacientes f
             WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
               AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
@@ -512,13 +522,26 @@ def fila_pacientes():
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
+              AND NOT EXISTS (
+                  SELECT 1 FROM sentir_agir_precaucao_contato pc
+                  WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
+              )
             ORDER BY
-                CASE WHEN EXISTS (
-                    SELECT 1 FROM sentir_agir_visitas v
-                    WHERE v.nr_atendimento = f.nr_atendimento
-                      AND v.avaliacao_final != 'impossibilitada'
-                      AND v.criado_em >= CURRENT_DATE
-                ) THEN 1 ELSE 0 END ASC,
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1 FROM sentir_agir_visitas v
+                        WHERE v.nr_atendimento = f.nr_atendimento
+                          AND v.avaliacao_final NOT IN ('impossibilitada')
+                          AND v.criado_em >= CURRENT_DATE
+                    ) THEN 2
+                    WHEN EXISTS (
+                        SELECT 1 FROM sentir_agir_visitas v
+                        WHERE v.nr_atendimento = f.nr_atendimento
+                          AND v.avaliacao_final = 'impossibilitada'
+                          AND v.criado_em >= CURRENT_DATE
+                    ) THEN 1
+                    ELSE 0
+                END ASC,
                 COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
             LIMIT %s
         """, (limite,))
@@ -547,6 +570,7 @@ def fila_pacientes():
             if nr in em_visita_dict:
                 # Sobrescrever o dupla_em_visita (que era do SQL) com a informação mais recente da RAM
                 p['dupla_em_visita'] = em_visita_dict[nr].get('nome_dupla', 'Dupla em visita')
+                p['dupla_id_em_visita'] = em_visita_dict[nr].get('dupla_id')
 
         return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
@@ -584,7 +608,27 @@ def proximo_paciente():
                          AND v.avaliacao_final != 'impossibilitada'
                          AND v.criado_em >= CURRENT_DATE
                        ORDER BY v.criado_em DESC LIMIT 1
-                   ) AS horas_desde_visita_hoje
+                   ) AS horas_desde_visita_hoje,
+                   (
+                       SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
+                       FROM sentir_agir_visitas v2
+                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                       WHERE v2.nr_atendimento = f.nr_atendimento
+                         AND r2.status = 'em_andamento'
+                         AND v2.criado_em >= CURRENT_DATE
+                       ORDER BY v2.criado_em DESC LIMIT 1
+                   ) AS dupla_em_visita,
+                   (
+                       SELECT d2.id
+                       FROM sentir_agir_visitas v2
+                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                       WHERE v2.nr_atendimento = f.nr_atendimento
+                         AND r2.status = 'em_andamento'
+                         AND v2.criado_em >= CURRENT_DATE
+                       ORDER BY v2.criado_em DESC LIMIT 1
+                   ) AS dupla_id_em_visita
             FROM vw_sentir_agir_fila_pacientes f
             WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
               AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
@@ -592,13 +636,26 @@ def proximo_paciente():
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
               AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
+              AND NOT EXISTS (
+                  SELECT 1 FROM sentir_agir_precaucao_contato pc
+                  WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
+              )
             ORDER BY
-                CASE WHEN EXISTS (
-                    SELECT 1 FROM sentir_agir_visitas v
-                    WHERE v.nr_atendimento = f.nr_atendimento
-                      AND v.avaliacao_final != 'impossibilitada'
-                      AND v.criado_em >= CURRENT_DATE
-                ) THEN 1 ELSE 0 END ASC,
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1 FROM sentir_agir_visitas v
+                        WHERE v.nr_atendimento = f.nr_atendimento
+                          AND v.avaliacao_final NOT IN ('impossibilitada')
+                          AND v.criado_em >= CURRENT_DATE
+                    ) THEN 2
+                    WHEN EXISTS (
+                        SELECT 1 FROM sentir_agir_visitas v
+                        WHERE v.nr_atendimento = f.nr_atendimento
+                          AND v.avaliacao_final = 'impossibilitada'
+                          AND v.criado_em >= CURRENT_DATE
+                    ) THEN 1
+                    ELSE 0
+                END ASC,
                 COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
             LIMIT 1
         """)
@@ -689,6 +746,100 @@ def liberar_paciente():
     with _visita_lock:
         _em_visita.pop(nr, None)
     return jsonify({'success': True})
+
+
+# ============================================================
+# API: PRECAUÇÃO DE CONTATO
+# ============================================================
+
+@painel28_bp.route('/precaucao-contato', methods=['GET'])
+@login_required
+def listar_precaucao_contato():
+    """Lista pacientes em precaução de contato (somente internados na fila)."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT pc.nr_atendimento, pc.nm_paciente, pc.leito,
+                   pc.marcado_por, pc.marcado_em
+            FROM sentir_agir_precaucao_contato pc
+            ORDER BY pc.marcado_em DESC
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        resultado = []
+        for r in rows:
+            item = dict(r)
+            if item.get('marcado_em'):
+                item['marcado_em'] = item['marcado_em'].isoformat()
+            resultado.append(item)
+        return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/precaucao-contato', methods=['POST'])
+@login_required
+def marcar_precaucao_contato():
+    """Marca paciente em precaução de contato, removendo-o da fila de visitas."""
+    dados = request.get_json() or {}
+    nr = str(dados.get('nr_atendimento', '')).strip()
+    nm_paciente = (dados.get('nm_paciente') or '').strip() or None
+    leito = (dados.get('leito') or '').strip() or None
+    if not nr:
+        return jsonify({'success': False, 'error': 'nr_atendimento obrigatorio'}), 400
+
+    usuario = _get_usuario()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            INSERT INTO sentir_agir_precaucao_contato
+                (nr_atendimento, nm_paciente, leito, marcado_por)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (nr_atendimento) DO UPDATE
+                SET nm_paciente = EXCLUDED.nm_paciente,
+                    leito       = EXCLUDED.leito,
+                    marcado_por = EXCLUDED.marcado_por,
+                    marcado_em  = NOW()
+        """, (nr, nm_paciente, leito, usuario))
+        # Liberar lock de visita caso exista
+        with _visita_lock:
+            _em_visita.pop(nr, None)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Paciente marcado em precaução de contato. Removido da fila.'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel28_bp.route('/precaucao-contato/<nr_atendimento>', methods=['DELETE'])
+@login_required
+def remover_precaucao_contato(nr_atendimento):
+    """Remove a marcação de precaução de contato, devolvendo o paciente à fila."""
+    nr = str(nr_atendimento).strip()
+    if not nr:
+        return jsonify({'success': False, 'error': 'nr_atendimento obrigatorio'}), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM sentir_agir_precaucao_contato WHERE nr_atendimento = %s", (nr,)
+        )
+        removido = cursor.rowcount > 0
+        conn.commit()
+        cursor.close()
+        conn.close()
+        if not removido:
+            return jsonify({'success': False, 'error': 'Paciente não encontrado em precaução de contato'}), 404
+        return jsonify({'success': True, 'message': 'Precaução de contato removida. Paciente voltou à fila.'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================

@@ -1937,6 +1937,94 @@ body {
     background: #fff8f0;
 }
 
+/* ===== PRECAUCAO DE CONTATO ===== */
+
+.btn-precaucao-contato {
+    background: rgba(103, 58, 183, 0.25);
+    border: 2px solid rgba(103, 58, 183, 0.8);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.btn-precaucao-contato:hover {
+    background: #673ab7;
+    border-color: #673ab7;
+    color: white;
+}
+
+.modal-header-precaucao {
+    background: linear-gradient(135deg, #673ab7, #4527a0) !important;
+}
+
+.precaucao-paciente-info {
+    background: #ede7f6;
+    border: 1.5px solid #b39ddb;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+
+.precaucao-aviso {
+    background: #fce4ec;
+    border-left: 4px solid #e91e63;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: #880e4f;
+    margin-bottom: 14px;
+    line-height: 1.4;
+}
+
+.precaucao-aviso i {
+    margin-right: 4px;
+}
+
+.btn-confirmar-precaucao {
+    background: linear-gradient(135deg, #673ab7, #4527a0);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.btn-confirmar-precaucao:hover {
+    background: linear-gradient(135deg, #5e35b1, #311b92);
+    transform: translateY(-1px);
+}
+
+.btn-confirmar-precaucao:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.badge-precaucao-contato {
+    background: #673ab7;
+    color: white;
+}
+
+.visita-mini-card.mini-precaucao-contato {
+    border-left: 3px solid #673ab7;
+    background: #ede7f6;
+}
+
 .paciente-loading {
     text-align: center;
     padding: 20px;

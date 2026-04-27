@@ -19,7 +19,8 @@
         apiProximoPaciente: BASE_URL + '/api/paineis/painel28/proximo-paciente',
         apiFilaPacientes: BASE_URL + '/api/paineis/painel28/fila-pacientes',
         apiReservar: BASE_URL + '/api/paineis/painel28/reservar-paciente',
-        apiLiberar: BASE_URL + '/api/paineis/painel28/liberar-paciente'
+        apiLiberar: BASE_URL + '/api/paineis/painel28/liberar-paciente',
+        apiPrecaucaoContato: BASE_URL + '/api/paineis/painel28/precaucao-contato'
     };
 
     var estado = {
@@ -45,6 +46,7 @@
         configurarNavegacao();
         configurarFormulario();
         configurarModalImpossibilitada();
+        configurarModalPrecaucaoContato();
         configurarConfirmacao();
         configurarResumo();
         configurarModais();
@@ -208,9 +210,9 @@
                 if (loading) loading.style.display = 'none';
 
                 if (data.success && data.data && data.data.length > 0) {
-                    // Filtrar fila para ignorar os que já estão em visita por outra dupla
+                    // Filtrar fila para ignorar os que já estão em visita por OUTRA dupla
                     estado.filaPacientes = data.data.filter(function(p) {
-                        return !p.dupla_em_visita;
+                        return !p.dupla_em_visita || p.dupla_id_em_visita == estado.duplaId;
                     });
 
                     if (estado.filaPacientes.length > 0) {
@@ -434,6 +436,83 @@
         .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); })
         .finally(function () {
             if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.innerHTML = '<i class="fas fa-check"></i> Confirmar e Avançar'; }
+        });
+    }
+
+    // ========================================
+    // PRECAUCAO DE CONTATO
+    // ========================================
+
+    function configurarModalPrecaucaoContato() {
+        var els = {
+            'btn-modal-fechar-precaucao': function () { fecharModal('modal-precaucao-contato'); },
+            'btn-cancelar-precaucao': function () { fecharModal('modal-precaucao-contato'); },
+            'btn-confirmar-precaucao': function () { confirmarPrecaucaoContato(); }
+        };
+        for (var id in els) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('click', els[id]);
+        }
+    }
+
+    function abrirModalPrecaucaoContato() {
+        if (!estado.pacienteAtual) {
+            mostrarToast('Nenhum paciente carregado', 'erro');
+            return;
+        }
+        var pac = estado.pacienteAtual;
+        var info = document.getElementById('precaucao-paciente-info');
+        if (info) {
+            info.innerHTML =
+                '<div style="font-size:0.95rem;font-weight:700;color:#333;margin-bottom:4px;">' + escapeHtml(pac.nm_paciente || 'N/I') + '</div>' +
+                '<div style="font-size:0.78rem;color:#666;">' +
+                '<i class="fas fa-bed"></i> Leito: <strong>' + escapeHtml(pac.leito || '--') + '</strong>' +
+                ' &nbsp;|&nbsp; <i class="fas fa-door-open"></i> ' + escapeHtml(pac.setor_sa_nome || pac.setor_ocupacao || '--') +
+                '</div>';
+        }
+        var obs = document.getElementById('input-obs-precaucao');
+        if (obs) obs.value = '';
+        abrirModal('modal-precaucao-contato');
+    }
+
+    function confirmarPrecaucaoContato() {
+        if (!estado.pacienteAtual) return;
+
+        var pac = estado.pacienteAtual;
+        var btnConfirmar = document.getElementById('btn-confirmar-precaucao');
+        if (btnConfirmar) {
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+        }
+
+        fetch(CONFIG.apiPrecaucaoContato, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nr_atendimento: pac.nr_atendimento,
+                nm_paciente: pac.nm_paciente,
+                leito: pac.leito
+            })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                // Liberar lock local e avançar sem registrar visita
+                liberarPaciente();
+                fecharModal('modal-precaucao-contato');
+                mostrarToast('Precaução de contato registrada. Paciente removido da fila.', 'sucesso');
+                limparFormularioVisita();
+                carregarProximoPaciente();
+            } else {
+                mostrarToast(data.error || 'Erro ao registrar precaução de contato', 'erro');
+            }
+        })
+        .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); })
+        .finally(function () {
+            if (btnConfirmar) {
+                btnConfirmar.disabled = false;
+                btnConfirmar.innerHTML = '<i class="fas fa-shield-virus"></i> Confirmar Precaução';
+            }
         });
     }
 
@@ -963,6 +1042,9 @@
 
         var btnImpos = document.getElementById('btn-impossibilitada');
         if (btnImpos) btnImpos.addEventListener('click', function () { abrirModalImpossibilitada(); });
+
+        var btnPrecaucao = document.getElementById('btn-precaucao-contato');
+        if (btnPrecaucao) btnPrecaucao.addEventListener('click', function () { abrirModalPrecaucaoContato(); });
 
         var btnCancelarEd = document.getElementById('btn-cancelar-edicao');
         if (btnCancelarEd) btnCancelarEd.addEventListener('click', function () { cancelarEdicao(); });

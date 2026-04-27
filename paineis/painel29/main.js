@@ -16,6 +16,7 @@
         apiRondas: BASE_URL + '/api/paineis/painel29/rondas',
         apiExportar: BASE_URL + '/api/paineis/painel29/exportar',
         apiConfig: BASE_URL + '/api/paineis/painel29/config',
+        apiPrecaucao: BASE_URL + '/api/paineis/painel29/precaucao-contato',
         intervaloRefresh: 60000
     };
 
@@ -101,6 +102,11 @@
             this.innerHTML = estado.dashboardVisivel
                 ? '<i class="fas fa-chart-bar"></i> <span class="btn-text">Dashboard</span>'
                 : '<i class="fas fa-eye-slash"></i> <span class="btn-text">Dashboard</span>';
+        });
+
+        var btnPrecaucao = document.getElementById('stat-card-precaucao');
+        if (btnPrecaucao) btnPrecaucao.addEventListener('click', function() {
+            abrirModalPrecaucao();
         });
 
         // Ordenacao de colunas da tabela
@@ -303,6 +309,8 @@
                     setTexto('stat-trat-em-tratativa', d.trat_em_tratativa || 0);
                     setTexto('stat-trat-regularizadas', d.trat_regularizadas || 0);
                     setTexto('stat-trat-impossibilitados', d.trat_impossibilitados || 0);
+                    setTexto('stat-impossibilitadas', d.total_impossibilitadas || 0);
+                    setTexto('stat-precaucao-contato', d.total_precaucao_contato || 0);
                 }
             })
             .catch(function (err) { console.error('Erro dashboard:', err); });
@@ -462,8 +470,19 @@
             if (e.target === this) fecharDetalhe();
         });
 
+        // Modal precaução de contato
+        var modalPrecaucao = document.getElementById('modal-gerenciar-precaucao');
+        var btnFecharPrecaucao1 = document.getElementById('btn-fechar-gerenciar-precaucao');
+        var btnFecharPrecaucao2 = document.getElementById('btn-cancelar-gerenciar-precaucao');
+
+        if (btnFecharPrecaucao1) btnFecharPrecaucao1.addEventListener('click', fecharModalPrecaucao);
+        if (btnFecharPrecaucao2) btnFecharPrecaucao2.addEventListener('click', fecharModalPrecaucao);
+        if (modalPrecaucao) modalPrecaucao.addEventListener('click', function(e) {
+            if (e.target === this) fecharModalPrecaucao();
+        });
+
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') { fecharDetalhe(); fecharModalStatusRonda(); }
+            if (e.key === 'Escape') { fecharDetalhe(); fecharModalStatusRonda(); fecharModalPrecaucao(); }
         });
     }
 
@@ -962,11 +981,79 @@
     }
 
     // ========================================
+    // PRECAUCAO DE CONTATO
+    // ========================================
+
+    function abrirModalPrecaucao() {
+        var modal = document.getElementById('modal-gerenciar-precaucao');
+        if (modal) modal.classList.add('ativo');
+        carregarListaPrecaucao();
+    }
+
+    function fecharModalPrecaucao() {
+        var modal = document.getElementById('modal-gerenciar-precaucao');
+        if (modal) modal.classList.remove('ativo');
+    }
+
+    function carregarListaPrecaucao() {
+        var body = document.getElementById('tabela-precaucao-body');
+        if (body) body.innerHTML = '<tr><td colspan="5" class="tabela-loading"><div class="loading-spinner"></div> Carregando...</td></tr>';
+
+        fetch(CONFIG.apiPrecaucao)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!body) return;
+                if (!data.success) {
+                    body.innerHTML = '<tr><td colspan="5" style="color:#dc3545;">Erro: ' + escapeHtml(data.error) + '</td></tr>';
+                    return;
+                }
+                
+                var lista = data.data || [];
+                if (lista.length === 0) {
+                    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">Nenhum paciente em precaução de contato no momento.</td></tr>';
+                    return;
+                }
+
+                body.innerHTML = lista.map(function(p) {
+                    var html = '<tr>';
+                    html += '<td><strong>' + escapeHtml(p.nm_paciente) + '</strong></td>';
+                    html += '<td>' + escapeHtml(p.nr_atendimento) + '</td>';
+                    html += '<td>' + escapeHtml(p.marcado_por || '--') + '</td>';
+                    html += '<td>' + formatarDataHora(p.marcado_em) + '</td>';
+                    html += '<td><button class="btn-cancelar" style="padding: 4px 10px; font-size: 0.8rem;" onclick="window.P29.removerPrecaucao(\'' + p.nr_atendimento + '\')"><i class="fas fa-times"></i> Remover</button></td>';
+                    html += '</tr>';
+                    return html;
+                }).join('');
+            })
+            .catch(function(err) {
+                if (body) body.innerHTML = '<tr><td colspan="5" style="color:#dc3545;">Erro de comunicação.</td></tr>';
+            });
+    }
+
+    function removerPrecaucao(nr_atendimento) {
+        if (!confirm('Deseja realmente remover a precaução deste paciente? Ele voltará a aparecer na fila de rondas do Painel 28.')) return;
+
+        fetch(CONFIG.apiPrecaucao + '/' + encodeURIComponent(nr_atendimento), { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    mostrarToast('Precaução removida com sucesso.', 'sucesso');
+                    carregarListaPrecaucao();
+                    carregarTudo(); // Atualizar dashboard
+                } else {
+                    mostrarToast(data.error || 'Erro ao remover precaução.', 'erro');
+                }
+            })
+            .catch(function() { mostrarToast('Erro de comunicação.', 'erro'); });
+    }
+
+    // ========================================
     // EXPOR FUNCOES GLOBAIS
     // ========================================
 
     window.P29 = {
-        abrirDetalhe: abrirDetalhe
+        abrirDetalhe: abrirDetalhe,
+        removerPrecaucao: removerPrecaucao
     };
 
     // ========================================

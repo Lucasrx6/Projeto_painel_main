@@ -248,12 +248,28 @@ def dashboard():
         """)
         top_criticos = [serializar_linha(r) for r in cursor.fetchall()]
 
+        # KPI: visitas impossibilitadas no período
+        cursor.execute("""
+            SELECT COUNT(*) AS total_impossibilitadas
+            FROM sentir_agir_visitas v
+            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+            WHERE """ + where + " AND v.avaliacao_final = 'impossibilitada'", params)
+        stats_impos = cursor.fetchone()
+
+        # KPI: total de pacientes em precaução de contato (global, não filtrado por período)
+        cursor.execute("SELECT COUNT(*) AS total_precaucao FROM sentir_agir_precaucao_contato")
+        stats_precaucao = cursor.fetchone()
+
         cursor.close()
         conn.close()
 
         resultado = serializar_linha(stats) if stats else {}
         resultado['top_criticos'] = top_criticos
         resultado['is_admin'] = _is_admin()
+        resultado['total_impossibilitadas'] = int(stats_impos['total_impossibilitadas']) if stats_impos else 0
+        resultado['total_precaucao_contato'] = int(stats_precaucao['total_precaucao']) if stats_precaucao else 0
 
         # Mesclar KPIs de tratativas
         if stats_trat:
@@ -911,6 +927,62 @@ def atualizar_config():
         conn.close()
 
         return jsonify({'success': True, 'message': 'Configuracao atualizada'})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: PRECAUÇÃO DE CONTATO (gestão via painel29)
+# ============================================================
+
+@painel29_bp.route('/api/paineis/painel29/precaucao-contato', methods=['GET'])
+@login_required
+def listar_precaucao_contato_gestao():
+    """Lista todos os pacientes em precaução de contato."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT nr_atendimento, nm_paciente, leito, marcado_por, marcado_em
+            FROM sentir_agir_precaucao_contato
+            ORDER BY marcado_em DESC
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        resultado = []
+        for r in rows:
+            item = dict(r)
+            if item.get('marcado_em'):
+                item['marcado_em'] = item['marcado_em'].isoformat()
+            resultado.append(item)
+        return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel29_bp.route('/api/paineis/painel29/precaucao-contato/<nr_atendimento>', methods=['DELETE'])
+@login_required
+def remover_precaucao_contato_gestao(nr_atendimento):
+    """Remove a marcação de precaução de contato (disponível no painel de gestão)."""
+    if not _is_admin():
+        return jsonify({'success': False, 'error': 'Apenas administradores podem remover precaução de contato'}), 403
+    nr = str(nr_atendimento).strip()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM sentir_agir_precaucao_contato WHERE nr_atendimento = %s", (nr,)
+        )
+        removido = cursor.rowcount > 0
+        conn.commit()
+        cursor.close()
+        conn.close()
+        if not removido:
+            return jsonify({'success': False, 'error': 'Paciente não encontrado'}), 404
+        return jsonify({'success': True, 'message': 'Precaução de contato removida. Paciente voltou à fila.'})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
