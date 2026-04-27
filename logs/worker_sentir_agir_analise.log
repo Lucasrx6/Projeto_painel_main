@@ -244,3 +244,16 @@
 [2026-04-27 08:42:15,364] INFO: === VERIFICACAO INICIAL CONCLUIDA ===
 [2026-04-27 08:42:15,368] INFO: Scheduler ativo. Proximo ciclo agendado para 18:00.
 [2026-04-27 10:17:02,673] INFO: Worker encerrado pelo usuario.
+[2026-04-27 10:19:45,424] INFO: ============================================================
+[2026-04-27 10:19:45,424] INFO: WORKER ANALISE DIARIA SENTIR E AGIR - INICIANDO
+[2026-04-27 10:19:45,425] INFO: Horario agendado: 18:00 (dias uteis)
+[2026-04-27 10:19:45,425] INFO: Retroatividade: 7 dias uteis
+[2026-04-27 10:19:45,425] INFO: Modelo IA: llama-3.3-70b-versatile
+[2026-04-27 10:19:45,425] INFO: ============================================================
+[2026-04-27 10:19:45,510] INFO: Tabela sentir_agir_analises_ia verificada/criada.
+[2026-04-27 10:19:45,511] INFO: === VERIFICACAO INICIAL DE PENDENTES ===
+[2026-04-27 10:19:45,856] INFO: 1 dia(s) sem analise: ['2026-04-21']
+[2026-04-27 10:19:45,856] INFO: [startup] Iniciando analise de 2026-04-21...
+[2026-04-27 10:19:46,004] INFO: [startup] Nenhuma visita encontrada em 2026-04-21. Pulando.
+[2026-04-27 10:19:49,005] INFO: === VERIFICACAO INICIAL CONCLUIDA ===
+[2026-04-27 10:19:49,006] INFO: Scheduler ativo. Proximo ciclo agendado para 18:00.

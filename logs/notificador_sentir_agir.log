@@ -6240,3 +6240,115 @@ DETAIL:  Failing row contains (1024, sentir_agir_tratativa, sentir_agir_trat_6, 
 2026-04-27 10:12:34 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
 2026-04-27 10:12:35 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
 2026-04-27 10:17:07 [INFO] Encerrado pelo usuario (Ctrl+C)
+2026-04-27 10:19:40 [INFO] ============================================================
+2026-04-27 10:19:40 [INFO]   NOTIFICADOR SENTIR E AGIR - Email
+2026-04-27 10:19:40 [INFO]   Intervalo: 15 minutos (padrao 5)
+2026-04-27 10:19:40 [INFO]   SMTP: hac.notificacaotasy@saofranciscodf.med.br via smtp.gmail.com:587
+2026-04-27 10:19:40 [INFO]   Banco: postgres@localhost:5432/postgres
+2026-04-27 10:19:40 [INFO] ============================================================
+2026-04-27 10:19:40 [INFO] Conexao com banco OK
+2026-04-27 10:19:40 [INFO] ==================================================
+2026-04-27 10:19:40 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 10:19:40 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 10:19:40 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 10:19:40 [INFO] Scheduler ativo. Proximo ciclo em 15 min...
+2026-04-27 10:34:40 [INFO] ==================================================
+2026-04-27 10:34:40 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 10:34:40 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 10:34:40 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 10:49:40 [INFO] ==================================================
+2026-04-27 10:49:40 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 10:49:40 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 10:49:41 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 11:04:41 [INFO] ==================================================
+2026-04-27 11:04:41 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 11:04:41 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 11:04:41 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 11:19:41 [INFO] ==================================================
+2026-04-27 11:19:41 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 11:19:41 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 11:19:41 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 11:34:41 [INFO] ==================================================
+2026-04-27 11:34:41 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 11:34:41 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 11:34:41 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 11:49:41 [INFO] ==================================================
+2026-04-27 11:49:41 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 11:49:41 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 11:49:41 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 12:04:42 [INFO] ==================================================
+2026-04-27 12:04:42 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 12:04:42 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 12:04:42 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 12:19:42 [INFO] ==================================================
+2026-04-27 12:19:42 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 12:19:42 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 12:19:42 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 12:34:42 [INFO] ==================================================
+2026-04-27 12:34:42 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 12:34:42 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 12:34:42 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 12:49:42 [INFO] ==================================================
+2026-04-27 12:49:42 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 12:49:43 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 12:49:43 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 13:04:43 [INFO] ==================================================
+2026-04-27 13:04:43 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 13:04:43 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 13:04:43 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 13:19:43 [INFO] ==================================================
+2026-04-27 13:19:43 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 13:19:43 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 13:19:43 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 13:34:43 [INFO] ==================================================
+2026-04-27 13:34:43 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 13:34:43 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 13:34:43 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 13:49:43 [INFO] ==================================================
+2026-04-27 13:49:43 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 13:49:43 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 13:49:44 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 14:04:44 [INFO] ==================================================
+2026-04-27 14:04:44 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 14:04:44 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 14:04:44 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 14:19:44 [INFO] ==================================================
+2026-04-27 14:19:44 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 14:19:44 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 14:19:44 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 14:34:44 [INFO] ==================================================
+2026-04-27 14:34:44 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 14:34:44 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 14:34:44 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 14:49:44 [INFO] ==================================================
+2026-04-27 14:49:44 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 14:49:44 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 14:49:44 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 15:04:45 [INFO] ==================================================
+2026-04-27 15:04:45 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 15:04:45 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 15:04:45 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 15:19:45 [INFO] ==================================================
+2026-04-27 15:19:45 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 15:19:45 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 15:19:45 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 15:34:45 [INFO] ==================================================
+2026-04-27 15:34:45 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 15:34:45 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 15:34:46 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 15:49:46 [INFO] ==================================================
+2026-04-27 15:49:46 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 15:49:46 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 15:49:46 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 16:04:46 [INFO] ==================================================
+2026-04-27 16:04:46 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 16:04:46 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 16:04:46 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 16:19:46 [INFO] ==================================================
+2026-04-27 16:19:46 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 16:19:46 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 16:19:46 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas
+2026-04-27 16:34:46 [INFO] ==================================================
+2026-04-27 16:34:46 [INFO] Verificando tratativas criticas e alertas de atencao...
+2026-04-27 16:34:50 [INFO] [critico] 0 notificadas | 0 sem responsavel | 27 ja enviadas
+2026-04-27 16:34:50 [INFO] [atencao] 0 notificadas | 0 sem responsavel | 22 ja enviadas

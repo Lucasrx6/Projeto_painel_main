@@ -918,3 +918,10 @@
 [2026-04-27 16:28:36] INFO [app:79] - ✅ Security headers configurados
 [2026-04-27 16:28:36] INFO [app:72] - ✅ Error handlers registrados
 [2026-04-27 16:28:36] INFO [app:126] -  32 Blueprints registrados com sucesso
+[2026-04-27 16:29:12] WARNING [app:46] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel22
+[2026-04-27 16:30:12] WARNING [app:46] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel22
+[2026-04-27 16:31:12] WARNING [app:46] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel22
+[2026-04-27 16:32:12] WARNING [app:46] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel22
+[2026-04-27 16:33:12] WARNING [app:46] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel22
+[2026-04-27 16:34:12] WARNING [app:46] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel22
+[2026-04-27 16:35:12] WARNING [app:46] - Acesso não autorizado: http://172.16.1.75:5000/painel/painel22
