@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solicitar Padioleiro - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel34/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <meta name="theme-color" content="#dc3545">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+    <div class="painel-container">
+
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-wheelchair"></i> Padioleiro</h1>
+                </div>
+                <div class="header-right">
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+
+            <!-- TELA 1: Principal -->
+            <div class="tela" id="tela-principal">
+                <div class="tela-principal-wrapper">
+                    <div class="icone-servico">
+                        <i class="fas fa-wheelchair"></i>
+                    </div>
+                    <h2 class="tela-titulo">Transporte de Paciente</h2>
+                    <p class="tela-subtitulo">Solicite o padioleiro para movimentação do paciente</p>
+
+                    <button class="btn-solicitar" id="btn-novo-chamado">
+                        <div class="btn-solicitar-pulso"></div>
+                        <div class="btn-solicitar-conteudo">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Nova Solicitacao</span>
+                        </div>
+                    </button>
+
+                    <button class="btn-acompanhar" id="btn-acompanhar">
+                        <i class="fas fa-clipboard-list"></i>
+                        Meus Chamados
+                        <span class="badge-count" id="badge-ativos">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TELA 2: Formulario -->
+            <div class="tela" id="tela-formulario" style="display:none;">
+                <div class="tela-header">
+                    <button class="btn-voltar-form" id="btn-voltar-form">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-file-medical"></i> Nova Solicitacao</h2>
+                </div>
+
+                <form class="formulario" id="form-chamado" autocomplete="off">
+
+                    <!-- Tipo de Movimento -->
+                    <div class="form-section">
+                        <label class="section-label">
+                            <i class="fas fa-route"></i> Tipo de Movimento *
+                        </label>
+                        <div class="tipo-grid" id="tipo-grid">
+                            <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                        </div>
+                        <input type="hidden" id="tipo-movimento-id" required>
+                        <input type="hidden" id="tipo-movimento-nome">
+                    </div>
+
+                    <!-- Paciente -->
+                    <div class="form-section">
+                        <label class="section-label">
+                            <i class="fas fa-user-injured"></i> Paciente
+                        </label>
+
+                        <!-- Busca na lista -->
+                        <div id="bloco-busca-paciente">
+                            <div class="busca-wrapper">
+                                <i class="fas fa-search busca-ico"></i>
+                                <input type="text" id="input-busca-paciente"
+                                       placeholder="Buscar por nome ou nº atendimento..."
+                                       autocomplete="off" maxlength="100" spellcheck="false">
+                                <button type="button" id="btn-limpar-busca" style="display:none;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div id="busca-lista" class="busca-lista" style="display:none;"></div>
+                        </div>
+
+                        <!-- Paciente selecionado -->
+                        <div id="paciente-card" class="paciente-card" style="display:none;">
+                            <div class="paciente-card-info">
+                                <i class="fas fa-user-check"></i>
+                                <div>
+                                    <div class="paciente-card-nome" id="pc-nome"></div>
+                                    <div class="paciente-card-det" id="pc-det"></div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-trocar-paciente" class="btn-trocar-paciente">
+                                <i class="fas fa-sync-alt"></i> Trocar
+                            </button>
+                        </div>
+
+                        <!-- Modo manual -->
+                        <div id="bloco-manual" style="display:none;">
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="input-paciente">Nome do Paciente</label>
+                                    <input type="text" id="input-paciente" placeholder="Nome completo" maxlength="200">
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-atendimento">Nº Atendimento</label>
+                                    <input type="text" id="input-atendimento" placeholder="Ex: 123456" maxlength="50" inputmode="numeric">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="btn-toggle-manual" class="btn-link-manual">
+                            <i class="fas fa-keyboard"></i>
+                            <span id="txt-toggle-manual">Digitar manualmente</span>
+                        </button>
+
+                        <!-- Campos ocultos -->
+                        <input type="hidden" id="hid-paciente">
+                        <input type="hidden" id="hid-atendimento">
+                    </div>
+
+                    <!-- Origem e Destino -->
+                    <div class="form-section">
+                        <label class="section-label">
+                            <i class="fas fa-map-signs"></i> Origem e Destino *
+                        </label>
+                        <div class="form-group">
+                            <label for="select-setor">Setor de Origem *</label>
+                            <select id="select-setor" required>
+                                <option value="">Selecione o setor...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-leito">Leito de Origem</label>
+                            <input type="text" id="input-leito" placeholder="Ex: 101-A" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="select-destino">Setor de Destino *</label>
+                            <select id="select-destino" required>
+                                <option value="">Carregando setores...</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="grupo-complemento" style="display:none;">
+                            <label for="input-complemento">Especificar destino *</label>
+                            <input type="text" id="input-complemento" placeholder="Ex: Laboratório, Sala 3, Ala Norte..." maxlength="200">
+                        </div>
+                    </div>
+
+                    <!-- Prioridade -->
+                    <div class="form-section">
+                        <label class="section-label">
+                            <i class="fas fa-tachometer-alt"></i> Prioridade *
+                        </label>
+                        <div class="prioridade-grid">
+                            <label class="prioridade-card" id="card-normal">
+                                <input type="radio" name="prioridade" value="normal" checked>
+                                <div class="prioridade-card-content normal">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Normal</span>
+                                    <small>Sem urgencia</small>
+                                </div>
+                            </label>
+                            <label class="prioridade-card" id="card-urgente">
+                                <input type="radio" name="prioridade" value="urgente">
+                                <div class="prioridade-card-content urgente">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>Urgente</span>
+                                    <small>Atendimento prioritario</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Observacao -->
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="input-obs">
+                                <i class="fas fa-comment-medical"></i> Observacao
+                                <small>(opcional)</small>
+                            </label>
+                            <textarea id="input-obs" placeholder="Informacoes adicionais sobre o transporte..." rows="3" maxlength="500"></textarea>
+                            <span class="char-count"><span id="count-obs">0</span>/500</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-enviar" id="btn-enviar">
+                        <i class="fas fa-paper-plane"></i> Enviar Solicitacao
+                    </button>
+                </form>
+            </div>
+
+            <!-- TELA 3: Confirmacao -->
+            <div class="tela" id="tela-confirmacao" style="display:none;">
+                <div class="confirmacao-container">
+                    <div class="confirmacao-icone">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 class="confirmacao-titulo">Solicitacao Enviada!</h2>
+                    <p class="confirmacao-msg">O padioleiro sera acionado em instantes.</p>
+                    <div class="confirmacao-detalhes" id="confirmacao-detalhes"></div>
+                    <div class="confirmacao-acoes">
+                        <button class="btn-conf btn-nova" id="btn-nova-solicitacao">
+                            <i class="fas fa-plus"></i> Nova Solicitacao
+                        </button>
+                        <button class="btn-conf btn-ver" id="btn-ver-chamados">
+                            <i class="fas fa-list"></i> Ver Chamados
+                        </button>
+                        <button class="btn-conf btn-inicio" id="btn-inicio">
+                            <i class="fas fa-home"></i> Inicio
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA 4: Acompanhamento -->
+            <div class="tela" id="tela-acompanhamento" style="display:none;">
+                <div class="tela-header">
+                    <button class="btn-voltar-form" id="btn-voltar-acompanhamento">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-clipboard-list"></i> Meus Chamados</h2>
+                    <button class="btn-refresh" id="btn-refresh-acomp" title="Atualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="acomp-lista" id="lista-acompanhamento">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
+                <div class="acomp-vazio" id="vazio-acompanhamento" style="display:none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhum chamado nas ultimas 24h</p>
+                </div>
+            </div>
+
+        </div><!-- /.main-content -->
+    </div><!-- /.painel-container -->
+
+    <!-- Modal cancelamento -->
+    <div class="modal-overlay" id="modal-cancelar" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-times-circle"></i> Cancelar Chamado</h3>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja cancelar este chamado?</p>
+                <div class="form-group">
+                    <label>Motivo (opcional)</label>
+                    <input type="text" id="motivo-cancelamento" placeholder="Ex: Paciente transferido..." maxlength="200">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-cancelar-nao" id="btn-cancelar-nao">Nao</button>
+                <button class="btn-modal btn-cancelar-sim" id="btn-cancelar-sim">Sim, cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel34/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
