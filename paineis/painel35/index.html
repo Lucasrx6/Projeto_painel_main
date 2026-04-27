@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Padioleiro - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel35/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <meta name="theme-color" content="#dc3545">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+    <div class="painel-container">
+
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-running"></i> Padioleiro</h1>
+                </div>
+                <div class="header-right">
+                    <span class="status-online" id="status-conexao" title="Conectado">
+                        <i class="fas fa-circle"></i>
+                    </span>
+                    <button id="btn-historico" class="btn-header" title="Historico de hoje">
+                        <i class="fas fa-history"></i>
+                    </button>
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selecao de padioleiro -->
+        <div class="identificacao-bar" id="identificacao-bar">
+            <div class="identificacao-content">
+                <i class="fas fa-user-circle"></i>
+                <select id="select-padioleiro">
+                    <option value="">Selecione seu nome...</option>
+                </select>
+                <span class="id-badge" id="badge-fila">0 na fila</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+
+            <!-- TELA PRINCIPAL: Fila + chamado ativo -->
+            <div class="tela" id="tela-principal">
+
+                <!-- Chamado Ativo -->
+                <div id="secao-chamado-ativo" style="display:none;">
+                    <h3 class="secao-titulo">
+                        <i class="fas fa-spinner fa-spin" id="icone-ativo"></i>
+                        <span id="titulo-ativo">Meu Chamado Ativo</span>
+                    </h3>
+                    <div class="chamado-ativo-card" id="chamado-ativo-card"></div>
+                </div>
+
+                <!-- Fila de Espera -->
+                <div id="secao-fila">
+                    <h3 class="secao-titulo">
+                        <i class="fas fa-list-ol"></i> Fila de Chamados
+                        <span class="fila-count" id="fila-count">0</span>
+                    </h3>
+                    <div id="lista-fila">
+                        <div class="loading"><div class="loading-spinner"></div><p>Carregando fila...</p></div>
+                    </div>
+                    <div class="fila-vazia" id="fila-vazia" style="display:none;">
+                        <i class="fas fa-check-circle"></i>
+                        <p>Nenhum chamado aguardando</p>
+                        <small>A fila esta vazia no momento</small>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TELA: Historico do dia -->
+            <div class="tela" id="tela-historico" style="display:none;">
+                <div class="tela-header">
+                    <button class="btn-voltar-sec" id="btn-voltar-historico">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-history"></i> Historico de Hoje</h2>
+                </div>
+                <div class="historico-resumo" id="historico-resumo"></div>
+                <div id="lista-historico">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
+                <div class="fila-vazia" id="historico-vazio" style="display:none;">
+                    <i class="fas fa-clipboard"></i>
+                    <p>Nenhum transporte realizado hoje</p>
+                </div>
+            </div>
+
+        </div><!-- /.main-content -->
+    </div><!-- /.painel-container -->
+
+    <!-- Modal: Confirmar aceite -->
+    <div class="modal-overlay" id="modal-aceitar" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header modal-header-aceitar">
+                <h3><i class="fas fa-hand-pointer"></i> Aceitar Chamado</h3>
+            </div>
+            <div class="modal-body" id="modal-aceitar-body"></div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-sec" id="btn-aceitar-nao">Cancelar</button>
+                <button class="btn-modal btn-aceitar-confirmar" id="btn-aceitar-sim">
+                    <i class="fas fa-check"></i> Aceitar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cancelar chamado -->
+    <div class="modal-overlay" id="modal-cancelar" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header" style="background:var(--danger);color:white;">
+                <h3><i class="fas fa-exclamation-triangle"></i> Cancelar Chamado</h3>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja cancelar este chamado?</p>
+                <div class="form-group" style="margin-top:15px;">
+                    <label>Motivo do cancelamento (Obrigatorio, min. 10 caracteres):</label>
+                    <textarea id="motivo-cancelamento-pad" class="form-control" rows="3" placeholder="Ex: Paciente ja foi transportado, solicitacao duplicada..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-sec" id="btn-cancelar-pad-nao">Voltar</button>
+                <button class="btn-modal" id="btn-cancelar-pad-sim" style="background:var(--danger);color:white;border:none;">
+                    <i class="fas fa-times"></i> Confirmar Cancelamento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel35/main.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
