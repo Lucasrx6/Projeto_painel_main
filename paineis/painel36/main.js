@@ -23,6 +23,7 @@
         tiposMovimento: [],
         modalContexto: null,
         modalId: null,
+        chamadoCancelarId: null,
         salvando: false
     };
 
@@ -647,18 +648,18 @@
     // ── CANCELAMENTO GESTAO ───────────────────────────────────────
 
     function abrirModalCancelarGestao(id) {
-        estado.modalId = id;
+        estado.chamadoCancelarId = id;
         document.getElementById('motivo-cancelamento-gestao').value = '';
         document.getElementById('modal-cancelar').style.display = '';
     }
 
     function fecharModalCancelarGestao() {
         document.getElementById('modal-cancelar').style.display = 'none';
-        estado.modalId = null;
+        estado.chamadoCancelarId = null;
     }
 
     function confirmarCancelamentoGestao() {
-        var id = estado.modalId;
+        var id = estado.chamadoCancelarId;
         if (!id) return;
 
         var motivo = document.getElementById('motivo-cancelamento-gestao').value.trim();

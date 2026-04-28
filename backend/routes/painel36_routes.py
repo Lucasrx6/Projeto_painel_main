@@ -138,8 +138,8 @@ def api_painel36_chamados():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        where  = [f"criado_em >= NOW() - INTERVAL '{dias} days'"]
-        params = []
+        where  = ["criado_em >= NOW() - (%s || ' days')::INTERVAL"]
+        params = [str(dias)]
 
         if setor:
             where.append("setor_origem_nome ILIKE %s")
@@ -303,10 +303,10 @@ def api_painel36_por_setor():
                 ROUND(AVG(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60)
                     FILTER (WHERE status = 'concluido' AND dt_conclusao IS NOT NULL), 1)   AS tempo_medio_total_min
             FROM padioleiro_chamados
-            WHERE criado_em >= NOW() - INTERVAL '{dias} days'
+            WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
             GROUP BY setor_origem_nome
             ORDER BY total DESC
-        """)
+        """, (str(dias),))
         setores = []
         for row in cursor.fetchall():
             s = dict(row)
@@ -361,11 +361,11 @@ def api_painel36_por_padioleiro():
                 ROUND(AVG(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60)
                     FILTER (WHERE status = 'concluido' AND dt_conclusao IS NOT NULL), 1)   AS tempo_medio_total_min
             FROM padioleiro_chamados
-            WHERE criado_em >= NOW() - INTERVAL '{dias} days'
+            WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
               AND padioleiro_nome IS NOT NULL
             GROUP BY padioleiro_nome
             ORDER BY concluidos DESC
-        """)
+        """, (str(dias),))
         padioleiros = []
         for row in cursor.fetchall():
             p = dict(row)
@@ -431,9 +431,9 @@ def api_painel36_exportar():
                     THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - dt_inicio_transporte)) / 60, 1)
                 END AS tempo_transporte_min
             FROM padioleiro_chamados
-            WHERE criado_em >= NOW() - INTERVAL '{dias} days'
+            WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
             ORDER BY criado_em DESC
-        """)
+        """, (str(dias),))
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
