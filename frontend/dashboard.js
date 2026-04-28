@@ -227,6 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 5. Logout
     document.getElementById('btn-logout').addEventListener('click', () => {
+        // Limpa credenciais salvas para que o auto-login não reentrar após o logout
+        localStorage.removeItem('painel_acesso_salvo');
+        sessionStorage.setItem('saiu_manualmente', 'true');
         fetch('/api/logout', { method: 'POST' })
             .then(() => window.location.href = '/login.html')
             .catch(() => window.location.href = '/login.html');
