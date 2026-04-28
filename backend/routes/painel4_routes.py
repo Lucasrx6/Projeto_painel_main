@@ -5,6 +5,7 @@ Endpoints para monitoramento de ocupação de leitos e setores
 from flask import Blueprint, jsonify, send_from_directory, session, current_app
 from datetime import datetime
 from backend.database import get_db_connection
+from psycopg2.extras import RealDictCursor
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -69,13 +70,12 @@ def api_painel4_dashboard():
         return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM vw_ocupacao_dashboard")
-        colunas = [desc[0] for desc in cursor.description]
         resultado = cursor.fetchone()
 
         if resultado:
-            dados = dict(zip(colunas, resultado))
+            dados = dict(resultado)
         else:
             dados = {
                 'total_leitos': 0,
@@ -125,11 +125,10 @@ def api_painel4_setores():
         return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM vw_ocupacao_por_setor")
 
-        colunas = [desc[0] for desc in cursor.description]
-        setores = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+        setores = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
         conn.close()
@@ -167,11 +166,10 @@ def api_painel4_leitos_ocupados():
         return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM vw_pacientes_internados")
 
-        colunas = [desc[0] for desc in cursor.description]
-        leitos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+        leitos = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
         conn.close()
@@ -209,11 +207,10 @@ def api_painel4_leitos_disponiveis():
         return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM vw_leitos_disponiveis")
 
-        colunas = [desc[0] for desc in cursor.description]
-        leitos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+        leitos = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
         conn.close()
@@ -251,11 +248,10 @@ def api_painel4_todos_leitos():
         return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM vw_ocupacao_hospitalar ORDER BY setor, leito")
 
-        colunas = [desc[0] for desc in cursor.description]
-        leitos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+        leitos = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
         conn.close()

@@ -109,7 +109,8 @@ body {
 
 .btn-voltar,
 .btn-detalhes,
-.btn-refresh {
+.btn-refresh,
+#btn-auto-scroll {
     background: rgba(255, 255, 255, 0.2);
     color: white;
     border: 2px solid white;
@@ -127,10 +128,22 @@ body {
 
 .btn-voltar:hover,
 .btn-detalhes:hover,
-.btn-refresh:hover {
+.btn-refresh:hover,
+#btn-auto-scroll:hover {
     background: white;
     color: #dc3545;
     transform: translateY(-2px);
+}
+
+#btn-auto-scroll.scroll-active {
+    background: #ffc107;
+    color: #333;
+    border-color: #ffc107;
+}
+
+#btn-auto-scroll.scroll-active:hover {
+    background: #e0a800;
+    color: #333;
 }
 
 .ultima-atualizacao {
@@ -516,9 +529,14 @@ body {
 
     .btn-voltar,
     .btn-detalhes,
-    .btn-refresh {
+    .btn-refresh,
+    #btn-auto-scroll {
         padding: 3px 8px;
         font-size: 0.7rem;
+    }
+    
+    #btn-auto-scroll .btn-text {
+        display: none;
     }
 
     .ultima-atualizacao {
@@ -623,7 +641,8 @@ body {
 
     .btn-voltar,
     .btn-detalhes,
-    .btn-refresh {
+    .btn-refresh,
+    #btn-auto-scroll {
         padding: 3px 6px;
         font-size: 0.65rem;
         border-width: 1.5px;
@@ -631,7 +650,8 @@ body {
 
     .btn-voltar i,
     .btn-detalhes i,
-    .btn-refresh i {
+    .btn-refresh i,
+    #btn-auto-scroll i {
         font-size: 0.65rem;
     }
 

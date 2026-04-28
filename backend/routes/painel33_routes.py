@@ -9,6 +9,8 @@ Filtros aceitam valores multiplos separados por virgula.
 
 import io
 import csv
+import time
+import threading
 import traceback
 import statistics
 from datetime import datetime, date
@@ -20,6 +22,14 @@ from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
 painel33_bp = Blueprint('painel33', __name__)
+
+# Cache para /filtros — evita 7 queries DISTINCT a cada carregamento
+_filtros_cache      = {'data': None, 'ts': 0.0}
+_filtros_lock       = threading.Lock()
+FILTROS_TTL_SEG     = 300  # 5 minutos
+
+# Limite máximo de registros no endpoint /dados
+DADOS_LIMITE_PADRAO = 500
 
 
 # ============================================================
@@ -195,17 +205,33 @@ def painel33_dados():
         if ordem_dir not in ('asc', 'desc'):
             ordem_dir = 'desc'
 
+        try:
+            limite = min(1000, max(50, int(request.args.get('limite', DADOS_LIMITE_PADRAO) or DADOS_LIMITE_PADRAO)))
+        except (ValueError, TypeError):
+            limite = DADOS_LIMITE_PADRAO
+
+        # Busca limite+1 para saber se há mais registros sem COUNT(*) extra
         sql = """
             WITH base AS (SELECT * FROM vw_painel33_autorizacoes v {where})
-            SELECT * FROM base ORDER BY {campo} {dir} NULLS LAST
-        """.format(where=where, campo=ordem_campo, dir=ordem_dir)
+            SELECT * FROM base ORDER BY {campo} {dir} NULLS LAST LIMIT {lim}
+        """.format(where=where, campo=ordem_campo, dir=ordem_dir, lim=limite + 1)
 
         with get_db_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(sql, params)
                 rows = cur.fetchall()
 
-        return jsonify({'ok': True, 'dados': [_serial_row(dict(r)) for r in rows], 'total': len(rows)})
+        truncado = len(rows) > limite
+        if truncado:
+            rows = rows[:limite]
+
+        return jsonify({
+            'ok':      True,
+            'dados':   [_serial_row(dict(r)) for r in rows],
+            'total':   len(rows),
+            'truncado': truncado,
+            'limite':   limite,
+        })
 
     except Exception as e:
         traceback.print_exc()
@@ -290,6 +316,11 @@ def painel33_paciente():
 @login_required
 def painel33_filtros():
     try:
+        agora = time.time()
+        with _filtros_lock:
+            if _filtros_cache['data'] is not None and (agora - _filtros_cache['ts']) < FILTROS_TTL_SEG:
+                return jsonify({'ok': True, 'filtros': _filtros_cache['data'], 'cache': True})
+
         sql = """
             SELECT
                 ARRAY(SELECT DISTINCT ds_estagio FROM vw_painel33_autorizacoes
@@ -314,7 +345,12 @@ def painel33_filtros():
                 cur.execute(sql)
                 row = cur.fetchone()
 
-        return jsonify({'ok': True, 'filtros': dict(row) if row else {}})
+        filtros = dict(row) if row else {}
+        with _filtros_lock:
+            _filtros_cache['data'] = filtros
+            _filtros_cache['ts']   = time.time()
+
+        return jsonify({'ok': True, 'filtros': filtros})
 
     except Exception as e:
         traceback.print_exc()
@@ -513,8 +549,9 @@ def painel33_visao_geral():
             {join_val}
             {where}
             GROUP BY v.ds_convenio
-            ORDER BY (COUNT(*) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96)
-                    ) DESC NULLS LAST
+            ORDER BY (
+                COALESCE(SUM(val.vl_pendente_autorizacao) FILTER (WHERE v.ds_estagio <> 'Solicitado' AND v.horas_em_aberto >= 96), 0)
+            ) DESC NULLS LAST
             LIMIT 5
         """.format(join_val=join_val, where=where)
 

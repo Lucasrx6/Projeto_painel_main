@@ -528,6 +528,7 @@
     function recarregarTudo() {
         estado.pacienteCache = {};
         estado.expandidos    = {};
+        _dadosSig = null; // forçar re-render pois filtros mudaram
         carregarDados();
         carregarVisaoGeral();
         if (estado.abaAtiva === 'valores') {
@@ -651,6 +652,9 @@
     // CARREGAR DADOS E AGRUPAR POR PACIENTE
     // ============================================================
 
+    var _dadosReqId  = 0;   // Incrementado a cada chamada; detecta resposta obsoleta
+    var _dadosSig    = null; // Assinatura dos últimos dados renderizados (total|first_seq)
+
     function carregarFiltros() {
         fetchComRetry(CONFIG.apiFiltros, {}).then(function (resp) {
             if (!resp.ok) return;
@@ -680,6 +684,10 @@
     function carregarDados() {
         if (estado.carregando) return;
         estado.carregando = true;
+
+        // ID único desta requisição — respostas de chamadas anteriores são ignoradas
+        var reqId = ++_dadosReqId;
+
         DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'
             + '<div class="loading-spinner"></div> Carregando...</td></tr>';
         DOM.tabelaVazia.style.display = 'none';
@@ -687,12 +695,35 @@
 
         setStatusIndicator('loading');
         fetchComRetry(CONFIG.apiDados, construirParams()).then(function (resp) {
+            // Resposta de uma chamada anterior — ignorar
+            if (reqId !== _dadosReqId) return;
+
             estado.carregando = false;
             if (resp.ok) {
-                renderizarTabela(resp.dados || []);
-                renderizarSintetico(resp.dados || []);
+                var dados = resp.dados || [];
+
+                // Assinatura dos dados: total + nr_sequencia do primeiro item
+                var novaSig = dados.length + '|' + (dados.length ? (dados[0].nr_sequencia || '') : '');
+                if (novaSig === _dadosSig) {
+                    // Dados idênticos — atualizar só o horário, evitar re-render pesado
+                    atualizarHora();
+                    setStatusIndicator('online');
+                    return;
+                }
+                _dadosSig = novaSig;
+
+                renderizarTabela(dados);
+                renderizarSintetico(dados);
                 atualizarHora();
                 setStatusIndicator('online');
+
+                // Aviso de truncamento
+                if (resp.truncado) {
+                    DOM.tabelaTotal.innerHTML = DOM.tabelaTotal.textContent
+                        + ' <span style="color:#e65100;font-weight:600" title="Mostrando os primeiros '
+                        + resp.limite + ' registros. Use os filtros para refinar a busca.">'
+                        + '&#9888; limitado a ' + resp.limite + '</span>';
+                }
             } else {
                 setStatusIndicator('offline');
                 DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'
@@ -700,6 +731,7 @@
                 DOM.resumoSintetico.innerHTML = '<div class="loading">Erro ao carregar dados sintéticos.</div>';
             }
         }).catch(function (err) {
+            if (reqId !== _dadosReqId) return;
             estado.carregando = false;
             setStatusIndicator('offline');
             DOM.tabelaTbody.innerHTML = '<tr><td colspan="7" class="loading-cell">'

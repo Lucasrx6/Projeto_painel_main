@@ -8,7 +8,20 @@ var BASE_URL = window.location.origin;
 var CONFIG = {
     apiDashboard: BASE_URL + '/api/paineis/painel4/dashboard',
     apiSetores: BASE_URL + '/api/paineis/painel4/setores',
-    intervaloRefresh: 30000
+    intervaloRefresh: 30000,
+    velocidadeScroll: 0.5,
+    pausaNoFinal: 2000,
+    pausaReinicio: 5000,
+    autoScrollDelay: 5000
+};
+
+var estado = {
+    autoScroll: {
+        ativo: false,
+        intervalo: null,
+        emPausa: false,
+        aguardando: false
+    }
 };
 
 // ========================================
@@ -23,6 +36,13 @@ function inicializar() {
 
     // Auto-refresh
     setInterval(carregarDados, CONFIG.intervaloRefresh);
+
+    // Auto-scroll apos delay
+    setTimeout(function () {
+        if (!estado.autoScroll.ativo) {
+            ativarAutoScroll();
+        }
+    }, CONFIG.autoScrollDelay);
 
     console.log('Dashboard inicializado!');
 }
@@ -45,6 +65,11 @@ function configurarBotoes() {
     var btnRefresh = document.getElementById('btn-refresh');
     if (btnRefresh) {
         btnRefresh.addEventListener('click', carregarDados);
+    }
+
+    var btnScroll = document.getElementById('btn-auto-scroll');
+    if (btnScroll) {
+        btnScroll.addEventListener('click', toggleAutoScroll);
     }
 }
 
@@ -204,13 +229,117 @@ function atualizarHoraAtualizacao() {
     var agora = new Date();
     var hora = agora.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        second: '2-digit'
     });
 
     var elemento = document.querySelector('.ultima-atualizacao');
     if (elemento) {
         elemento.textContent = hora;
     }
+}
+
+// ========================================
+// AUTO-SCROLL
+// ========================================
+
+function toggleAutoScroll() {
+    if (estado.autoScroll.ativo) {
+        desativarAutoScroll();
+    } else {
+        ativarAutoScroll();
+    }
+}
+
+function ativarAutoScroll() {
+    estado.autoScroll.ativo = true;
+    estado.autoScroll.emPausa = false;
+    estado.autoScroll.aguardando = false;
+
+    var btn = document.getElementById('btn-auto-scroll');
+    if (btn) {
+        btn.classList.add('scroll-active');
+        btn.innerHTML = '<i class="fas fa-pause"></i> <span class="btn-text">Pausar</span>';
+    }
+
+    iniciarCicloScroll();
+}
+
+function desativarAutoScroll() {
+    estado.autoScroll.ativo = false;
+
+    if (estado.autoScroll.intervalo) {
+        clearInterval(estado.autoScroll.intervalo);
+        estado.autoScroll.intervalo = null;
+    }
+
+    var btn = document.getElementById('btn-auto-scroll');
+    if (btn) {
+        btn.classList.remove('scroll-active');
+        btn.innerHTML = '<i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>';
+    }
+}
+
+function iniciarCicloScroll() {
+    if (estado.autoScroll.intervalo) {
+        clearInterval(estado.autoScroll.intervalo);
+    }
+
+    // Watchdog para evitar congelamento quando a aba perde o foco
+    var lastScrollTop = -1;
+    var frozenCount = 0;
+
+    estado.autoScroll.intervalo = setInterval(function () {
+        if (!estado.autoScroll.ativo || estado.autoScroll.emPausa || estado.autoScroll.aguardando) {
+            return;
+        }
+
+        var container = document.querySelector('.dashboard-content');
+        if (!container) return;
+
+        var scrollMax = container.scrollHeight - container.clientHeight;
+
+        // Se nao ha barra de rolagem
+        if (scrollMax <= 0) return;
+
+        // Verificacao de congelamento
+        if (lastScrollTop === container.scrollTop && container.scrollTop > 0 && container.scrollTop < scrollMax - 10) {
+            frozenCount++;
+            if (frozenCount > 20) { // 1 segundo parado
+                container.scrollTop += 1;
+                frozenCount = 0;
+            }
+        } else {
+            frozenCount = 0;
+        }
+        lastScrollTop = container.scrollTop;
+
+        // Chegou no final
+        if (container.scrollTop >= scrollMax - 1) {
+            estado.autoScroll.emPausa = true;
+
+            setTimeout(function () {
+                if (!estado.autoScroll.ativo) return;
+
+                container.scrollTop = 0;
+                estado.autoScroll.aguardando = true;
+
+                setTimeout(function () {
+                    if (estado.autoScroll.ativo) {
+                        estado.autoScroll.aguardando = false;
+                        estado.autoScroll.emPausa = false;
+                    }
+                }, CONFIG.pausaReinicio);
+
+            }, CONFIG.pausaNoFinal);
+
+            return;
+        }
+
+        // Scrollar
+        container.scrollTop += CONFIG.velocidadeScroll;
+
+    }, 50);
 }
 
 // ========================================

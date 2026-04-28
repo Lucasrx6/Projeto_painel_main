@@ -601,6 +601,9 @@
             clearInterval(estado.autoScroll.intervalo);
         }
 
+        var lastScrollTop = -1;
+        var frozenCount = 0;
+
         estado.autoScroll.intervalo = setInterval(function () {
             if (!estado.autoScroll.ativo || estado.autoScroll.emPausa || estado.autoScroll.aguardando) {
                 return;
@@ -631,6 +634,18 @@
                     scrollMax = container.scrollHeight - container.clientHeight;
                 }
             }
+
+            // Verificacao de congelamento
+            if (lastScrollTop === container.scrollTop && container.scrollTop > 0 && container.scrollTop < scrollMax - 10) {
+                frozenCount++;
+                if (frozenCount > 20) { // 1 segundo parado
+                    container.scrollTop += 1;
+                    frozenCount = 0;
+                }
+            } else {
+                frozenCount = 0;
+            }
+            lastScrollTop = container.scrollTop;
 
             // Chegou no final
             if (container.scrollTop >= scrollMax - 10) {
