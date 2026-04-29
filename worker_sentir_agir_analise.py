@@ -556,5 +556,79 @@ def main():
             time.sleep(60)
 
 
+# =========================================================
+# INICIALIZACAO INTEGRADA (modo thread daemon no Flask)
+# =========================================================
+
+_background_started = False
+
+
+def start_in_background():
+    """
+    Inicia o worker de analise diaria como thread daemon junto com o Flask.
+
+    OFF SWITCHES (em ordem de praticidade):
+      1. .env  -> WORKER_SENTIR_AGIR_AUTO=false  (desativa sem tocar no codigo)
+      2. app.py -> comentar o bloco de 3 linhas   (reverte comportamento anterior)
+      3. GROQ_API_KEY ausente                      (worker e ignorado com aviso no log)
+      4. Qualquer excecao de startup e capturada   (nunca derruba o servidor Flask)
+
+    Nota: a verificacao_inicial() pode demorar na primeira execucao caso haja
+    varios dias retroativos pendentes (uma chamada Groq por dia). Tudo ocorre
+    dentro da thread, sem bloquear o servidor.
+    """
+    global _background_started
+    if _background_started:
+        return
+
+    # OFF SWITCH 1: variavel de ambiente
+    if os.getenv('WORKER_SENTIR_AGIR_AUTO', 'true').lower() != 'true':
+        logger.info('[worker_sentir_agir] Auto-start desativado (WORKER_SENTIR_AGIR_AUTO=false)')
+        return
+
+    # OFF SWITCH 3: GROQ_API_KEY ausente — avisa mas nao derruba o servidor
+    if not GROQ_API_KEY:
+        logger.warning('[worker_sentir_agir] GROQ_API_KEY nao configurada — worker ignorado')
+        return
+
+    # Guard Werkzeug: evita iniciar no processo pai do reloader
+    werkzeug_run_main = os.environ.get('WERKZEUG_RUN_MAIN')
+    if werkzeug_run_main is not None and werkzeug_run_main != 'true':
+        return
+
+    _background_started = True
+
+    import threading
+
+    def _run():
+        try:
+            import schedule as _sched
+            _scheduler = _sched.Scheduler()  # instancia isolada, nao interfere no scheduler global
+
+            logger.info('[worker_sentir_agir] Thread daemon iniciada (PID %s, ciclo diario as %s)',
+                        os.getpid(), HORARIO_EXECUCAO)
+
+            # Garante que a tabela existe antes de qualquer operacao
+            garantir_tabela()
+
+            # Recupera analises retroativas pendentes (pode chamar Groq multiplas vezes)
+            verificacao_inicial()
+
+            # Agenda ciclo diario
+            _scheduler.every().day.at(HORARIO_EXECUCAO).do(ciclo_diario)
+            logger.info('[worker_sentir_agir] Proximo ciclo agendado para %s (dias uteis)', HORARIO_EXECUCAO)
+
+            while True:
+                _scheduler.run_pending()
+                time.sleep(30)
+
+        except Exception as e:
+            logger.error('[worker_sentir_agir] Erro fatal na thread daemon: %s', e, exc_info=True)
+
+    t = threading.Thread(target=_run, name='worker_sentir_agir_analise', daemon=True)
+    t.start()
+    logger.info('[worker_sentir_agir] Thread daemon registrada')
+
+
 if __name__ == '__main__':
     main()

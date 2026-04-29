@@ -823,5 +823,64 @@ def main():
         sys.exit(1)
 
 
+# =========================================================
+# INICIALIZACAO INTEGRADA (modo thread daemon no Flask)
+# =========================================================
+
+_background_started = False
+
+
+def start_in_background():
+    """
+    Inicia o notificador Sentir e Agir como thread daemon junto com o Flask.
+
+    OFF SWITCHES (em ordem de praticidade):
+      1. .env  -> NOTIF_SENTIR_AGIR_AUTO=false  (desativa sem tocar no codigo)
+      2. app.py -> comentar o bloco de 3 linhas  (reverte comportamento anterior)
+      3. Qualquer excecao de startup e capturada  (nunca derruba o servidor Flask)
+
+    Compativel com python app.py e Werkzeug debug reloader.
+    """
+    global _background_started
+    if _background_started:
+        return
+
+    # OFF SWITCH 1: variavel de ambiente
+    if os.getenv('NOTIF_SENTIR_AGIR_AUTO', 'true').lower() != 'true':
+        logger.info('[notificador_sentir_agir] Auto-start desativado (NOTIF_SENTIR_AGIR_AUTO=false)')
+        return
+
+    # Guard Werkzeug: evita iniciar no processo pai do reloader
+    werkzeug_run_main = os.environ.get('WERKZEUG_RUN_MAIN')
+    if werkzeug_run_main is not None and werkzeug_run_main != 'true':
+        return
+
+    _background_started = True
+
+    import threading
+
+    def _run():
+        try:
+            import schedule as _sched
+            _scheduler = _sched.Scheduler()  # instancia isolada, nao interfere no scheduler global
+
+            logger.info('[notificador_sentir_agir] Thread daemon iniciada (PID %s, intervalo %smin)',
+                        os.getpid(), INTERVALO_VERIFICACAO)
+
+            verificar_tratativas()
+            _scheduler.every(INTERVALO_VERIFICACAO).minutes.do(verificar_tratativas)
+
+            while True:
+                _scheduler.run_pending()
+                time.sleep(30)
+
+        except Exception as e:
+            logger.error('[notificador_sentir_agir] Erro fatal na thread daemon: %s', e, exc_info=True)
+
+    t = threading.Thread(target=_run, name='notificador_sentir_agir', daemon=True)
+    t.start()
+    logger.info('[notificador_sentir_agir] Thread daemon registrada')
+
+
 if __name__ == '__main__':
     main()

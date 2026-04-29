@@ -137,6 +137,30 @@ for painel in paineis:
 
 app.logger.info(f' {len(paineis) + 4} Blueprints registrados com sucesso')
 
+# Notificador de pareceres — integrado como thread daemon
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_PARECERES_AUTO=false no .env
+try:
+    from notificador_pareceres import start_in_background as _start_notificador
+    _start_notificador()
+except Exception as e:
+    app.logger.warning(f'[notificador_pareceres] Nao iniciado automaticamente: {e}')
+
+# Notificador Sentir e Agir — integrado como thread daemon
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_SENTIR_AGIR_AUTO=false no .env
+try:
+    from notificador_sentir_agir import start_in_background as _start_sentir_agir
+    _start_sentir_agir()
+except Exception as e:
+    app.logger.warning(f'[notificador_sentir_agir] Nao iniciado automaticamente: {e}')
+
+# Worker analise diaria Sentir e Agir (IA Groq, ciclo 18h) — integrado como thread daemon
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina WORKER_SENTIR_AGIR_AUTO=false no .env
+try:
+    from worker_sentir_agir_analise import start_in_background as _start_worker_analise
+    _start_worker_analise()
+except Exception as e:
+    app.logger.warning(f'[worker_sentir_agir_analise] Nao iniciado automaticamente: {e}')
+
 # =========================================================
 # ROTAS DE DESENVOLVIMENTO (Remover em produção)
 # =========================================================

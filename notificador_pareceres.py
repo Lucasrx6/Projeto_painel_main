@@ -582,41 +582,6 @@ def verificar_pareceres():
 
 
 # =========================================================
-# INTEGRACAO COM APP.PY (thread daemon)
-# =========================================================
-
-_background_started = False
-
-
-def start_in_background():
-    """
-    Inicia o notificador em uma thread daemon junto com o Flask.
-    A thread morre automaticamente quando o processo principal encerra.
-    Chamada pelo app.py — nao chama sys.exit(), nao bloqueia o servidor.
-    """
-    global _background_started
-    if _background_started:
-        return
-    _background_started = True
-
-    import threading
-
-    def _run():
-        logger.info('[notificador_pareceres] Thread daemon iniciada (intervalo: %smin)', INTERVALO_VERIFICACAO)
-        try:
-            verificar_pareceres()
-            schedule.every(INTERVALO_VERIFICACAO).minutes.do(verificar_pareceres)
-            while True:
-                schedule.run_pending()
-                time.sleep(30)
-        except Exception as e:
-            logger.error('[notificador_pareceres] Erro fatal na thread: %s', e)
-
-    t = threading.Thread(target=_run, name='notificador_pareceres', daemon=True)
-    t.start()
-
-
-# =========================================================
 # MAIN
 # =========================================================
 
@@ -692,6 +657,69 @@ def main():
     except Exception as e:
         logger.error('Erro fatal: %s', e)
         sys.exit(1)
+
+
+# =========================================================
+# INICIALIZACAO INTEGRADA (modo thread daemon no Flask)
+# =========================================================
+
+_background_started = False
+
+
+def start_in_background():
+    """
+    Inicia o notificador como thread daemon junto com o Flask.
+
+    OFF SWITCHES (em ordem de praticidade):
+      1. .env  -> NOTIF_PARECERES_AUTO=false  (desativa sem tocar no codigo)
+      2. app.py -> comentar o bloco de 3 linhas (reverte comportamento anterior)
+      3. Qualquer excecao de startup e capturada (nunca derruba o servidor Flask)
+
+    Compativel com:
+      - python app.py (processo unico, desenvolvimento)
+      - Werkzeug debug reloader (evita duplicar thread no processo pai)
+    """
+    global _background_started
+    if _background_started:
+        return
+
+    # OFF SWITCH 1: variavel de ambiente
+    if os.getenv('NOTIF_PARECERES_AUTO', 'true').lower() != 'true':
+        logger.info('[notificador_pareceres] Auto-start desativado (NOTIF_PARECERES_AUTO=false)')
+        return
+
+    # Guard Werkzeug: quando o reloader esta ativo, WERKZEUG_RUN_MAIN='true' apenas
+    # no processo filho (app real). No processo pai (reloader) nao esta definido,
+    # mas o pai tambem invoca app.py — evita iniciar a thread no processo errado.
+    werkzeug_run_main = os.environ.get('WERKZEUG_RUN_MAIN')
+    if werkzeug_run_main is not None and werkzeug_run_main != 'true':
+        return
+
+    _background_started = True
+
+    import threading
+
+    def _run():
+        try:
+            import schedule as _sched
+            _scheduler = _sched.Scheduler()  # instancia isolada, nao interfere no scheduler global
+
+            logger.info('[notificador_pareceres] Thread daemon iniciada (PID %s, intervalo %smin)',
+                        os.getpid(), INTERVALO_VERIFICACAO)
+
+            verificar_pareceres()
+            _scheduler.every(INTERVALO_VERIFICACAO).minutes.do(verificar_pareceres)
+
+            while True:
+                _scheduler.run_pending()
+                time.sleep(30)
+
+        except Exception as e:
+            logger.error('[notificador_pareceres] Erro fatal na thread daemon: %s', e, exc_info=True)
+
+    t = threading.Thread(target=_run, name='notificador_pareceres', daemon=True)
+    t.start()
+    logger.info('[notificador_pareceres] Thread daemon registrada')
 
 
 if __name__ == '__main__':

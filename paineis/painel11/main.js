@@ -570,7 +570,7 @@
     }
 
     function determinarClasseLinha(tempoMinutos, tipoVaga, status) {
-        var statusFinais = ['INTERNADO', 'ACOMODADO', 'TRANSFERIDO', 'CANCELADO_NEGADO'];
+        var statusFinais = ['INTERNADO', 'CHAMADO', 'ACOMODADO', 'TRANSFERIDO', 'CANCELADO_NEGADO'];
         if (statusFinais.indexOf(status) !== -1) return '';
         if (tipoVaga === 'UTI') return 'vaga-uti';
         if (tempoMinutos >= CONFIG.minutosCritico) return 'alerta-critico';
@@ -670,8 +670,32 @@
             return '<span class="texto-neutro">-</span>';
         }
 
+        // Transf. Externa (CHAMADO) -> tempo congelado, mesmo visual que internacao
+        if (status === 'CHAMADO') {
+            // Tenta calcular pela diferenca de timestamps quando disponivel
+            if (dtAlta && dtInternacao) {
+                try {
+                    var alta = new Date(dtAlta);
+                    var inter = new Date(dtInternacao);
+                    if (!isNaN(alta.getTime()) && !isNaN(inter.getTime())) {
+                        var diffMin = Math.floor((inter - alta) / 1000 / 60);
+                        if (diffMin >= 0) {
+                            var h = Math.floor(diffMin / 60);
+                            var m = diffMin % 60;
+                            return '<span class="badge-tempo tempo-internado"><i class="fas fa-check"></i> ' + h + 'h ' + m + 'm</span>';
+                        }
+                    }
+                } catch(e) {}
+            }
+            // Fallback: usa minutos_aguardando como valor congelado
+            if (minutos && minutos > 0) {
+                return '<span class="badge-tempo tempo-internado"><i class="fas fa-check"></i> ' + formatarTempoEspera(minutos) + '</span>';
+            }
+            return '<span class="texto-neutro">-</span>';
+        }
+
         // Status ativos -> tempo em tempo real (minutos_aguardando)
-        var statusAtivos = ['AGUARDANDO_VAGA', 'CHAMADO', 'VAGA_APROVADA'];
+        var statusAtivos = ['AGUARDANDO_VAGA', 'VAGA_APROVADA'];
         if (statusAtivos.indexOf(status) === -1) {
             return '<span class="texto-neutro">-</span>';
         }

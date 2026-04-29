@@ -85,7 +85,8 @@ body {
 /* Botões do Header */
 .btn-voltar,
 .btn-refresh,
-.btn-auto-scroll {
+.btn-auto-scroll,
+.btn-privacidade {
     background: rgba(255, 255, 255, 0.2);
     color: white;
     border: 2px solid white;
@@ -103,13 +104,15 @@ body {
 
 .btn-voltar i,
 .btn-refresh i,
-.btn-auto-scroll i {
+.btn-auto-scroll i,
+.btn-privacidade i {
     font-size: 0.75rem;
 }
 
 .btn-voltar:hover,
 .btn-refresh:hover,
-.btn-auto-scroll:hover {
+.btn-auto-scroll:hover,
+.btn-privacidade:hover {
     background: white;
     color: #dc3545;
     transform: translateY(-2px);
@@ -128,6 +131,22 @@ body {
     }
     50% {
         box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+}
+
+/* Botão Privacidade LGPD ativo */
+.btn-privacidade.active {
+    background: #fd7e14;
+    border-color: #fd7e14;
+    animation: pulse-privacidade 2s infinite;
+}
+
+@keyframes pulse-privacidade {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(253, 126, 20, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(253, 126, 20, 0);
     }
 }
 

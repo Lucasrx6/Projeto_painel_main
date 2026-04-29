@@ -19,6 +19,10 @@ let autoScrollAtivo = false;
 let intervaloAutoScroll = null;
 let timeoutAutoScrollInicial = null;
 
+// Preferência de privacidade persistida em localStorage
+// true = nomes abreviados (LGPD, padrão seguro) | false = nomes completos (uso interno CC)
+let nomesAbreviados = localStorage.getItem('painel5_nomes_abreviados') !== 'false';
+
 function inicializar() {
     console.log('🚀 Inicializando Painel de Cirurgias...');
     configurarBotoes();
@@ -55,15 +59,47 @@ function configurarBotoes() {
             if (autoScrollAtivo) {
                 btnAutoScroll.classList.add('active');
                 btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> Pausar';
-                console.log('▶️ Auto-scroll ATIVADO manualmente');
                 iniciarAutoScroll();
             } else {
                 btnAutoScroll.classList.remove('active');
                 btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> Auto Scroll';
                 pararAutoScroll();
-                console.log('⏸️ Auto-scroll PAUSADO');
             }
         });
+    }
+
+    configurarBtnPrivacidade();
+}
+
+function configurarBtnPrivacidade() {
+    const btn = document.getElementById('btn-privacidade');
+    if (!btn) return;
+
+    atualizarBotaoPrivacidade(btn);
+
+    btn.addEventListener('click', () => {
+        nomesAbreviados = !nomesAbreviados;
+        localStorage.setItem('painel5_nomes_abreviados', nomesAbreviados ? 'true' : 'false');
+        atualizarBotaoPrivacidade(btn);
+
+        if (dadosCirurgias.length > 0) {
+            const scrollAtivo = autoScrollAtivo;
+            renderizarCirurgias(dadosCirurgias);
+            // Reinicia auto-scroll caso estivesse ativo (novo DOM gerado)
+            if (scrollAtivo) iniciarAutoScroll();
+        }
+    });
+}
+
+function atualizarBotaoPrivacidade(btn) {
+    if (nomesAbreviados) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fas fa-user-shield"></i> LGPD';
+        btn.title = 'LGPD ativo: nomes abreviados — clique para mostrar nomes completos (uso interno CC)';
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="fas fa-user"></i> Nome';
+        btn.title = 'Nomes completos visíveis — clique para ativar proteção LGPD';
     }
 }
 
@@ -337,7 +373,9 @@ function pararAutoScroll() {
 
 function formatarNome(nomeCompleto) {
     if (!nomeCompleto || nomeCompleto.trim() === '') return '-';
-    const partes = nomeCompleto.trim().toUpperCase().split(/\s+/);
+    const nome = nomeCompleto.trim().toUpperCase();
+    if (!nomesAbreviados) return nome;
+    const partes = nome.split(/\s+/);
     if (partes.length === 1) return partes[0];
     const iniciais = partes.slice(0, -1).map(parte => parte.charAt(0)).join(' ');
     const ultimoNome = partes[partes.length - 1];
