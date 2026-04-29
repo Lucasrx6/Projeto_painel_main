@@ -14,7 +14,7 @@ var CONFIG = {
     delayInicioAutoScroll: 10000,
     pausaNoFinal: 8000,
     pausaAposReset: 8000,
-    watchdogInterval: 3000,
+    watchdogInterval: 5000,
     watchdogTolerancia: 3,
     scrollInterval: 30,
     limiteHorasSemPrescricao: 1,

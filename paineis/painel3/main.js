@@ -28,7 +28,7 @@
         pausaNoFinal: 5000,            // pausa ao chegar no fim
         pausaAposReset: 5000,          // pausa apos voltar ao topo
         delayAutoScrollInicial: 5000,  // delay para iniciar auto-scroll
-        watchdogInterval: 3000,        // verificacao de travamento
+        watchdogInterval: 5000,        // verificacao de travamento
         watchdogMaxTravamentos: 3,     // tentativas antes de reiniciar
 
         // Limites

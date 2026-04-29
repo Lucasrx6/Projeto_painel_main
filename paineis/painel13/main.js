@@ -35,7 +35,7 @@
         pausaNoFinal: 8000,
         pausaAposReset: 6000,
         delayAutoScrollInicial: 8000,
-        watchdogInterval: 3000,
+        watchdogInterval: 5000,
         watchdogMaxTravamentos: 3,
 
         // Modo paginado

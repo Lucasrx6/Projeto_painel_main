@@ -28,7 +28,7 @@ var CONFIG = {
         senhaFraca: 'A senha deve ter no minimo 8 caracteres com maiuscula, minuscula, numero e caractere especial',
         senhasNaoCoincidem: 'As senhas nao coincidem'
     },
-    delays: { redirectAfterLogin: 700, autoLoginInicio: 300 }
+    delays: { redirectAfterLogin: 700 }
 };
 
 var Elementos = {
@@ -115,7 +115,7 @@ function tentarAutoLogin() {
     if (Elementos.inputSenha) Elementos.inputSenha.value = dados.s;
     if (Elementos.checkSalvar) Elementos.checkSalvar.checked = true;
     mostrarInfo(CONFIG.mensagens.autoLogin); setLoadingState(true);
-    setTimeout(function () { enviarLogin(dados.u, dados.s, true); }, CONFIG.delays.autoLoginInicio);
+    enviarLogin(dados.u, dados.s, true);
 }
 
 // ==============================================================================

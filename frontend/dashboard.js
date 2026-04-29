@@ -140,33 +140,29 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.focus();
     });
 
-    // 4. Carregar Info do Usuário e Permissões
-    fetch('/api/verificar-sessao')
-        .then(res => res.json())
-        .then(data => {
-            if (!data.autenticado) {
+    // 4. Carregar Info do Usuário e Permissões (em paralelo)
+    Promise.all([
+        fetch('/api/verificar-sessao').then(res => res.json()),
+        fetch('/api/minhas-permissoes').then(res => res.json())
+    ])
+        .then(([sessao, permissoes]) => {
+            if (!sessao.autenticado) {
                 window.location.href = '/login.html';
                 return;
             }
 
-            document.getElementById('usuario-nome').textContent = data.usuario;
-            isAdmin = data.is_admin || false;
+            document.getElementById('usuario-nome').textContent = sessao.usuario;
+            isAdmin = sessao.is_admin || false;
 
             if (isAdmin) {
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
             }
 
-            // Buscar permissões
-            return fetch('/api/minhas-permissoes');
-        })
-        .then(res => {
-            if (res) return res.json();
-        })
-        .then(data => {
-            if (data && data.success) {
-                userPermissions = data.permissoes || [];
-                if (data.is_admin) isAdmin = true;
+            if (permissoes && permissoes.success) {
+                userPermissions = permissoes.permissoes || [];
+                if (permissoes.is_admin) isAdmin = true;
             }
+
             filterPanels();
         })
         .catch(err => {

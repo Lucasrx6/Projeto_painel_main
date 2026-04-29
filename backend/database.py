@@ -62,6 +62,16 @@ def get_db_config():
 # Configuracao do banco (carregada uma vez)
 DB_CONFIG = get_db_config()
 
+# Parametros extras de conexao: timeout, keepalive TCP e limite de statement
+_CONNECTION_EXTRAS = {
+    'connect_timeout': 10,
+    'keepalives': 1,
+    'keepalives_idle': 30,
+    'keepalives_interval': 10,
+    'keepalives_count': 5,
+    'options': '-c statement_timeout=60000',  # mata queries presas apos 60s
+}
+
 
 # =========================================================
 # CONNECTION POOL (OPCIONAL - PARA ALTA PERFORMANCE)
@@ -90,7 +100,8 @@ def init_connection_pool():
         _connection_pool = pool.ThreadedConnectionPool(
             POOL_MIN_CONNECTIONS,
             POOL_MAX_CONNECTIONS,
-            **DB_CONFIG
+            **DB_CONFIG,
+            **_CONNECTION_EXTRAS
         )
         logger.info(
             f"Connection pool inicializado: "
@@ -146,9 +157,9 @@ def get_db_connection(use_dict_cursor=False, retry_count=3, retry_delay=2):
     for attempt in range(1, retry_count + 1):
         try:
             if use_dict_cursor:
-                conn = psycopg2.connect(**DB_CONFIG, cursor_factory=RealDictCursor)
+                conn = psycopg2.connect(**DB_CONFIG, **_CONNECTION_EXTRAS, cursor_factory=RealDictCursor)
             else:
-                conn = psycopg2.connect(**DB_CONFIG)
+                conn = psycopg2.connect(**DB_CONFIG, **_CONNECTION_EXTRAS)
 
             # Configura autocommit como False (transacoes explicitas)
             conn.autocommit = False
@@ -286,7 +297,7 @@ def check_db_health():
         stats = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         response_time = (time.time() - start_time) * 1000
 

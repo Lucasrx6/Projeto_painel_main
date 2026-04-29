@@ -34,7 +34,7 @@
         pausaNoFinal: 6000,
         pausaAposReset: 4000,
         delayAutoScrollInicial: 10000,
-        watchdogInterval: 3000,
+        watchdogInterval: 5000,
         watchdogMaxTravamentos: 3,
         maxTentativasConexao: 3,
         timeoutRequisicao: 30000,
