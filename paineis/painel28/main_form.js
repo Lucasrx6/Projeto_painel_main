@@ -320,6 +320,11 @@
 
         // Restaurar rascunho do localStorage (apenas se nao estiver em modo edicao)
         if (!estado.editandoVisitaId) {
+            // Limpa observacoes gerais antes de restaurar draft — evita que obs do paciente anterior persista
+            var obsEl = document.getElementById('input-observacoes');
+            if (obsEl) { obsEl.value = ''; }
+            var cntEl = document.getElementById('count-obs');
+            if (cntEl) { cntEl.textContent = '0'; }
             setTimeout(function () { restaurarRascunho(pac); }, 80);
         }
         }); // Fecha o .then() do reservarPaciente
@@ -929,6 +934,10 @@
     function limparRespostasCategorias() {
         var selecionados = document.querySelectorAll('.btn-semaforo.selecionado');
         for (var i = 0; i < selecionados.length; i++) selecionados[i].classList.remove('selecionado');
+        var obsEl = document.getElementById('input-observacoes');
+        if (obsEl) { obsEl.value = ''; }
+        var cntEl = document.getElementById('count-obs');
+        if (cntEl) { cntEl.textContent = '0'; }
         estado.avaliacaoFinalCalculada = null;
         atualizarDisplayAvaliacaoFinal();
     }
