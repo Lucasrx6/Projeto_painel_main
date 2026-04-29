@@ -128,7 +128,7 @@ paineis = [
     painel22_bp, painel23_bp, painel24_bp, painel25_bp,
     painel26_bp, painel27_bp, painel28_bp, painel29_bp,
     painel30_bp, painel31_bp, painel32_bp,
-    painel33_bp,
+    #painel33_bp,
     painel34_bp, painel35_bp, painel36_bp
 ]
 
