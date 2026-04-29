@@ -39,16 +39,10 @@ def get_evolucoes():
     try:
         cursor = conn.cursor()
 
+        hora = datetime.now().hour
+        turno_prioritario = 'DIURNO' if 7 <= hora < 19 else 'NOTURNO'
+
         query = """
-WITH turno_atual AS (
-    SELECT
-        CASE
-            WHEN EXTRACT(HOUR FROM CURRENT_TIME) >= 7
-                 AND EXTRACT(HOUR FROM CURRENT_TIME) < 19
-            THEN 'DIURNO'
-            ELSE 'NOTURNO'
-        END as turno_prioritario
-)
 SELECT
     e.nr_atendimento,
     e.ds_convenio,
@@ -68,29 +62,20 @@ SELECT
     e.evol_tec_enfermagem,
     e.evol_nutricionista,
     e.evol_fisioterapeuta,
-    e.dt_carga,
-    CASE
-        WHEN e.turno = (SELECT turno_prioritario FROM turno_atual) THEN 0
-        ELSE 1
-    END as prioridade_turno
+    e.dt_carga
 FROM public.evolucao_turno e
-CROSS JOIN turno_atual
 WHERE e.setor IS NOT NULL
 ORDER BY
     TO_DATE(e.data_turno, 'DD/MM/YYYY') DESC,
-    prioridade_turno ASC,
+    CASE WHEN e.turno = %s THEN 0 ELSE 1 END ASC,
     e.turno ASC,
     e.nr_atendimento ASC
         """
 
-        cursor.execute(query)
+        cursor.execute(query, (turno_prioritario,))
         colunas = [desc[0] for desc in cursor.description]
 
-        evolucoes = []
-        for row in cursor.fetchall():
-            registro = dict(zip(colunas, row))
-            registro.pop('prioridade_turno', None)
-            evolucoes.append(registro)
+        evolucoes = [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
         cursor.close()
         conn.close()
