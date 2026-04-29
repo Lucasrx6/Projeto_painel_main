@@ -166,7 +166,7 @@
                 '<td>' + escHtml(c.setor_origem_nome || '-') + '</td>' +
                 '<td><strong>' + escHtml(c.destino_nome || '-') + '</strong></td>' +
                 '<td>' + badgeStatus(c.status) + (c.prioridade === 'urgente' ? ' <span class="badge-urgente">URGENTE</span>' : '') + '</td>' +
-                '<td>' + escHtml(c.padioleiro_nome || '<span style="color:#aaa;">--</span>') + '</td>' +
+                '<td>' + (c.padioleiro_nome ? escHtml(c.padioleiro_nome) : '<span style="color:#aaa;">--</span>') + '</td>' +
                 '<td>' + espera + '</td>' +
                 '<td><button class="btn-cancelar-gestao" data-id="' + c.id + '" style="background:transparent;border:none;color:var(--danger);cursor:pointer;" title="Cancelar"><i class="fas fa-times"></i></button></td>' +
             '</tr>';
@@ -326,7 +326,10 @@
         var url = CONFIG.apiExportar + '?dias=' + dias;
         var link = document.createElement('a');
         link.href = url;
+        link.download = '';
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     }
 
     // ── CONFIG: PADIOLEIROS ───────────────────────────────────────
@@ -339,7 +342,8 @@
             .then(function (data) {
                 if (!data.success) return;
                 renderizarCfgPadioleiros(data.padioleiros);
-            });
+            })
+            .catch(function () { lista.innerHTML = '<p style="padding:20px;color:#aaa;">Erro de conexao</p>'; });
     }
 
     function renderizarCfgPadioleiros(lista) {
@@ -409,7 +413,8 @@
                 estado.tiposMovimento = data.tipos;
                 renderizarCfgTipos(data.tipos);
                 atualizarFiltroTiposDestino(data.tipos);
-            });
+            })
+            .catch(function () { lista.innerHTML = '<p style="padding:20px;color:#aaa;">Erro de conexao</p>'; });
     }
 
     function renderizarCfgTipos(lista) {
@@ -475,7 +480,8 @@
             .then(function (data) {
                 if (!data.success) return;
                 renderizarCfgDestinos(data.destinos);
-            });
+            })
+            .catch(function () { lista.innerHTML = '<p style="padding:20px;color:#aaa;">Erro de conexao</p>'; });
     }
 
     function renderizarCfgDestinos(lista) {
@@ -699,10 +705,11 @@
     // ── UTILITARIOS ───────────────────────────────────────────────
 
     function badgeStatus(status) {
-        return '<span class="badge-status badge-' + status + '">' + {
+        var label = {
             aguardando: 'Aguardando', aceito: 'Aceito',
             em_transporte: 'Em Transporte', concluido: 'Concluido', cancelado: 'Cancelado'
-        }[status] + '</span>';
+        }[status] || escHtml(status) || '--';
+        return '<span class="badge-status badge-' + status + '">' + label + '</span>';
     }
 
     function escHtml(str) {

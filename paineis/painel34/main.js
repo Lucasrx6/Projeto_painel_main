@@ -369,9 +369,6 @@
         if (!tipoId)  { mostrarToast('Selecione o tipo de movimento', 'warning'); return; }
         if (!setor)   { mostrarToast('Selecione o setor de origem', 'warning'); return; }
         if (!destino) { mostrarToast('Selecione ou informe o setor de destino', 'warning'); return; }
-        if (destinoRaw === '__outro__' && !destino) {
-            mostrarToast('Informe o destino no campo de texto', 'warning'); return;
-        }
 
         // Coleta dados do paciente: lista selecionada tem prioridade sobre manual
         var nmPaciente, nrAtend;

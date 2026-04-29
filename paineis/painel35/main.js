@@ -21,6 +21,7 @@
         chamadosAnteriores: [],
         refreshTimer: null,
         aceitandoId: null,
+        chamadoCancelarId: null,
         agindo: false,
         telaAtual: 'principal'
     };
@@ -94,7 +95,6 @@
     // ── FILA PRINCIPAL ────────────────────────────────────────────
 
     function iniciarRefresh() {
-        carregarFila();
         estado.refreshTimer = setInterval(carregarFila, CONFIG.intervaloRefresh);
     }
 
@@ -221,7 +221,7 @@
         container.innerHTML = lista.map(function (c) {
             var min    = c.minutos_espera || 0;
             var classeEspera = min > 30 ? 'critico' : (min > 15 ? 'atencao' : 'ok');
-            var tempoLabel   = min < 1 ? 'Agora' : (min < 60 ? Math.round(min) + ' min' : Math.round(min / 60) + 'h ' + (Math.round(min) % 60) + 'min');
+            var tempoLabel   = min < 1 ? 'Agora' : (min < 60 ? Math.round(min) + ' min' : Math.floor(min / 60) + 'h ' + (Math.round(min) % 60) + 'min');
 
             return '<div class="fila-card ' + c.prioridade + '">' +
                 '<div class="fila-card-header">' +
@@ -393,7 +393,11 @@
 
     function confirmarCancelamentoPad() {
         var id = estado.chamadoCancelarId;
-        if (!id || !estado.padioleiroId) return;
+        if (!id) return;
+        if (!estado.padioleiroId) {
+            mostrarToast('Selecione seu nome antes de cancelar um chamado', 'warning');
+            return;
+        }
 
         var motivo = document.getElementById('motivo-cancelamento-pad').value.trim();
         if (motivo.length < 10) {
