@@ -214,6 +214,16 @@ body {
 .dashboard-content::-webkit-scrollbar { width: 6px; }
 .dashboard-content::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: 3px; }
 
+/* Aba Visão Geral: layout block (não flex) para o scroll da página inteira funcionar
+   corretamente — flex column com overflow-y: auto expande ao invés de rolar */
+#tab-resumo .dashboard-content {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#tab-resumo .dashboard-content > * + * { margin-top: 10px; }
+
 /* ========================================
    RESUMO SINTETICO
    ======================================== */
@@ -1580,6 +1590,171 @@ body {
     .resumo-grid { grid-template-columns: 1fr 1fr; }
 }
 
+/* ========================================
+   CATEGORIAS CRITICAS - GRAFICO
+   ======================================== */
+
+#categorias-criticas-section {
+    margin: 16px 0 0;
+    background: var(--cor-card);
+    border-radius: var(--radius);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+}
+
+.cat-criticas-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--cor-borda);
+    background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+}
+
+.cat-criticas-titulo {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--cor-primaria);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cat-criticas-periodo-label {
+    font-size: 0.7rem;
+    color: var(--cor-texto-sec);
+    background: var(--cor-fundo);
+    padding: 3px 9px;
+    border-radius: 12px;
+    border: 1px solid var(--cor-borda);
+}
+
+.cat-criticas-chart {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.cat-barra-row {
+    display: grid;
+    grid-template-columns: 170px 1fr 72px;
+    align-items: center;
+    gap: 10px;
+}
+
+.cat-barra-label {
+    font-size: 0.78rem;
+    color: var(--cor-texto);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.cat-barra-label i {
+    color: var(--cor-texto-sec);
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.cat-barra-wrap {
+    height: 20px;
+    background: var(--cor-fundo);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.cat-barra-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    opacity: 0.82;
+}
+
+.cat-barra-nums {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.2;
+}
+
+.cat-num-total {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--cor-primaria);
+}
+
+.cat-num-detalhe {
+    font-size: 0.66rem;
+    color: var(--cor-texto-sec);
+}
+
+/* ========================================
+   ANALISE IA SEMANAL
+   ======================================== */
+
+.analise-ia-section {
+    border-top: 1px solid var(--cor-borda);
+}
+
+.analise-ia-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    cursor: pointer;
+    user-select: none;
+    background: linear-gradient(135deg, #f8f0ff 0%, #fff 100%);
+    transition: background 0.2s;
+}
+
+.analise-ia-header:hover { background: #f0e8ff; }
+
+.analise-ia-titulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.83rem;
+    color: var(--cor-roxo);
+}
+
+.analise-ia-data {
+    font-size: 0.7rem;
+    color: var(--cor-texto-sec);
+    font-weight: 400;
+}
+
+.analise-ia-header > i.fa-chevron-down {
+    font-size: 0.7rem;
+    color: var(--cor-texto-sec);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.analise-ia-corpo {
+    padding: 14px 16px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #fdfaff;
+}
+
+.analise-ia-corpo::-webkit-scrollbar { width: 4px; }
+.analise-ia-corpo::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+.analise-ia-texto {
+    font-size: 0.8rem;
+    line-height: 1.65;
+    color: var(--cor-texto);
+}
+
+.analise-ia-texto strong { color: var(--cor-roxo); }
+
 @media (max-width: 600px) {
     .painel-header { padding: 5px 8px; }
     .stats-row { grid-template-columns: repeat(2, 1fr); }
@@ -1588,6 +1763,8 @@ body {
     .tab-nav-btn span { display: none; }
     .tab-nav-btn { padding: 10px 14px; }
     .resumo-toolbar { gap: 8px; }
+    .cat-barra-row { grid-template-columns: 120px 1fr 56px; }
+    .cat-barra-label { font-size: 0.72rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

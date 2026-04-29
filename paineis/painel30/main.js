@@ -14,6 +14,7 @@
         apiFiltros: BASE_URL + '/api/paineis/painel30/filtros',
         apiResponsaveis: BASE_URL + '/api/paineis/painel30/responsaveis',
         apiCriticosResumo: BASE_URL + '/api/paineis/painel30/criticos-resumo',
+        apiCategoriasCriticas: BASE_URL + '/api/paineis/painel30/categorias-criticas',
         intervaloRefresh: 60000
     };
 
@@ -280,6 +281,7 @@
                 var c = document.getElementById('resumo-sintetico-container');
                 if (c) c.innerHTML = '<p style="text-align:center;color:#999;padding:30px;">Erro ao carregar</p>';
             });
+        carregarCategoriasCriticas();
     }
 
     function renderizarSintetico(setores) {
@@ -1402,6 +1404,104 @@
     }
 
     // ========================================
+    // CATEGORIAS CRITICAS - GRAFICO
+    // ========================================
+
+    function carregarCategoriasCriticas() {
+        var dias = (document.getElementById('resumo-dias') || {}).value || '30';
+        fetch(CONFIG.apiCategoriasCriticas + '?periodo=' + dias)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                renderizarGraficoCategorias(data.categorias || []);
+                renderizarAnaliseIaCategorias(data.analise_ia);
+            })
+            .catch(function () {
+                var section = document.getElementById('categorias-criticas-section');
+                if (section) section.style.display = 'none';
+            });
+    }
+
+    function renderizarGraficoCategorias(categorias) {
+        var container = document.getElementById('cat-criticas-chart');
+        var section = document.getElementById('categorias-criticas-section');
+        if (!container) return;
+
+        if (!categorias || categorias.length === 0) {
+            if (section) section.style.display = 'none';
+            return;
+        }
+
+        if (section) section.style.display = 'block';
+
+        var max = categorias[0].total_aberto || 1;
+        var dias = (document.getElementById('resumo-dias') || {}).value || '30';
+        var label = document.getElementById('cat-criticas-periodo-label');
+        if (label) label.textContent = dias ? 'Últimos ' + dias + ' dias' : 'Todos os períodos';
+
+        var html = '';
+        categorias.forEach(function (c) {
+            var pct = Math.round(((c.total_aberto || 0) / max) * 100);
+            var cor = escapeAttr(c.categoria_cor || '#dc3545');
+            var p = c.total_pendente || 0;
+            var t = c.total_tratativa || 0;
+
+            html += '<div class="cat-barra-row">';
+            html += '<div class="cat-barra-label">';
+            if (c.categoria_icone) html += '<i class="' + escapeHtml(c.categoria_icone) + '"></i>';
+            html += '<span>' + escapeHtml(c.categoria_nome) + '</span>';
+            html += '</div>';
+            html += '<div class="cat-barra-wrap">';
+            html += '<div class="cat-barra-fill" style="width:' + pct + '%;background:' + cor + ';"></div>';
+            html += '</div>';
+            html += '<div class="cat-barra-nums">';
+            html += '<span class="cat-num-total">' + (c.total_aberto || 0) + '</span>';
+            if (p > 0 || t > 0) {
+                html += '<span class="cat-num-detalhe">' + p + 'p&nbsp;+&nbsp;' + t + 't</span>';
+            }
+            html += '</div>';
+            html += '</div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    function renderizarAnaliseIaCategorias(analise) {
+        var section = document.getElementById('analise-ia-section');
+        if (!section) return;
+
+        if (!analise || !analise.analise_texto) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        var dataEl = document.getElementById('analise-ia-data');
+        if (dataEl && analise.data_referencia) {
+            var dt = analise.data_referencia.split('-');
+            if (dt.length === 3) dataEl.textContent = '— Semana de ' + dt[2] + '/' + dt[1] + '/' + dt[0];
+        }
+
+        var textoEl = document.getElementById('analise-ia-texto');
+        if (textoEl) {
+            var texto = escapeHtml(analise.analise_texto || '');
+            texto = texto.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            texto = texto.replace(/\n/g, '<br>');
+            textoEl.innerHTML = texto;
+        }
+    }
+
+    function toggleAnaliseIa() {
+        var corpo = document.getElementById('analise-ia-corpo');
+        var chevron = document.getElementById('analise-ia-chevron');
+        if (!corpo) return;
+        var aberto = corpo.style.display !== 'none';
+        corpo.style.display = aberto ? 'none' : 'block';
+        if (chevron) chevron.style.transform = aberto ? '' : 'rotate(180deg)';
+    }
+
+    // ========================================
     // EXPOR FUNCOES GLOBAIS
     // ========================================
 
@@ -1414,7 +1514,8 @@
         atualizarResponsavelAuto: atualizarResponsavelAuto,
         toggleReclassificar: toggleReclassificar,
         atualizarItensReclassif: atualizarItensReclassif,
-        confirmarReclassificar: confirmarReclassificar
+        confirmarReclassificar: confirmarReclassificar,
+        toggleAnaliseIa: toggleAnaliseIa
     };
 
     if (document.readyState === 'loading') {

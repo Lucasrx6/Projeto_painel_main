@@ -830,10 +830,16 @@ def start_in_background():
         logger.warning('[worker_sentir_agir] GROQ_API_KEY nao configurada — worker ignorado')
         return
 
-    # Guard Werkzeug: evita iniciar no processo pai do reloader
-    werkzeug_run_main = os.environ.get('WERKZEUG_RUN_MAIN')
-    if werkzeug_run_main is not None and werkzeug_run_main != 'true':
-        return
+    # Guard Werkzeug: inicia apenas no processo filho (WERKZEUG_RUN_MAIN='true').
+    # O processo monitor/watcher NÃO define WERKZEUG_RUN_MAIN, mas is_running_from_reloader()
+    # retorna True em AMBOS os processos — o AND garante que só o filho passa.
+    # Em modo standalone (sem reloader), is_running_from_reloader() = False → thread inicia normalmente.
+    try:
+        from werkzeug.serving import is_running_from_reloader
+        if is_running_from_reloader() and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+            return
+    except ImportError:
+        pass
 
     _background_started = True
 
@@ -847,15 +853,24 @@ def start_in_background():
             logger.info('[worker_sentir_agir] Thread daemon iniciada (PID %s, ciclo diario as %s)',
                         os.getpid(), HORARIO_EXECUCAO)
 
-            # Garante que a tabela existe antes de qualquer operacao
+            # Garante que as tabelas existem antes de qualquer operacao
             garantir_tabela()
+            garantir_tabela_categorias()
 
             # Recupera analises retroativas pendentes (pode chamar Groq multiplas vezes)
             verificacao_inicial()
 
-            # Agenda ciclo diario
+            # Executa analise semanal de categorias se ainda nao foi feita esta semana
+            try:
+                ciclo_semanal_categorias()
+            except Exception as e:
+                logger.error('[worker_sentir_agir] Erro no ciclo semanal de categorias: %s', e)
+
+            # Agenda ciclo diario e ciclo semanal de categorias (toda segunda)
             _scheduler.every().day.at(HORARIO_EXECUCAO).do(ciclo_diario)
-            logger.info('[worker_sentir_agir] Proximo ciclo agendado para %s (dias uteis)', HORARIO_EXECUCAO)
+            _scheduler.every().monday.at(HORARIO_SEMANAL).do(ciclo_semanal_categorias)
+            logger.info('[worker_sentir_agir] Agendado: diario as %s | semanal categorias toda segunda as %s',
+                        HORARIO_EXECUCAO, HORARIO_SEMANAL)
 
             while True:
                 _scheduler.run_pending()
