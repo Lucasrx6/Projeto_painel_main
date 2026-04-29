@@ -224,7 +224,7 @@ def buscar_responsaveis(conn, categoria_id, setor_id):
 
     if categoria_id is not None:
         cursor.execute("""
-            SELECT DISTINCT r.nome, r.email
+            SELECT DISTINCT ON (r.email) r.nome, r.email
             FROM sentir_agir_responsaveis r
             JOIN sentir_agir_responsavel_categorias rc ON rc.responsavel_id = r.id
             LEFT JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
@@ -236,17 +236,19 @@ def buscar_responsaveis(conn, categoria_id, setor_id):
                   NOT EXISTS (SELECT 1 FROM sentir_agir_responsavel_setores rs2 WHERE rs2.responsavel_id = r.id)
                   OR rs.setor_id = %s
               )
+            ORDER BY r.email
             LIMIT 10
         """, (categoria_id, setor_id))
     else:
         cursor.execute("""
-            SELECT DISTINCT r.nome, r.email
+            SELECT DISTINCT ON (r.email) r.nome, r.email
             FROM sentir_agir_responsaveis r
             JOIN sentir_agir_responsavel_setores rs ON rs.responsavel_id = r.id
             WHERE r.ativo = true
               AND r.email IS NOT NULL
               AND r.email <> ''
               AND rs.setor_id = %s
+            ORDER BY r.email
             LIMIT 10
         """, (setor_id,))
 
@@ -850,10 +852,16 @@ def start_in_background():
         logger.info('[notificador_sentir_agir] Auto-start desativado (NOTIF_SENTIR_AGIR_AUTO=false)')
         return
 
-    # Guard Werkzeug: evita iniciar no processo pai do reloader
-    werkzeug_run_main = os.environ.get('WERKZEUG_RUN_MAIN')
-    if werkzeug_run_main is not None and werkzeug_run_main != 'true':
-        return
+    # Guard Werkzeug: inicia apenas no processo filho (WERKZEUG_RUN_MAIN='true').
+    # O processo monitor/watcher NÃO define WERKZEUG_RUN_MAIN, mas is_running_from_reloader()
+    # retorna True em AMBOS os processos — o AND garante que só o filho passa.
+    # Em modo standalone (sem reloader), is_running_from_reloader() = False → thread inicia normalmente.
+    try:
+        from werkzeug.serving import is_running_from_reloader
+        if is_running_from_reloader() and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+            return
+    except ImportError:
+        pass
 
     _background_started = True
 

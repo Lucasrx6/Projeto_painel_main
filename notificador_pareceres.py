@@ -131,7 +131,7 @@ def buscar_destinatarios_email(conn, especialidade=None):
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     cursor.execute("""
-        SELECT DISTINCT nome, email
+        SELECT DISTINCT ON (email) nome, email
         FROM notificacoes_destinatarios
         WHERE tipo_evento = 'parecer_pendente'
           AND canal = 'email'
@@ -140,6 +140,7 @@ def buscar_destinatarios_email(conn, especialidade=None):
               especialidade IS NULL
               OR especialidade = %s
           )
+        ORDER BY email
     """, (especialidade,))
 
     destinatarios = cursor.fetchall()
@@ -688,12 +689,16 @@ def start_in_background():
         logger.info('[notificador_pareceres] Auto-start desativado (NOTIF_PARECERES_AUTO=false)')
         return
 
-    # Guard Werkzeug: quando o reloader esta ativo, WERKZEUG_RUN_MAIN='true' apenas
-    # no processo filho (app real). No processo pai (reloader) nao esta definido,
-    # mas o pai tambem invoca app.py — evita iniciar a thread no processo errado.
-    werkzeug_run_main = os.environ.get('WERKZEUG_RUN_MAIN')
-    if werkzeug_run_main is not None and werkzeug_run_main != 'true':
-        return
+    # Guard Werkzeug: inicia apenas no processo filho (WERKZEUG_RUN_MAIN='true').
+    # O processo monitor/watcher NÃO define WERKZEUG_RUN_MAIN, mas is_running_from_reloader()
+    # retorna True em AMBOS os processos — o AND garante que só o filho passa.
+    # Em modo standalone (sem reloader), is_running_from_reloader() = False → thread inicia normalmente.
+    try:
+        from werkzeug.serving import is_running_from_reloader
+        if is_running_from_reloader() and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+            return
+    except ImportError:
+        pass
 
     _background_started = True
 

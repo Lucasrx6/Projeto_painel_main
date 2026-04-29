@@ -626,6 +626,74 @@ def criticos_resumo():
 
 
 # ============================================================
+# API: CATEGORIAS CRÍTICAS (gráfico + análise IA semanal)
+# ============================================================
+
+@painel30_bp.route('/api/paineis/painel30/categorias-criticas', methods=['GET'])
+@login_required
+def categorias_criticas():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        periodo = request.args.get('periodo', '30')
+
+        sql = """
+            SELECT
+                c.id     AS categoria_id,
+                c.nome   AS categoria_nome,
+                c.icone  AS categoria_icone,
+                c.cor    AS categoria_cor,
+                COUNT(*) FILTER (WHERE t.status = 'pendente')                      AS total_pendente,
+                COUNT(*) FILTER (WHERE t.status = 'em_tratativa')                  AS total_tratativa,
+                COUNT(*) FILTER (WHERE t.status IN ('pendente', 'em_tratativa'))   AS total_aberto
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            WHERE t.status IN ('pendente', 'em_tratativa')
+        """
+        params = []
+        if periodo:
+            sql += " AND t.criado_em >= NOW() - %s * INTERVAL '1 day'"
+            params.append(int(periodo))
+
+        sql += """
+            GROUP BY c.id, c.nome, c.icone, c.cor, c.ordem
+            HAVING COUNT(*) FILTER (WHERE t.status IN ('pendente', 'em_tratativa')) > 0
+            ORDER BY total_aberto DESC, c.ordem
+        """
+        cursor.execute(sql, params)
+        categorias = [serializar_linha(r) for r in cursor.fetchall()]
+
+        # Última análise IA semanal (tabela pode ainda não existir)
+        analise_ia = None
+        try:
+            cursor.execute("""
+                SELECT data_referencia, periodo_dias, analise_texto, gerado_em
+                FROM sentir_agir_analises_categorias
+                ORDER BY data_referencia DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            if row:
+                analise_ia = serializar_linha(row)
+        except Exception:
+            pass
+
+        cursor.close()
+        release_connection(conn)
+
+        return jsonify({
+            'success': True,
+            'categorias': categorias,
+            'analise_ia': analise_ia,
+            'periodo': periodo
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
 # API: DETALHE DE UMA TRATATIVA
 # ============================================================
 

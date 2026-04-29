@@ -52,6 +52,8 @@ GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
 GROQ_MODEL = 'llama-3.3-70b-versatile'
 HORARIO_EXECUCAO = '18:00'   # Hora do disparo diario
 DIAS_RETROATIVOS = 7         # Quantos dias uteis anteriores checar ao iniciar
+HORARIO_SEMANAL = os.getenv('WORKER_SENTIR_AGIR_SEMANAL_HORA', '08:00')
+PERIODO_SEMANAL_DIAS = int(os.getenv('WORKER_SENTIR_AGIR_SEMANAL_DIAS', '7'))
 
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
@@ -508,6 +510,243 @@ def verificacao_inicial():
             logger.error('Erro ao processar pendente %s: %s', ds, e)
 
     logger.info('=== VERIFICACAO INICIAL CONCLUIDA ===')
+
+
+# =========================================================
+# ANALISE SEMANAL DE CATEGORIAS
+# =========================================================
+
+def garantir_tabela_categorias():
+    """Cria sentir_agir_analises_categorias se nao existir."""
+    sql = """
+    CREATE TABLE IF NOT EXISTS sentir_agir_analises_categorias (
+        id               SERIAL PRIMARY KEY,
+        data_referencia  DATE NOT NULL UNIQUE,
+        periodo_dias     INTEGER NOT NULL DEFAULT 7,
+        analise_texto    TEXT NOT NULL,
+        categorias_json  JSONB,
+        total_tratativas INTEGER DEFAULT 0,
+        total_categorias INTEGER DEFAULT 0,
+        modelo           VARCHAR(100),
+        gerado_em        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        gerado_por       VARCHAR(50) DEFAULT 'worker'
+    );
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        conn.commit()
+        cur.close()
+        logger.info('Tabela sentir_agir_analises_categorias verificada/criada.')
+    finally:
+        conn.close()
+
+
+def ja_analisado_categorias(data_referencia_str):
+    """Retorna True se ja existe analise de categorias para a referencia."""
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT id FROM sentir_agir_analises_categorias WHERE data_referencia = %s',
+            (data_referencia_str,)
+        )
+        resultado = cur.fetchone()
+        cur.close()
+        return resultado is not None
+    finally:
+        conn.close()
+
+
+def buscar_dados_categorias(data_inicio_str, data_fim_str):
+    """
+    Busca tratativas agrupadas por categoria para o periodo.
+    Retorna None se nao houver tratativas no periodo.
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT
+                c.nome  AS categoria_nome,
+                c.icone AS categoria_icone,
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE t.status = 'pendente')                    AS total_pendente,
+                COUNT(*) FILTER (WHERE t.status = 'em_tratativa')                AS total_tratativa,
+                COUNT(*) FILTER (WHERE t.status IN ('regularizado', 'cancelado')) AS total_tratado,
+                ARRAY_AGG(DISTINCT i.descricao ORDER BY i.descricao)
+                    FILTER (WHERE t.status IN ('pendente', 'em_tratativa'))      AS itens_abertos
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            JOIN sentir_agir_itens i ON i.id = t.item_id
+            WHERE t.criado_em::date BETWEEN %s AND %s
+            GROUP BY c.id, c.nome, c.icone, c.ordem
+            ORDER BY (COUNT(*) FILTER (WHERE t.status IN ('pendente', 'em_tratativa'))) DESC, c.ordem
+        """, (data_inicio_str, data_fim_str))
+        rows = [_serial_row(r) for r in cur.fetchall()]
+        cur.close()
+    finally:
+        conn.close()
+
+    if not rows:
+        return None
+
+    total = sum(r['total'] for r in rows)
+    total_aberto = sum((r['total_pendente'] or 0) + (r['total_tratativa'] or 0) for r in rows)
+    return {
+        'data_inicio': data_inicio_str,
+        'data_fim': data_fim_str,
+        'periodo_dias': PERIODO_SEMANAL_DIAS,
+        'total_tratativas': total,
+        'total_aberto': total_aberto,
+        'total_categorias': len(rows),
+        'categorias': rows
+    }
+
+
+def gerar_analise_categorias(dados):
+    """Chama Groq para analise semanal de categorias."""
+    client = _get_groq_client()
+    if not client:
+        logger.error('[semanal] Groq client nao disponivel.')
+        return None
+
+    blocos = ''
+    for c in dados['categorias']:
+        total_aberto = (c['total_pendente'] or 0) + (c['total_tratativa'] or 0)
+        if total_aberto == 0:
+            continue
+        blocos += '\n\n--- CATEGORIA: {} ---\n'.format(c['categoria_nome'])
+        blocos += 'Em aberto: {} ({} pendentes, {} em tratativa) | Tratados: {}\n'.format(
+            total_aberto, c['total_pendente'] or 0,
+            c['total_tratativa'] or 0, c['total_tratado'] or 0
+        )
+        itens = [i for i in (c.get('itens_abertos') or []) if i]
+        if itens:
+            blocos += 'Itens mais recorrentes:\n'
+            for it in itens[:8]:
+                blocos += '  - {}\n'.format(it)
+
+    prompt = (
+        'Voce e um analista de qualidade assistencial do Hospital Anchieta Ceilandia, '
+        'especializado no Projeto Sentir e Agir.\n\n'
+        'Periodo: {} a {} ({} dias) | Tratativas em aberto: {}\n\n'
+        'Pontos criticos agrupados por CATEGORIA:\n{}\n\n'
+        'Para CADA categoria com itens em aberto, responda:\n'
+        '**[NOME DA CATEGORIA]** — N tratativas\n'
+        '- Situacao: (uma frase resumindo)\n'
+        '- Itens mais recorrentes: (principais problemas)\n'
+        '- Criticidade: BAIXO | MODERADO | ALTO | CRITICO\n'
+        '- Recomendacao: (acao prioritaria sugerida)\n\n'
+        'Ao final:\n'
+        '**RESUMO SEMANAL**\n'
+        '- Top 3 categorias mais criticas\n'
+        '- Acao prioritaria recomendada\n\n'
+        'Seja objetivo e profissional. Responda em portugues do Brasil.'
+    ).format(
+        dados['data_inicio'], dados['data_fim'],
+        dados.get('periodo_dias', 7), dados['total_aberto'], blocos
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {
+                    'role': 'system',
+                    'content': (
+                        'Voce e um analista de qualidade hospitalar. '
+                        'Responda sempre em portugues do Brasil, de forma objetiva e profissional.'
+                    )
+                },
+                {'role': 'user', 'content': prompt}
+            ],
+            max_tokens=2500,
+            temperature=0.3
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error('[semanal] Erro ao chamar Groq: %s', e)
+        return None
+
+
+def salvar_analise_categorias(data_referencia_str, analise_texto, dados):
+    """Persiste analise semanal de categorias no banco."""
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO sentir_agir_analises_categorias
+                (data_referencia, periodo_dias, analise_texto, categorias_json,
+                 total_tratativas, total_categorias, modelo, gerado_por)
+            VALUES (%s, %s, %s, %s::jsonb, %s, %s, %s, 'worker')
+            ON CONFLICT (data_referencia) DO UPDATE SET
+                analise_texto    = EXCLUDED.analise_texto,
+                categorias_json  = EXCLUDED.categorias_json,
+                total_tratativas = EXCLUDED.total_tratativas,
+                total_categorias = EXCLUDED.total_categorias,
+                modelo           = EXCLUDED.modelo,
+                gerado_em        = CURRENT_TIMESTAMP
+        """, (
+            data_referencia_str,
+            dados.get('periodo_dias', PERIODO_SEMANAL_DIAS),
+            analise_texto,
+            json.dumps(dados.get('categorias', []), default=str),
+            dados.get('total_tratativas', 0),
+            dados.get('total_categorias', 0),
+            GROQ_MODEL
+        ))
+        conn.commit()
+        cur.close()
+        logger.info('[semanal] Analise de categorias (%s) salva.', data_referencia_str)
+    finally:
+        conn.close()
+
+
+def ciclo_semanal_categorias():
+    """
+    Analise semanal de categorias criticas.
+    Usa a segunda-feira da semana atual como chave de referencia.
+    Pode ser chamado no startup (skipa se ja feito) ou toda segunda via scheduler.
+    """
+    hoje = date.today()
+    segunda = hoje - timedelta(days=hoje.weekday())   # segunda-feira desta semana
+    data_ref_str = segunda.isoformat()
+    inicio_str = (segunda - timedelta(days=PERIODO_SEMANAL_DIAS)).isoformat()
+    fim_str = (segunda - timedelta(days=1)).isoformat()
+
+    logger.info('=== CICLO SEMANAL CATEGORIAS (%s | %s → %s) ===', data_ref_str, inicio_str, fim_str)
+
+    if ja_analisado_categorias(data_ref_str):
+        logger.info('[semanal] Semana %s ja analisada. Pulando.', data_ref_str)
+        return
+
+    try:
+        dados = buscar_dados_categorias(inicio_str, fim_str)
+    except Exception as e:
+        logger.error('[semanal] Erro ao buscar dados de categorias: %s', e)
+        return
+
+    if not dados:
+        logger.info('[semanal] Nenhuma tratativa no periodo %s → %s.', inicio_str, fim_str)
+        return
+
+    logger.info('[semanal] %d tratativas | %d categorias | %d em aberto',
+                dados['total_tratativas'], dados['total_categorias'], dados['total_aberto'])
+
+    analise = gerar_analise_categorias(dados)
+    if not analise:
+        logger.error('[semanal] Falha ao gerar analise de categorias.')
+        return
+
+    try:
+        salvar_analise_categorias(data_ref_str, analise, dados)
+    except Exception as e:
+        logger.error('[semanal] Erro ao salvar analise de categorias: %s', e)
+        return
+
+    logger.info('=== CICLO SEMANAL CATEGORIAS CONCLUIDO (%d chars) ===', len(analise))
 
 
 # =========================================================
