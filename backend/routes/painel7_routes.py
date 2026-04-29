@@ -5,7 +5,7 @@ Endpoints para monitoramento de risco de sepse em pacientes
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -62,7 +62,7 @@ def painel7_dashboard():
         cursor.execute(query)
         result = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not result:
             result = {'total': 0, 'critico': 0, 'alto': 0, 'moderado': 0, 'baixo': 0}
@@ -187,7 +187,7 @@ def painel7_lista():
             resultado.append(item)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         current_app.logger.info(f"[PAINEL7] Retornando {len(resultado)} pacientes processados")
 
@@ -236,7 +236,7 @@ def painel7_detalhes(nr_atendimento):
         cursor.execute(query, (nr_atendimento,))
         resultado = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not resultado:
             return jsonify({

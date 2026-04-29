@@ -5,7 +5,7 @@ Hub de modelos ML em produção, com previsões, métricas e monitoramento.
 from flask import Blueprint, jsonify, send_from_directory, session, current_app, abort
 from datetime import datetime, timedelta
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 import statistics
@@ -260,7 +260,7 @@ def api_painel31_modelos():
             resultado.append(modelo_dict)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -274,7 +274,7 @@ def api_painel31_modelos():
             f'Erro ao listar modelos do painel31: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar modelos'
@@ -306,7 +306,7 @@ def api_painel31_modelo_detalhe(nome_modelo):
 
         if not modelo:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': False,
                 'error': f'Modelo {nome_modelo} nao encontrado'
@@ -326,7 +326,7 @@ def api_painel31_modelo_detalhe(nome_modelo):
                 modelo_dict[campo] = float(modelo_dict[campo])
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -338,7 +338,7 @@ def api_painel31_modelo_detalhe(nome_modelo):
             f'Erro ao buscar modelo {nome_modelo}: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar modelo'}), 500
 
 
@@ -372,7 +372,7 @@ def api_painel31_previsoes(nome_modelo):
 
         if not modelo:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': False,
                 'error': f'Modelo {nome_modelo} nao encontrado'
@@ -426,7 +426,7 @@ def api_painel31_previsoes(nome_modelo):
             return resultado
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -442,7 +442,7 @@ def api_painel31_previsoes(nome_modelo):
             f'Erro ao buscar previsoes de {nome_modelo}: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar previsoes'}), 500
 
 
@@ -473,7 +473,7 @@ def api_painel31_metricas(nome_modelo):
 
         if not modelo:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': False,
                 'error': f'Modelo {nome_modelo} nao encontrado'
@@ -509,7 +509,7 @@ def api_painel31_metricas(nome_modelo):
             janelas[f'janela_{dias}d'] = metricas
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -525,7 +525,7 @@ def api_painel31_metricas(nome_modelo):
             f'Erro ao buscar metricas de {nome_modelo}: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar metricas'}), 500
 
 # =============================================================================
@@ -577,7 +577,7 @@ def api_painel31_historico_real():
             })
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -590,7 +590,7 @@ def api_painel31_historico_real():
             f'Erro ao buscar historico real: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500
 
 
@@ -632,7 +632,7 @@ def api_painel31_picos_hoje():
 
         if not prev_row:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': True,
                 'picos': [],
@@ -653,7 +653,7 @@ def api_painel31_picos_hoje():
 
         if not perfil:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': True,
                 'picos': [],
@@ -685,7 +685,7 @@ def api_painel31_picos_hoje():
                 break
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -702,7 +702,7 @@ def api_painel31_picos_hoje():
             f'Erro ao buscar picos de hoje: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao calcular picos'}), 500
 
 # =============================================================================
@@ -766,7 +766,7 @@ def api_painel31_previsoes_internacoes():
             return resultado
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -777,7 +777,7 @@ def api_painel31_previsoes_internacoes():
 
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar previsoes de internacoes: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar previsoes'}), 500
 
 
@@ -821,12 +821,12 @@ def api_painel31_historico_real_internacoes():
             })
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({'success': True, 'historico': historico})
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar historico real de internacoes: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500
 
 
@@ -865,11 +865,11 @@ def api_painel31_modelo_internacoes():
         }
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'modelos': modelos})
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar modelos de internacoes: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar modelos'}), 500
 
 
@@ -903,11 +903,11 @@ def api_painel31_metricas_internacoes():
         }
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'metricas_treino': metricas_treino})
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar metricas de internacoes: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar metricas'}), 500
 
 # =============================================================================
@@ -942,7 +942,7 @@ def api_painel31_comparativo(nome_modelo):
 
         if not modelo:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Modelo nao encontrado'}), 404
 
         modelo_id = modelo['id']
@@ -983,7 +983,7 @@ def api_painel31_comparativo(nome_modelo):
             }
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         # Monta serie unificada
         from datetime import date
@@ -1041,5 +1041,5 @@ def api_painel31_comparativo(nome_modelo):
             f'Erro ao buscar comparativo de {nome_modelo}: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar comparativo'}), 500

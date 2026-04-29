@@ -13,7 +13,7 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime, timedelta
 from decimal import Decimal
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -290,7 +290,7 @@ def api_painel21_dashboard():
         result = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not result:
             result = {
@@ -308,7 +308,7 @@ def api_painel21_dashboard():
     except Exception as e:
         current_app.logger.error(f'Erro dashboard painel21: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -362,7 +362,7 @@ def api_painel21_dados():
         registros = [serializar_linha(dict(row)) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -374,7 +374,7 @@ def api_painel21_dados():
     except Exception as e:
         current_app.logger.error(f'Erro dados painel21: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -423,7 +423,7 @@ def api_painel21_filtros():
             filtros[nome] = [row[0] for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -434,5 +434,5 @@ def api_painel21_filtros():
     except Exception as e:
         current_app.logger.error(f'Erro filtros painel21: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar filtros'}), 500

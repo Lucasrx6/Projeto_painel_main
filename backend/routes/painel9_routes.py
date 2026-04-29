@@ -5,7 +5,7 @@ Endpoints para monitoramento de exames laboratoriais pendentes
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -96,7 +96,7 @@ def api_painel9_lab():
 
         registros = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -109,7 +109,7 @@ def api_painel9_lab():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar lab pendentes: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -146,7 +146,7 @@ def api_painel9_setores():
         cursor.execute(query)
         setores = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -158,5 +158,5 @@ def api_painel9_setores():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar setores painel9: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': str(e)}), 500

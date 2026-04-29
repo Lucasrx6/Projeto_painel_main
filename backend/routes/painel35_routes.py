@@ -5,7 +5,7 @@ Endpoints para o padioleiro gerenciar a fila e executar transportes
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -50,12 +50,12 @@ def api_painel35_padioleiros():
         """)
         padioleiros = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'padioleiros': padioleiros})
     except Exception as e:
         current_app.logger.error(f'Erro padioleiros painel35: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar padioleiros'}), 500
 
 
@@ -128,7 +128,7 @@ def api_painel35_fila():
                 chamado_ativo = c
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({
             'success': True,
             'aguardando': aguardando,
@@ -140,7 +140,7 @@ def api_painel35_fila():
     except Exception as e:
         current_app.logger.error(f'Erro fila painel35: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar fila'}), 500
 
 
@@ -175,7 +175,7 @@ def api_painel35_aceitar(chamado_id):
         """, (padioleiro_id,))
         if cursor.fetchone():
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': False,
                 'error': 'Voce ja possui um chamado em andamento. Conclua-o antes de aceitar outro.'
@@ -185,7 +185,7 @@ def api_painel35_aceitar(chamado_id):
         pad = cursor.fetchone()
         if not pad:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Padioleiro nao encontrado'}), 404
 
         cursor.execute("""
@@ -203,7 +203,7 @@ def api_painel35_aceitar(chamado_id):
         if not updated:
             conn.rollback()
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': False,
                 'error': 'Chamado nao disponivel (ja aceito por outro padioleiro)'
@@ -211,14 +211,14 @@ def api_painel35_aceitar(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Chamado aceito com sucesso'})
 
     except Exception as e:
         current_app.logger.error(f'Erro aceitar painel35: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao aceitar chamado'}), 500
 
 
@@ -252,19 +252,19 @@ def api_painel35_iniciar(chamado_id):
         if not cursor.fetchone():
             conn.rollback()
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao pode ser iniciado no status atual'}), 400
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Transporte iniciado'})
 
     except Exception as e:
         current_app.logger.error(f'Erro iniciar painel35: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao iniciar transporte'}), 500
 
 
@@ -298,19 +298,19 @@ def api_painel35_concluir(chamado_id):
         if not cursor.fetchone():
             conn.rollback()
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao pode ser concluido no status atual'}), 400
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Transporte concluido com sucesso'})
 
     except Exception as e:
         current_app.logger.error(f'Erro concluir painel35: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao concluir transporte'}), 500
 
 
@@ -351,17 +351,17 @@ def api_painel35_cancelar(chamado_id):
         
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if chamado['status'] not in ('aguardando', 'aceito', 'em_transporte'):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': f'Chamado nao pode ser cancelado no status atual: {chamado["status"]}'}), 400
             
         if chamado['padioleiro_id'] is not None and str(chamado['padioleiro_id']) != str(padioleiro_id):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Este chamado ja esta sob responsabilidade de outro padioleiro'}), 403
 
         cursor.execute("""
@@ -375,14 +375,14 @@ def api_painel35_cancelar(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Chamado cancelado com sucesso'})
 
     except Exception as e:
         current_app.logger.error(f'Erro cancelar painel35: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao cancelar chamado'}), 500
 
 
@@ -435,11 +435,11 @@ def api_painel35_historico_hoje():
             chamados.append(c)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'chamados': chamados, 'total': len(chamados)})
 
     except Exception as e:
         current_app.logger.error(f'Erro historico-hoje painel35: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500

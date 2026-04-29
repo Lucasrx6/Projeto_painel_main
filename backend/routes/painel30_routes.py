@@ -11,7 +11,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from flask import Blueprint, request, jsonify, send_from_directory, session
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -399,7 +399,7 @@ def dashboard():
         top_categorias = [serializar_linha(r) for r in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         resultado = serializar_linha(stats) if stats else {}
         resultado['top_categorias'] = top_categorias
@@ -480,7 +480,7 @@ def listar_tratativas():
         rows = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         dados = []
         for row in rows:
@@ -559,7 +559,7 @@ def criticos_resumo():
                 r['dias_em_aberto'] = round(float(r['dias_em_aberto']), 1)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         STATUS_ABERTO = ('pendente', 'em_tratativa')
 
@@ -671,7 +671,7 @@ def detalhe_tratativa(tratativa_id):
 
         if not tratativa:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Tratativa nao encontrada'}), 404
 
         # Histórico de alterações
@@ -685,7 +685,7 @@ def detalhe_tratativa(tratativa_id):
         historico = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         resultado = serializar_linha(tratativa)
         resultado['historico'] = [serializar_linha(h) for h in historico]
@@ -726,7 +726,7 @@ def atualizar_tratativa(tratativa_id):
         tratativa = cursor.fetchone()
         if not tratativa:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Tratativa nao encontrada'}), 404
 
         alteracoes = []
@@ -750,7 +750,7 @@ def atualizar_tratativa(tratativa_id):
             novo_status = dados['status']
             if novo_status not in ('pendente', 'em_tratativa', 'regularizado', 'impossibilitado', 'cancelado'):
                 cursor.close()
-                conn.close()
+                release_connection(conn)
                 return jsonify({'success': False, 'error': 'Status invalido'}), 400
 
             if novo_status != tratativa['status']:
@@ -822,7 +822,7 @@ def atualizar_tratativa(tratativa_id):
 
         if not sets:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': True, 'message': 'Nenhuma alteracao realizada'})
 
         sets.append("atualizado_em = NOW()")
@@ -848,7 +848,7 @@ def atualizar_tratativa(tratativa_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -883,7 +883,7 @@ def categorias_itens():
         """)
         rows = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         cats = {}
         cats_ordem = []
@@ -944,12 +944,12 @@ def mover_tratativa(tratativa_id):
 
         if not tratativa:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Tratativa nao encontrada'}), 404
 
         if tratativa['item_id'] == int(novo_item_id):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Item ja atribuido a esta tratativa'}), 400
 
         cursor.execute("""
@@ -962,7 +962,7 @@ def mover_tratativa(tratativa_id):
 
         if not novo_item:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Item nao encontrado ou inativo'}), 404
 
         # Reconstruir descricao_problema preservando sufixo (Paciente, Leito, Obs)
@@ -1022,7 +1022,7 @@ def mover_tratativa(tratativa_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -1078,7 +1078,7 @@ def atualizar_responsavel_auto(tratativa_id):
 
         if not tratativa:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Tratativa nao encontrada'}), 404
 
         novo_resp_id = _encontrar_responsavel_auto(cursor, tratativa['categoria_id'], tratativa['setor_id'])
@@ -1119,7 +1119,7 @@ def atualizar_responsavel_auto(tratativa_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         email_enviado = False
         email_msg = 'Sem destinatario com email cadastrado'
@@ -1225,7 +1225,7 @@ def filtros():
         responsaveis = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -1298,7 +1298,7 @@ def listar_responsaveis():
             resultado.append(item)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
@@ -1369,7 +1369,7 @@ def criar_responsavel():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({'success': True, 'data': {'id': resp_id}, 'message': 'Responsavel criado'}), 201
     except Exception as e:
@@ -1398,7 +1398,7 @@ def editar_responsavel(resp_id):
         resp = cursor.fetchone()
         if not resp:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Responsavel nao encontrado'}), 404
 
         sets = []
@@ -1450,7 +1450,7 @@ def editar_responsavel(resp_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({'success': True, 'message': 'Responsavel atualizado'})
     except Exception as e:
@@ -1475,7 +1475,7 @@ def toggle_responsavel(resp_id):
         resp = cursor.fetchone()
         if not resp:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Responsavel nao encontrado'}), 404
 
         novo_status = not resp['ativo']
@@ -1495,7 +1495,7 @@ def toggle_responsavel(resp_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         msg = 'Responsavel ativado' if novo_status else 'Responsavel desativado'
         return jsonify({'success': True, 'message': msg})

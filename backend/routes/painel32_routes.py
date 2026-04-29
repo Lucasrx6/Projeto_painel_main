@@ -16,7 +16,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from flask import Blueprint, request, jsonify, send_from_directory, session, Response
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 from dotenv import load_dotenv
@@ -125,7 +125,7 @@ def analise_salva():
         """, (data_str,))
         row = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not row:
             return jsonify({'success': True, 'data': None})
@@ -171,7 +171,7 @@ def historico():
             row['sintese'] = _extrair_sintese(row.pop('analise_texto', '') or '')
             rows.append(row)
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': rows})
     except Exception as e:
         traceback.print_exc()
@@ -244,7 +244,7 @@ def dados():
             v['itens_problema'] = itens
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         # Agrupar por setor
         setores = {}
@@ -416,7 +416,7 @@ def gerar_analise():
             ))
             conn.commit()
             cursor.close()
-            conn.close()
+            release_connection(conn)
         except Exception as db_err:
             traceback.print_exc()
             # Nao falha a requisicao por erro ao salvar — apenas loga
@@ -625,7 +625,7 @@ def exportar():
             ])
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         output.seek(0)
         nome_arquivo = 'sentir_agir_{}.csv'.format(data_str)

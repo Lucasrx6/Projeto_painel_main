@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any, Union
 
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.auth import validar_senha_forte
 
 
@@ -130,7 +130,7 @@ def get_db_cursor(commit: bool = False):
         if cursor:
             cursor.close()
         if conn:
-            conn.close()
+            release_connection(conn)
 
 
 # ==============================================================================
@@ -787,12 +787,40 @@ def remover_permissao(
         return {'success': False, 'error': ERRO_CONEXAO}
 
 
+def buscar_permissoes_usuario(usuario_id: Union[int, str]) -> set:
+    """
+    Retorna conjunto de nomes de paineis que o usuario tem acesso.
+    Usado para popular o cache de sessao no login.
+
+    Args:
+        usuario_id: ID do usuario
+
+    Returns:
+        set: Conjunto de nomes de paineis (ex: {'painel2', 'painel5'})
+    """
+    usuario_id = validar_id(usuario_id)
+    if not usuario_id:
+        return set()
+
+    try:
+        with get_db_cursor() as (cursor, conn):
+            cursor.execute(
+                "SELECT painel_nome FROM permissoes_paineis WHERE usuario_id = %s",
+                (usuario_id,)
+            )
+            return {row[0] for row in cursor.fetchall()}
+    except Exception as e:
+        logger.error(f'Erro ao buscar permissoes do usuario {usuario_id}: {e}')
+        return set()
+
+
 def verificar_permissao_painel(
     usuario_id: Union[int, str],
     painel_nome: str
 ) -> bool:
     """
     Verifica se usuario tem permissao para acessar um painel.
+    Consulta o cache de sessao primeiro; cai no banco apenas se necessario.
 
     Args:
         usuario_id: ID do usuario
@@ -810,9 +838,21 @@ def verificar_permissao_painel(
 
     painel_nome = painel_nome.strip()
 
+    # Verifica cache de sessao (evita consulta ao banco por requisicao)
+    try:
+        from flask import session, has_request_context
+        if has_request_context():
+            if session.get('is_admin', False):
+                return True
+            permissoes_cache = session.get('permissoes')
+            if permissoes_cache is not None:
+                return painel_nome in permissoes_cache
+    except Exception:
+        pass
+
+    # Fallback: consulta direta ao banco
     try:
         with get_db_cursor() as (cursor, conn):
-            # Admin tem acesso a tudo
             cursor.execute(
                 "SELECT is_admin FROM usuarios WHERE id = %s AND ativo = TRUE",
                 (usuario_id,)
@@ -825,7 +865,6 @@ def verificar_permissao_painel(
             if resultado[0]:  # is_admin = True
                 return True
 
-            # Verifica permissao especifica
             cursor.execute("""
                 SELECT id FROM permissoes_paineis
                 WHERE usuario_id = %s AND painel_nome = %s

@@ -12,6 +12,7 @@ from backend.auth import (
     resetar_senha_force_reset
 )
 from backend.middleware.decorators import admin_required, login_required
+from backend.user_management import buscar_permissoes_usuario
 
 # Cria o Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
@@ -45,6 +46,13 @@ def login():
             session['usuario_id'] = resultado['usuario_id']
             session['usuario'] = resultado['usuario']
             session['is_admin'] = resultado['is_admin']
+
+            # Cache de permissoes na sessao para evitar consultas ao banco por requisicao
+            if not resultado['is_admin']:
+                permissoes = buscar_permissoes_usuario(resultado['usuario_id'])
+                session['permissoes'] = list(permissoes)
+            else:
+                session['permissoes'] = []  # Admin acessa tudo, lista vazia e suficiente
 
             # Verifica se precisa forçar reset de senha
             force_reset = resultado.get('force_reset', False)
@@ -250,6 +258,23 @@ def api_confirmar_reset():
     except Exception as e:
         current_app.logger.error(f'Erro ao confirmar reset: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
+
+
+@auth_bp.route('/minhas-permissoes', methods=['GET'])
+@login_required
+def minhas_permissoes():
+    """
+    Retorna as permissoes do usuario logado (a partir do cache de sessao).
+    GET /api/minhas-permissoes
+    """
+    is_admin = session.get('is_admin', False)
+    permissoes = session.get('permissoes', [])
+
+    return jsonify({
+        'success': True,
+        'is_admin': is_admin,
+        'permissoes': permissoes
+    })
 
 
 @auth_bp.route('/reset-senha/force', methods=['POST'])

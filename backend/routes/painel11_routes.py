@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime
 from statistics import median
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -150,7 +150,7 @@ def api_painel11_filtros():
         convenios = [r['ds_convenio'] for r in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -165,7 +165,7 @@ def api_painel11_filtros():
     except Exception as e:
         current_app.logger.error('Erro ao buscar filtros painel11: {}'.format(e), exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar filtros'}), 500
 
 
@@ -235,7 +235,7 @@ def api_painel11_dashboard():
         registros_tempo = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         # Calcular mediana em Python (padrao P17)
         minutos_internacao = []
@@ -292,7 +292,7 @@ def api_painel11_dashboard():
     except Exception as e:
         current_app.logger.error('Erro ao buscar dashboard painel11: {}'.format(e), exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -364,7 +364,7 @@ def api_painel11_lista():
             resultado.append(item)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -376,5 +376,5 @@ def api_painel11_lista():
     except Exception as e:
         current_app.logger.error('Erro ao buscar lista painel11: {}'.format(e), exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500

@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
 from psycopg2 import sql
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -148,7 +148,7 @@ def api_painel13_nutricao():
             resultado.append(item)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -161,7 +161,7 @@ def api_painel13_nutricao():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar dados do painel13: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -207,7 +207,7 @@ def api_painel13_setores():
         setores_list = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -219,7 +219,7 @@ def api_painel13_setores():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar setores do painel13: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -273,7 +273,7 @@ def api_painel13_stats():
         stats = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not stats:
             stats = {
@@ -294,7 +294,7 @@ def api_painel13_stats():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar estatísticas do painel13: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'

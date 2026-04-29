@@ -5,7 +5,7 @@ Endpoints para solicitacao de transporte de pacientes pelos enfermeiros/usuarios
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -50,12 +50,12 @@ def api_painel34_tipos_movimento():
         """)
         tipos = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'tipos': tipos})
     except Exception as e:
         current_app.logger.error(f'Erro tipos-movimento painel34: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -100,12 +100,12 @@ def api_painel34_pacientes():
             """)
         pacientes = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'pacientes': pacientes})
     except Exception as e:
         current_app.logger.error(f'Erro pacientes painel34: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar pacientes'}), 500
 
 
@@ -135,12 +135,12 @@ def api_painel34_setores():
         """)
         setores = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'setores': setores})
     except Exception as e:
         current_app.logger.error(f'Erro setores painel34: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar setores'}), 500
 
 
@@ -178,7 +178,7 @@ def api_painel34_destinos():
             # Se esse tipo de movimento tiver destinos específicos, retorna eles
             if destinos_cadastrados:
                 cursor.close()
-                conn.close()
+                release_connection(conn)
                 return jsonify({'success': True, 'destinos': destinos_cadastrados})
 
         # Fallback padrão: Retorna os setores de internação
@@ -190,12 +190,12 @@ def api_painel34_destinos():
         """)
         destinos = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'destinos': destinos})
     except Exception as e:
         current_app.logger.error(f'Erro destinos painel34: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar destinos'}), 500
 
 
@@ -261,7 +261,7 @@ def api_painel34_solicitar():
         row = cursor.fetchone()
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -273,7 +273,7 @@ def api_painel34_solicitar():
         current_app.logger.error(f'Erro solicitar painel34: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao criar chamado'}), 500
 
 
@@ -323,13 +323,13 @@ def api_painel34_meus_chamados():
             chamados.append(c)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'chamados': chamados, 'total': len(chamados)})
 
     except Exception as e:
         current_app.logger.error(f'Erro meus-chamados painel34: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar chamados'}), 500
 
 
@@ -362,17 +362,17 @@ def api_painel34_cancelar(chamado_id):
 
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if not is_admin and chamado['solicitante_id'] != usuario_id:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Sem permissao para cancelar este chamado'}), 403
 
         if chamado['status'] not in ('aguardando', 'aceito'):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': False,
                 'error': f'Chamado nao pode ser cancelado no status: {chamado["status"]}'
@@ -389,12 +389,12 @@ def api_painel34_cancelar(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Chamado cancelado com sucesso'})
 
     except Exception as e:
         current_app.logger.error(f'Erro cancelar painel34: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao cancelar chamado'}), 500

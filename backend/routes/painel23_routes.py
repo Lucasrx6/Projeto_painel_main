@@ -5,7 +5,7 @@ Endpoints para dashboard de tempos e atendimentos do ambulatorio
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app
 from datetime import datetime, timedelta
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 import statistics
@@ -320,7 +320,7 @@ def api_painel23_dashboard():
             resultado_filas.append(fila_data)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         # =============================================================
         # 3. Processar totalizadores e especialidades em Python
@@ -468,7 +468,7 @@ def api_painel23_dashboard():
             'Erro ao buscar dashboard do painel23: %s', e, exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -534,7 +534,7 @@ def api_painel23_atendimentos():
         atendimentos = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -548,7 +548,7 @@ def api_painel23_atendimentos():
             'Erro ao buscar atendimentos do painel23: %s', e, exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -593,7 +593,7 @@ def api_painel23_filtros():
         convenios = [r['convenio'] for r in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -606,5 +606,5 @@ def api_painel23_filtros():
             'Erro ao buscar filtros do painel23: %s', e, exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500

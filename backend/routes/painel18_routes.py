@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
 
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ def api_painel18_medicos():
         }), 500
     finally:
         if conn:
-            conn.close()
+            release_connection(conn)
 
 
 # =============================================================================
@@ -291,7 +291,7 @@ def api_painel18_ranking():
         }), 500
     finally:
         if conn:
-            conn.close()
+            release_connection(conn)
 
 
 # =============================================================================
@@ -399,4 +399,4 @@ def api_painel18_stats():
         }), 500
     finally:
         if conn:
-            conn.close()
+            release_connection(conn)

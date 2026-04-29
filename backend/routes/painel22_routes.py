@@ -5,7 +5,7 @@ Exames de Radiologia e Laboratório
 
 from flask import Blueprint, jsonify, request, session, current_app, send_from_directory
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 from datetime import datetime, timedelta
@@ -50,7 +50,7 @@ def _buscar_dashboard():
         cursor.execute("SELECT * FROM vw_painel22_dashboard")
         row = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         if not row:
             return {
                 'total_pacientes': 0, 'total_exames': 0,
@@ -61,7 +61,7 @@ def _buscar_dashboard():
     except Exception as e:
         logger.error(f'[P22] Erro dashboard: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return None, str(e)
 
 
@@ -133,7 +133,7 @@ def _buscar_dados():
         """)
         rows = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         agora = datetime.now()
         pacientes = {}
@@ -221,7 +221,7 @@ def _buscar_dados():
     except Exception as e:
         logger.error(f'[P22] Erro dados: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return None, str(e)
 
 

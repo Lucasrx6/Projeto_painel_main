@@ -4,7 +4,7 @@ Endpoints para monitoramento de médicos no Pronto Socorro
 """
 from flask import Blueprint, jsonify, session, current_app
 from datetime import datetime
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -45,7 +45,7 @@ def get_medicos_ps():
         medicos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -57,7 +57,7 @@ def get_medicos_ps():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar médicos: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'

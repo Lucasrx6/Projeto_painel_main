@@ -11,7 +11,7 @@ import traceback
 from datetime import datetime, date
 from flask import Blueprint, request, jsonify, send_from_directory, session
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -213,7 +213,7 @@ def listar_servicos():
         """)
         servicos = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': servicos})
     except Exception as e:
         traceback.print_exc()
@@ -243,7 +243,7 @@ def listar_duplas():
             """)
         duplas = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': duplas})
     except Exception as e:
         traceback.print_exc()
@@ -275,7 +275,7 @@ def criar_dupla():
         _registrar_log(cursor, 'dupla', dupla_id, 'criacao', usuario, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': {'id': dupla_id}, 'message': 'Dupla criada'}), 201
     except Exception as e:
         traceback.print_exc()
@@ -302,7 +302,7 @@ def editar_dupla(dupla_id):
         dupla = cursor.fetchone()
         if not dupla:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
         cursor.execute("""
             UPDATE sentir_agir_duplas SET nome_visitante_1 = %s, nome_visitante_2 = %s, atualizado_em = NOW() WHERE id = %s
@@ -313,7 +313,7 @@ def editar_dupla(dupla_id):
                        valor_novo=nome1 + ' e ' + nome2, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Dupla atualizada'})
     except Exception as e:
         traceback.print_exc()
@@ -332,7 +332,7 @@ def toggle_dupla(dupla_id):
         dupla = cursor.fetchone()
         if not dupla:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
         novo_status = not dupla['ativo']
         cursor.execute("UPDATE sentir_agir_duplas SET ativo = %s, atualizado_em = NOW() WHERE id = %s",
@@ -342,7 +342,7 @@ def toggle_dupla(dupla_id):
                        valor_novo=str(novo_status), ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Dupla ativada' if novo_status else 'Dupla desativada'})
     except Exception as e:
         traceback.print_exc()
@@ -365,7 +365,7 @@ def listar_setores():
         """)
         setores = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': setores})
     except Exception as e:
         traceback.print_exc()
@@ -396,7 +396,7 @@ def listar_categorias_itens():
         """)
         itens = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         itens_por_categoria = {}
         for item in itens:
@@ -442,7 +442,7 @@ def obter_config():
         cursor.execute("SELECT chave, valor FROM sentir_agir_config")
         rows = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         config = {}
         for row in rows:
             config[row['chave']] = row['valor']
@@ -547,7 +547,7 @@ def fila_pacientes():
         """, (limite,))
         pacientes = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         resultado = []
         for pac in pacientes:
@@ -661,7 +661,7 @@ def proximo_paciente():
         """)
         paciente = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not paciente:
             return jsonify({'success': True, 'data': None, 'message': 'Nenhum paciente na fila'})
@@ -715,7 +715,7 @@ def reservar_paciente():
             if row:
                 nome_dupla = row[0]
             cursor.close()
-            conn.close()
+            release_connection(conn)
         except Exception:
             pass
 
@@ -767,7 +767,7 @@ def listar_precaucao_contato():
         """)
         rows = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         resultado = []
         for r in rows:
             item = dict(r)
@@ -810,7 +810,7 @@ def marcar_precaucao_contato():
             _em_visita.pop(nr, None)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Paciente marcado em precaução de contato. Removido da fila.'})
     except Exception as e:
         traceback.print_exc()
@@ -833,7 +833,7 @@ def remover_precaucao_contato(nr_atendimento):
         removido = cursor.rowcount > 0
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         if not removido:
             return jsonify({'success': False, 'error': 'Paciente não encontrado em precaução de contato'}), 404
         return jsonify({'success': True, 'message': 'Precaução de contato removida. Paciente voltou à fila.'})
@@ -871,7 +871,7 @@ def criar_ronda():
         cursor.execute("SELECT id FROM sentir_agir_duplas WHERE id = %s AND ativo = TRUE", (dupla_id,))
         if not cursor.fetchone():
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Dupla nao encontrada ou inativa'}), 404
 
         cursor.execute("""
@@ -882,7 +882,7 @@ def criar_ronda():
 
         if ronda_existente:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({
                 'success': True,
                 'data': {'id': ronda_existente['id'], 'existente': True},
@@ -897,7 +897,7 @@ def criar_ronda():
         _registrar_log(cursor, 'ronda', ronda_id, 'criacao', usuario, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': {'id': ronda_id, 'existente': False}, 'message': 'Ronda criada'}), 201
     except Exception as e:
         traceback.print_exc()
@@ -916,11 +916,11 @@ def concluir_ronda(ronda_id):
         ronda = cursor.fetchone()
         if not ronda:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
         if ronda['status'] == 'concluida':
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': True, 'message': 'Ronda ja esta concluida'})
         cursor.execute("UPDATE sentir_agir_rondas SET status = 'concluida', atualizado_em = NOW() WHERE id = %s",
                        (ronda_id,))
@@ -929,7 +929,7 @@ def concluir_ronda(ronda_id):
                        valor_novo='concluida', ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Ronda concluida com sucesso'})
     except Exception as e:
         traceback.print_exc()
@@ -994,11 +994,11 @@ def registrar_visita():
         ronda = cursor.fetchone()
         if not ronda:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
         if ronda['status'] == 'cancelada':
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Ronda esta cancelada'}), 400
 
         # Verificar duplicidade: paciente já visitado hoje por outra ronda
@@ -1017,7 +1017,7 @@ def registrar_visita():
             visita_duplicada = cursor.fetchone()
             if visita_duplicada:
                 cursor.close()
-                conn.close()
+                release_connection(conn)
                 return jsonify({
                     'success': False,
                     'error': 'Este paciente ja foi visitado hoje pela dupla: %s. '
@@ -1029,7 +1029,7 @@ def registrar_visita():
         cursor.execute("SELECT id FROM sentir_agir_setores WHERE id = %s AND ativo = TRUE", (setor_id,))
         if not cursor.fetchone():
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Setor nao encontrado ou inativo'}), 404
 
         # Inserir visita
@@ -1138,7 +1138,7 @@ def registrar_visita():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if avaliacao_final == 'impossibilitada':
             msg = 'Visita impossibilitada registrada. Paciente reposicionado na fila.'
@@ -1187,14 +1187,14 @@ def upload_imagem():
         cursor.execute("SELECT id FROM sentir_agir_visitas WHERE id = %s", (visita_id,))
         if not cursor.fetchone():
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
         max_imagens = int(_get_config(cursor, 'max_imagens_por_visita', '5'))
         cursor.execute("SELECT COUNT(*) as total FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
         if cursor.fetchone()['total'] >= max_imagens:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Limite de %d imagens atingido' % max_imagens}), 400
 
         tipos_permitidos = _get_config(cursor, 'tipos_imagem_permitidos', 'image/jpeg,image/png,image/webp')
@@ -1202,7 +1202,7 @@ def upload_imagem():
         tipo_mime = arquivo.content_type or ''
         if tipo_mime not in tipos_lista:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Tipo nao permitido. Aceitos: %s' % tipos_permitidos}), 400
 
         max_mb = float(_get_config(cursor, 'tamanho_max_imagem_mb', '10'))
@@ -1211,7 +1211,7 @@ def upload_imagem():
         arquivo.seek(0)
         if tamanho_bytes > max_mb * 1024 * 1024:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Arquivo muito grande. Max: %.0f MB' % max_mb}), 400
 
         extensao = os.path.splitext(arquivo.filename)[1].lower() or '.jpg'
@@ -1235,7 +1235,7 @@ def upload_imagem():
         _registrar_log(cursor, 'imagem', imagem_id, 'criacao', usuario, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify(
             {'success': True, 'data': {'id': imagem_id, 'caminho': caminho_relativo}, 'message': 'Imagem enviada'}), 201
     except Exception as e:
@@ -1253,12 +1253,12 @@ def servir_imagem(imagem_id):
         imagem = cursor.fetchone()
         if not imagem:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Imagem nao encontrada'}), 404
         caminho_base = _get_config(cursor, 'caminho_imagens',
                                    os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
         cursor.close()
-        conn.close()
+        release_connection(conn)
         caminho_completo = os.path.join(caminho_base, imagem['caminho_arquivo'])
         return send_from_directory(os.path.dirname(caminho_completo), os.path.basename(caminho_completo),
                                    mimetype=imagem['tipo_mime'])
@@ -1279,7 +1279,7 @@ def deletar_imagem(imagem_id):
         imagem = cursor.fetchone()
         if not imagem:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Imagem nao encontrada'}), 404
 
         caminho_base = _get_config(cursor, 'caminho_imagens',
@@ -1296,7 +1296,7 @@ def deletar_imagem(imagem_id):
                        valor_anterior=imagem['nome_original'], ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Imagem removida'})
     except Exception as e:
         traceback.print_exc()
@@ -1327,7 +1327,7 @@ def listar_visitas_ronda(ronda_id):
         """, (ronda_id,))
         visitas = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         resultado = []
         for vis in visitas:
@@ -1367,7 +1367,7 @@ def detalhe_visita(visita_id):
         visita = cursor.fetchone()
         if not visita:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
         cursor.execute("""
@@ -1389,7 +1389,7 @@ def detalhe_visita(visita_id):
         """, (visita_id,))
         imagens = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         visita_dict = dict(visita)
         for campo in ('criado_em', 'atualizado_em', 'data_ronda'):
@@ -1480,11 +1480,11 @@ def atualizar_visita(visita_id):
         visita = cursor.fetchone()
         if not visita:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
         if visita['status'] != 'em_andamento':
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Ronda ja concluida, edicao nao permitida'}), 400
 
         # Pré-buscar critico_quando dos itens desta visita
@@ -1588,7 +1588,7 @@ def atualizar_visita(visita_id):
         _registrar_log(cursor, 'visita', visita_id, 'edicao', usuario, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         msg = 'Visita atualizada'
         if tratativas_criadas > 0:
@@ -1625,7 +1625,7 @@ def ronda_em_andamento(dupla_id):
 
         if not ronda:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': True, 'data': None})
 
         cursor.execute("""
@@ -1637,7 +1637,7 @@ def ronda_em_andamento(dupla_id):
         """, (ronda['id'],))
         visitas = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         ronda_dict = dict(ronda)
         if ronda_dict.get('data_ronda'):
@@ -1683,12 +1683,12 @@ def excluir_visita(visita_id):
 
         if not visita:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
         if visita['status'] != 'em_andamento':
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Nao e possivel excluir visitas de rondas ja concluidas'}), 400
 
         # Remover arquivos de imagem do disco
@@ -1714,7 +1714,7 @@ def excluir_visita(visita_id):
                        ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Visita removida'})
     except Exception as e:
         traceback.print_exc()
@@ -1768,7 +1768,7 @@ def listar_categorias():
         """)
         itens = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         itens_por_cat = {}
         for item in itens:
@@ -1817,7 +1817,7 @@ def criar_categoria():
                        valor_novo=nome, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': {'id': cat_id}, 'message': 'Categoria criada'}), 201
     except Exception as e:
         traceback.print_exc()
@@ -1845,7 +1845,7 @@ def editar_categoria(cat_id):
         cat = cursor.fetchone()
         if not cat:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
         cursor.execute("""
             UPDATE sentir_agir_categorias
@@ -1857,7 +1857,7 @@ def editar_categoria(cat_id):
                        valor_novo=nome, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Categoria atualizada'})
     except Exception as e:
         traceback.print_exc()
@@ -1876,7 +1876,7 @@ def toggle_categoria(cat_id):
         cat = cursor.fetchone()
         if not cat:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
         novo_status = not cat['ativo']
         cursor.execute("""
@@ -1887,7 +1887,7 @@ def toggle_categoria(cat_id):
                        valor_novo=str(novo_status), ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True,
                         'message': 'Categoria ativada' if novo_status else 'Categoria desativada'})
     except Exception as e:
@@ -1912,7 +1912,7 @@ def reordenar_categoria(cat_id):
         cat = cursor.fetchone()
         if not cat:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
         if direcao == 'cima':
             cursor.execute("""
@@ -1927,7 +1927,7 @@ def reordenar_categoria(cat_id):
         vizinha = cursor.fetchone()
         if not vizinha:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Ja esta no limite'})
         cursor.execute("UPDATE sentir_agir_categorias SET ordem = %s WHERE id = %s",
                        (vizinha['ordem'], cat_id))
@@ -1936,7 +1936,7 @@ def reordenar_categoria(cat_id):
         _registrar_log(cursor, 'categoria', cat_id, 'reordenacao', usuario, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Reordenado'})
     except Exception as e:
         traceback.print_exc()
@@ -1972,7 +1972,7 @@ def criar_item():
         cursor.execute("SELECT id FROM sentir_agir_categorias WHERE id = %s", (categoria_id,))
         if not cursor.fetchone():
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
         cursor.execute("""
             SELECT COALESCE(MAX(ordem), 0) + 1 AS prox
@@ -1988,7 +1988,7 @@ def criar_item():
                        valor_novo=descricao, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': {'id': item_id}, 'message': 'Item criado'}), 201
     except Exception as e:
         traceback.print_exc()
@@ -2020,7 +2020,7 @@ def editar_item(item_id):
         item = cursor.fetchone()
         if not item:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
         cursor.execute("""
             UPDATE sentir_agir_itens
@@ -2032,7 +2032,7 @@ def editar_item(item_id):
                        valor_novo=descricao, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Item atualizado'})
     except Exception as e:
         traceback.print_exc()
@@ -2051,7 +2051,7 @@ def toggle_item(item_id):
         item = cursor.fetchone()
         if not item:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
         novo_status = not item['ativo']
         cursor.execute("""
@@ -2062,7 +2062,7 @@ def toggle_item(item_id):
                        valor_novo=str(novo_status), ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True,
                         'message': 'Item ativado' if novo_status else 'Item desativado'})
     except Exception as e:
@@ -2088,7 +2088,7 @@ def reordenar_item(item_id):
         item = cursor.fetchone()
         if not item:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
         if direcao == 'cima':
             cursor.execute("""
@@ -2103,7 +2103,7 @@ def reordenar_item(item_id):
         vizinho = cursor.fetchone()
         if not vizinho:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Ja esta no limite'})
         cursor.execute("UPDATE sentir_agir_itens SET ordem = %s WHERE id = %s",
                        (vizinho['ordem'], item_id))
@@ -2112,7 +2112,7 @@ def reordenar_item(item_id):
         _registrar_log(cursor, 'item', item_id, 'reordenacao', usuario, ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Reordenado'})
     except Exception as e:
         traceback.print_exc()

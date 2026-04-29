@@ -19,7 +19,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, send_from_directory, session, current_app
 from psycopg2.extras import RealDictCursor
 
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -41,11 +41,25 @@ def _verificar_acesso():
     return verificar_permissao_painel(usuario_id, 'painel10')
 
 
+_VIEWS_PERMITIDAS = frozenset({
+    'vw_ps_dashboard_dia',
+    'vw_ps_tempo_por_clinica',
+    'vw_ps_aguardando_por_clinica',
+    'vw_ps_atendimentos_por_hora',
+    'vw_ps_desempenho_medico',
+    'vw_ps_desempenho_recepcao',
+})
+
+
 def _consultar_view(view_name, fetchone=False):
     """
     Consulta uma view PostgreSQL e retorna os dados.
     Retorna (dados, None) em sucesso ou (None, response_erro) em falha.
     """
+    if view_name not in _VIEWS_PERMITIDAS:
+        logger.error('View nao permitida solicitada: %s', view_name)
+        return None, (jsonify({'success': False, 'error': 'View invalida'}), 400)
+
     conn = get_db_connection()
     if not conn:
         return None, (jsonify({
@@ -75,7 +89,7 @@ def _consultar_view(view_name, fetchone=False):
         }), 500)
     finally:
         if conn:
-            conn.close()
+            release_connection(conn)
 
 
 # =============================================================================

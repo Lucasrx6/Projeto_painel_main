@@ -12,7 +12,7 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime
 from decimal import Decimal
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -187,7 +187,7 @@ def api_painel25_dashboard():
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if conn:
-            conn.close()
+            release_connection(conn)
 
 
 # =========================================================
@@ -331,7 +331,7 @@ def api_painel25_dados():
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if conn:
-            conn.close()
+            release_connection(conn)
 
 
 # =========================================================
@@ -395,4 +395,4 @@ def api_painel25_filtros():
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if conn:
-            conn.close()
+            release_connection(conn)

@@ -11,7 +11,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from flask import Blueprint, request, jsonify, send_from_directory, send_file, session, current_app
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -263,7 +263,7 @@ def dashboard():
         stats_precaucao = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         resultado = serializar_linha(stats) if stats else {}
         resultado['top_criticos'] = top_criticos
@@ -348,7 +348,7 @@ def dados():
         rows = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         dados_serializados = [serializar_linha(r) for r in rows]
 
@@ -399,7 +399,7 @@ def filtros():
         status_ronda = ['em_andamento', 'concluida', 'cancelada']
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -444,7 +444,7 @@ def detalhe_visita(visita_id):
 
         if not visita:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
         # Avaliações agrupadas por categoria (inclui tratativa_id e obs_item)
@@ -516,7 +516,7 @@ def detalhe_visita(visita_id):
         historico = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         # Serializar visita
         visita_dict = serializar_linha(visita)
@@ -583,7 +583,7 @@ def editar_visita(visita_id):
         visita = cursor.fetchone()
         if not visita:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
         # Verificar bloqueio por tempo
@@ -595,7 +595,7 @@ def editar_visita(visita_id):
                 limite = visita['criado_em'] + timedelta(days=dias_bloqueio)
                 if datetime.now() > limite:
                     cursor.close()
-                    conn.close()
+                    release_connection(conn)
                     return jsonify({
                         'success': False,
                         'error': 'Edicao bloqueada. Prazo de %d dias expirado.' % dias_bloqueio
@@ -702,7 +702,7 @@ def editar_visita(visita_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -741,12 +741,12 @@ def alterar_status_ronda(ronda_id):
         ronda = cursor.fetchone()
         if not ronda:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
 
         if ronda['status'] == novo_status:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': True, 'message': 'Ronda ja esta com o status ' + novo_status})
 
         cursor.execute(
@@ -760,7 +760,7 @@ def alterar_status_ronda(ronda_id):
                        ip_origem=ip)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         labels = {'em_andamento': 'Em andamento', 'concluida': 'Concluida', 'cancelada': 'Cancelada'}
         return jsonify({'success': True, 'message': 'Status alterado para: ' + labels.get(novo_status, novo_status)})
@@ -816,7 +816,7 @@ def exportar_excel():
         rows = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not rows:
             return jsonify({'success': False, 'error': 'Nenhum dado para exportar'}), 404
@@ -872,7 +872,7 @@ def obter_config():
         cursor.execute("SELECT chave, valor FROM sentir_agir_config")
         rows = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         config = {}
         for row in rows:
@@ -924,7 +924,7 @@ def atualizar_config():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({'success': True, 'message': 'Configuracao atualizada'})
     except Exception as e:
@@ -950,7 +950,7 @@ def listar_precaucao_contato_gestao():
         """)
         rows = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         resultado = []
         for r in rows:
             item = dict(r)
@@ -979,7 +979,7 @@ def remover_precaucao_contato_gestao(nr_atendimento):
         removido = cursor.rowcount > 0
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         if not removido:
             return jsonify({'success': False, 'error': 'Paciente não encontrado'}), 404
         return jsonify({'success': True, 'message': 'Precaução de contato removida. Paciente voltou à fila.'})

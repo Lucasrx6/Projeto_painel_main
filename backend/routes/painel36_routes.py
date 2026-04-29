@@ -5,13 +5,19 @@ Endpoints para gestao analitica, relatorios e configuracao do sistema
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app, Response
 from datetime import datetime, date
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 import csv
 import io
 
 painel36_bp = Blueprint('painel36', __name__)
+
+# Whitelists de colunas permitidas nos UPDATEs dinâmicos.
+# Nunca iterar sobre dados do request — sempre sobre estas constantes.
+_CAMPOS_PADIOLEIRO     = ('nome', 'matricula', 'turno')
+_CAMPOS_TIPO_MOVIMENTO = ('nome', 'icone', 'cor', 'ordem')
+_CAMPOS_DESTINO        = ('nome', 'tipo_movimento_id', 'ordem')
 
 
 @painel36_bp.route('/painel/painel36')
@@ -97,7 +103,7 @@ def api_painel36_dashboard():
             ativos.append(c)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({
             'success': True,
             'stats': stats,
@@ -108,7 +114,7 @@ def api_painel36_dashboard():
     except Exception as e:
         current_app.logger.error(f'Erro dashboard painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -200,13 +206,13 @@ def api_painel36_chamados():
             chamados.append(c)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'chamados': chamados, 'total': len(chamados)})
 
     except Exception as e:
         current_app.logger.error(f'Erro chamados painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar chamados'}), 500
 
 
@@ -240,12 +246,12 @@ def api_painel36_cancelar(chamado_id):
         
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if chamado['status'] in ('concluido', 'cancelado'):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': f'Chamado nao pode ser cancelado no status atual: {chamado["status"]}'}), 400
 
         cursor.execute("""
@@ -259,14 +265,14 @@ def api_painel36_cancelar(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Chamado cancelado administrativamente com sucesso'})
 
     except Exception as e:
         current_app.logger.error(f'Erro cancelar painel36: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao cancelar chamado'}), 500
 
 
@@ -315,13 +321,13 @@ def api_painel36_por_setor():
                     s[k] = float(s[k])
             setores.append(s)
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'setores': setores})
 
     except Exception as e:
         current_app.logger.error(f'Erro por-setor painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -375,13 +381,13 @@ def api_painel36_por_padioleiro():
                     p[k] = float(p[k])
             padioleiros.append(p)
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'padioleiros': padioleiros})
 
     except Exception as e:
         current_app.logger.error(f'Erro por-padioleiro painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -436,7 +442,7 @@ def api_painel36_exportar():
         """, (str(dias),))
         rows = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         output = io.StringIO()
         writer = csv.writer(output, delimiter=';')
@@ -468,7 +474,7 @@ def api_painel36_exportar():
     except Exception as e:
         current_app.logger.error(f'Erro exportar painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao exportar'}), 500
 
 
@@ -498,12 +504,12 @@ def api_painel36_cfg_pad_listar():
         """)
         padioleiros = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'padioleiros': padioleiros})
     except Exception as e:
         current_app.logger.error(f'Erro listar padioleiros painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar padioleiros'}), 500
 
 
@@ -537,13 +543,13 @@ def api_painel36_cfg_pad_criar():
         row = cursor.fetchone()
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'id': row['id'], 'message': 'Padioleiro cadastrado'}), 201
     except Exception as e:
         current_app.logger.error(f'Erro criar padioleiro painel36: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao cadastrar padioleiro'}), 500
 
 
@@ -564,12 +570,12 @@ def api_painel36_cfg_pad_atualizar(padioleiro_id):
         cursor = conn.cursor()
         fields, params = [], []
 
-        for campo in ['nome', 'matricula', 'turno']:
+        for campo in _CAMPOS_PADIOLEIRO:
             if campo in dados:
                 val = (dados[campo] or '').strip() if isinstance(dados[campo], str) else dados[campo]
                 if campo == 'nome' and not val:
                     cursor.close()
-                    conn.close()
+                    release_connection(conn)
                     return jsonify({'success': False, 'error': 'Nome nao pode ser vazio'}), 400
                 fields.append(f'{campo} = %s')
                 params.append(val or None)
@@ -579,7 +585,7 @@ def api_painel36_cfg_pad_atualizar(padioleiro_id):
 
         if not fields:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Nada para atualizar'}), 400
 
         fields.append('atualizado_em = NOW()')
@@ -587,13 +593,13 @@ def api_painel36_cfg_pad_atualizar(padioleiro_id):
         cursor.execute(f"UPDATE padioleiro_cadastros SET {', '.join(fields)} WHERE id = %s", params)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Padioleiro atualizado'})
     except Exception as e:
         current_app.logger.error(f'Erro atualizar padioleiro painel36: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao atualizar padioleiro'}), 500
 
 
@@ -618,12 +624,12 @@ def api_painel36_cfg_tipos_listar():
         cursor.execute("SELECT id, nome, icone, cor, ativo, ordem FROM padioleiro_tipos_movimento ORDER BY ordem, nome")
         tipos = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'tipos': tipos})
     except Exception as e:
         current_app.logger.error(f'Erro listar tipos painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar tipos'}), 500
 
 
@@ -653,13 +659,13 @@ def api_painel36_cfg_tipos_criar():
         row = cursor.fetchone()
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'id': row['id']}), 201
     except Exception as e:
         current_app.logger.error(f'Erro criar tipo painel36: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao criar tipo'}), 500
 
 
@@ -679,7 +685,7 @@ def api_painel36_cfg_tipos_atualizar(tipo_id):
     try:
         cursor = conn.cursor()
         fields, params = [], []
-        for campo in ['nome', 'icone', 'cor', 'ordem']:
+        for campo in _CAMPOS_TIPO_MOVIMENTO:
             if campo in dados:
                 fields.append(f'{campo} = %s')
                 params.append(dados[campo])
@@ -689,20 +695,20 @@ def api_painel36_cfg_tipos_atualizar(tipo_id):
 
         if not fields:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Nada para atualizar'}), 400
 
         params.append(tipo_id)
         cursor.execute(f"UPDATE padioleiro_tipos_movimento SET {', '.join(fields)} WHERE id = %s", params)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Tipo atualizado'})
     except Exception as e:
         current_app.logger.error(f'Erro atualizar tipo painel36: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao atualizar tipo'}), 500
 
 
@@ -742,12 +748,12 @@ def api_painel36_cfg_dest_listar():
             """)
         destinos = [dict(r) for r in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'destinos': destinos})
     except Exception as e:
         current_app.logger.error(f'Erro listar destinos painel36: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar destinos'}), 500
 
 
@@ -779,13 +785,13 @@ def api_painel36_cfg_dest_criar():
         row = cursor.fetchone()
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'id': row['id']}), 201
     except Exception as e:
         current_app.logger.error(f'Erro criar destino painel36: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao criar destino'}), 500
 
 
@@ -805,7 +811,7 @@ def api_painel36_cfg_dest_atualizar(destino_id):
     try:
         cursor = conn.cursor()
         fields, params = [], []
-        for campo in ['nome', 'tipo_movimento_id', 'ordem']:
+        for campo in _CAMPOS_DESTINO:
             if campo in dados:
                 fields.append(f'{campo} = %s')
                 params.append(dados[campo])
@@ -815,18 +821,18 @@ def api_painel36_cfg_dest_atualizar(destino_id):
 
         if not fields:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Nada para atualizar'}), 400
 
         params.append(destino_id)
         cursor.execute(f"UPDATE padioleiro_destinos SET {', '.join(fields)} WHERE id = %s", params)
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'message': 'Destino atualizado'})
     except Exception as e:
         current_app.logger.error(f'Erro atualizar destino painel36: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao atualizar destino'}), 500

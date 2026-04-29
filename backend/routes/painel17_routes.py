@@ -5,7 +5,7 @@ Endpoints para exibicao de tempo estimado de espera por clinica
 from flask import Blueprint, jsonify, send_from_directory, session, current_app
 from datetime import datetime, timedelta
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 import statistics
@@ -361,7 +361,7 @@ def api_painel17_tempos():
         totais = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -379,7 +379,7 @@ def api_painel17_tempos():
             f'Erro ao buscar tempos do painel17: {e}', exc_info=True
         )
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'

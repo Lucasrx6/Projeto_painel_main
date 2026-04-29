@@ -5,7 +5,7 @@ Endpoints para gestao de chamados pelo tecnico/analista de TI
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -59,7 +59,7 @@ def api_painel14_dashboard():
         cursor.execute("SELECT * FROM vw_chamados_dashboard")
         resultado = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         dados = dict(resultado) if resultado else {
             'total_abertos': 0,
@@ -81,7 +81,7 @@ def api_painel14_dashboard():
     except Exception as e:
         current_app.logger.error(f'Erro dashboard painel14: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -122,7 +122,7 @@ def api_painel14_chamados():
                 chamado['minutos_aberto'] = float(chamado['minutos_aberto'])
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -134,7 +134,7 @@ def api_painel14_chamados():
     except Exception as e:
         current_app.logger.error(f'Erro listar chamados painel14: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar chamados'}), 500
 
 
@@ -188,7 +188,7 @@ def api_painel14_historico():
                 chamado['minutos_total'] = float(chamado['minutos_total'])
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -200,7 +200,7 @@ def api_painel14_historico():
     except Exception as e:
         current_app.logger.error(f'Erro historico painel14: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500
 
 
@@ -236,12 +236,12 @@ def api_painel14_visualizar(chamado_id):
 
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if chamado['visualizado']:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': True, 'message': 'Chamado ja visualizado'})
 
         cursor.execute("""
@@ -254,7 +254,7 @@ def api_painel14_visualizar(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         current_app.logger.info(f'Chamado {chamado_id} visualizado por {usuario_nome}')
 
@@ -267,7 +267,7 @@ def api_painel14_visualizar(chamado_id):
         current_app.logger.error(f'Erro visualizar chamado {chamado_id}: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao atualizar chamado'}), 500
 
 
@@ -312,12 +312,12 @@ def api_painel14_atender(chamado_id):
 
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if chamado['status'] not in ('aberto', 'em_atendimento'):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao pode ser atendido no status atual'}), 400
 
         cursor.execute("""
@@ -333,7 +333,7 @@ def api_painel14_atender(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         current_app.logger.info(f'Chamado {chamado_id} em atendimento por {tecnico}')
 
@@ -346,7 +346,7 @@ def api_painel14_atender(chamado_id):
         current_app.logger.error(f'Erro atender chamado {chamado_id}: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao iniciar atendimento'}), 500
 
 
@@ -400,12 +400,12 @@ def api_painel14_fechar(chamado_id):
 
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if chamado['status'] in ('fechado', 'inativo'):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado ja esta fechado ou inativo'}), 400
 
         cursor.execute("""
@@ -423,7 +423,7 @@ def api_painel14_fechar(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         current_app.logger.info(f'Chamado {chamado_id} fechado por {tecnico}')
 
@@ -436,7 +436,7 @@ def api_painel14_fechar(chamado_id):
         current_app.logger.error(f'Erro fechar chamado {chamado_id}: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao fechar chamado'}), 500
 
 
@@ -478,12 +478,12 @@ def api_painel14_inativar(chamado_id):
 
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if chamado['status'] == 'inativo':
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado ja esta inativo'}), 400
 
         cursor.execute("""
@@ -497,7 +497,7 @@ def api_painel14_inativar(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         current_app.logger.info(f'Chamado {chamado_id} inativado por {usuario_nome}: {motivo}')
 
@@ -510,7 +510,7 @@ def api_painel14_inativar(chamado_id):
         current_app.logger.error(f'Erro inativar chamado {chamado_id}: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao inativar chamado'}), 500
 
 
@@ -552,12 +552,12 @@ def api_painel14_observacao(chamado_id):
 
         if not chamado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
 
         if chamado['status'] in ('fechado', 'inativo'):
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Nao e possivel adicionar observacao a chamados fechados'}), 400
 
         # Registra no historico
@@ -573,7 +573,7 @@ def api_painel14_observacao(chamado_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -584,7 +584,7 @@ def api_painel14_observacao(chamado_id):
         current_app.logger.error(f'Erro observacao chamado {chamado_id}: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao registrar observacao'}), 500
 
 
@@ -626,7 +626,7 @@ def api_painel14_chamado_historico(chamado_id):
                 item['data_registro'] = item['data_registro'].isoformat()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -637,7 +637,7 @@ def api_painel14_chamado_historico(chamado_id):
     except Exception as e:
         current_app.logger.error(f'Erro historico chamado {chamado_id}: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar historico'}), 500
 
 
@@ -661,14 +661,14 @@ def api_painel14_config():
         cursor.execute("SELECT chave, valor, descricao FROM chamados_config")
         configs = {row['chave']: row['valor'] for row in cursor.fetchall()}
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({'success': True, 'data': configs})
 
     except Exception as e:
         current_app.logger.error(f'Erro config painel14: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar configuracoes'}), 500
 
 
@@ -699,12 +699,12 @@ def api_painel14_config_update():
         if cursor.rowcount == 0:
             conn.rollback()
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Configuracao nao encontrada'}), 404
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({'success': True, 'message': 'Configuracao atualizada'})
 
@@ -712,7 +712,7 @@ def api_painel14_config_update():
         current_app.logger.error(f'Erro atualizar config painel14: {e}', exc_info=True)
         if conn:
             conn.rollback()
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao atualizar configuracao'}), 500
 
 
@@ -741,7 +741,7 @@ def api_painel14_contagem():
         """)
         resultado = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -753,7 +753,7 @@ def api_painel14_contagem():
     except Exception as e:
         current_app.logger.error(f'Erro contagem painel14: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro'}), 500
 
 
@@ -790,12 +790,12 @@ def api_painel14_locais():
                     loc[campo] = loc[campo].isoformat()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': locais, 'total': len(locais)})
 
     except Exception as e:
         current_app.logger.error(f'Erro listar locais: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao listar locais'}), 500
 
 
@@ -835,7 +835,7 @@ def api_painel14_locais_criar():
             WHERE LOWER(setor) = LOWER(%s) AND LOWER(local) = LOWER(%s) AND ativo = TRUE
         """, (setor, local))
         if cursor.fetchone():
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Ja existe um local ativo com este Setor e Local'}), 409
 
         cursor.execute("""
@@ -845,14 +845,14 @@ def api_painel14_locais_criar():
         """, (setor, local, hostname, ip))
         novo = dict(cursor.fetchone())
         conn.commit()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
 
         current_app.logger.info(f'Local criado: {setor} / {local} ({hostname})')
         return jsonify({'success': True, 'message': 'Local cadastrado com sucesso', 'data': novo}), 201
 
     except Exception as e:
         current_app.logger.error(f'Erro criar local: {e}', exc_info=True)
-        if conn: conn.rollback(); conn.close()
+        if conn: conn.rollback(); release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao cadastrar local'}), 500
 
 
@@ -890,7 +890,7 @@ def api_painel14_locais_editar(local_id):
             WHERE LOWER(setor) = LOWER(%s) AND LOWER(local) = LOWER(%s) AND ativo = TRUE AND id != %s
         """, (setor, local, local_id))
         if cursor.fetchone():
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Ja existe outro local ativo com este Setor e Local'}), 409
 
         cursor.execute("""
@@ -902,16 +902,16 @@ def api_painel14_locais_editar(local_id):
         atualizado = cursor.fetchone()
 
         if not atualizado:
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Local nao encontrado'}), 404
 
         conn.commit()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
         return jsonify({'success': True, 'message': 'Local atualizado', 'data': dict(atualizado)})
 
     except Exception as e:
         current_app.logger.error(f'Erro editar local {local_id}: {e}', exc_info=True)
-        if conn: conn.rollback(); conn.close()
+        if conn: conn.rollback(); release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao editar local'}), 500
 
 
@@ -934,20 +934,20 @@ def api_painel14_locais_remover(local_id):
         registro = cursor.fetchone()
 
         if not registro:
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Local nao encontrado'}), 404
 
         novo_ativo = not registro['ativo']
         cursor.execute("UPDATE chamados_locais SET ativo = %s WHERE id = %s", (novo_ativo, local_id))
         conn.commit()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
 
         msg = 'Local reativado' if novo_ativo else 'Local desativado'
         return jsonify({'success': True, 'message': msg, 'ativo': novo_ativo})
 
     except Exception as e:
         current_app.logger.error(f'Erro remover local {local_id}: {e}', exc_info=True)
-        if conn: conn.rollback(); conn.close()
+        if conn: conn.rollback(); release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao alterar local'}), 500
 
 
@@ -980,12 +980,12 @@ def api_painel14_problemas():
             for campo in ['data_criacao', 'data_atualizacao']:
                 if p.get(campo) and isinstance(p[campo], datetime):
                     p[campo] = p[campo].isoformat()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
         return jsonify({'success': True, 'data': problemas, 'total': len(problemas)})
 
     except Exception as e:
         current_app.logger.error(f'Erro listar problemas: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao listar problemas'}), 500
 
 
@@ -1014,7 +1014,7 @@ def api_painel14_problemas_criar():
             WHERE LOWER(descricao) = LOWER(%s) AND ativo = TRUE
         """, (descricao,))
         if cursor.fetchone():
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Tipo de problema ja existe'}), 409
 
         cursor.execute("""
@@ -1024,12 +1024,12 @@ def api_painel14_problemas_criar():
         """, (descricao,))
         novo = dict(cursor.fetchone())
         conn.commit()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
         return jsonify({'success': True, 'message': 'Problema cadastrado', 'data': novo}), 201
 
     except Exception as e:
         current_app.logger.error(f'Erro criar problema: {e}', exc_info=True)
-        if conn: conn.rollback(); conn.close()
+        if conn: conn.rollback(); release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao cadastrar problema'}), 500
 
 
@@ -1058,7 +1058,7 @@ def api_painel14_problemas_editar(problema_id):
             WHERE LOWER(descricao) = LOWER(%s) AND ativo = TRUE AND id != %s
         """, (descricao, problema_id))
         if cursor.fetchone():
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Ja existe outro problema com esta descricao'}), 409
 
         cursor.execute("""
@@ -1067,16 +1067,16 @@ def api_painel14_problemas_editar(problema_id):
         """, (descricao, problema_id))
         atualizado = cursor.fetchone()
         if not atualizado:
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Problema nao encontrado'}), 404
 
         conn.commit()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
         return jsonify({'success': True, 'message': 'Problema atualizado', 'data': dict(atualizado)})
 
     except Exception as e:
         current_app.logger.error(f'Erro editar problema {problema_id}: {e}', exc_info=True)
-        if conn: conn.rollback(); conn.close()
+        if conn: conn.rollback(); release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao editar problema'}), 500
 
 
@@ -1098,16 +1098,16 @@ def api_painel14_problemas_remover(problema_id):
         cursor.execute("SELECT id, ativo FROM chamados_problemas WHERE id = %s", (problema_id,))
         registro = cursor.fetchone()
         if not registro:
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Problema nao encontrado'}), 404
 
         novo_ativo = not registro['ativo']
         cursor.execute("UPDATE chamados_problemas SET ativo = %s WHERE id = %s", (novo_ativo, problema_id))
         conn.commit()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
         return jsonify({'success': True, 'message': 'Reativado' if novo_ativo else 'Desativado', 'ativo': novo_ativo})
 
     except Exception as e:
         current_app.logger.error(f'Erro remover problema {problema_id}: {e}', exc_info=True)
-        if conn: conn.rollback(); conn.close()
+        if conn: conn.rollback(); release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro'}), 500

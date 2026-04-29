@@ -5,7 +5,7 @@ Endpoints para configuracao de destinatarios, tipos e historico
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -89,7 +89,7 @@ def api_painel26_dashboard():
         hoje = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -103,7 +103,7 @@ def api_painel26_dashboard():
     except Exception as e:
         current_app.logger.error('Erro dashboard painel26: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -131,7 +131,7 @@ def api_painel26_tipos():
         """)
         tipos = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -141,7 +141,7 @@ def api_painel26_tipos():
     except Exception as e:
         current_app.logger.error('Erro tipos painel26: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -197,7 +197,7 @@ def api_painel26_destinatarios():
         especialidades = [r['especialidade'] for r in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -210,7 +210,7 @@ def api_painel26_destinatarios():
     except Exception as e:
         current_app.logger.error('Erro destinatarios painel26: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -245,7 +245,7 @@ def api_painel26_destinatarios_criar():
 
         if cursor.fetchone():
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Email ja cadastrado para este tipo de evento'}), 409
 
         cursor.execute("""
@@ -270,7 +270,7 @@ def api_painel26_destinatarios_criar():
         novo_id = cursor.fetchone()['id']
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -281,7 +281,7 @@ def api_painel26_destinatarios_criar():
     except Exception as e:
         current_app.logger.error('Erro criar destinatario: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao criar destinatario'}), 500
 
 
@@ -329,12 +329,12 @@ def api_painel26_destinatarios_editar(dest_id):
 
         if cursor.rowcount == 0:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Destinatario nao encontrado'}), 404
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -344,7 +344,7 @@ def api_painel26_destinatarios_editar(dest_id):
     except Exception as e:
         current_app.logger.error('Erro editar destinatario: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao editar'}), 500
 
 
@@ -374,12 +374,12 @@ def api_painel26_destinatarios_toggle(dest_id):
 
         if not resultado:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Destinatario nao encontrado'}), 404
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -390,7 +390,7 @@ def api_painel26_destinatarios_toggle(dest_id):
     except Exception as e:
         current_app.logger.error('Erro toggle destinatario: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao alternar'}), 500
 
 
@@ -412,12 +412,12 @@ def api_painel26_destinatarios_excluir(dest_id):
 
         if cursor.rowcount == 0:
             cursor.close()
-            conn.close()
+            release_connection(conn)
             return jsonify({'success': False, 'error': 'Destinatario nao encontrado'}), 404
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -427,7 +427,7 @@ def api_painel26_destinatarios_excluir(dest_id):
     except Exception as e:
         current_app.logger.error('Erro excluir destinatario: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao excluir'}), 500
 
 
@@ -474,7 +474,7 @@ def api_painel26_historico():
         historico = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -485,7 +485,7 @@ def api_painel26_historico():
     except Exception as e:
         current_app.logger.error('Erro historico painel26: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -518,7 +518,7 @@ def api_painel26_especialidades():
         especialidades = [r['especialidade'] for r in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -528,5 +528,5 @@ def api_painel26_especialidades():
     except Exception as e:
         current_app.logger.error('Erro especialidades painel26: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500

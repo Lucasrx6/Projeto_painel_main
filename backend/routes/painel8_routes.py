@@ -5,7 +5,7 @@ Endpoints para acompanhamento de pacientes internados
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -136,7 +136,7 @@ def api_painel8_enfermaria():
                 registro['leito'] = registro['leito'].strip()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -149,7 +149,7 @@ def api_painel8_enfermaria():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar dados do painel8: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -196,7 +196,7 @@ def api_painel8_setores():
         setores = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -208,7 +208,7 @@ def api_painel8_setores():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar setores do painel8: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -288,7 +288,7 @@ def api_painel8_stats():
             stats = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -300,7 +300,7 @@ def api_painel8_stats():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar estatísticas do painel8: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'

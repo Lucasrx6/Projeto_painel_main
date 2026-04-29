@@ -5,7 +5,7 @@ Endpoints para monitoramento de indicadores gerenciais
 from flask import Blueprint, jsonify, send_from_directory, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -69,7 +69,7 @@ def api_painel12_dashboard():
         resultado = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not resultado:
             # Retornar valores zerados se não houver dados
@@ -109,7 +109,7 @@ def api_painel12_dashboard():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar dashboard painel12: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -142,7 +142,7 @@ def api_painel12_setores():
         setores = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -154,5 +154,5 @@ def api_painel12_setores():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar setores painel12: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500

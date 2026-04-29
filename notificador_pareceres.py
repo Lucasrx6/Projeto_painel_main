@@ -582,6 +582,41 @@ def verificar_pareceres():
 
 
 # =========================================================
+# INTEGRACAO COM APP.PY (thread daemon)
+# =========================================================
+
+_background_started = False
+
+
+def start_in_background():
+    """
+    Inicia o notificador em uma thread daemon junto com o Flask.
+    A thread morre automaticamente quando o processo principal encerra.
+    Chamada pelo app.py — nao chama sys.exit(), nao bloqueia o servidor.
+    """
+    global _background_started
+    if _background_started:
+        return
+    _background_started = True
+
+    import threading
+
+    def _run():
+        logger.info('[notificador_pareceres] Thread daemon iniciada (intervalo: %smin)', INTERVALO_VERIFICACAO)
+        try:
+            verificar_pareceres()
+            schedule.every(INTERVALO_VERIFICACAO).minutes.do(verificar_pareceres)
+            while True:
+                schedule.run_pending()
+                time.sleep(30)
+        except Exception as e:
+            logger.error('[notificador_pareceres] Erro fatal na thread: %s', e)
+
+    t = threading.Thread(target=_run, name='notificador_pareceres', daemon=True)
+    t.start()
+
+
+# =========================================================
 # MAIN
 # =========================================================
 

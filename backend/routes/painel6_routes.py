@@ -5,7 +5,7 @@ Endpoints para análise de risco clínico com inteligência artificial
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -60,7 +60,7 @@ def painel6_dashboard():
         cursor.execute(query)
         result = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not result:
             result = {'total': 0, 'critico': 0, 'alto': 0, 'moderado': 0, 'baixo': 0}
@@ -119,7 +119,7 @@ def painel6_lista():
         cursor.execute(query, (limit, offset))
         pacientes = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         resultado = []
         for p in pacientes:
@@ -182,7 +182,7 @@ def painel6_paciente_detalhe(nr_atendimento):
         cursor.execute(query, (nr_atendimento,))
         paciente = cursor.fetchone()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         if not paciente:
             return jsonify({
@@ -223,7 +223,7 @@ def painel6_forcar_analise(nr_atendimento):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -252,7 +252,7 @@ def painel6_test():
         cursor.execute("SELECT COUNT(*) FROM vw_painel_clinico_risco")
         count = cursor.fetchone()[0]
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,

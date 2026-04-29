@@ -4,7 +4,7 @@ Endpoints para dashboard, dados de pacientes, sinais vitais e exames
 """
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -86,7 +86,7 @@ def api_painel27_dashboard():
         exames_kpi = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -105,7 +105,7 @@ def api_painel27_dashboard():
     except Exception as e:
         current_app.logger.error('Erro dashboard P27: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -201,7 +201,7 @@ def api_painel27_dados():
                 p['exames'] = []
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -212,7 +212,7 @@ def api_painel27_dados():
     except Exception as e:
         current_app.logger.error('Erro dados P27: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -254,7 +254,7 @@ def api_painel27_historico_sinais(nr_atendimento):
 
         registros = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -265,7 +265,7 @@ def api_painel27_historico_sinais(nr_atendimento):
     except Exception as e:
         current_app.logger.error('Erro historico sinais P27: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -309,7 +309,7 @@ def api_painel27_historico_exames(nr_atendimento):
         cursor.execute(query, params)
         registros = cursor.fetchall()
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -320,7 +320,7 @@ def api_painel27_historico_exames(nr_atendimento):
     except Exception as e:
         current_app.logger.error('Erro historico exames P27: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -365,7 +365,7 @@ def api_painel27_filtros():
         exames = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -377,5 +377,5 @@ def api_painel27_filtros():
     except Exception as e:
         current_app.logger.error('Erro filtros P27: %s', e, exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': str(e)}), 500

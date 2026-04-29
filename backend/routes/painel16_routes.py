@@ -5,7 +5,7 @@ Endpoints para monitoramento de atendentes e atendimentos da recepcao
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -148,7 +148,7 @@ def api_painel16_maquinas():
             reg['setor'] = reg.get('setor_calc', reg.get('setor', ''))
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -160,7 +160,7 @@ def api_painel16_maquinas():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar maquinas do painel16: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -273,7 +273,7 @@ def api_painel16_atendimentos():
                 reg['tempo_mediano_min'] = float(reg['tempo_mediano_min'])
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -286,7 +286,7 @@ def api_painel16_atendimentos():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar atendimentos do painel16: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -373,7 +373,7 @@ def api_painel16_stats():
         stats_atendimentos = cursor.fetchone()
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -391,7 +391,7 @@ def api_painel16_stats():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar stats do painel16: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'

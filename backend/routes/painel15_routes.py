@@ -6,7 +6,7 @@ Todos os chamados sao de prioridade critica (emergencial)
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
 
@@ -71,7 +71,7 @@ def api_painel15_locais():
                 setores.append(s)
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -82,7 +82,7 @@ def api_painel15_locais():
 
     except Exception as e:
         current_app.logger.error(f'Erro listar locais painel15: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao listar locais'}), 500
 
 
@@ -113,12 +113,12 @@ def api_painel15_problemas():
         """)
         problemas = [dict(row) for row in cursor.fetchall()]
         cursor.close()
-        conn.close()
+        release_connection(conn)
         return jsonify({'success': True, 'data': problemas, 'total': len(problemas)})
 
     except Exception as e:
         current_app.logger.error(f'Erro listar problemas painel15: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao listar problemas'}), 500
 
 
@@ -185,7 +185,7 @@ def api_painel15_abrir():
         """, (local_id,))
         local_data = cursor.fetchone()
         if not local_data:
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Local nao encontrado ou inativo'}), 400
 
         # Buscar descricao do problema
@@ -196,7 +196,7 @@ def api_painel15_abrir():
         """, (problema_id,))
         problema_data = cursor.fetchone()
         if not problema_data:
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({'success': False, 'error': 'Tipo de problema nao encontrado'}), 400
 
         # Montar local_problema desnormalizado para exibicao
@@ -209,7 +209,7 @@ def api_painel15_abrir():
         """, (numero_kora,))
         existente = cursor.fetchone()
         if existente:
-            cursor.close(); conn.close()
+            cursor.close(); release_connection(conn)
             return jsonify({
                 'success': False,
                 'error': f'Ja existe um chamado ativo com o numero Kora {numero_kora} (ID: {existente["id"]})'
@@ -247,7 +247,7 @@ def api_painel15_abrir():
 
         chamado_id = novo['id']
         data_abertura = novo['data_abertura'].isoformat() if novo['data_abertura'] else None
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
 
         current_app.logger.info(
             f'EMERGENCIAL - Chamado #{chamado_id} | {nome} | {local_texto} | '
@@ -266,7 +266,7 @@ def api_painel15_abrir():
 
     except Exception as e:
         current_app.logger.error(f'Erro abrir chamado painel15: {e}', exc_info=True)
-        if conn: conn.rollback(); conn.close()
+        if conn: conn.rollback(); release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao registrar chamado'}), 500
 
 
@@ -297,7 +297,7 @@ def api_painel15_acompanhar():
                     ch[campo] = ch[campo].isoformat()
             if ch.get('minutos_total'):
                 ch['minutos_total'] = float(ch['minutos_total'])
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -308,7 +308,7 @@ def api_painel15_acompanhar():
 
     except Exception as e:
         current_app.logger.error(f'Erro acompanhar painel15: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar chamados'}), 500
 
 
@@ -346,7 +346,7 @@ def api_painel15_status(chamado_id):
             FROM chamados WHERE id = %s
         """, (chamado_id,))
         chamado = cursor.fetchone()
-        cursor.close(); conn.close()
+        cursor.close(); release_connection(conn)
 
         if not chamado:
             return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
@@ -362,5 +362,5 @@ def api_painel15_status(chamado_id):
 
     except Exception as e:
         current_app.logger.error(f'Erro status chamado {chamado_id}: {e}', exc_info=True)
-        if conn: conn.close()
+        if conn: release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar chamado'}), 500

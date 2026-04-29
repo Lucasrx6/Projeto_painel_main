@@ -4,7 +4,7 @@ Endpoints para monitoramento de ocupação de leitos e setores
 """
 from flask import Blueprint, jsonify, send_from_directory, session, current_app
 from datetime import datetime
-from backend.database import get_db_connection
+from backend.database import get_db_connection, release_connection
 from psycopg2.extras import RealDictCursor
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
@@ -91,7 +91,7 @@ def api_painel4_dashboard():
             }
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -102,7 +102,7 @@ def api_painel4_dashboard():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar dashboard painel4: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -131,7 +131,7 @@ def api_painel4_setores():
         setores = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -143,7 +143,7 @@ def api_painel4_setores():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar setores painel4: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -172,7 +172,7 @@ def api_painel4_leitos_ocupados():
         leitos = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -184,7 +184,7 @@ def api_painel4_leitos_ocupados():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar leitos ocupados painel4: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -213,7 +213,7 @@ def api_painel4_leitos_disponiveis():
         leitos = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -225,7 +225,7 @@ def api_painel4_leitos_disponiveis():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar leitos disponíveis painel4: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -254,7 +254,7 @@ def api_painel4_todos_leitos():
         leitos = [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        release_connection(conn)
 
         return jsonify({
             'success': True,
@@ -266,5 +266,5 @@ def api_painel4_todos_leitos():
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar todos leitos painel4: {e}', exc_info=True)
         if conn:
-            conn.close()
+            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
