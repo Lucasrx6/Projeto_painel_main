@@ -50,61 +50,201 @@
             </div>
         </header>
 
-        <!-- Dashboard Resumo -->
-        <section class="dashboard-resumo">
-            <div class="resumo-grid">
-                <article class="resumo-card card-total">
-                    <div class="card-icon"><i class="fas fa-users"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-dia">-</span>
-                        <span class="card-label">Total Hoje</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-realizados">
-                    <div class="card-icon"><i class="fas fa-user-check"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-realizados">-</span>
-                        <span class="card-label">Realizados</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-aguardando">
-                    <div class="card-icon"><i class="fas fa-clock"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-aguardando">-</span>
-                        <span class="card-label">Aguardando</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-alta">
-                    <div class="card-icon"><i class="fas fa-door-open"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="total-alta">-</span>
-                        <span class="card-label">De Alta</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-tempo-espera">
-                    <div class="card-icon"><i class="fas fa-hourglass-half"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="tempo-medio-espera">-</span>
-                        <span class="card-label">Espera (min)</span>
-                    </div>
-                </article>
-                <article class="resumo-card card-permanencia">
-                    <div class="card-icon"><i class="fas fa-history"></i></div>
-                    <div class="card-content">
-                        <span class="card-value" id="tempo-medio-permanencia">-</span>
-                        <span class="card-label">Permanencia (min)</span>
-                    </div>
-                </article>
-            </div>
-        </section>
+        <!-- NAVEGAÇÃO POR ABAS -->
+        <div class="tabs-nav">
+            <button class="tab-nav-btn active" data-tab="visao-geral">
+                <i class="fas fa-gauge-high"></i> <span>Visão Geral</span>
+            </button>
+            <button class="tab-nav-btn" data-tab="espera-clinicas">
+                <i class="fas fa-clock"></i> <span>Espera & Clínicas</span>
+            </button>
+            <button class="tab-nav-btn" data-tab="equipe-recepcao">
+                <i class="fas fa-user-md"></i> <span>Equipe & Recepção</span>
+            </button>
+        </div>
 
-        <!-- Conteudo Principal -->
-        <main class="painel-main" id="painel-main">
-            <div class="loading-container" id="loading-container">
-                <div class="loading-spinner"></div>
-                <p>Carregando dados...</p>
+        <div class="tab-panels">
+            <!-- ABA 1: Visão Geral -->
+            <div class="tab-panel active" id="tab-visao-geral">
+                <div class="painel-main content-scroll" id="scroll-visao-geral">
+                    <!-- Dashboard Resumo -->
+                    <section class="dashboard-resumo" style="border-radius: var(--raio-lg); margin-bottom: var(--espacamento-md); box-shadow: var(--sombra-card);">
+                        <div class="resumo-grid">
+                            <article class="resumo-card card-total">
+                                <div class="card-icon"><i class="fas fa-users"></i></div>
+                                <div class="card-content">
+                                    <span class="card-value" id="total-dia">-</span>
+                                    <span class="card-label">Total Hoje</span>
+                                </div>
+                            </article>
+                            <article class="resumo-card card-realizados">
+                                <div class="card-icon"><i class="fas fa-user-check"></i></div>
+                                <div class="card-content">
+                                    <span class="card-value" id="total-realizados">-</span>
+                                    <span class="card-label">Realizados</span>
+                                </div>
+                            </article>
+                            <article class="resumo-card card-aguardando">
+                                <div class="card-icon"><i class="fas fa-clock"></i></div>
+                                <div class="card-content">
+                                    <span class="card-value" id="total-aguardando">-</span>
+                                    <span class="card-label">Aguardando</span>
+                                </div>
+                            </article>
+                            <article class="resumo-card card-alta">
+                                <div class="card-icon"><i class="fas fa-door-open"></i></div>
+                                <div class="card-content">
+                                    <span class="card-value" id="total-alta">-</span>
+                                    <span class="card-label">De Alta</span>
+                                </div>
+                            </article>
+                            <article class="resumo-card card-tempo-espera">
+                                <div class="card-icon"><i class="fas fa-hourglass-half"></i></div>
+                                <div class="card-content">
+                                    <span class="card-value" id="tempo-medio-espera">-</span>
+                                    <span class="card-label">Espera (min)</span>
+                                </div>
+                            </article>
+                            <article class="resumo-card card-permanencia">
+                                <div class="card-icon"><i class="fas fa-history"></i></div>
+                                <div class="card-content">
+                                    <span class="card-value" id="tempo-medio-permanencia">-</span>
+                                    <span class="card-label">Permanência (min)</span>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+
+                    <!-- Gráfico de Atendimentos por Hora -->
+                    <section class="secao-analise" id="secao-grafico">
+                        <header class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-chart-bar"></i><h2>Atendimentos por Hora</h2></div>
+                            <span class="secao-contador" id="grafico-total-dia">0 total</span>
+                        </header>
+                        <div class="secao-content">
+                            <div class="grafico-container">
+                                <div class="grafico-barras" id="grafico-barras-container">
+                                    <div class="loading-container"><div class="loading-spinner"></div><p>Carregando gráfico...</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </div>
-        </main>
+
+            <!-- ABA 2: Espera & Clínicas -->
+            <div class="tab-panel" id="tab-espera-clinicas">
+                <div class="painel-main content-scroll" id="scroll-espera-clinicas">
+                    <!-- Pacientes Aguardando -->
+                    <section class="secao-analise">
+                        <header class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-user-clock"></i><h2>Pacientes Aguardando</h2></div>
+                            <span class="secao-contador secao-contador-alerta" id="contador-aguardando">0 paciente(s)</span>
+                        </header>
+                        <div class="secao-content">
+                            <div class="tabela-container">
+                                <table class="tabela-dados">
+                                    <thead><tr>
+                                        <th>Clínica</th>
+                                        <th class="texto-centro">Aguardando</th>
+                                        <th class="texto-centro">Tempo Médio</th>
+                                        <th class="texto-centro">Tempo Máximo</th>
+                                    </tr></thead>
+                                    <tbody id="tbody-aguardando">
+                                        <tr><td colspan="4" class="texto-centro">Carregando...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Tempo Médio por Clínica -->
+                    <section class="secao-analise">
+                        <header class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-clinic-medical"></i><h2>Tempo Médio por Clínica</h2></div>
+                            <span class="secao-contador" id="contador-tempo-clinica">0 clínica(s)</span>
+                        </header>
+                        <div class="secao-content">
+                            <div class="tabela-container">
+                                <table class="tabela-dados">
+                                    <thead><tr>
+                                        <th>Clínica</th>
+                                        <th class="texto-centro">Total</th>
+                                        <th class="texto-centro">Realizados</th>
+                                        <th class="texto-centro">Aguardando</th>
+                                        <th class="texto-centro">Tempo Médio</th>
+                                    </tr></thead>
+                                    <tbody id="tbody-tempo-clinica">
+                                        <tr><td colspan="5" class="texto-centro">Carregando...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- ABA 3: Equipe & Recepção -->
+            <div class="tab-panel" id="tab-equipe-recepcao">
+                <div class="painel-main content-scroll" id="scroll-equipe-recepcao">
+                    <!-- Recepção -->
+                    <section class="secao-analise">
+                        <header class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-desktop"></i><h2>Desempenho da Recepção</h2></div>
+                        </header>
+                        <div class="secao-content">
+                            <div class="metricas-grid metricas-3">
+                                <div class="metrica-card">
+                                    <div class="metrica-icone icone-azul"><i class="fas fa-users"></i></div>
+                                    <div class="metrica-info">
+                                        <span class="metrica-valor" id="recep-total-recebidos">-</span>
+                                        <span class="metrica-label">Total Recebidos</span>
+                                    </div>
+                                </div>
+                                <div class="metrica-card">
+                                    <div class="metrica-icone icone-roxo"><i class="fas fa-stopwatch"></i></div>
+                                    <div class="metrica-info">
+                                        <span class="metrica-valor" id="recep-tempo-medio">- <small>min</small></span>
+                                        <span class="metrica-label">Tempo Médio</span>
+                                    </div>
+                                </div>
+                                <div class="metrica-card">
+                                    <div class="metrica-icone icone-laranja"><i class="fas fa-user-clock"></i></div>
+                                    <div class="metrica-info">
+                                        <span class="metrica-valor" id="recep-aguardando">-</span>
+                                        <span class="metrica-label">Aguardando</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Desempenho Médico -->
+                    <section class="secao-analise">
+                        <header class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-user-md"></i><h2>Desempenho por Médico</h2></div>
+                            <span class="secao-contador" id="contador-medicos">0 médico(s)</span>
+                        </header>
+                        <div class="secao-content">
+                            <div class="tabela-container">
+                                <table class="tabela-dados">
+                                    <thead><tr>
+                                        <th class="texto-centro" style="width:80px">Código</th>
+                                        <th>Médico</th>
+                                        <th class="texto-centro">Atendimentos</th>
+                                        <th class="texto-centro">Tempo Médio</th>
+                                        <th class="texto-centro">Finalizados</th>
+                                    </tr></thead>
+                                    <tbody id="tbody-medicos">
+                                        <tr><td colspan="5" class="texto-centro">Carregando...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
 
     </div>
 

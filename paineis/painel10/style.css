@@ -796,7 +796,68 @@ body {
 }
 
 /* =========================================================
-   14. RESPONSIVIDADE
+   14. NAVEGAÇÃO DE ABAS
+   ========================================================= */
+
+.tabs-nav {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 0 var(--espacamento-md);
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.tabs-nav::-webkit-scrollbar { height: 4px; }
+.tabs-nav::-webkit-scrollbar-track { background: transparent; }
+.tabs-nav::-webkit-scrollbar-thumb { background: var(--cor-borda); border-radius: var(--raio-sm); }
+
+.tab-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--cor-texto-secundario);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+    font-family: var(--fonte-principal);
+    white-space: nowrap;
+}
+
+.tab-nav-btn:hover {
+    color: var(--cor-primaria);
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.tab-nav-btn.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+.tab-panels {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.tab-panel {
+    display: none;
+    height: 100%;
+    width: 100%;
+}
+
+.tab-panel.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   15. RESPONSIVIDADE
    ========================================================= */
 
 @media (max-width: 1200px) {

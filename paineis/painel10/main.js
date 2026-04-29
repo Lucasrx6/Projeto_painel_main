@@ -136,6 +136,25 @@ function configurarBotoes() {
             pararAutoScroll();
         }
     });
+
+    // Navegação de Abas
+    var tabBtns = document.querySelectorAll('.tab-nav-btn');
+    tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-nav-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+            
+            this.classList.add('active');
+            var tabId = this.getAttribute('data-tab');
+            var panel = document.getElementById('tab-' + tabId);
+            if (panel) panel.classList.add('active');
+
+            if (autoScrollAtivo) {
+                pararAutoScroll();
+                iniciarAutoScroll();
+            }
+        });
+    });
 }
 
 // =============================================================================
@@ -248,17 +267,11 @@ function atualizarDashboard(d) {
 // =============================================================================
 
 function renderizarConteudo(dados) {
-    if (!DOM.painelMain) return;
-
-    var html = '<div class="content-scroll" id="content-scroll">';
-    html += renderizarRecepcao(dados.recepcao);
-    html += renderizarTempoClinica(dados.tempoClinica);
-    html += renderizarAguardando(dados.aguardando);
-    html += renderizarGrafico(dados.porHora);
-    html += renderizarMedicos(dados.medicos);
-    html += '</div>';
-
-    DOM.painelMain.innerHTML = html;
+    renderizarRecepcao(dados.recepcao);
+    renderizarTempoClinica(dados.tempoClinica);
+    renderizarAguardando(dados.aguardando);
+    renderizarGrafico(dados.porHora);
+    renderizarMedicos(dados.medicos);
 }
 
 // ----- RECEPCAO -----
@@ -269,47 +282,24 @@ function renderizarRecepcao(dados) {
     var tempoMedio = dados.tempo_medio_recepcao_min || 0;
     var aguardando = dados.aguardando_recepcao || 0;
 
-    return '' +
-        '<section class="secao-analise">' +
-        '  <header class="secao-header">' +
-        '    <div class="secao-titulo">' +
-        '      <i class="fas fa-desktop"></i>' +
-        '      <h2>Desempenho da Recepcao</h2>' +
-        '    </div>' +
-        '  </header>' +
-        '  <div class="secao-content">' +
-        '    <div class="metricas-grid metricas-3">' +
-        '      <div class="metrica-card">' +
-        '        <div class="metrica-icone icone-azul"><i class="fas fa-users"></i></div>' +
-        '        <div class="metrica-info">' +
-        '          <span class="metrica-valor">' + formatarNumero(totalRecebidos) + '</span>' +
-        '          <span class="metrica-label">Total Recebidos</span>' +
-        '        </div>' +
-        '      </div>' +
-        '      <div class="metrica-card">' +
-        '        <div class="metrica-icone icone-roxo"><i class="fas fa-stopwatch"></i></div>' +
-        '        <div class="metrica-info">' +
-        '          <span class="metrica-valor">' + formatarTempo(tempoMedio) + ' <small>min</small></span>' +
-        '          <span class="metrica-label">Tempo Medio</span>' +
-        '        </div>' +
-        '      </div>' +
-        '      <div class="metrica-card">' +
-        '        <div class="metrica-icone icone-laranja"><i class="fas fa-user-clock"></i></div>' +
-        '        <div class="metrica-info">' +
-        '          <span class="metrica-valor">' + formatarNumero(aguardando) + '</span>' +
-        '          <span class="metrica-label">Aguardando</span>' +
-        '        </div>' +
-        '      </div>' +
-        '    </div>' +
-        '  </div>' +
-        '</section>';
+    atualizarEl(document.getElementById('recep-total-recebidos'), formatarNumero(totalRecebidos));
+    atualizarEl(document.getElementById('recep-tempo-medio'), formatarTempo(tempoMedio) + ' min');
+    atualizarEl(document.getElementById('recep-aguardando'), formatarNumero(aguardando));
 }
 
 // ----- TEMPO POR CLINICA -----
 function renderizarTempoClinica(dados) {
+    var tbody = document.getElementById('tbody-tempo-clinica');
+    var contador = document.getElementById('contador-tempo-clinica');
+    if (!tbody) return;
+
     if (!dados || dados.length === 0) {
-        return renderizarSecaoVazia('Tempo Medio por Clinica', 'fas fa-clinic-medical', 'Nenhum atendimento registrado hoje');
+        tbody.innerHTML = '<tr><td colspan="5" class="texto-centro"><div class="mensagem-vazia"><i class="fas fa-inbox" style="font-size:2rem;color:var(--cor-texto-muted);margin-bottom:8px;display:block;"></i><p>Nenhum atendimento registrado hoje</p></div></td></tr>';
+        if (contador) contador.textContent = '0 clínica(s)';
+        return;
     }
+
+    if (contador) contador.textContent = dados.length + ' clínica(s)';
 
     var linhas = '';
     for (var i = 0; i < dados.length; i++) {
@@ -324,45 +314,19 @@ function renderizarTempoClinica(dados) {
             '  <td class="texto-centro"><span class="badge badge-tempo ' + getClasseTempo(tempo, 'espera') + '">' + tempo + ' min</span></td>' +
             '</tr>';
     }
-
-    return '' +
-        '<section class="secao-analise">' +
-        '  <header class="secao-header">' +
-        '    <div class="secao-titulo"><i class="fas fa-clinic-medical"></i><h2>Tempo Medio por Clinica</h2></div>' +
-        '    <span class="secao-contador">' + dados.length + ' clinica(s)</span>' +
-        '  </header>' +
-        '  <div class="secao-content">' +
-        '    <div class="tabela-container">' +
-        '      <table class="tabela-dados">' +
-        '        <thead><tr>' +
-        '          <th>Clinica</th>' +
-        '          <th class="texto-centro">Total</th>' +
-        '          <th class="texto-centro">Realizados</th>' +
-        '          <th class="texto-centro">Aguardando</th>' +
-        '          <th class="texto-centro">Tempo Medio</th>' +
-        '        </tr></thead>' +
-        '        <tbody>' + linhas + '</tbody>' +
-        '      </table>' +
-        '    </div>' +
-        '  </div>' +
-        '</section>';
+    tbody.innerHTML = linhas;
 }
 
 // ----- PACIENTES AGUARDANDO -----
 function renderizarAguardando(dados) {
+    var tbody = document.getElementById('tbody-aguardando');
+    var contador = document.getElementById('contador-aguardando');
+    if (!tbody) return;
+
     if (!dados || dados.length === 0) {
-        return '' +
-            '<section class="secao-analise secao-sucesso">' +
-            '  <header class="secao-header">' +
-            '    <div class="secao-titulo"><i class="fas fa-user-clock"></i><h2>Pacientes Aguardando</h2></div>' +
-            '  </header>' +
-            '  <div class="secao-content">' +
-            '    <div class="mensagem-sucesso">' +
-            '      <i class="fas fa-check-circle"></i>' +
-            '      <p>Nenhum paciente aguardando atendimento</p>' +
-            '    </div>' +
-            '  </div>' +
-            '</section>';
+        tbody.innerHTML = '<tr><td colspan="4" class="texto-centro"><div class="mensagem-sucesso"><i class="fas fa-check-circle" style="font-size:2rem;color:var(--cor-sucesso);margin-bottom:8px;display:block;"></i><p>Nenhum paciente aguardando atendimento</p></div></td></tr>';
+        if (contador) contador.textContent = '0 paciente(s)';
+        return;
     }
 
     var totalAguardando = 0;
@@ -381,33 +345,20 @@ function renderizarAguardando(dados) {
             '  <td class="texto-centro"><span class="badge badge-tempo tempo-critico">' + tempoMax + ' min</span></td>' +
             '</tr>';
     }
-
-    return '' +
-        '<section class="secao-analise">' +
-        '  <header class="secao-header">' +
-        '    <div class="secao-titulo"><i class="fas fa-user-clock"></i><h2>Pacientes Aguardando</h2></div>' +
-        '    <span class="secao-contador secao-contador-alerta">' + totalAguardando + ' paciente(s)</span>' +
-        '  </header>' +
-        '  <div class="secao-content">' +
-        '    <div class="tabela-container">' +
-        '      <table class="tabela-dados">' +
-        '        <thead><tr>' +
-        '          <th>Clinica</th>' +
-        '          <th class="texto-centro">Aguardando</th>' +
-        '          <th class="texto-centro">Tempo Medio</th>' +
-        '          <th class="texto-centro">Tempo Maximo</th>' +
-        '        </tr></thead>' +
-        '        <tbody>' + linhas + '</tbody>' +
-        '      </table>' +
-        '    </div>' +
-        '  </div>' +
-        '</section>';
+    tbody.innerHTML = linhas;
+    if (contador) contador.textContent = totalAguardando + ' paciente(s)';
 }
 
 // ----- GRAFICO POR HORA -----
 function renderizarGrafico(dados) {
+    var container = document.getElementById('grafico-barras-container');
+    var contador = document.getElementById('grafico-total-dia');
+    if (!container) return;
+
     if (!dados || dados.length === 0) {
-        return renderizarSecaoVazia('Atendimentos por Hora', 'fas fa-chart-bar', 'Nenhum dado disponivel');
+        container.innerHTML = '<div class="mensagem-vazia" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"><i class="fas fa-inbox" style="font-size:2rem;color:var(--cor-texto-muted);margin-bottom:8px;"></i><p>Nenhum dado disponível</p></div>';
+        if (contador) contador.textContent = '0 total';
+        return;
     }
 
     var maxValor = 1;
@@ -438,25 +389,23 @@ function renderizarGrafico(dados) {
             '</div>';
     }
 
-    return '' +
-        '<section class="secao-analise">' +
-        '  <header class="secao-header">' +
-        '    <div class="secao-titulo"><i class="fas fa-chart-bar"></i><h2>Atendimentos por Hora</h2></div>' +
-        '    <span class="secao-contador">' + totalDia + ' total</span>' +
-        '  </header>' +
-        '  <div class="secao-content">' +
-        '    <div class="grafico-container">' +
-        '      <div class="grafico-barras">' + barras + '</div>' +
-        '    </div>' +
-        '  </div>' +
-        '</section>';
+    container.innerHTML = barras;
+    if (contador) contador.textContent = totalDia + ' total';
 }
 
 // ----- DESEMPENHO MEDICOS -----
 function renderizarMedicos(dados) {
+    var tbody = document.getElementById('tbody-medicos');
+    var contador = document.getElementById('contador-medicos');
+    if (!tbody) return;
+
     if (!dados || dados.length === 0) {
-        return renderizarSecaoVazia('Desempenho por Medico', 'fas fa-user-md', 'Nenhum medico com atendimento registrado hoje');
+        tbody.innerHTML = '<tr><td colspan="5" class="texto-centro"><div class="mensagem-vazia"><i class="fas fa-inbox" style="font-size:2rem;color:var(--cor-texto-muted);margin-bottom:8px;display:block;"></i><p>Nenhum médico com atendimento registrado hoje</p></div></td></tr>';
+        if (contador) contador.textContent = '0 médico(s)';
+        return;
     }
+
+    if (contador) contador.textContent = dados.length + ' médico(s)';
 
     var linhas = '';
     for (var i = 0; i < dados.length; i++) {
@@ -472,60 +421,13 @@ function renderizarMedicos(dados) {
             '  <td class="texto-centro"><span class="badge badge-sucesso">' + formatarNumero(row.pacientes_finalizados) + '</span></td>' +
             '</tr>';
     }
-
-    return '' +
-        '<section class="secao-analise">' +
-        '  <header class="secao-header">' +
-        '    <div class="secao-titulo"><i class="fas fa-user-md"></i><h2>Desempenho por Medico</h2></div>' +
-        '    <span class="secao-contador">' + dados.length + ' medico(s)</span>' +
-        '  </header>' +
-        '  <div class="secao-content">' +
-        '    <div class="tabela-container">' +
-        '      <table class="tabela-dados">' +
-        '        <thead><tr>' +
-        '          <th class="texto-centro" style="width:80px">Codigo</th>' +
-        '          <th>Medico</th>' +
-        '          <th class="texto-centro">Atendimentos</th>' +
-        '          <th class="texto-centro">Tempo Medio</th>' +
-        '          <th class="texto-centro">Finalizados</th>' +
-        '        </tr></thead>' +
-        '        <tbody>' + linhas + '</tbody>' +
-        '      </table>' +
-        '    </div>' +
-        '  </div>' +
-        '</section>';
-}
-
-// ----- SECAO VAZIA -----
-function renderizarSecaoVazia(titulo, icone, mensagem) {
-    return '' +
-        '<section class="secao-analise">' +
-        '  <header class="secao-header">' +
-        '    <div class="secao-titulo"><i class="' + icone + '"></i><h2>' + titulo + '</h2></div>' +
-        '  </header>' +
-        '  <div class="secao-content">' +
-        '    <div class="mensagem-vazia">' +
-        '      <i class="fas fa-inbox"></i>' +
-        '      <p>' + mensagem + '</p>' +
-        '    </div>' +
-        '  </div>' +
-        '</section>';
+    tbody.innerHTML = linhas;
 }
 
 // ----- MENSAGEM DE ERRO -----
 function mostrarErro(mensagem) {
-    if (!DOM.painelMain) return;
-    DOM.painelMain.innerHTML = '' +
-        '<div class="mensagem-erro-container">' +
-        '  <div class="mensagem-erro">' +
-        '    <i class="fas fa-exclamation-triangle"></i>' +
-        '    <h3>Erro ao Carregar Dados</h3>' +
-        '    <p>' + escapeHtml(mensagem) + '</p>' +
-        '    <button class="btn-tentar-novamente" onclick="location.reload()">' +
-        '      <i class="fas fa-sync-alt"></i> Tentar Novamente' +
-        '    </button>' +
-        '  </div>' +
-        '</div>';
+    console.error('Erro na interface:', mensagem);
+    // You could show a toast or alert here instead of replacing painelMain
 }
 
 // =============================================================================
@@ -535,7 +437,10 @@ function mostrarErro(mensagem) {
 function iniciarAutoScroll() {
     pararAutoScroll();
 
-    var container = document.getElementById('content-scroll');
+    var activeTab = document.querySelector('.tab-panel.active');
+    if (!activeTab) return;
+
+    var container = activeTab.querySelector('.content-scroll');
     if (!container) return;
 
     var emPausa = false;
