@@ -644,12 +644,14 @@ def categorias_criticas():
                 c.nome   AS categoria_nome,
                 c.icone  AS categoria_icone,
                 c.cor    AS categoria_cor,
-                COUNT(*) FILTER (WHERE t.status = 'pendente')                      AS total_pendente,
-                COUNT(*) FILTER (WHERE t.status = 'em_tratativa')                  AS total_tratativa,
-                COUNT(*) FILTER (WHERE t.status IN ('pendente', 'em_tratativa'))   AS total_aberto
+                COUNT(*) FILTER (WHERE t.status = 'pendente')                        AS total_pendente,
+                COUNT(*) FILTER (WHERE t.status = 'em_tratativa')                    AS total_tratativa,
+                COUNT(*) FILTER (WHERE t.status IN ('pendente', 'em_tratativa'))     AS total_aberto,
+                COUNT(*) FILTER (WHERE t.status IN ('regularizado', 'cancelado'))    AS total_tratado,
+                COUNT(*)                                                              AS total_geral
             FROM sentir_agir_tratativas t
             JOIN sentir_agir_categorias c ON c.id = t.categoria_id
-            WHERE t.status IN ('pendente', 'em_tratativa')
+            WHERE 1=1
         """
         params = []
         if periodo:

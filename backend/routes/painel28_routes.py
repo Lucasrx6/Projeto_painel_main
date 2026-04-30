@@ -391,7 +391,8 @@ def listar_categorias_itens():
             SELECT id, categoria_id, descricao, ordem,
                    COALESCE(tipo, 'semaforo') AS tipo,
                    COALESCE(critico_quando, 'nao') AS critico_quando,
-                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica
+                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica,
+                   COALESCE(gera_critico, TRUE) AS gera_critico
             FROM sentir_agir_itens WHERE ativo = TRUE ORDER BY ordem
         """)
         itens = cursor.fetchall()
@@ -409,7 +410,8 @@ def listar_categorias_itens():
                 'ordem': item['ordem'],
                 'tipo': item['tipo'],
                 'critico_quando': item['critico_quando'],
-                'permite_nao_aplica': item['permite_nao_aplica']
+                'permite_nao_aplica': item['permite_nao_aplica'],
+                'gera_critico': item['gera_critico']
             })
 
         resultado = []
@@ -1051,7 +1053,8 @@ def registrar_visita():
         if item_ids:
             cursor.execute("""
                 SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
-                       COALESCE(critico_quando, 'nao') AS critico_quando
+                       COALESCE(critico_quando, 'nao') AS critico_quando,
+                       COALESCE(gera_critico, TRUE) AS gera_critico
                 FROM sentir_agir_itens WHERE id = ANY(%s)
             """, (item_ids,))
             for row in cursor.fetchall():
@@ -1068,12 +1071,14 @@ def registrar_visita():
             """, (visita_id, av['item_id'], av['resultado']))
             avaliacao_id = cursor.fetchone()['id']
 
-            # Detectar se é crítico respeitando critico_quando por item
+            # Detectar se é crítico respeitando critico_quando e gera_critico por item
             resultado = av['resultado']
             item_cfg = critico_quando_map.get(av['item_id'], {})
             eh_critico = (
-                    resultado == 'critico' or
-                    (item_cfg.get('tipo') == 'sim_nao' and resultado == item_cfg.get('critico_quando', 'nao'))
+                    item_cfg.get('gera_critico', True) and (
+                        resultado == 'critico' or
+                        (item_cfg.get('tipo') == 'sim_nao' and resultado == item_cfg.get('critico_quando', 'nao'))
+                    )
             )
             if eh_critico:
                 obs_item = (av.get('obs_item') or '').strip() or None
@@ -1493,7 +1498,8 @@ def atualizar_visita(visita_id):
         if item_ids_upd:
             cursor.execute("""
                 SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
-                       COALESCE(critico_quando, 'nao') AS critico_quando
+                       COALESCE(critico_quando, 'nao') AS critico_quando,
+                       COALESCE(gera_critico, TRUE) AS gera_critico
                 FROM sentir_agir_itens WHERE id = ANY(%s)
             """, (item_ids_upd,))
             for row in cursor.fetchall():
@@ -1502,8 +1508,10 @@ def atualizar_visita(visita_id):
         def _eh_critico_upd(av):
             r = av.get('resultado')
             cfg = critico_quando_map_upd.get(av['item_id'], {})
-            return (r == 'critico' or
-                    (cfg.get('tipo') == 'sim_nao' and r == cfg.get('critico_quando', 'nao')))
+            return (cfg.get('gera_critico', True) and (
+                    r == 'critico' or
+                    (cfg.get('tipo') == 'sim_nao' and r == cfg.get('critico_quando', 'nao'))
+                   ))
 
         # Cancelar somente tratativas pendentes cujos itens não serão mais críticos
         itens_criticos_novos = set(
@@ -1763,7 +1771,8 @@ def listar_categorias():
             SELECT id, categoria_id, descricao, ordem, ativo,
                    COALESCE(tipo, 'semaforo') AS tipo,
                    COALESCE(critico_quando, 'nao') AS critico_quando,
-                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica
+                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica,
+                   COALESCE(gera_critico, TRUE) AS gera_critico
             FROM sentir_agir_itens ORDER BY ordem
         """)
         itens = cursor.fetchall()
@@ -1965,6 +1974,7 @@ def criar_item():
         if critico_quando not in ('sim', 'nao'):
             critico_quando = 'nao'
         permite_nao_aplica = bool(dados.get('permite_nao_aplica', False)) if tipo == 'sim_nao' else False
+        gera_critico = bool(dados.get('gera_critico', True))
         usuario = _get_usuario()
         ip = _get_ip()
         conn = get_db_connection()
@@ -1980,9 +1990,9 @@ def criar_item():
         """, (categoria_id,))
         prox_ordem = cursor.fetchone()['prox']
         cursor.execute("""
-            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, ordem, ativo)
-            VALUES (%s, %s, %s, %s, %s, %s, TRUE) RETURNING id
-        """, (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, prox_ordem))
+            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, ordem, ativo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id
+        """, (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, prox_ordem))
         item_id = cursor.fetchone()['id']
         _registrar_log(cursor, 'item', item_id, 'criacao', usuario,
                        valor_novo=descricao, ip_origem=ip)
@@ -2012,6 +2022,7 @@ def editar_item(item_id):
         if critico_quando not in ('sim', 'nao'):
             critico_quando = 'nao'
         permite_nao_aplica = bool(dados.get('permite_nao_aplica', False)) if tipo == 'sim_nao' else False
+        gera_critico = bool(dados.get('gera_critico', True))
         usuario = _get_usuario()
         ip = _get_ip()
         conn = get_db_connection()
@@ -2024,9 +2035,9 @@ def editar_item(item_id):
             return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
         cursor.execute("""
             UPDATE sentir_agir_itens
-            SET descricao = %s, tipo = %s, critico_quando = %s, permite_nao_aplica = %s
+            SET descricao = %s, tipo = %s, critico_quando = %s, permite_nao_aplica = %s, gera_critico = %s
             WHERE id = %s
-        """, (descricao, tipo, critico_quando, permite_nao_aplica, item_id))
+        """, (descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, item_id))
         _registrar_log(cursor, 'item', item_id, 'edicao', usuario,
                        campo_alterado='descricao', valor_anterior=item['descricao'],
                        valor_novo=descricao, ip_origem=ip)

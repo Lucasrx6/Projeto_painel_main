@@ -849,9 +849,9 @@
 
             cat.itens.forEach(function (item) {
                 var tipo = item.tipo || 'semaforo';
-                html += '<div class="item-avaliacao" data-item-id="' + item.id + '" data-tipo="' + tipo + '">';
-                html += '  <div class="item-descricao">' + escapeHtml(item.descricao) + '</div>';
-                var cq = (tipo === 'sim_nao') ? (item.critico_quando || 'nao') : '';
+                html += '<div class="item-avaliacao" data-item-id="' + item.id + '" data-tipo="' + tipo + '"' + (item.gera_critico === false ? ' data-gera-critico="false"' : '') + '>';
+                html += '  <div class="item-descricao">' + escapeHtml(item.descricao) + (item.gera_critico === false ? ' <span style="font-size:0.7rem;color:#fd7e14;font-weight:600;vertical-align:middle;"><i class="fas fa-bookmark"></i> Anotação</span>' : '') + '</div>';
+                var cq = (tipo === 'sim_nao' && item.gera_critico !== false) ? (item.critico_quando || 'nao') : '';
                 html += '  <div class="item-semaforo"' + (cq ? ' data-critico-quando="' + cq + '"' : '') + '>';
 
                 if (tipo === 'sim_nao') {
@@ -916,9 +916,10 @@
         // Mostrar/ocultar campo de observação individual para item crítico
         var itemEl = btn.closest('.item-avaliacao');
         if (itemEl) {
+            var geraCritico = itemEl.getAttribute('data-gera-critico') !== 'false';
             var obsDiv = itemEl.querySelector('.item-obs-critico');
             if (obsDiv) {
-                var ehCritico = (valor !== 'nao_aplica') && (criticoQuando ? (valor === criticoQuando) : (valor === 'critico'));
+                var ehCritico = geraCritico && (valor !== 'nao_aplica') && (criticoQuando ? (valor === criticoQuando) : (valor === 'critico'));
                 obsDiv.style.display = ehCritico ? 'block' : 'none';
                 if (!ehCritico) {
                     var ta = obsDiv.querySelector('.item-obs-critico-textarea');
@@ -958,14 +959,15 @@
                 totalPreenchidos++;
                 var valor = selecionado.getAttribute('data-valor');
                 if (valor === 'critico') {
-                    temCritico = true;
+                    // Respeitar gera_critico: só conta como crítico se o item gera crítico
+                    if (todosItens[i].getAttribute('data-gera-critico') !== 'false') temCritico = true;
                 } else if (valor === 'atencao') {
                     temAtencao = true;
                 } else if (valor === 'sim' || valor === 'nao') {
                     // sim_nao: verificar critico_quando do item-semaforo
                     var semF = selecionado.closest('.item-semaforo');
                     var cqF = semF ? semF.getAttribute('data-critico-quando') : 'nao';
-                    if (valor === (cqF || 'nao')) temCritico = true;
+                    if (valor === (cqF || 'nao') && todosItens[i].getAttribute('data-gera-critico') !== 'false') temCritico = true;
                 }
             }
         }
@@ -1297,22 +1299,24 @@
         if (det) {
             var qC = 0, qA = 0, qAd = 0;
             avaliacoes.forEach(function (a) {
-                if (a.resultado === 'critico') { qC++; }
-                else if (a.resultado === 'atencao') { qA++; }
-                else if (a.resultado === 'adequado') { qAd++; }
-                else if (a.resultado === 'sim' || a.resultado === 'nao') {
-                    // respeitar critico_quando do item
-                    var itemCfg = null;
-                    for (var ci = 0; ci < estado.categorias.length && !itemCfg; ci++) {
-                        var catI = estado.categorias[ci];
-                        if (catI.itens) {
-                            for (var ii = 0; ii < catI.itens.length; ii++) {
-                                if (catI.itens[ii].id === a.item_id) { itemCfg = catI.itens[ii]; break; }
-                            }
+                // Buscar config do item para respeitar gera_critico e critico_quando
+                var itemCfg = null;
+                for (var ci = 0; ci < estado.categorias.length && !itemCfg; ci++) {
+                    var catI = estado.categorias[ci];
+                    if (catI.itens) {
+                        for (var ii = 0; ii < catI.itens.length; ii++) {
+                            if (catI.itens[ii].id === a.item_id) { itemCfg = catI.itens[ii]; break; }
                         }
                     }
+                }
+                var geraCrit = itemCfg ? (itemCfg.gera_critico !== false) : true;
+                if (a.resultado === 'critico') {
+                    if (geraCrit) qC++; else qAd++;
+                } else if (a.resultado === 'atencao') { qA++; }
+                else if (a.resultado === 'adequado') { qAd++; }
+                else if (a.resultado === 'sim' || a.resultado === 'nao') {
                     var cqConf = itemCfg ? (itemCfg.critico_quando || 'nao') : 'nao';
-                    if (a.resultado === cqConf) qC++; else qAd++;
+                    if (a.resultado === cqConf && geraCrit) qC++; else qAd++;
                 }
             });
             det.innerHTML =
