@@ -850,7 +850,7 @@
             cat.itens.forEach(function (item) {
                 var tipo = item.tipo || 'semaforo';
                 html += '<div class="item-avaliacao" data-item-id="' + item.id + '" data-tipo="' + tipo + '"' + (item.gera_critico === false ? ' data-gera-critico="false"' : '') + '>';
-                html += '  <div class="item-descricao">' + escapeHtml(item.descricao) + (item.gera_critico === false ? ' <span style="font-size:0.7rem;color:#fd7e14;font-weight:600;vertical-align:middle;"><i class="fas fa-bookmark"></i> Anotação</span>' : '') + '</div>';
+                html += '  <div class="item-descricao">' + escapeHtml(item.descricao) + '</div>';
                 var cq = (tipo === 'sim_nao' && item.gera_critico !== false) ? (item.critico_quando || 'nao') : '';
                 html += '  <div class="item-semaforo"' + (cq ? ' data-critico-quando="' + cq + '"' : '') + '>';
 
@@ -907,8 +907,14 @@
         // Para itens sim_nao: colorir conforme critico_quando (armazenado no .item-semaforo)
         var semaforo = btn.closest('.item-semaforo');
         var criticoQuando = semaforo ? semaforo.getAttribute('data-critico-quando') : null;
+        var itemAvaliacao = btn.closest('.item-avaliacao');
+        var tipoItem = itemAvaliacao ? itemAvaliacao.getAttribute('data-tipo') : null;
+
         if (criticoQuando && valor !== 'nao_aplica') {
             btn.classList.add('selecionado', valor === criticoQuando ? 'sel-critico' : 'sel-adequado');
+        } else if (tipoItem === 'sim_nao' && valor !== 'nao_aplica') {
+            // Sem critico_quando (gera_critico=false): Sim=verde, Não=vermelho
+            btn.classList.add('selecionado', valor === 'sim' ? 'sel-adequado' : 'sel-critico');
         } else {
             btn.classList.add('selecionado');
         }
