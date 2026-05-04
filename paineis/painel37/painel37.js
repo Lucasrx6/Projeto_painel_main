@@ -411,6 +411,13 @@
         else if (p.ie_status_prazo === 'PROXIMO')        classe = 'linha-atencao';
         else if (p.ie_status_prazo === 'SEM_AVALIACAO')  classe = 'linha-pendente';
 
+        // Célula Setor / Leito (empilhados)
+        var setorLeitoCell =
+            '<div class="setor-leito-cell">' +
+                '<span class="badge-setor">' + esc(p.ds_setor || '-') + '</span>' +
+                '<span class="leito-sub">' + esc(p.cd_unidade_basica || '-') + '</span>' +
+            '</div>';
+
         // Linha secundária: convenio • idade sexo
         var idadeSexo = '';
         if (p.idade !== null && p.idade !== undefined) idadeSexo += p.idade + 'a';
@@ -423,6 +430,9 @@
                 esc(p.nm_pessoa_fisica || '-') +
             '</div>' +
             '<span class="paciente-info">' + esc(subInfo) + '</span>';
+
+        // Nr Atendimento
+        var nrAtend = p.nr_atendimento ? String(p.nr_atendimento) : '-';
 
         var internDias = (p.qt_dia_permanencia !== null && p.qt_dia_permanencia !== undefined)
             ? p.qt_dia_permanencia + 'd' : '-';
@@ -445,14 +455,14 @@
         var avaliador = construirAvaliador(p);
 
         return '<tr class="' + classe + '">' +
-            '<td><span class="badge-setor">' + esc(p.ds_setor || '-') + '</span></td>' +
-            '<td class="leito-col">'      + esc(p.cd_unidade_basica || '-') + '</td>' +
-            '<td class="paciente-col">'   + pacienteCell                     + '</td>' +
-            '<td class="center-col"' + tooltipIntern + '>' + internDias     + '</td>' +
-            '<td class="center-col">'     + badgeStatus                      + '</td>' +
-            '<td class="meta-col">'       + meta                             + '</td>' +
-            '<td class="prazo-col">'      + prazo                            + '</td>' +
-            '<td class="avaliador-col">'  + avaliador                        + '</td>' +
+            '<td class="setor-leito-col">' + setorLeitoCell                   + '</td>' +
+            '<td class="paciente-col">'    + pacienteCell                     + '</td>' +
+            '<td class="center-col nr-atend-col">'  + esc(nrAtend)           + '</td>' +
+            '<td class="center-col"' + tooltipIntern + '>' + internDias      + '</td>' +
+            '<td class="center-col">'      + badgeStatus                     + '</td>' +
+            '<td class="meta-col">'        + meta                            + '</td>' +
+            '<td class="prazo-col">'       + prazo                           + '</td>' +
+            '<td class="avaliador-col">'   + avaliador                       + '</td>' +
         '</tr>';
     }
 
@@ -470,28 +480,33 @@
 
     function construirPrazo(p) {
         var dias = p.dias_para_prazo;
+        var texto = '';
         if (p.ie_status_prazo === 'VENCIDO' && dias !== null && dias !== undefined) {
             var abs = Math.abs(dias);
-            return '<span class="prazo-vencido">Vencido ha ' + abs +
+            texto = '<span class="prazo-vencido">Vencido ha ' + abs +
                    ' dia' + (abs !== 1 ? 's' : '') + '</span>';
-        }
-        if (p.ie_status_prazo === 'PROXIMO') {
-            if (dias === 0) return '<span class="prazo-proximo">Vence hoje</span>';
-            if (dias === 1) return '<span class="prazo-proximo">Vence amanha</span>';
-            return '<span class="prazo-proximo">Faltam ' + dias + ' dia(s)</span>';
-        }
-        if (p.ie_status_prazo === 'NO_PRAZO' && dias !== null && dias !== undefined) {
-            return '<span class="prazo-ok">Faltam ' + dias +
+        } else if (p.ie_status_prazo === 'PROXIMO') {
+            if (dias === 0) texto = '<span class="prazo-proximo">Vence hoje</span>';
+            else if (dias === 1) texto = '<span class="prazo-proximo">Vence amanha</span>';
+            else texto = '<span class="prazo-proximo">Faltam ' + dias + ' dia(s)</span>';
+        } else if (p.ie_status_prazo === 'NO_PRAZO' && dias !== null && dias !== undefined) {
+            texto = '<span class="prazo-ok">Faltam ' + dias +
                    ' dia' + (dias !== 1 ? 's' : '') + '</span>';
+        } else {
+            return '-';
         }
-        return '-';
+        // Adicionar data do prazo abaixo
+        if (p.dt_prazo) {
+            texto += '<br><small class="text-muted">' + formatarData(p.dt_prazo) + '</small>';
+        }
+        return texto;
     }
 
     function construirAvaliador(p) {
         if (!p.nm_usuario_aval) return '-';
         var txt = esc(p.nm_usuario_aval);
         if (p.dt_avaliacao) {
-            txt += '<br><small class="text-muted">' + formatarData(p.dt_avaliacao) + '</small>';
+            txt += '<br><small class="text-muted">Data avaliação: ' + formatarData(p.dt_avaliacao) + '</small>';
         }
         return txt;
     }
@@ -627,8 +642,8 @@
     // =========================================================
 
     var _HEADERS_EXPORT = [
-        'Setor', 'Leito', 'Paciente', 'Idade/Sexo', 'Dias Internado',
-        'Medico', 'Convenio', 'Status', 'Meta', 'Prazo', 'Avaliador', 'Dt Avaliacao'
+        'Setor', 'Leito', 'Nr Atendimento', 'Paciente', 'Idade/Sexo', 'Dias Internado',
+        'Medico', 'Convenio', 'Status', 'Meta', 'Prazo', 'Dt Prazo', 'Avaliador', 'Dt Avaliacao'
     ];
 
     function _construirLinhaExport(p) {
@@ -639,6 +654,7 @@
         return [
             p.ds_setor               || '',
             p.cd_unidade_basica      || '',
+            p.nr_atendimento         || '',
             p.nm_pessoa_fisica       || '',
             idadeSexo,
             p.qt_dia_permanencia !== null && p.qt_dia_permanencia !== undefined
@@ -648,6 +664,7 @@
             p.ie_status_prazo        || '',
             p.ds_meta                || '',
             p.ds_prazo_str           || '',
+            p.dt_prazo ? formatarData(p.dt_prazo) : '',
             p.nm_usuario_aval        || '',
             p.dt_avaliacao ? formatarData(p.dt_avaliacao) : ''
         ];

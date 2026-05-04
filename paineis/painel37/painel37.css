@@ -422,14 +422,14 @@ body {
 }
 
 /* Larguras das 8 colunas */
-.tabela-principal thead th:nth-child(1) { width: 130px; }   /* Setor */
-.tabela-principal thead th:nth-child(2) { width: 80px; }    /* Leito */
-.tabela-principal thead th:nth-child(3) { width: 18%; }     /* Paciente */
+.tabela-principal thead th:nth-child(1) { width: 140px; }   /* Setor / Leito */
+.tabela-principal thead th:nth-child(2) { width: 18%; }     /* Paciente */
+.tabela-principal thead th:nth-child(3) { width: 90px; }    /* Nr Atend. */
 .tabela-principal thead th:nth-child(4) { width: 75px; }    /* Internacao */
 .tabela-principal thead th:nth-child(5) { width: 100px; }   /* Status */
-.tabela-principal thead th:nth-child(6) { width: 22%; }     /* Meta */
+.tabela-principal thead th:nth-child(6) { width: 20%; }     /* Meta */
 .tabela-principal thead th:nth-child(7) { width: 130px; }   /* Prazo */
-.tabela-principal thead th:nth-child(8) { width: calc(60% - 515px); } /* Avaliador */
+.tabela-principal thead th:nth-child(8) { width: calc(62% - 535px); } /* Avaliador */
 
 /* TBODY */
 .tabela-principal tbody {
@@ -461,14 +461,14 @@ body {
 }
 
 /* Mesmas larguras do THEAD */
-.tabela-principal tbody td:nth-child(1) { width: 130px; }
-.tabela-principal tbody td:nth-child(2) { width: 80px; }
-.tabela-principal tbody td:nth-child(3) { width: 18%; }
+.tabela-principal tbody td:nth-child(1) { width: 140px; }
+.tabela-principal tbody td:nth-child(2) { width: 18%; }
+.tabela-principal tbody td:nth-child(3) { width: 90px; }
 .tabela-principal tbody td:nth-child(4) { width: 75px; }
 .tabela-principal tbody td:nth-child(5) { width: 100px; }
-.tabela-principal tbody td:nth-child(6) { width: 22%; }
+.tabela-principal tbody td:nth-child(6) { width: 20%; }
 .tabela-principal tbody td:nth-child(7) { width: 130px; }
-.tabela-principal tbody td:nth-child(8) { width: calc(60% - 515px); }
+.tabela-principal tbody td:nth-child(8) { width: calc(62% - 535px); }
 
 .tabela-principal tbody td.center-col {
     text-align: center;
@@ -502,10 +502,30 @@ body {
    CELULAS ESPECIAIS
    ===================== */
 
-.leito-col {
+/* Setor / Leito combinado */
+.setor-leito-col {
+    vertical-align: middle;
+}
+
+.setor-leito-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.leito-sub {
     font-family: "Courier New", Courier, monospace;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Nr Atendimento */
+.nr-atend-col {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.73rem;
     white-space: nowrap;
+    color: #495057;
 }
 
 /* Paciente: nome + subinfo */
@@ -668,9 +688,9 @@ td.vazio i {
         display: none;
     }
 
-    .tabela-principal thead th:nth-child(3) { width: 25%; }
+    .tabela-principal thead th:nth-child(2) { width: 22%; }
     .tabela-principal thead th:nth-child(7) { width: 120px; }
-    .tabela-principal tbody td:nth-child(3) { width: 25%; }
+    .tabela-principal tbody td:nth-child(2) { width: 22%; }
     .tabela-principal tbody td:nth-child(7) { width: 120px; }
 }
 
