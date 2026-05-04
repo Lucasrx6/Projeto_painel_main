@@ -204,14 +204,52 @@ def servir_main_form():
 @painel28_bp.route('/servicos', methods=['GET'])
 @login_required
 def listar_servicos():
+    usuario_id = session.get('usuario_id')
+    is_admin = session.get('is_admin', False)
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem
-            FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
-        """)
-        servicos = cursor.fetchall()
+
+        if is_admin:
+            cursor.execute("""
+                SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem
+                FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
+            """)
+            servicos = cursor.fetchall()
+        else:
+            # Busca todas as permissões do usuário
+            perms_cursor = conn.cursor()
+            perms_cursor.execute(
+                "SELECT painel_nome FROM permissoes_paineis WHERE usuario_id = %s",
+                (usuario_id,)
+            )
+            perms_set = {row[0] for row in perms_cursor.fetchall()}
+            perms_cursor.close()
+
+            # Busca todos os serviços ativos
+            cursor.execute("""
+                SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem
+                FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
+            """)
+            todos = cursor.fetchall()
+
+            # Filtra em Python usando o padrão /painel/X da URL
+            import re as _re
+            _pat = _re.compile(r'^/painel/([a-z0-9]+)$')
+
+            servicos = []
+            for srv in todos:
+                url = srv.get('url_destino') or ''
+                m = _pat.match(url)
+                if m:
+                    # Serviço de painel: exige que o usuário tenha aquele painel liberado
+                    if m.group(1) in perms_set:
+                        servicos.append(srv)
+                else:
+                    # Serviço externo/especial: exige painel28 explicitamente
+                    if 'painel28' in perms_set:
+                        servicos.append(srv)
+
         cursor.close()
         release_connection(conn)
         return jsonify({'success': True, 'data': servicos})

@@ -268,7 +268,14 @@ def minhas_permissoes():
     GET /api/minhas-permissoes
     """
     is_admin = session.get('is_admin', False)
-    permissoes = session.get('permissoes', [])
+    permissoes = list(session.get('permissoes', []))
+
+    # Hub de Serviços (painel28) é especial: aparece automaticamente se o usuário
+    # tem qualquer sub-painel do hub liberado, sem precisar de permissão explícita.
+    if not is_admin and 'painel28' not in permissoes:
+        _HUB_PAINEIS = frozenset(['painel34', 'painel35', 'painel36'])
+        if set(permissoes) & _HUB_PAINEIS:
+            permissoes = permissoes + ['painel28']
 
     return jsonify({
         'success': True,

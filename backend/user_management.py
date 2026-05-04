@@ -877,6 +877,34 @@ def verificar_permissao_painel(
         return False
 
 
+def verificar_acesso_hub(usuario_id: Union[int, str]) -> bool:
+    """
+    Verifica se o usuário tem acesso ao Hub de Serviços (painel28)
+    por qualquer sub-painel registrado em hub_servicos.
+    Usa o padrão de URL /painel/X — não depende da coluna permissao_requerida.
+    """
+    usuario_id = validar_id(usuario_id)
+    if not usuario_id:
+        return False
+    try:
+        with get_db_cursor() as (cursor, conn):
+            # Extrai o nome do painel da URL (ex: /painel/painel34 → painel34)
+            # e verifica se o usuário tem aquele painel liberado
+            cursor.execute("""
+                SELECT 1
+                FROM hub_servicos hs
+                JOIN permissoes_paineis pp
+                  ON pp.painel_nome = SUBSTRING(hs.url_destino FROM '/painel/([a-z0-9]+)')
+                WHERE hs.ativo = TRUE
+                  AND pp.usuario_id = %s
+                LIMIT 1
+            """, (usuario_id,))
+            return cursor.fetchone() is not None
+    except Exception as e:
+        logger.error(f'Erro ao verificar acesso hub para usuario {usuario_id}: {e}')
+        return False
+
+
 # ==============================================================================
 # HISTORICO
 # ==============================================================================
