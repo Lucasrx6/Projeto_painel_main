@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plano Terapeutico de Enfermagem - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel37/painel37.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- Cabecalho -->
+    <div class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                <h1><i class="fas fa-notes-medical"></i> Plano Terapeutico de Enfermagem</h1>
+            </div>
+            <div class="header-right">
+                <button id="btn-toggle-filtros" class="btn-header" title="Filtros">
+                    <i class="fas fa-filter"></i> <span class="btn-text">Filtros</span>
+                </button>
+                <button id="btn-exportar" class="btn-header" title="Exportar Excel">
+                    <i class="fas fa-file-excel"></i> <span class="btn-text">Exportar</span>
+                </button>
+                <button id="btn-auto-scroll" class="btn-header" title="Auto Scroll">
+                    <i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>
+                </button>
+                <button id="btn-refresh" class="btn-header" title="Atualizar">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="btn-voltar" class="btn-header" title="Voltar">
+                    <i class="fas fa-arrow-left"></i> <span class="btn-text">Voltar</span>
+                </button>
+                <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de filtros (colapsavel) -->
+    <div class="filtros-bar" id="filtros-bar" style="display:none;">
+        <div class="filtros-content">
+
+            <div class="multi-select" data-state-key="setor" data-placeholder="Todos os setores">
+                <div class="ms-toggle">Todos os setores</div>
+                <div class="ms-dropdown" hidden></div>
+            </div>
+
+            <div class="multi-select" data-state-key="status_prazo" data-placeholder="Todos os status">
+                <div class="ms-toggle">Todos os status</div>
+                <div class="ms-dropdown" hidden></div>
+            </div>
+
+            <div class="filtro-busca">
+                <i class="fas fa-search"></i>
+                <input type="text" id="filtro-busca" placeholder="Buscar paciente...">
+            </div>
+
+            <button class="btn-limpar" id="btn-limpar-filtros">
+                <i class="fas fa-eraser"></i> Limpar
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="kpi-row">
+        <div class="kpi-card kpi-total">
+            <div class="kpi-icon"><i class="fas fa-users"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-total">0</span>
+                <span class="kpi-label">Total Pacientes</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-vencido">
+            <div class="kpi-icon"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-vencido">0</span>
+                <span class="kpi-label">Prazo Vencido</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-proximo">
+            <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-proximo">0</span>
+                <span class="kpi-label">Proximo Vencimento</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-no-prazo">
+            <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-no-prazo">0</span>
+                <span class="kpi-label">No Prazo</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-sem-avaliacao">
+            <div class="kpi-icon"><i class="fas fa-file-slash"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-sem-avaliacao">0</span>
+                <span class="kpi-label">Sem Avaliacao</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de pacientes -->
+    <div class="tabela-container">
+        <div class="tabela-header">
+            <h3><i class="fas fa-list-alt"></i> Pacientes</h3>
+            <span class="total-badge" id="total-badge">0 pacientes</span>
+        </div>
+        <div class="tabela-wrapper">
+        <table class="tabela-principal">
+            <thead>
+                <tr>
+                    <th>Setor</th>
+                    <th>Leito</th>
+                    <th>Paciente</th>
+                    <th class="center-col">Internacao</th>
+                    <th class="center-col">Status</th>
+                    <th>Meta</th>
+                    <th>Prazo</th>
+                    <th>Avaliador</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-body">
+                <tr>
+                    <td colspan="8" class="carregando">
+                        <div class="spinner"></div>
+                        <span>Carregando...</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="/paineis/painel37/painel37.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

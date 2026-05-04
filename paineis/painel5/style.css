@@ -162,8 +162,8 @@ body {
 .mini-dashboard {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    padding: 10px 15px;
+    gap: 6px;
+    padding: 6px 15px;
     background: white;
     border-bottom: 2px solid #e9ecef;
     flex-shrink: 0;
@@ -171,12 +171,12 @@ body {
 
 .stat-card {
     background: white;
-    border-radius: 10px;
-    padding: 10px;
+    border-radius: 8px;
+    padding: 6px 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     transition: transform 0.3s ease;
 }
 
@@ -186,8 +186,8 @@ body {
 }
 
 .stat-icon {
-    width: 45px;
-    height: 45px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -196,7 +196,7 @@ body {
 }
 
 .stat-icon i {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     color: white;
 }
 
@@ -218,7 +218,7 @@ body {
 }
 
 .stat-info h3 {
-    font-size: 1.6rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: #333;
     margin: 0;
@@ -226,9 +226,9 @@ body {
 }
 
 .stat-info p {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: #666;
-    margin: 3px 0 0 0;
+    margin: 2px 0 0 0;
 }
 
 /* ========================================
@@ -336,9 +336,8 @@ body {
 .cirurgias-table thead th:nth-child(3) { width: 75px; }   /* Início */
 .cirurgias-table thead th:nth-child(4) { width: 85px; }   /* Tempo */
 .cirurgias-table thead th:nth-child(5) { width: 200px; }  /* Sala */
-.cirurgias-table thead th:nth-child(6) { width: 17%; }    /* Paciente */
-.cirurgias-table thead th:nth-child(7) { width: 14%; }    /* Cirurgião */
-.cirurgias-table thead th:nth-child(8) { width: calc(69% - 550px); } /* Cirurgia (resto) */
+.cirurgias-table thead th:nth-child(6) { width: 22%; }    /* Paciente */
+.cirurgias-table thead th:nth-child(7) { width: calc(78% - 550px); } /* Cirurgia (resto) */
 
 /* Centraliza primeira coluna (Status) */
 .cirurgias-table thead th:nth-child(1) {
@@ -379,9 +378,8 @@ body {
 .cirurgias-table tbody td:nth-child(3) { width: 75px; }
 .cirurgias-table tbody td:nth-child(4) { width: 85px; }
 .cirurgias-table tbody td:nth-child(5) { width: 200px; }
-.cirurgias-table tbody td:nth-child(6) { width: 17%; }
-.cirurgias-table tbody td:nth-child(7) { width: 14%; }
-.cirurgias-table tbody td:nth-child(8) { width: calc(69% - 550px); }
+.cirurgias-table tbody td:nth-child(6) { width: 22%; }
+.cirurgias-table tbody td:nth-child(7) { width: calc(78% - 550px); }
 
 /* Centraliza primeira coluna (Status) */
 .cirurgias-table tbody td:nth-child(1) {
@@ -598,12 +596,6 @@ body {
     margin-top: 2px;
 }
 
-.medico-nome {
-    color: #495057;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
 .cirurgia-desc {
     color: #6c757d;
     font-size: 0.75rem;
@@ -755,18 +747,16 @@ body {
     .cirurgias-table thead th:nth-child(3) { width: 70px; }   /* Início */
     .cirurgias-table thead th:nth-child(4) { width: 80px; }   /* Tempo */
     .cirurgias-table thead th:nth-child(5) { width: 170px; }  /* Sala */
-    .cirurgias-table thead th:nth-child(6) { width: 19%; }    /* Paciente */
-    .cirurgias-table thead th:nth-child(7) { width: 16%; }    /* Cirurgião */
-    .cirurgias-table thead th:nth-child(8) { width: calc(65% - 495px); } /* Cirurgia */
+    .cirurgias-table thead th:nth-child(6) { width: 24%; }    /* Paciente */
+    .cirurgias-table thead th:nth-child(7) { width: calc(76% - 495px); } /* Cirurgia */
 
     .cirurgias-table tbody td:nth-child(1) { width: 90px; }
     .cirurgias-table tbody td:nth-child(2) { width: 85px; }
     .cirurgias-table tbody td:nth-child(3) { width: 70px; }
     .cirurgias-table tbody td:nth-child(4) { width: 80px; }
     .cirurgias-table tbody td:nth-child(5) { width: 170px; }
-    .cirurgias-table tbody td:nth-child(6) { width: 19%; }
-    .cirurgias-table tbody td:nth-child(7) { width: 16%; }
-    .cirurgias-table tbody td:nth-child(8) { width: calc(65% - 495px); }
+    .cirurgias-table tbody td:nth-child(6) { width: 24%; }
+    .cirurgias-table tbody td:nth-child(7) { width: calc(76% - 495px); }
 }
 
 /* ========================================
@@ -866,18 +856,16 @@ body {
     .cirurgias-table thead th:nth-child(3) { width: 65px; }   /* Início */
     .cirurgias-table thead th:nth-child(4) { width: 70px; }   /* Tempo */
     .cirurgias-table thead th:nth-child(5) { width: 140px; }  /* Sala */
-    .cirurgias-table thead th:nth-child(6) { width: 20%; }    /* Paciente */
-    .cirurgias-table thead th:nth-child(7) { width: 17%; }    /* Cirurgião */
-    .cirurgias-table thead th:nth-child(8) { width: calc(63% - 435px); } /* Cirurgia */
+    .cirurgias-table thead th:nth-child(6) { width: 25%; }    /* Paciente */
+    .cirurgias-table thead th:nth-child(7) { width: calc(75% - 435px); } /* Cirurgia */
 
     .cirurgias-table tbody td:nth-child(1) { width: 85px; }
     .cirurgias-table tbody td:nth-child(2) { width: 75px; }
     .cirurgias-table tbody td:nth-child(3) { width: 65px; }
     .cirurgias-table tbody td:nth-child(4) { width: 70px; }
     .cirurgias-table tbody td:nth-child(5) { width: 140px; }
-    .cirurgias-table tbody td:nth-child(6) { width: 20%; }
-    .cirurgias-table tbody td:nth-child(7) { width: 17%; }
-    .cirurgias-table tbody td:nth-child(8) { width: calc(63% - 435px); }
+    .cirurgias-table tbody td:nth-child(6) { width: 25%; }
+    .cirurgias-table tbody td:nth-child(7) { width: calc(75% - 435px); }
 }
 
 /* ========================================
@@ -1004,16 +992,14 @@ body {
        📝 Para OCULTAR uma coluna: adicione "display: none"
        ======================================== */
 
-    /* COLUNAS OCULTAS (Tempo, Sala, Cirurgião) */
+    /* COLUNAS OCULTAS (Tempo, Sala) */
     .cirurgias-table thead th:nth-child(4),  /* Tempo - OCULTA */
-    .cirurgias-table thead th:nth-child(5),  /* Sala - OCULTA */
-    .cirurgias-table thead th:nth-child(7) { /* Cirurgião - OCULTA */
+    .cirurgias-table thead th:nth-child(5) { /* Sala - OCULTA */
         display: none;
     }
 
     .cirurgias-table tbody td:nth-child(4),  /* Tempo - OCULTA */
-    .cirurgias-table tbody td:nth-child(5),  /* Sala - OCULTA */
-    .cirurgias-table tbody td:nth-child(7) { /* Cirurgião - OCULTA */
+    .cirurgias-table tbody td:nth-child(5) { /* Sala - OCULTA */
         display: none;
     }
 
@@ -1025,13 +1011,13 @@ body {
     .cirurgias-table thead th:nth-child(2) { width: 65px; }   /* Previsão */
     .cirurgias-table thead th:nth-child(3) { width: 60px; }   /* Início */
     .cirurgias-table thead th:nth-child(6) { width: 30%; }    /* Paciente */
-    .cirurgias-table thead th:nth-child(8) { width: calc(70% - 200px); } /* Cirurgia */
+    .cirurgias-table thead th:nth-child(7) { width: calc(70% - 200px); } /* Cirurgia */
 
     .cirurgias-table tbody td:nth-child(1) { width: 75px; }
     .cirurgias-table tbody td:nth-child(2) { width: 65px; }
     .cirurgias-table tbody td:nth-child(3) { width: 60px; }
     .cirurgias-table tbody td:nth-child(6) { width: 30%; }
-    .cirurgias-table tbody td:nth-child(8) { width: calc(70% - 200px); }
+    .cirurgias-table tbody td:nth-child(7) { width: calc(70% - 200px); }
 }
 
 /* ========================================
@@ -1084,14 +1070,12 @@ body {
 
     /* MANTÉM as mesmas colunas ocultas */
     .cirurgias-table thead th:nth-child(4),
-    .cirurgias-table thead th:nth-child(5),
-    .cirurgias-table thead th:nth-child(7) {
+    .cirurgias-table thead th:nth-child(5) {
         display: none;
     }
 
     .cirurgias-table tbody td:nth-child(4),
-    .cirurgias-table tbody td:nth-child(5),
-    .cirurgias-table tbody td:nth-child(7) {
+    .cirurgias-table tbody td:nth-child(5) {
         display: none;
     }
 
@@ -1100,11 +1084,11 @@ body {
     .cirurgias-table thead th:nth-child(2) { width: 60px; }
     .cirurgias-table thead th:nth-child(3) { width: 55px; }
     .cirurgias-table thead th:nth-child(6) { width: 32%; }
-    .cirurgias-table thead th:nth-child(8) { width: calc(68% - 185px); }
+    .cirurgias-table thead th:nth-child(7) { width: calc(68% - 185px); }
 
     .cirurgias-table tbody td:nth-child(1) { width: 70px; }
     .cirurgias-table tbody td:nth-child(2) { width: 60px; }
     .cirurgias-table tbody td:nth-child(3) { width: 55px; }
     .cirurgias-table tbody td:nth-child(6) { width: 32%; }
-    .cirurgias-table tbody td:nth-child(8) { width: calc(68% - 185px); }
+    .cirurgias-table tbody td:nth-child(7) { width: calc(68% - 185px); }
 }
