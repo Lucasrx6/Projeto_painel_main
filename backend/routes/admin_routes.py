@@ -45,7 +45,7 @@ def api_minhas_permissoes():
                     'painel22', 'painel23', 'painel24', 'painel25',
                     'painel26', 'painel27', 'painel28', 'painel29',
                     'painel30', 'painel31', 'painel32', 'painel33',
-                    'painel34', 'painel35', 'painel36', 'painel37'
+                    'painel34', 'painel35', 'painel36', 'painel37', 'painel38'
                 ],
                 'is_admin': True
             })
@@ -454,6 +454,8 @@ def api_listar_paineis():
              'descricao': '[Sistema Auxiliar] Gestao, relatorios e configuracoes do sistema padioleiro', 'ativo': True},
             {'nome': 'painel37', 'titulo': 'Plano Terapeutico de Enfermagem',
              'descricao': 'Monitoramento de avaliacoes 1633 por paciente internado — prazos, metas e status', 'ativo': True},
+            {'nome': 'painel38', 'titulo': 'Score Farmaceutico Clinico',
+             'descricao': 'Priorizacao de visitas e analise de risco farmaceutico', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

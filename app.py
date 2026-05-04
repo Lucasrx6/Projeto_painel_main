@@ -59,7 +59,7 @@ from backend.routes.painel34_routes import painel34_bp
 from backend.routes.painel35_routes import painel35_bp
 from backend.routes.painel36_routes import painel36_bp
 from backend.routes.painel37_routes import painel37_bp
-
+from backend.routes.painel38_routes import painel38_bp
 
 # =========================================================
 # CONFIGURAÇÃO INICIAL
@@ -131,7 +131,7 @@ paineis = [
     painel30_bp, painel31_bp, painel32_bp,
     #painel33_bp,
     painel34_bp, painel35_bp, painel36_bp,
-    painel37_bp
+    painel37_bp, painel38_bp
 ]
 
 for painel in paineis:
@@ -240,6 +240,7 @@ if __name__ == '__main__':
     print("   • Internação PS          → /painel/painel11")
     print("   • Ocupação e Produção    → /painel/painel12")
     print("   • Mapa de Nutrição       → /painel/painel13")
+    print("   • Score Farmacêutico     → /painel/painel38")
 
     print(" URLs de Acesso:")
     print(f"   • Local:                 http://localhost:5000")
