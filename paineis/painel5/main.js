@@ -193,6 +193,7 @@ function renderizarCirurgias(gruposDia) {
                                 <th>Tempo</th>
                                 <th>Sala</th>
                                 <th>Paciente</th>
+                                <th>Cirurgião</th>
                                 <th>Cirurgia</th>
                             </tr>
                         </thead>
@@ -426,6 +427,7 @@ function formatarTempo(tempo) {
 function criarLinhaCirurgia(cirurgia) {
     const statusIcon = obterIconeStatus(cirurgia.evento_codigo, cirurgia.nr_cirurgia);
     const nomePacienteFormatado = formatarNome(cirurgia.nm_paciente_pf);
+    const nomeMedicoFormatado = formatarNome(cirurgia.nm_medico);
 
     // Formatar novos campos
     const inicioFormatado = formatarInicioCirurgia(cirurgia.inicio_cirurgia);
@@ -469,6 +471,11 @@ function criarLinhaCirurgia(cirurgia) {
                 <span class="paciente-info" title="${cirurgia.ds_convenio || '-'} • ${cirurgia.ds_idade_abrev || '-'}">
                     ${cirurgia.ds_convenio || '-'} • ${cirurgia.ds_idade_abrev || '-'}
                 </span>
+            </td>
+            <td>
+                <div class="medico-nome" title="${cirurgia.nm_medico || '-'}">
+                    ${nomeMedicoFormatado}
+                </div>
             </td>
             <td>
                 <div class="cirurgia-desc" title="${cirurgia.ds_proc_cir || '-'}">
