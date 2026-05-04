@@ -556,9 +556,10 @@
         if (!iso) return '';
         var d = new Date(iso);
         if (isNaN(d.getTime())) return String(iso);
-        var dia  = d.getDate();
-        var mes  = d.getMonth() + 1;
-        var ano  = d.getFullYear();
+        // Usar UTC para evitar deslocamento de fuso horario
+        var dia  = d.getUTCDate();
+        var mes  = d.getUTCMonth() + 1;
+        var ano  = d.getUTCFullYear();
         return (dia < 10 ? '0' : '') + dia + '/' +
                (mes < 10 ? '0' : '') + mes + '/' + ano;
     }
