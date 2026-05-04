@@ -447,11 +447,14 @@
 
         var iconeAlerta = (isCritico && isAtrasadaOuSemVisita) ? '<i class="fas fa-exclamation-triangle icone-alerta"></i> ' : '';
 
+        var subInfo = esc(p.ds_convenio || '-');
+        if (idadeSexo) subInfo += ' • ' + esc(idadeSexo);
+
         var pacienteCell =
             '<div class="paciente-nome js-abrir-modal" title="' + esc(p.nm_paciente || '') + '" data-index="' + idx + '">' +
                 iconeAlerta + esc(p.nm_paciente || '-') +
             '</div>' +
-            '<span class="paciente-info" title="' + esc(p.ds_convenio || '-') + '">' + esc(p.ds_convenio || '-') + '</span>';
+            '<span class="paciente-info">' + subInfo + '</span>';
 
         var internDias = (p.qt_dia_permanencia !== null && p.qt_dia_permanencia !== undefined)
             ? p.qt_dia_permanencia + 'd' : '-';
@@ -479,8 +482,8 @@
         return '<tr class="' + classe + '">' +
             '<td><span class="badge-setor">' + esc(p.ds_setor_atendimento || '-') + '</span></td>' +
             '<td class="leito-col">'      + esc(p.cd_unidade_basica || '-') + '</td>' +
+            '<td class="atend-col">'      + esc(p.nr_atendimento || '-')    + '</td>' +
             '<td>'                        + pacienteCell                     + '</td>' +
-            '<td class="center-col">'     + esc(idadeSexo || '-')            + '</td>' +
             '<td class="center-col">'     + internDias                       + '</td>' +
             '<td>'                        + esc(p.nm_medico || '-')          + '</td>' +
             '<td class="center-col"><span class="score-destaque ' + classeScore + '">' + (p.pt_total || 0) + '</span></td>' +

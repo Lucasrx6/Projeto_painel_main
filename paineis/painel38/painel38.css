@@ -321,10 +321,10 @@ body {
 /* Larguras 11 colunas */
 .tabela-principal thead th:nth-child(1)  { width: 120px; }   /* Setor */
 .tabela-principal thead th:nth-child(2)  { width: 70px; }    /* Leito */
-.tabela-principal thead th:nth-child(3)  { width: 16%; }     /* Paciente */
-.tabela-principal thead th:nth-child(4)  { width: 65px; }    /* Idade/Sexo */
+.tabela-principal thead th:nth-child(3)  { width: 90px; }    /* Atendimento */
+.tabela-principal thead th:nth-child(4)  { width: 18%; }     /* Paciente */
 .tabela-principal thead th:nth-child(5)  { width: 55px; }    /* Intern. */
-.tabela-principal thead th:nth-child(6)  { width: 12%; }     /* Medico */
+.tabela-principal thead th:nth-child(6)  { width: 11%; }     /* Medico */
 .tabela-principal thead th:nth-child(7)  { width: 55px; }    /* Score */
 .tabela-principal thead th:nth-child(8)  { width: 50px; }    /* Crit. */
 .tabela-principal thead th:nth-child(9)  { width: 80px; }    /* Classif. */
@@ -349,10 +349,10 @@ body {
 
 .tabela-principal tbody td:nth-child(1)  { width: 120px; }
 .tabela-principal tbody td:nth-child(2)  { width: 70px; }
-.tabela-principal tbody td:nth-child(3)  { width: 16%; }
-.tabela-principal tbody td:nth-child(4)  { width: 65px; }
+.tabela-principal tbody td:nth-child(3)  { width: 90px; }
+.tabela-principal tbody td:nth-child(4)  { width: 18%; }
 .tabela-principal tbody td:nth-child(5)  { width: 55px; }
-.tabela-principal tbody td:nth-child(6)  { width: 12%; }
+.tabela-principal tbody td:nth-child(6)  { width: 11%; }
 .tabela-principal tbody td:nth-child(7)  { width: 55px; }
 .tabela-principal tbody td:nth-child(8)  { width: 50px; }
 .tabela-principal tbody td:nth-child(9)  { width: 80px; }
@@ -387,6 +387,13 @@ body {
 .leito-col {
     font-family: "Courier New", Courier, monospace;
     font-size: 0.73rem;
+    white-space: nowrap;
+}
+
+.atend-col {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.72rem;
+    color: #6c757d;
     white-space: nowrap;
 }
 
@@ -561,9 +568,11 @@ td.vazio i { font-size: 2.5rem; display: block; margin-bottom: 10px; color: #dee
     .header-left img { max-height: 26px; }
     .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 4px; padding: 6px 12px; }
     .tabela-principal thead th, .tabela-principal tbody td { font-size: 0.65rem; padding: 6px 4px; }
-    /* Oculta Medico e Intern. em telas menores */
+    /* Oculta Atendimento, Intern. e Medico em telas menores */
+    .tabela-principal thead th:nth-child(3),
     .tabela-principal thead th:nth-child(5),
     .tabela-principal thead th:nth-child(6),
+    .tabela-principal tbody td:nth-child(3),
     .tabela-principal tbody td:nth-child(5),
     .tabela-principal tbody td:nth-child(6) { display: none; }
 }
