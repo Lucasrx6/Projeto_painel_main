@@ -22,29 +22,43 @@ def run_tests():
     POST /api/admin/tests/run
     """
     try:
+        import tempfile
         # Pega o diretório raiz do projeto (um nível acima do backend)
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         
-        # Executa o pytest com output em JSON
+        # Cria um arquivo temporário para o relatório para evitar trigger no Flask auto-reloader
+        fd, report_path = tempfile.mkstemp(suffix='.json')
+        os.close(fd)
+
+        # Prepara ambiente sem gerar .pyc para não trigar reloader
+        env = os.environ.copy()
+        env['PYTHONDONTWRITEBYTECODE'] = '1'
+        
+        # Executa o pytest com output em JSON (desabilita cache também)
         result = subprocess.run(
-            ['python', '-m', 'pytest', 'tests/', '--json-report', '--json-report-file=test_report.json'],
+            ['python', '-m', 'pytest', 'tests/', '-p', 'no:cacheprovider', '--json-report', f'--json-report-file={report_path}'],
             cwd=root_dir,
             capture_output=True,
-            text=True
+            text=True,
+            env=env
         )
         
-        # Lê o relatório JSON gerado pelo pytest-json-report (se instalado) ou faz fallback
-        report_path = os.path.join(root_dir, 'test_report.json')
+        # Lê o relatório JSON gerado pelo pytest-json-report
+        report_data = None
         if os.path.exists(report_path):
             with open(report_path, 'r', encoding='utf-8') as f:
-                report_data = json.load(f)
+                try:
+                    report_data = json.load(f)
+                except json.JSONDecodeError:
+                    pass
             
-            # Limpa o arquivo
+            # Limpa o arquivo temporário
             try:
                 os.remove(report_path)
             except:
                 pass
                 
+        if report_data:
             return jsonify({
                 'success': True,
                 'exit_code': result.returncode,
