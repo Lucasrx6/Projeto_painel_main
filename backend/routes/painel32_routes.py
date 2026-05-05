@@ -19,6 +19,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env'))

@@ -9,6 +9,7 @@ from psycopg2 import sql
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel13_bp = Blueprint('painel13', __name__)
@@ -76,6 +77,7 @@ def _build_setor_filter(setores):
 
 @painel13_bp.route('/api/paineis/painel13/nutricao', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel13:nutricao', vary_by_query=True)
 def api_painel13_nutricao():
     """
     Retorna dados das prescrições de nutrição
@@ -170,6 +172,7 @@ def api_painel13_nutricao():
 
 @painel13_bp.route('/api/paineis/painel13/setores', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel13:setores')
 def api_painel13_setores():
     """
     Retorna lista de setores disponíveis
@@ -228,6 +231,7 @@ def api_painel13_setores():
 
 @painel13_bp.route('/api/paineis/painel13/stats', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel13:stats')
 def api_painel13_stats():
     """
     Retorna estatísticas de prescrições

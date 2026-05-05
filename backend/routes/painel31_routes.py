@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 import statistics
 
 painel31_bp = Blueprint('painel31', __name__)
@@ -153,6 +154,7 @@ def painel31_detalhe(nome_modelo):
 
 @painel31_bp.route('/api/paineis/painel31/modelos', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel31:modelos')
 def api_painel31_modelos():
     """
     Retorna todos os modelos do registry com snapshot de saude atual.
@@ -534,6 +536,7 @@ def api_painel31_metricas(nome_modelo):
 
 @painel31_bp.route('/api/paineis/painel31/historico-real', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel31:historico-real', vary_by_query=True)
 def api_painel31_historico_real():
     """
     Retorna o historico real de atendimentos do PS dos ultimos N dias,

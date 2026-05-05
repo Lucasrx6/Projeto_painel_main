@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel12_bp = Blueprint('painel12', __name__)
@@ -38,6 +39,7 @@ def painel12():
 
 @painel12_bp.route('/api/paineis/painel12/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel12:dashboard')
 def api_painel12_dashboard():
     """
     Dashboard de ocupação e produção
@@ -118,6 +120,7 @@ def api_painel12_dashboard():
 
 @painel12_bp.route('/api/paineis/painel12/setores', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel12:setores', vary_by_query=True)
 def api_painel12_setores():
     """
     Lista ocupação por setores

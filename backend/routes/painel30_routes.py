@@ -14,6 +14,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 try:
     import apprise as _apprise_lib
@@ -359,6 +360,7 @@ def painel30_static(filename):
 
 @painel30_bp.route('/api/paineis/painel30/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel30:dashboard')
 def dashboard():
     try:
         conn = get_db_connection()
@@ -417,6 +419,7 @@ def dashboard():
 
 @painel30_bp.route('/api/paineis/painel30/tratativas', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel30:tratativas', vary_by_query=True)
 def listar_tratativas():
     try:
         conn = get_db_connection()
@@ -506,6 +509,7 @@ def listar_tratativas():
 
 @painel30_bp.route('/api/paineis/painel30/criticos-resumo', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel30:criticos-resumo')
 def criticos_resumo():
     try:
         conn = get_db_connection()
@@ -631,6 +635,7 @@ def criticos_resumo():
 
 @painel30_bp.route('/api/paineis/painel30/categorias-criticas', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel30:categorias-criticas')
 def categorias_criticas():
     try:
         conn = get_db_connection()
@@ -937,6 +942,7 @@ def atualizar_tratativa(tratativa_id):
 
 @painel30_bp.route('/api/paineis/painel30/categorias-itens', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel30:categorias-itens')
 def categorias_itens():
     if not _is_admin():
         return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
@@ -1274,6 +1280,7 @@ def atualizar_responsavel_auto(tratativa_id):
 
 @painel30_bp.route('/api/paineis/painel30/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel30:filtros')
 def filtros():
     try:
         conn = get_db_connection()
@@ -1317,6 +1324,7 @@ def filtros():
 
 @painel30_bp.route('/api/paineis/painel30/responsaveis', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel30:responsaveis')
 def listar_responsaveis():
     try:
         conn = get_db_connection()

@@ -15,6 +15,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel25_bp = Blueprint('painel25', __name__)
@@ -125,6 +126,7 @@ def painel25():
 
 @painel25_bp.route('/api/paineis/painel25/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel25:dashboard', vary_by_query=True)
 def api_painel25_dashboard():
     """
     Cards de resumo com contadores.
@@ -196,6 +198,7 @@ def api_painel25_dashboard():
 
 @painel25_bp.route('/api/paineis/painel25/dados', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel25:dados', vary_by_query=True)
 def api_painel25_dados():
     """
     Lista de pacientes com seus exames agrupados.
@@ -340,6 +343,7 @@ def api_painel25_dados():
 
 @painel25_bp.route('/api/paineis/painel25/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel25:filtros')
 def api_painel25_filtros():
     """
     Lista medicos e clinicas disponiveis para popular os selects.

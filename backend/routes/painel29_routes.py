@@ -14,6 +14,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 painel29_bp = Blueprint('painel29', __name__)
 
@@ -177,6 +178,7 @@ def painel29_static(filename):
 
 @painel29_bp.route('/api/paineis/painel29/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel29:dashboard', vary_by_query=True)
 def dashboard():
     try:
         conn = get_db_connection()
@@ -292,6 +294,7 @@ def dashboard():
 
 @painel29_bp.route('/api/paineis/painel29/dados', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel29:dados', vary_by_query=True)
 def dados():
     try:
         conn = get_db_connection()
@@ -369,6 +372,7 @@ def dados():
 
 @painel29_bp.route('/api/paineis/painel29/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel29:filtros')
 def filtros():
     try:
         conn = get_db_connection()
@@ -865,6 +869,7 @@ def exportar_excel():
 
 @painel29_bp.route('/api/paineis/painel29/config', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel29:config')
 def obter_config():
     try:
         conn = get_db_connection()
@@ -938,6 +943,7 @@ def atualizar_config():
 
 @painel29_bp.route('/api/paineis/painel29/precaucao-contato', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel29:precaucao-contato')
 def listar_precaucao_contato_gestao():
     """Lista todos os pacientes em precaução de contato."""
     try:

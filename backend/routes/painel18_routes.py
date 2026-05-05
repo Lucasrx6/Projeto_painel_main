@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 
 from backend.database import get_db_connection, release_connection
+from backend.cache import cache_route
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def _get_filtro_clinica(args):
 # =============================================================================
 
 @painel18_bp.route('/api/paineis/painel18/medicos')
+@cache_route(ttl=60, key_prefix='painel18:medicos')
 def api_painel18_medicos():
     """
     Retorna medicos logados nos consultorios do PS com metricas individuais.
@@ -198,6 +200,7 @@ def api_painel18_medicos():
 # =============================================================================
 
 @painel18_bp.route('/api/paineis/painel18/ranking')
+@cache_route(ttl=120, key_prefix='painel18:ranking', vary_by_query=True)
 def api_painel18_ranking():
     """
     Ranking de todos os medicos que atenderam hoje, ordenados por volume.
@@ -300,6 +303,7 @@ def api_painel18_ranking():
 # =============================================================================
 
 @painel18_bp.route('/api/paineis/painel18/stats')
+@cache_route(ttl=60, key_prefix='painel18:stats')
 def api_painel18_stats():
     """
     Resumo geral para o dashboard:

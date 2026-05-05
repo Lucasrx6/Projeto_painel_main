@@ -8,6 +8,7 @@ from backend.database import get_db_connection, release_connection
 from psycopg2.extras import RealDictCursor
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel4_bp = Blueprint('painel4', __name__)
@@ -53,6 +54,7 @@ def painel4_detalhes():
 
 @painel4_bp.route('/api/paineis/painel4/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel4:dashboard')
 def api_painel4_dashboard():
     """
     Dashboard geral de ocupação
@@ -108,6 +110,7 @@ def api_painel4_dashboard():
 
 @painel4_bp.route('/api/paineis/painel4/setores', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel4:setores')
 def api_painel4_setores():
     """
     Lista ocupação por setor
@@ -149,6 +152,7 @@ def api_painel4_setores():
 
 @painel4_bp.route('/api/paineis/painel4/leitos-ocupados', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel4:leitos-ocupados')
 def api_painel4_leitos_ocupados():
     """
     Lista leitos ocupados
@@ -190,6 +194,7 @@ def api_painel4_leitos_ocupados():
 
 @painel4_bp.route('/api/paineis/painel4/leitos-disponiveis', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel4:leitos-disponiveis')
 def api_painel4_leitos_disponiveis():
     """
     Lista leitos disponíveis
@@ -231,6 +236,7 @@ def api_painel4_leitos_disponiveis():
 
 @painel4_bp.route('/api/paineis/painel4/todos-leitos', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel4:todos-leitos')
 def api_painel4_todos_leitos():
     """
     Lista todos os leitos do hospital

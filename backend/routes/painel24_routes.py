@@ -16,6 +16,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel24_bp = Blueprint('painel24', __name__)
@@ -176,6 +177,7 @@ def _build_common_filters():
 
 @painel24_bp.route('/api/paineis/painel24/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel24:dashboard', vary_by_query=True)
 def api_painel24_dashboard():
     """
     KPIs agregados para os cards do dashboard.
@@ -275,6 +277,7 @@ def api_painel24_dashboard():
 
 @painel24_bp.route('/api/paineis/painel24/dados', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel24:dados', vary_by_query=True)
 def api_painel24_dados():
     """
     Retorna itens de estoque com filtros server-side.
@@ -354,6 +357,7 @@ def api_painel24_dados():
 
 @painel24_bp.route('/api/paineis/painel24/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=600, key_prefix='painel24:filtros')
 def api_painel24_filtros():
     """
     Retorna valores distintos para popular os multi-selects.

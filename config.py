@@ -61,6 +61,13 @@ class Config:
     CORS_SUPPORTS_CREDENTIALS = True
 
     # =========================================================
+    # REDIS / CACHE
+    # =========================================================
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    CACHE_ENABLED = os.getenv('CACHE_ENABLED', 'true').lower() == 'true'
+    CACHE_DEFAULT_TTL = int(os.getenv('CACHE_DEFAULT_TTL', '120'))
+
+    # =========================================================
     # GROQ API (Inteligencia Artificial)
     # =========================================================
     GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
@@ -128,7 +135,7 @@ class DevelopmentConfig(Config):
   - Logs detalhados (DEBUG)
   - CORS liberado (*)
   - Rate limiting desabilitado
-  - Cache desabilitado
+  - Cache Redis ativo se disponivel (falha graciosamente)
 
   Banco de Dados:
   - Host: {cls.DB_HOST}

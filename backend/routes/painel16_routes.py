@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel16_bp = Blueprint('painel16', __name__)
@@ -64,6 +65,7 @@ def painel16():
 
 @painel16_bp.route('/api/paineis/painel16/maquinas', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel16:maquinas')
 def api_painel16_maquinas():
     """
     Retorna usuarios conectados nas maquinas de recepcao com contagem de atendimentos
@@ -169,6 +171,7 @@ def api_painel16_maquinas():
 
 @painel16_bp.route('/api/paineis/painel16/atendimentos', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel16:atendimentos', vary_by_query=True)
 def api_painel16_atendimentos():
     """
     Retorna contagem de atendimentos por recepcionista no dia
@@ -295,6 +298,7 @@ def api_painel16_atendimentos():
 
 @painel16_bp.route('/api/paineis/painel16/stats', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel16:stats')
 def api_painel16_stats():
     """
     Retorna estatisticas gerais do painel

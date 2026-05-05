@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 import statistics
 
 painel17_bp = Blueprint('painel17', __name__)
@@ -142,6 +143,7 @@ def painel17():
 
 @painel17_bp.route('/api/paineis/painel17/tempos', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel17:tempos', vary_by_query=True)
 def api_painel17_tempos():
     """
     Retorna tempo estimado de espera por clinica + card de Acolhimento.

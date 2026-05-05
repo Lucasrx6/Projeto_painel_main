@@ -9,6 +9,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel19_bp = Blueprint('painel19', __name__)
@@ -56,6 +57,7 @@ def serializar_linha(row):
 
 @painel19_bp.route('/api/paineis/painel19/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel19:dashboard')
 def api_painel19_dashboard():
     """
     Contadores gerais para os cards do dashboard
@@ -124,6 +126,7 @@ def api_painel19_dashboard():
 
 @painel19_bp.route('/api/paineis/painel19/dados', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel19:dados', vary_by_query=True)
 def api_painel19_dados():
     """
     Retorna todos os exames de radiologia com detalhes completos.
@@ -194,6 +197,7 @@ def api_painel19_dados():
 
 @painel19_bp.route('/api/paineis/painel19/setores', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel19:setores')
 def api_painel19_setores():
     """
     Lista setores que possuem exames de radiologia

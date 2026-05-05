@@ -22,6 +22,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,7 @@ def painel10():
 
 @painel10_bp.route('/api/paineis/painel10/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel10:dashboard')
 def api_painel10_dashboard():
     """
     Resumo geral do dia.
@@ -148,6 +150,7 @@ def api_painel10_dashboard():
 
 @painel10_bp.route('/api/paineis/painel10/tempo-clinica', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel10:tempo-clinica', vary_by_query=True)
 def api_painel10_tempo_clinica():
     """
     Tempo medio de espera por clinica.
@@ -174,6 +177,7 @@ def api_painel10_tempo_clinica():
 
 @painel10_bp.route('/api/paineis/painel10/aguardando-clinica', methods=['GET'])
 @login_required
+@cache_route(ttl=90, key_prefix='painel10:aguardando-clinica', vary_by_query=True)
 def api_painel10_aguardando_clinica():
     """
     Pacientes aguardando atendimento por clinica.
@@ -200,6 +204,7 @@ def api_painel10_aguardando_clinica():
 
 @painel10_bp.route('/api/paineis/painel10/atendimentos-hora', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel10:atendimentos-hora')
 def api_painel10_atendimentos_hora():
     """
     Distribuicao de atendimentos por hora do dia.
@@ -226,6 +231,7 @@ def api_painel10_atendimentos_hora():
 
 @painel10_bp.route('/api/paineis/painel10/desempenho-medico', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel10:desempenho-medico', vary_by_query=True)
 def api_painel10_desempenho_medico():
     """
     Desempenho dos medicos do dia.
@@ -252,6 +258,7 @@ def api_painel10_desempenho_medico():
 
 @painel10_bp.route('/api/paineis/painel10/desempenho-recepcao', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel10:desempenho-recepcao')
 def api_painel10_desempenho_recepcao():
     """
     Metricas de desempenho da recepcao.

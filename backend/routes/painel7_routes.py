@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel7_bp = Blueprint('painel7', __name__)
@@ -38,6 +39,7 @@ def painel7():
 
 @painel7_bp.route('/api/paineis/painel7/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel7:dashboard')
 def painel7_dashboard():
     """
     Dashboard de risco de sepse
@@ -84,6 +86,7 @@ def painel7_dashboard():
 
 @painel7_bp.route('/api/paineis/painel7/lista', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel7:lista', vary_by_query=True)
 def painel7_lista():
     """
     Lista de pacientes com risco de sepse

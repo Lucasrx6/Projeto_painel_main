@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 import statistics
 
 painel23_bp = Blueprint('painel23', __name__)
@@ -159,6 +160,7 @@ def painel23():
 
 @painel23_bp.route('/api/paineis/painel23/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel23:dashboard', vary_by_query=True)
 def api_painel23_dashboard():
     """
     Retorna totalizadores, metricas por fila e por especialidade.
@@ -478,6 +480,7 @@ def api_painel23_dashboard():
 
 @painel23_bp.route('/api/paineis/painel23/atendimentos', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel23:atendimentos', vary_by_query=True)
 def api_painel23_atendimentos():
     """
     Retorna lista de atendimentos com filtros.
@@ -558,6 +561,7 @@ def api_painel23_atendimentos():
 
 @painel23_bp.route('/api/paineis/painel23/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel23:filtros')
 def api_painel23_filtros():
     """
     Retorna listas de especialidades e convenios disponiveis.

@@ -16,6 +16,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel21_bp = Blueprint('painel21', __name__)
@@ -229,6 +230,7 @@ def _build_common_filters():
 
 @painel21_bp.route('/api/paineis/painel21/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel21:dashboard', vary_by_query=True)
 def api_painel21_dashboard():
     """
     KPIs agregados para os cards do dashboard.
@@ -318,6 +320,7 @@ def api_painel21_dashboard():
 
 @painel21_bp.route('/api/paineis/painel21/dados', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel21:dados', vary_by_query=True)
 def api_painel21_dados():
     """
     Retorna contas com filtros server-side.
@@ -384,6 +387,7 @@ def api_painel21_dados():
 
 @painel21_bp.route('/api/paineis/painel21/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=600, key_prefix='painel21:filtros')
 def api_painel21_filtros():
     """
     Retorna valores distintos para popular os multi-selects.

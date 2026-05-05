@@ -9,6 +9,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel11_bp = Blueprint('painel11', __name__)
@@ -98,6 +99,7 @@ def painel11():
 
 @painel11_bp.route('/api/paineis/painel11/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel11:filtros')
 def api_painel11_filtros():
     """
     Retorna valores distintos para popular os filtros dinamicos.
@@ -171,6 +173,7 @@ def api_painel11_filtros():
 
 @painel11_bp.route('/api/paineis/painel11/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel11:dashboard', vary_by_query=True)
 def api_painel11_dashboard():
     """
     Dashboard geral - estatisticas com filtros compartilhados
@@ -298,6 +301,7 @@ def api_painel11_dashboard():
 
 @painel11_bp.route('/api/paineis/painel11/lista', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel11:lista', vary_by_query=True)
 def api_painel11_lista():
     """
     Lista de pacientes com alta para internacao

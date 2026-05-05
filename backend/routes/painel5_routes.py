@@ -7,6 +7,7 @@ from datetime import datetime
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel5_bp = Blueprint('painel5', __name__)
@@ -37,6 +38,7 @@ def painel5():
 
 @painel5_bp.route('/api/paineis/painel5/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel5:dashboard')
 def api_painel5_dashboard():
     """
     Dashboard de cirurgias
@@ -100,6 +102,7 @@ def api_painel5_dashboard():
 
 @painel5_bp.route('/api/paineis/painel5/cirurgias', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel5:cirurgias', vary_by_query=True)
 def api_painel5_cirurgias():
     """
     Lista de cirurgias

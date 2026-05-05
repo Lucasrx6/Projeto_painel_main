@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel8_bp = Blueprint('painel8', __name__)
@@ -38,6 +39,7 @@ def painel8():
 
 @painel8_bp.route('/api/paineis/painel8/enfermaria', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel8:enfermaria', vary_by_query=True)
 def api_painel8_enfermaria():
     """
     Retorna dados dos leitos/pacientes
@@ -158,6 +160,7 @@ def api_painel8_enfermaria():
 
 @painel8_bp.route('/api/paineis/painel8/setores', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel8:setores')
 def api_painel8_setores():
     """
     Retorna lista de setores disponíveis
@@ -217,6 +220,7 @@ def api_painel8_setores():
 
 @painel8_bp.route('/api/paineis/painel8/stats', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel8:stats')
 def api_painel8_stats():
     """
     Retorna estatísticas de ocupação

@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel6_bp = Blueprint('painel6', __name__)
@@ -37,6 +38,7 @@ def painel6():
 # =========================================================
 
 @painel6_bp.route('/api/paineis/painel6/dashboard', methods=['GET'])
+@cache_route(ttl=60, key_prefix='painel6:dashboard')
 def painel6_dashboard():
     """
     Dashboard de criticidade
@@ -77,6 +79,7 @@ def painel6_dashboard():
 
 
 @painel6_bp.route('/api/paineis/painel6/lista', methods=['GET'])
+@cache_route(ttl=60, key_prefix='painel6:lista', vary_by_query=True)
 def painel6_lista():
     """
     Lista de pacientes priorizados

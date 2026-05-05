@@ -7,6 +7,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 painel27_bp = Blueprint('painel27', __name__)
 
@@ -38,6 +39,7 @@ def painel27():
 
 @painel27_bp.route('/api/paineis/painel27/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel27:dashboard', vary_by_query=True)
 def api_painel27_dashboard():
     if not _verificar_acesso():
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403
@@ -115,6 +117,7 @@ def api_painel27_dashboard():
 
 @painel27_bp.route('/api/paineis/painel27/dados', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel27:dados', vary_by_query=True)
 def api_painel27_dados():
     if not _verificar_acesso():
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403
@@ -330,6 +333,7 @@ def api_painel27_historico_exames(nr_atendimento):
 
 @painel27_bp.route('/api/paineis/painel27/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel27:filtros')
 def api_painel27_filtros():
     if not _verificar_acesso():
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403

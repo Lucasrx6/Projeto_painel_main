@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel14_bp = Blueprint('painel14', __name__)
@@ -38,6 +39,7 @@ def painel14():
 
 @painel14_bp.route('/api/paineis/painel14/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel14:dashboard')
 def api_painel14_dashboard():
     """
     Estatisticas gerais dos chamados
@@ -91,6 +93,7 @@ def api_painel14_dashboard():
 
 @painel14_bp.route('/api/paineis/painel14/chamados', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel14:chamados', vary_by_query=True)
 def api_painel14_chamados():
     """
     Lista chamados ativos (abertos e em atendimento)
@@ -144,6 +147,7 @@ def api_painel14_chamados():
 
 @painel14_bp.route('/api/paineis/painel14/historico', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel14:historico', vary_by_query=True)
 def api_painel14_historico():
     """
     Lista chamados fechados e inativos (ultimos 7 dias)
@@ -647,6 +651,7 @@ def api_painel14_chamado_historico(chamado_id):
 
 @painel14_bp.route('/api/paineis/painel14/config', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel14:config')
 def api_painel14_config():
     """
     Retorna configuracoes do painel de chamados
@@ -722,6 +727,7 @@ def api_painel14_config_update():
 
 @painel14_bp.route('/api/paineis/painel14/contagem', methods=['GET'])
 @login_required
+@cache_route(ttl=30, key_prefix='painel14:contagem')
 def api_painel14_contagem():
     """
     Retorna apenas contagem de chamados nao visualizados (polling leve)
@@ -764,6 +770,7 @@ def api_painel14_contagem():
 
 @painel14_bp.route('/api/paineis/painel14/locais', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel14:locais')
 def api_painel14_locais():
     """Lista todos os locais cadastrados (ativos e inativos)"""
     usuario_id = session.get('usuario_id')
@@ -957,6 +964,7 @@ def api_painel14_locais_remover(local_id):
 
 @painel14_bp.route('/api/paineis/painel14/problemas', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel14:problemas')
 def api_painel14_problemas():
     """Lista todos os tipos de problema"""
     usuario_id = session.get('usuario_id')

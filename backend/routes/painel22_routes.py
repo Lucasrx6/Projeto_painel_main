@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 from datetime import datetime, timedelta
 import logging
 
@@ -243,6 +244,7 @@ def painel22():
 
 @painel22_bp.route('/api/paineis/painel22/dashboard')
 @login_required
+@cache_route(ttl=60, key_prefix='painel22:dashboard')
 def api_painel22_dashboard():
     dados, erro = _buscar_dashboard()
     if erro:
@@ -252,6 +254,7 @@ def api_painel22_dashboard():
 
 @painel22_bp.route('/api/paineis/painel22/dados')
 @login_required
+@cache_route(ttl=60, key_prefix='painel22:dados', vary_by_query=True)
 def api_painel22_dados():
     dados, erro = _buscar_dados()
     if erro:
@@ -270,6 +273,7 @@ def painel22_publico():
 
 
 @painel22_bp.route('/api/publico/painel22/dashboard')
+@cache_route(ttl=60, key_prefix='painel22:dashboard-publico', vary_by_user=False)
 def api_painel22_dashboard_publico():
     dados, erro = _buscar_dashboard()
     if erro:
@@ -278,6 +282,7 @@ def api_painel22_dashboard_publico():
 
 
 @painel22_bp.route('/api/publico/painel22/dados')
+@cache_route(ttl=60, key_prefix='painel22:dados-publico', vary_by_user=False, vary_by_query=True)
 def api_painel22_dados_publico():
     dados, erro = _buscar_dados()
     if erro:

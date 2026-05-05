@@ -17,6 +17,7 @@ from backend.logging_config import setup_logging
 from backend.middleware.security import setup_security_headers
 from backend.middleware.error_handlers import register_error_handlers
 from backend.database import get_db_connection, init_db
+from backend.cache import init_redis, cache_health
 
 # Blueprints
 from backend.routes.auth_routes import auth_bp
@@ -109,6 +110,9 @@ register_error_handlers(app)
 # Inicializa banco de dados
 init_db()
 
+# Inicializa cache Redis (falha graciosamente se Redis indisponivel)
+init_redis(app)
+
 # =========================================================
 # REGISTRO DE BLUEPRINTS
 # =========================================================
@@ -138,6 +142,17 @@ for painel in paineis:
     app.register_blueprint(painel)
 
 app.logger.info(f' {len(paineis) + 4} Blueprints registrados com sucesso')
+
+
+# =========================================================
+# HEALTH CHECK — Redis
+# =========================================================
+
+@app.route('/api/health/redis')
+def health_redis():
+    """Status do Redis: latencia, versao, uso de memoria e hit rate."""
+    return jsonify(cache_health())
+
 
 # Notificador de pareceres — integrado como thread daemon
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_PARECERES_AUTO=false no .env
