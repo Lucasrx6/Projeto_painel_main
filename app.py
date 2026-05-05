@@ -60,6 +60,7 @@ from backend.routes.painel35_routes import painel35_bp
 from backend.routes.painel36_routes import painel36_bp
 from backend.routes.painel37_routes import painel37_bp
 from backend.routes.painel38_routes import painel38_bp
+from backend.routes.tests_admin_routes import tests_bp
 
 # =========================================================
 # CONFIGURAÇÃO INICIAL
@@ -121,6 +122,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(pwa_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(tests_bp)
 
 # Blueprints de Painéis
 paineis = [

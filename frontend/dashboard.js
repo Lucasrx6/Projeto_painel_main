@@ -195,6 +195,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const btnGestaoTestes = document.getElementById('btn-gestao-testes');
+    if (btnGestaoTestes) {
+        btnGestaoTestes.addEventListener('click', () => {
+            window.location.href = '/api/admin/tests/page';
+        });
+    }
+
     // Hamburger mobile
     const btnHamburger = document.getElementById('btn-hamburger');
     const sidebarOverlay = document.getElementById('sidebar-overlay');

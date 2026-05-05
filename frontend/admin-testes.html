@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Testes - Sistema de Painéis</title>
+
+    <!-- PWA META TAGS -->
+    <meta name="theme-color" content="#dc3545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Painéis HAC">
+
+    <!-- Manifest e icones -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
+    <link rel="icon" href="/static/img/favicon.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/frontend/admin-usuarios.css">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+
+    <style>
+        .test-dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .action-card {
+            background: var(--surface-primary, #fff);
+            border-radius: var(--radius-lg, 12px);
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            text-align: center;
+        }
+
+        .run-btn {
+            background: var(--brand-primary, #dc3545);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: var(--radius-md, 8px);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .run-btn:hover {
+            background: var(--brand-secondary, #b02a37);
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        .run-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-card {
+            background: var(--surface-primary, #fff);
+            border-radius: var(--radius-lg, 12px);
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-light, #e5e7eb);
+            padding-bottom: 1rem;
+        }
+
+        .results-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary, #111827);
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-box {
+            padding: 1.5rem;
+            border-radius: var(--radius-md, 8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .stat-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .stat-box.total { background: #f8f9fa; }
+        .stat-box.total::before { background: #6c757d; }
+
+        .stat-box.passed { background: #f0fdf4; color: #166534; }
+        .stat-box.passed::before { background: #22c55e; }
+
+        .stat-box.failed { background: #fef2f2; color: #991b1b; }
+        .stat-box.failed::before { background: #ef4444; }
+
+        .stat-box.time { background: #eff6ff; color: #1e40af; }
+        .stat-box.time::before { background: #3b82f6; }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.8;
+        }
+
+        .terminal-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1.5rem;
+            border-radius: var(--radius-md, 8px);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            border-left: 4px solid #4ade80; /* Default neutral/success */
+        }
+
+        .terminal-output .success-text { color: #4ade80; font-weight: bold; }
+        .terminal-output .error-text { color: #f87171; font-weight: bold; }
+        .terminal-output .warning-text { color: #fbbf24; font-weight: bold; }
+
+        /* Integração com tema azul */
+        .tema-azul .action-card, .tema-azul .results-card {
+            background: #1e293b;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        .tema-azul .results-header h3 {
+            color: #f8fafc;
+        }
+        .tema-azul .results-header {
+            border-bottom-color: #334155;
+        }
+        .tema-azul .stat-box.total { background: #334155; color: #f8fafc; }
+        .tema-azul .stat-box.passed { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+        .tema-azul .stat-box.failed { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        .tema-azul .stat-box.time { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        
+        .empty-icon-large {
+            font-size: 4rem;
+            color: #adb5bd;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
+    <header class="admin-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="Hospital Anchieta Ceilândia" class="logo-header" onerror="this.style.display='none'">
+                <h1><i class="fas fa-vial-circle-check" aria-hidden="true"></i> Gestão de Testes</h1>
+            </div>
+            <div class="header-right">
+                <span id="admin-nome" aria-live="polite">Admin</span>
+                <button type="button" id="btn-voltar-dashboard" class="btn-header" aria-label="Voltar ao Dashboard">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
+                </button>
+                <button type="button" id="btn-logout" class="btn-header btn-logout" aria-label="Sair do sistema">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================================
+         CONTEÚDO PRINCIPAL
+         ============================================================ -->
+    <main class="test-dashboard">
+        <div class="action-card">
+            <div class="empty-icon-large"><i class="fas fa-shield-halved"></i></div>
+            <h2 style="margin-bottom: 1rem;">Suíte de Testes Automatizados</h2>
+            <p class="text-secondary" style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Execute a bateria completa de testes de software (Pytest) para validar a integridade estrutural da API, incluindo rotas críticas de autenticação, permissões, validadores e o sistema de cache.
+            </p>
+            
+            <button id="runTestsBtn" class="run-btn" onclick="runTests()">
+                <i class="fas fa-play"></i>
+                Iniciar Bateria de Testes
+            </button>
+        </div>
+
+        <div id="resultsContainer" class="results-card">
+            <div class="results-header">
+                <h3><i class="fas fa-chart-bar" style="margin-right: 8px;"></i> Resultados da Execução</h3>
+                <span id="test-timestamp" style="font-size: 0.9rem; color: var(--text-secondary);"></span>
+            </div>
+            
+            <div id="statsContainer" class="summary-stats" style="display: none;">
+                <div class="stat-box total">
+                    <div class="stat-value" id="statTotal">-</div>
+                    <div class="stat-label">Total de Testes</div>
+                </div>
+                <div class="stat-box passed">
+                    <div class="stat-value" id="statPassed">-</div>
+                    <div class="stat-label">Passaram</div>
+                </div>
+                <div class="stat-box failed">
+                    <div class="stat-value" id="statFailed">-</div>
+                    <div class="stat-label">Falharam</div>
+                </div>
+                <div class="stat-box time">
+                    <div class="stat-value" id="statTime">-</div>
+                    <div class="stat-label">Tempo (s)</div>
+                </div>
+            </div>
+
+            <h4 style="margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-terminal"></i> Console Output</h4>
+            <div id="terminalOutput" class="terminal-output">Aguardando execução dos testes para exibir os logs do sistema...</div>
+        </div>
+    </main>
+
+    <!-- ============================================================
+         SCRIPTS
+         ============================================================ -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verificar sessão rapidamente para pegar o nome
+            fetch('/api/verificar-sessao')
+                .then(res => res.json())
+                .then(data => {
+                    if(data.autenticado) {
+                        document.getElementById('admin-nome').textContent = data.usuario;
+                    } else {
+                        window.location.href = '/login.html';
+                    }
+                })
+                .catch(() => window.location.href = '/login.html');
+
+            // Voltar pro dashboard
+            document.getElementById('btn-voltar-dashboard').addEventListener('click', () => {
+                window.location.href = '/frontend/dashboard.html';
+            });
+
+            // Logout
+            document.getElementById('btn-logout').addEventListener('click', () => {
+                fetch('/api/logout', { method: 'POST' })
+                    .then(() => window.location.href = '/login.html');
+            });
+        });
+
+        async function runTests() {
+            const btn = document.getElementById('runTestsBtn');
+            const resultsDiv = document.getElementById('resultsContainer');
+            const terminal = document.getElementById('terminalOutput');
+            const statsDiv = document.getElementById('statsContainer');
+            const icon = btn.querySelector('i');
+            const timestampSpan = document.getElementById('test-timestamp');
+
+            // UI State loading
+            btn.disabled = true;
+            icon.className = 'fas fa-circle-notch spin';
+            btn.innerHTML = icon.outerHTML + ' Executando Bateria...';
+            resultsDiv.style.display = 'block';
+            statsDiv.style.display = 'none';
+            terminal.innerHTML = 'Inicializando ambiente de testes pytest...\nRodando fixtures e simulando integrações de banco de dados...\n(Isso deve levar menos de 2 segundos)\n';
+            terminal.style.borderLeftColor = '#6b7280'; // cinza em loading
+            
+            // Set timestamp
+            const now = new Date();
+            timestampSpan.textContent = `Última execução: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`;
+
+            try {
+                const response = await fetch('/api/admin/tests/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Acesso negado. Apenas administradores podem rodar testes.');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Erro desconhecido no servidor durante a execução.');
+                }
+
+                // Process output
+                let output = data.output || '';
+                
+                // Formatação do terminal (cores)
+                output = output.replace(/PASSED/g, '<span class="success-text">PASSED</span>');
+                output = output.replace(/FAILED/g, '<span class="error-text">FAILED</span>');
+                output = output.replace(/ERROR/g, '<span class="error-text">ERROR</span>');
+                output = output.replace(/WARNING/g, '<span class="warning-text">WARNING</span>');
+                output = output.replace(/=+ \d+ passed.*=+/g, match => `<span class="success-text">${match}</span>`);
+                output = output.replace(/=+ \d+ failed.*=+/g, match => `<span class="error-text">${match}</span>`);
+
+                terminal.innerHTML = output;
+
+                // Atualiza stats se o JSON report estiver disponível
+                if (data.report && data.report.summary) {
+                    statsDiv.style.display = 'grid';
+                    const s = data.report.summary;
+                    
+                    const total = s.total || 0;
+                    const passed = s.passed || 0;
+                    const failed = (s.failed || 0) + (s.error || 0);
+                    const duration = (data.report.duration || 0).toFixed(2);
+                    
+                    document.getElementById('statTotal').innerText = total;
+                    document.getElementById('statPassed').innerText = passed;
+                    document.getElementById('statFailed').innerText = failed;
+                    document.getElementById('statTime').innerText = duration;
+
+                    // Ajusta a barra lateral do terminal dependendo do resultado real (parsed do JSON)
+                    if (failed === 0) {
+                        terminal.style.borderLeftColor = '#22c55e'; // green
+                    } else {
+                        terminal.style.borderLeftColor = '#ef4444'; // red
+                    }
+                } else {
+                    // Fallback visual via exit_code
+                    if (data.exit_code === 0) {
+                        terminal.style.borderLeftColor = '#22c55e';
+                    } else {
+                        terminal.style.borderLeftColor = '#ef4444';
+                    }
+                }
+
+            } catch (error) {
+                terminal.innerHTML += `\n<span class="error-text">❌ Falha Crítica na Execução: ${error.message}</span>`;
+                terminal.style.borderLeftColor = '#ef4444';
+            } finally {
+                // UI State restore
+                btn.disabled = false;
+                icon.className = 'fas fa-redo-alt';
+                btn.innerHTML = icon.outerHTML + ' Executar Novamente';
+            }
+        }
+    </script>
+</body>
+</html>
