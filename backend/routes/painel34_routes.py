@@ -31,6 +31,7 @@ def painel34():
 
 @painel34_bp.route('/api/paineis/painel34/tipos-movimento', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel34:tipos-movimento')
 def api_painel34_tipos_movimento():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -116,6 +117,7 @@ def api_painel34_pacientes():
 
 @painel34_bp.route('/api/paineis/painel34/setores', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel34:setores')
 def api_painel34_setores():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -151,6 +153,7 @@ def api_painel34_setores():
 
 @painel34_bp.route('/api/paineis/painel34/destinos', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel34:destinos', vary_by_query=True)
 def api_painel34_destinos():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)

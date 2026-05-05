@@ -105,6 +105,7 @@ def painel38_static(filename):
 
 @painel38_bp.route('/api/paineis/painel38/filtros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel38:filtros')
 def api_painel38_filtros():
     if not _check_permissao():
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403
@@ -153,6 +154,7 @@ def api_painel38_filtros():
 
 @painel38_bp.route('/api/paineis/painel38/dashboard', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel38:dashboard', vary_by_query=True)
 def api_painel38_dashboard():
     if not _check_permissao():
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403
@@ -223,6 +225,7 @@ def api_painel38_dashboard():
 
 @painel38_bp.route('/api/paineis/painel38/dados', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel38:dados', vary_by_query=True)
 def api_painel38_dados():
     if not _check_permissao():
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403

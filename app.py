@@ -10,7 +10,6 @@ import io
 import os
 from datetime import datetime
 
-from backend.routes.painel21_routes import painel21_bp
 # Configurações e middleware
 from config import get_config, validate_production_config
 from backend.logging_config import setup_logging

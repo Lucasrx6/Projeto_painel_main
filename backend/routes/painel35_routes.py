@@ -31,6 +31,7 @@ def painel35():
 
 @painel35_bp.route('/api/paineis/painel35/padioleiros', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel35:padioleiros')
 def api_painel35_padioleiros():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -393,6 +394,7 @@ def api_painel35_cancelar(chamado_id):
 
 @painel35_bp.route('/api/paineis/painel35/historico-hoje', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel35:historico-hoje', vary_by_query=True)
 def api_painel35_historico_hoje():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
