@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interacoes Medicamentosas - Hospital Anchieta</title>
+    <meta name="description" content="Painel de Interacoes Medicamentosas Ativas - Farmaco x Dieta">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel39/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- CABECALHO -->
+    <div class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                <h1><i class="fas fa-capsules"></i> Interacoes Medicamentosas</h1>
+            </div>
+            <div class="header-right">
+                <button id="btn-toggle-filtros" class="btn-header" title="Filtros">
+                    <i class="fas fa-filter"></i> <span class="btn-text">Filtros</span>
+                </button>
+                <button id="btn-exportar" class="btn-header" title="Exportar Excel">
+                    <i class="fas fa-file-excel"></i> <span class="btn-text">Exportar</span>
+                </button>
+                <button id="btn-auto-scroll" class="btn-header" title="Auto Scroll">
+                    <i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>
+                </button>
+                <button id="btn-refresh" class="btn-header" title="Atualizar">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="btn-voltar" class="btn-header" title="Voltar">
+                    <i class="fas fa-arrow-left"></i> <span class="btn-text">Voltar</span>
+                </button>
+                <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABAS -->
+    <div class="abas-bar">
+        <button class="aba aba-ativa" data-aba="dieta">
+            <i class="fas fa-utensils"></i> Dieta
+        </button>
+        <button class="aba" data-aba="medicamento">
+            <i class="fas fa-flask"></i> Medicamento
+        </button>
+    </div>
+
+    <!-- FILTROS (colapsavel) -->
+    <div class="filtros-bar" id="filtros-bar" style="display:none;">
+        <div class="filtros-content">
+
+            <div class="multi-select" data-state-key="setor" data-placeholder="Todos os setores">
+                <div class="ms-toggle">Todos os setores</div>
+                <div class="ms-dropdown" hidden></div>
+            </div>
+
+            <div class="multi-select" data-state-key="material" data-placeholder="Todos os medicamentos">
+                <div class="ms-toggle">Todos os medicamentos</div>
+                <div class="ms-dropdown" hidden></div>
+            </div>
+
+            <div class="multi-select" data-state-key="dieta" data-placeholder="Todas as dietas">
+                <div class="ms-toggle">Todas as dietas</div>
+                <div class="ms-dropdown" hidden></div>
+            </div>
+
+            <div class="filtro-busca">
+                <i class="fas fa-search"></i>
+                <input type="text" id="filtro-busca" placeholder="Buscar paciente ou atendimento...">
+            </div>
+
+            <button class="btn-limpar" id="btn-limpar-filtros">
+                <i class="fas fa-eraser"></i> Limpar
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI ROW -->
+    <div class="kpi-row" id="kpi-row">
+        <div class="kpi-card kpi-interacoes">
+            <div class="kpi-icon"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-total-interacoes">--</span>
+                <span class="kpi-label">Interacoes Ativas</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-pacientes">
+            <div class="kpi-icon"><i class="fas fa-user-injured"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-total-pacientes">--</span>
+                <span class="kpi-label">Pacientes Envolvidos</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-medicamentos">
+            <div class="kpi-icon"><i class="fas fa-pills"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-total-medicamentos">--</span>
+                <span class="kpi-label">Medicamentos Distintos</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-setores">
+            <div class="kpi-icon"><i class="fas fa-building"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-total-setores">--</span>
+                <span class="kpi-label">Setores Afetados</span>
+                <span class="kpi-sub" id="kpi-ultima-carga"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA (aba Dieta) -->
+    <div class="tabela-container" id="tabela-container">
+        <div class="tabela-header">
+            <h3><i class="fas fa-list-alt"></i> Interacoes farmaco &times; dieta</h3>
+            <span class="total-badge" id="total-badge">--</span>
+        </div>
+        <div class="tabela-wrapper">
+            <table class="tabela-principal">
+                <thead>
+                    <tr>
+                        <th>Setor</th>
+                        <th>Leito</th>
+                        <th>Atendimento</th>
+                        <th>Paciente</th>
+                        <th>Medicamento</th>
+                        <th>Dieta</th>
+                        <th>Interacao Clinica</th>
+                        <th>Prescrito por</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-body">
+                    <tr>
+                        <td colspan="8" class="carregando">
+                            <div class="spinner"></div>
+                            <span>Carregando...</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PLACEHOLDER aba Medicamento -->
+    <div class="placeholder-medicamento" id="placeholder-medicamento" style="display:none;">
+        <i class="fas fa-flask placeholder-icon"></i>
+        <h2>Em breve</h2>
+        <p>A aba de interacoes <strong>farmaco &times; farmaco</strong> esta em desenvolvimento.</p>
+        <p class="placeholder-sub">Esta funcionalidade sera disponibilizada em uma proxima versao do sistema.</p>
+    </div>
+
+</div>
+
+<script src="/paineis/painel39/main.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

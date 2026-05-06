@@ -1,0 +1,698 @@
+/**
+ * PAINEL 40 - Requisicoes Urgentes de Materiais/Medicamentos
+ * Sistema de Paineis - Hospital Anchieta Ceilandia
+ * Layout TV - Central de Abastecimento
+ *
+ * Fonte base 20px (TV), cards grandes, alto contraste.
+ * Padrão visual vermelho #dc3545 (P16/P21).
+ */
+
+/* =========================================================
+   1. VARIAVEIS CSS
+   ========================================================= */
+
+:root {
+    --cor-primaria: #dc3545;
+    --cor-primaria-hover: #c82333;
+    --cor-primaria-light: #f8d7da;
+    --cor-primaria-dark: #a71d2a;
+
+    --cor-sucesso: #28a745;
+    --cor-sucesso-light: #d4edda;
+    --cor-alerta: #fd7e14;
+    --cor-alerta-light: #fff3cd;
+    --cor-perigo: #dc3545;
+    --cor-perigo-light: #f8d7da;
+
+    --cor-texto: #333333;
+    --cor-texto-secundario: #666666;
+    --cor-texto-muted: #999999;
+    --cor-fundo: #f5f7fa;
+    --cor-fundo-card: #ffffff;
+    --cor-borda: #e9ecef;
+
+    --grad-total: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+
+    /* Cores por tempo de espera */
+    --cor-tempo-verde: #28a745;
+    --cor-tempo-laranja: #fd7e14;
+    --cor-tempo-vermelho: #dc3545;
+    --cor-tempo-critico: #a71d2a;
+    --cor-tempo-completo: #6c757d;
+
+    --sombra-card: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --sombra-card-hover: 0 4px 16px rgba(0, 0, 0, 0.15);
+
+    --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    --raio-sm: 4px;
+    --raio-md: 8px;
+    --raio-lg: 12px;
+
+    --transicao-rapida: 150ms ease;
+    --transicao-normal: 250ms ease;
+
+    --z-header: 100;
+}
+
+/* =========================================================
+   2. RESET E BASE (TV - fonte 20px)
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 20px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: var(--fonte-principal);
+    font-size: 1rem;
+    line-height: 1.4;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* =========================================================
+   3. LAYOUT PRINCIPAL
+   ========================================================= */
+
+.painel-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--cor-fundo);
+}
+
+/* =========================================================
+   4. CABECALHO (TV - altura >= 80px)
+   ========================================================= */
+
+.painel-header {
+    background: var(--grad-total);
+    color: white;
+    padding: 10px 20px;
+    flex-shrink: 0;
+    min-height: 80px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: var(--z-header);
+    display: flex;
+    align-items: center;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 16px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-logo {
+    height: 44px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: var(--raio-sm);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.painel-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.painel-header h1 i {
+    font-size: 1.4rem;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Contador grande de pendentes */
+.contador-pendentes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 6px 16px;
+    border-radius: var(--raio-md);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.contador-numero {
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.contador-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+}
+
+/* Botoes do header */
+.btn-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-radius: var(--raio-sm);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+    font-family: var(--fonte-principal);
+}
+
+.btn-header:hover {
+    background: white;
+    color: var(--cor-primaria);
+    transform: translateY(-1px);
+}
+
+.btn-header:active {
+    transform: translateY(0);
+}
+
+/* Botao ativar som - destaque */
+.btn-som {
+    background: rgba(255, 193, 7, 0.3);
+    border-color: #ffc107;
+    animation: pulseBtn 2s ease-in-out infinite;
+}
+
+.btn-som:hover {
+    background: #ffc107;
+    color: #333;
+    border-color: #ffc107;
+}
+
+.btn-som.oculto {
+    display: none;
+}
+
+@keyframes pulseBtn {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,193,7,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(255,193,7,0); }
+}
+
+.btn-refresh.girando i {
+    animation: girar 0.5s linear;
+}
+
+.ultima-atualizacao {
+    font-size: 0.65rem;
+    opacity: 0.85;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   5. RESUMO BAR (KPIs)
+   ========================================================= */
+
+.resumo-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, #ffffff 0%, var(--cor-fundo) 100%);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-card);
+    border-left: 4px solid transparent;
+    transition: var(--transicao-rapida);
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-card-hover);
+}
+
+.kpi-requisicoes { border-left-color: var(--cor-primaria); }
+.kpi-pendentes   { border-left-color: var(--cor-alerta); }
+.kpi-atendidos   { border-left-color: var(--cor-sucesso); }
+.kpi-espera      { border-left-color: #9b59b6; }
+
+.kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.kpi-icon i {
+    font-size: 1.1rem;
+    color: white;
+}
+
+.kpi-requisicoes .kpi-icon { background: var(--grad-total); }
+.kpi-pendentes .kpi-icon   { background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%); }
+.kpi-atendidos .kpi-icon   { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+.kpi-espera .kpi-icon      { background: linear-gradient(135deg, #9b59b6 0%, #764ba2 100%); }
+
+.kpi-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-valor {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.1;
+}
+
+.kpi-label {
+    font-size: 0.6rem;
+    color: var(--cor-texto-secundario);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+}
+
+/* =========================================================
+   6. AREA DE REQUISICOES (scroll)
+   ========================================================= */
+
+.requisicoes-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 20px 20px;
+    scroll-behavior: smooth;
+}
+
+.requisicoes-area::-webkit-scrollbar {
+    width: 8px;
+}
+
+.requisicoes-area::-webkit-scrollbar-track {
+    background: var(--cor-borda);
+    border-radius: var(--raio-sm);
+}
+
+.requisicoes-area::-webkit-scrollbar-thumb {
+    background: var(--cor-primaria);
+    border-radius: var(--raio-sm);
+}
+
+.requisicoes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+    gap: 16px;
+}
+
+/* =========================================================
+   7. CARD DE REQUISICAO
+   ========================================================= */
+
+.card-requisicao {
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-card);
+    overflow: hidden;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    animation: slideIn 0.4s ease-out;
+}
+
+.card-requisicao:hover {
+    box-shadow: var(--sombra-card-hover);
+}
+
+/* Card header - cor varia por tempo */
+.card-header-req {
+    min-height: 70px;
+    padding: 12px 16px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    transition: background-color 0.5s ease;
+}
+
+/* Cores por estado do tempo */
+.card-header-req.tempo-verde   { background: var(--cor-tempo-verde); }
+.card-header-req.tempo-laranja { background: var(--cor-tempo-laranja); }
+.card-header-req.tempo-vermelho { background: var(--cor-tempo-vermelho); }
+.card-header-req.tempo-critico {
+    background: var(--cor-tempo-critico);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+.card-header-req.tempo-completo {
+    background: var(--cor-tempo-completo);
+    opacity: 0.6;
+}
+
+.card-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nr-requisicao {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.nr-requisicao i {
+    font-size: 1.1rem;
+    margin-right: 4px;
+}
+
+.card-header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.tempo-aguardando {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.progresso-itens {
+    font-size: 0.65rem;
+    font-weight: 600;
+    opacity: 0.9;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 8px;
+    border-radius: var(--raio-sm);
+}
+
+/* Card meta info */
+.card-meta {
+    padding: 10px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--cor-borda);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.meta-linha {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--cor-texto-secundario);
+}
+
+.meta-linha i {
+    width: 16px;
+    text-align: center;
+    color: var(--cor-texto-muted);
+    font-size: 0.65rem;
+}
+
+.meta-linha strong {
+    color: var(--cor-texto);
+}
+
+.meta-rota {
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+.meta-seta {
+    color: var(--cor-primaria);
+    font-weight: 700;
+}
+
+/* Card itens - lista */
+.card-itens {
+    padding: 8px 12px;
+}
+
+.item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color var(--transicao-rapida);
+}
+
+.item-row:last-child {
+    border-bottom: none;
+}
+
+.item-row:hover {
+    background: #fafafa;
+}
+
+/* Icone de status do item */
+.status-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+}
+
+.status-icon.pendente {
+    background: var(--cor-perigo-light);
+    color: var(--cor-perigo);
+}
+
+.status-icon.atendido {
+    background: var(--cor-sucesso-light);
+    color: var(--cor-sucesso);
+}
+
+.item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-material {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item-detalhe {
+    font-size: 0.6rem;
+    color: var(--cor-texto-muted);
+    margin-top: 1px;
+}
+
+.item-qtd {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: right;
+    min-width: 60px;
+}
+
+.item-atendente {
+    font-size: 0.55rem;
+    color: var(--cor-sucesso);
+    font-weight: 500;
+    flex-shrink: 0;
+    text-align: right;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* =========================================================
+   8. EMPTY STATE
+   ========================================================= */
+
+.empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+}
+
+.empty-state i {
+    font-size: 6rem;
+    color: var(--cor-texto-muted);
+    margin-bottom: 20px;
+    opacity: 0.4;
+}
+
+.empty-state h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 8px;
+}
+
+.empty-state p {
+    font-size: 0.8rem;
+    color: var(--cor-texto-muted);
+    max-width: 400px;
+}
+
+/* =========================================================
+   9. LOADING
+   ========================================================= */
+
+.loading-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria);
+    border-radius: 50%;
+    animation: girar 0.8s linear infinite;
+}
+
+.loading-container p {
+    color: var(--cor-texto-secundario);
+    font-size: 0.85rem;
+}
+
+/* =========================================================
+   10. ANIMACOES
+   ========================================================= */
+
+@keyframes girar {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(167, 29, 42, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 0 12px rgba(167, 29, 42, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(167, 29, 42, 0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes pulseBtn {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+}
+
+/* =========================================================
+   11. RESPONSIVO
+   ========================================================= */
+
+@media (max-width: 1200px) {
+    .requisicoes-grid {
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    html {
+        font-size: 16px;
+    }
+
+    .resumo-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .requisicoes-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-header h1 {
+        font-size: 1.2rem;
+    }
+
+    .contador-numero {
+        font-size: 1.8rem;
+    }
+
+    .btn-text {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .resumo-bar {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .header-right {
+        gap: 6px;
+    }
+}

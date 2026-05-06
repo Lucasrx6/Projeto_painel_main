@@ -45,7 +45,8 @@ def api_minhas_permissoes():
                     'painel22', 'painel23', 'painel24', 'painel25',
                     'painel26', 'painel27', 'painel28', 'painel29',
                     'painel30', 'painel31', 'painel32', 'painel33',
-                    'painel34', 'painel35', 'painel36', 'painel37', 'painel38'
+                    'painel34', 'painel35', 'painel36', 'painel37', 'painel38', 'painel39',
+                    'painel40'
                 ],
                 'is_admin': True
             })
@@ -456,6 +457,10 @@ def api_listar_paineis():
              'descricao': 'Monitoramento de avaliacoes 1633 por paciente internado — prazos, metas e status', 'ativo': True},
             {'nome': 'painel38', 'titulo': 'Score Farmaceutico Clinico',
              'descricao': 'Priorizacao de visitas e analise de risco farmaceutico', 'ativo': True},
+            {'nome': 'painel39', 'titulo': 'Interacoes Medicamentosas',
+             'descricao': 'Interacoes farmaco x dieta ativas no hospital em tempo real', 'ativo': True},
+            {'nome': 'painel40', 'titulo': 'Requisicoes Urgentes',
+             'descricao': 'Requisicoes urgentes de materiais e medicamentos para Central de Abastecimento', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200
