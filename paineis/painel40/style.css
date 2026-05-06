@@ -68,7 +68,7 @@
 }
 
 html {
-    font-size: 20px;
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -196,13 +196,18 @@ body {
 }
 
 .btn-header:hover {
-    background: white;
-    color: var(--cor-primaria);
-    transform: translateY(-1px);
+    background-color: var(--cor-borda);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.btn-header:active {
-    transform: translateY(0);
+.btn-header.ativo {
+    background-color: var(--cor-primaria);
+    color: white;
+}
+
+.btn-header.ativo:hover {
+    background-color: #0056b3;
 }
 
 /* Botao ativar som - destaque */
@@ -341,7 +346,7 @@ body {
 
 .requisicoes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
     gap: 16px;
 }
 
@@ -514,19 +519,37 @@ body {
     min-width: 0;
 }
 
+.item-material-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .item-material {
     font-size: 0.9rem;
     font-weight: 700;
     color: var(--cor-texto);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* Removido white-space: nowrap para permitir quebra de texto se o codigo de barras for muito grande */
 }
 
 .item-detalhe {
     font-size: 0.6rem;
     color: var(--cor-texto-muted);
     margin-top: 1px;
+}
+
+.item-barras {
+    font-family: 'Libre Barcode 39 Text', 'Courier New', Courier, monospace;
+    font-size: 1.4rem;
+    line-height: 0.8;
+    color: #000;
+    background: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .item-qtd {

@@ -26,7 +26,14 @@
         },
         prefixoStorage: 'painel40_',
         urlAudio: '/static/chamado.mp3',
-        thresholdsTempo: { verde: 5, laranja: 15, vermelho: 30 }
+        thresholdsTempo: { verde: 5, laranja: 15, vermelho: 30 },
+        velocidadeScroll: 0.6,
+        intervaloScroll: 50,
+        pausaNoFinal: 6000,
+        pausaAposReset: 4000,
+        delayAutoScrollInicial: 5000,
+        watchdogInterval: 5000,
+        watchdogMaxTravamentos: 3
     };
 
     // ==========================================================================
@@ -40,7 +47,12 @@
         audioDesbloqueado: false,
         dadosCache: null,
         timerRefresh: null,
-        timerClock: null
+        timerClock: null,
+        autoScrollAtivo: false,
+        autoScrollIniciado: false,
+        intervalos: { scroll: null, watchdog: null },
+        timeouts: { autoScrollInicial: null },
+        watchdog: { ultimaPosicao: 0, contadorTravamento: 0 }
     };
 
     // ==========================================================================
@@ -52,6 +64,7 @@
     function capturarDOM() {
         DOM.contadorNumero = document.getElementById('contador-numero');
         DOM.btnAtivarSom = document.getElementById('btn-ativar-som');
+        DOM.btnAutoScroll = document.getElementById('btn-auto-scroll');
         DOM.btnRefresh = document.getElementById('btn-refresh');
         DOM.btnVoltar = document.getElementById('btn-voltar');
         DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
@@ -96,7 +109,7 @@
 
         if (DOM.btnVoltar) {
             DOM.btnVoltar.addEventListener('click', function() {
-                window.location.href = '/dashboard';
+                window.location.href = '/frontend/dashboard.html';
             });
         }
 
@@ -105,6 +118,39 @@
                 desbloquearAudioManual();
             });
         }
+        
+        if (DOM.btnAutoScroll) {
+            DOM.btnAutoScroll.addEventListener('click', function() {
+                Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
+                Estado.autoScrollIniciado = true;
+                atualizarBotaoScroll();
+                if (Estado.autoScrollAtivo) iniciarAutoScroll();
+                else pararAutoScroll();
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (Estado.autoScrollAtivo) { Estado.autoScrollAtivo = false; atualizarBotaoScroll(); pararAutoScroll(); }
+            }
+            if (e.key === ' ' && e.target === document.body) {
+                e.preventDefault();
+                Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
+                Estado.autoScrollIniciado = true;
+                atualizarBotaoScroll();
+                if (Estado.autoScrollAtivo) iniciarAutoScroll();
+                else pararAutoScroll();
+            }
+        });
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (Estado.autoScrollAtivo) { pararAutoScroll(); Estado.autoScrollAtivo = true; }
+            } else {
+                if (Estado.autoScrollAtivo) iniciarAutoScroll();
+                carregarDados();
+            }
+        });
     }
 
     // ==========================================================================
@@ -226,6 +272,9 @@
     // ==========================================================================
 
     function carregarDados() {
+        var scrollEstaAtivo = Estado.autoScrollAtivo;
+        if (scrollEstaAtivo) pararAutoScroll();
+
         // Buscar KPIs e dados em paralelo
         var promiseKPIs = fetch(CONFIG.endpoints.dashboard, { credentials: 'include' })
             .then(function(resp) { return resp.json(); });
@@ -255,6 +304,18 @@
                 }
 
                 atualizarHoraAtualizacao();
+                
+                if (scrollEstaAtivo) {
+                    setTimeout(function() {
+                        Estado.autoScrollAtivo = true;
+                        atualizarBotaoScroll();
+                        iniciarAutoScroll();
+                    }, 500);
+                }
+                
+                if (!Estado.autoScrollIniciado && !scrollEstaAtivo) {
+                    agendarAutoScrollInicial();
+                }
             })
             .catch(function(err) {
                 console.error('[FETCH] Erro ao carregar dados:', err);
@@ -379,7 +440,14 @@
         html += '<div class="item-row">';
         html += '<div class="status-icon ' + iconeClass + '">' + icone + '</div>';
         html += '<div class="item-info">';
+        html += '<div class="item-material-wrapper">';
         html += '<div class="item-material">' + material + '</div>';
+
+        if (item.cd_barras) {
+            // O asterisco (*) é o caractere de start/stop obrigatório para leitura do formato Code 39
+            html += '<div class="item-barras" title="Codigo de Barras">*' + escapeHtml(item.cd_barras).toUpperCase() + '*</div>';
+        }
+        html += '</div>';
 
         if (!isPendente && item.nm_pessoa_atende) {
             var horaAtend = '';
@@ -444,6 +512,107 @@
             headerEl.classList.add('tempo-laranja');
         } else {
             headerEl.classList.add('tempo-verde');
+        }
+    }
+
+    // ==========================================================================
+    // AUTO-SCROLL E WATCHDOG
+    // ==========================================================================
+
+    function getElementoScroll() { return document.getElementById('requisicoes-area'); }
+
+    function iniciarAutoScroll() {
+        pararAutoScroll();
+        var el = getElementoScroll();
+        if (!el) return;
+        if (el.scrollHeight - el.clientHeight <= 5) return;
+        Estado.watchdog.ultimaPosicao = el.scrollTop;
+        Estado.watchdog.contadorTravamento = 0;
+        iniciarWatchdog();
+        Estado.intervalos.scroll = setInterval(function() {
+            if (!Estado.autoScrollAtivo) { pararAutoScroll(); return; }
+            var e = getElementoScroll();
+            if (!e) { pararAutoScroll(); return; }
+            var sm = e.scrollHeight - e.clientHeight;
+            if (e.scrollTop >= sm - 2) {
+                clearInterval(Estado.intervalos.scroll);
+                Estado.intervalos.scroll = null;
+                setTimeout(function() {
+                    if (!Estado.autoScrollAtivo) return;
+                    e.scrollTop = 0;
+                    Estado.watchdog.ultimaPosicao = 0;
+                    Estado.watchdog.contadorTravamento = 0;
+                    setTimeout(function() {
+                        if (Estado.autoScrollAtivo) iniciarAutoScroll();
+                    }, CONFIG.pausaAposReset);
+                }, CONFIG.pausaNoFinal);
+                return;
+            }
+            e.scrollTop += CONFIG.velocidadeScroll;
+        }, CONFIG.intervaloScroll);
+    }
+
+    function pararAutoScroll() {
+        if (Estado.intervalos.scroll) {
+            clearInterval(Estado.intervalos.scroll);
+            Estado.intervalos.scroll = null;
+        }
+        pararWatchdog();
+    }
+
+    function atualizarBotaoScroll() {
+        if (!DOM.btnAutoScroll) return;
+        if (Estado.autoScrollAtivo) {
+            DOM.btnAutoScroll.classList.add('ativo');
+            DOM.btnAutoScroll.innerHTML = '<i class="fas fa-pause"></i> <span class="btn-text">Pausar</span>';
+        } else {
+            DOM.btnAutoScroll.classList.remove('ativo');
+            DOM.btnAutoScroll.innerHTML = '<i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>';
+        }
+    }
+
+    function agendarAutoScrollInicial() {
+        if (Estado.timeouts.autoScrollInicial) clearTimeout(Estado.timeouts.autoScrollInicial);
+        Estado.timeouts.autoScrollInicial = setTimeout(function() {
+            if (!Estado.autoScrollAtivo && Estado.requisicoesAtuais.length > 0) {
+                Estado.autoScrollAtivo = true;
+                Estado.autoScrollIniciado = true;
+                atualizarBotaoScroll();
+                iniciarAutoScroll();
+            }
+        }, CONFIG.delayAutoScrollInicial);
+    }
+
+    function iniciarWatchdog() {
+        pararWatchdog();
+        Estado.intervalos.watchdog = setInterval(function() {
+            if (!Estado.autoScrollAtivo) { pararWatchdog(); return; }
+            var e = getElementoScroll();
+            if (!e) return;
+            var p = e.scrollTop, sm = e.scrollHeight - e.clientHeight;
+            if (p > 5 && p < sm - 5 && Math.abs(p - Estado.watchdog.ultimaPosicao) < 1 && Estado.intervalos.scroll !== null) {
+                Estado.watchdog.contadorTravamento++;
+                if (Estado.watchdog.contadorTravamento >= CONFIG.watchdogMaxTravamentos) {
+                    pararAutoScroll();
+                    setTimeout(function() {
+                        if (Estado.autoScrollAtivo) {
+                            Estado.watchdog.contadorTravamento = 0;
+                            iniciarAutoScroll();
+                        }
+                    }, 1000);
+                    return;
+                }
+            } else {
+                Estado.watchdog.contadorTravamento = 0;
+            }
+            Estado.watchdog.ultimaPosicao = p;
+        }, CONFIG.watchdogInterval);
+    }
+
+    function pararWatchdog() {
+        if (Estado.intervalos.watchdog) {
+            clearInterval(Estado.intervalos.watchdog);
+            Estado.intervalos.watchdog = null;
         }
     }
 
