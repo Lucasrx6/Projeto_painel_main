@@ -679,9 +679,10 @@ def verificar_tratativas():
                 continue
 
             responsaveis = buscar_responsaveis(conn, t['categoria_id'], t['setor_id'])
-            titulo = 'Sentir e Agir - CRITICO - {} - {}'.format(
+            titulo = 'Sentir e Agir - CRITICO - {} - {} [TRAT:{}]'.format(
                 t.get('categoria_nome', '-'),
-                t.get('setor_nome', '-')
+                t.get('setor_nome', '-'),
+                tid
             )
 
             sucesso_email = False

@@ -1235,8 +1235,11 @@
             html += '</div>';
             html += '</div>';
             html += '<div class="resp-acoes">';
-            html += '<button class="r-btn r-btn-editar" onclick="window.P30.editarResponsavel(' + r.id + ')" title="Editar"><i class="fas fa-edit"></i></button>';
-            html += '<button class="r-btn r-btn-toggle ' + (r.ativo ? 'ativo' : '') + '" onclick="window.P30.toggleResponsavel(' + r.id + ')" title="' + (r.ativo ? 'Desativar' : 'Ativar') + '"><i class="fas fa-' + (r.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
+            if (estado.isAdmin) {
+                html += '<button class="r-btn r-btn-editar" onclick="window.P30.editarResponsavel(' + r.id + ')" title="Editar"><i class="fas fa-edit"></i></button>';
+                html += '<button class="r-btn r-btn-toggle ' + (r.ativo ? 'ativo' : '') + '" onclick="window.P30.toggleResponsavel(' + r.id + ')" title="' + (r.ativo ? 'Desativar' : 'Ativar') + '"><i class="fas fa-' + (r.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
+                html += '<button class="r-btn r-btn-excluir" onclick="window.P30.excluirResponsavel(' + r.id + ', \'' + escapeHtml(r.nome).replace(/'/g, "\\'") + '\')" title="Excluir responsavel"><i class="fas fa-trash"></i></button>';
+            }
             html += '</div>';
             html += '</div>';
             return html;
@@ -1349,10 +1352,27 @@
                     mostrarToast(d.message, 'sucesso');
                     carregarResponsaveis();
                 } else {
-                    mostrarToast(d.error || 'Erro', 'erro');
+                    mostrarToast(d.error || 'Erro ao alternar status', 'erro');
                 }
             })
-            .catch(function () { mostrarToast('Erro', 'erro'); });
+            .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
+    }
+
+    function excluirResponsavel(id, nome) {
+        if (!confirm('Excluir o responsavel "' + nome + '"?\n\nEsta acao nao pode ser desfeita.')) return;
+
+        fetch(CONFIG.apiResponsaveis + '/' + id, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    mostrarToast(d.message || 'Responsavel excluido', 'sucesso');
+                    carregarResponsaveis();
+                    carregarFiltrosOpcoes();
+                } else {
+                    mostrarToast(d.error || 'Erro ao excluir', 'erro');
+                }
+            })
+            .catch(function () { mostrarToast('Erro de comunicacao', 'erro'); });
     }
 
     // ========================================
@@ -1509,6 +1529,7 @@
         abrirTratativa: abrirTratativa,
         selecionarStatus: selecionarStatus,
         toggleResponsavel: toggleResponsavel,
+        excluirResponsavel: excluirResponsavel,
         editarResponsavel: editarResponsavel,
         irParaTratativasSetor: irParaTratativasSetor,
         atualizarResponsavelAuto: atualizarResponsavelAuto,

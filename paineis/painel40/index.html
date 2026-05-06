@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Requisicoes Urgentes - Hospital Anchieta</title>
+    <meta name="description" content="Painel de Requisicoes Urgentes de Materiais e Medicamentos - Central de Abastecimento">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel40/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- CABECALHO -->
+    <div class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="HAC" class="header-logo" onerror="this.style.display='none'">
+                <h1><i class="fas fa-truck-fast"></i> REQUISICOES URGENTES</h1>
+            </div>
+            <div class="header-right">
+                <div class="contador-pendentes" id="contador-pendentes">
+                    <span class="contador-numero" id="contador-numero">0</span>
+                    <span class="contador-label">PENDENTES</span>
+                </div>
+                <button id="btn-ativar-som" class="btn-header btn-som" title="Ativar alerta sonoro">
+                    <i class="fas fa-volume-up"></i> <span class="btn-text">Ativar Som</span>
+                </button>
+                <button id="btn-refresh" class="btn-header" title="Atualizar agora">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="btn-voltar" class="btn-header" title="Voltar ao Dashboard">
+                    <i class="fas fa-arrow-left"></i> <span class="btn-text">Voltar</span>
+                </button>
+                <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESUMO KPI BAR -->
+    <div class="resumo-bar" id="resumo-bar">
+        <div class="kpi-card kpi-requisicoes">
+            <div class="kpi-icon"><i class="fas fa-file-medical"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-total-requisicoes">--</span>
+                <span class="kpi-label">Requisicoes</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-pendentes">
+            <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-itens-pendentes">--</span>
+                <span class="kpi-label">Itens Pendentes</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-atendidos">
+            <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-itens-atendidos">--</span>
+                <span class="kpi-label">Itens Atendidos</span>
+            </div>
+        </div>
+        <div class="kpi-card kpi-espera">
+            <div class="kpi-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div class="kpi-info">
+                <span class="kpi-valor" id="kpi-tempo-max">--</span>
+                <span class="kpi-label">Maior Espera (min)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRID DE REQUISICOES -->
+    <div class="requisicoes-area" id="requisicoes-area">
+        <div class="requisicoes-grid" id="requisicoes-grid">
+            <!-- Cards inseridos via JS -->
+        </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="empty-state" id="empty-state" style="display:none;">
+        <i class="fas fa-box-open"></i>
+        <h2>Nenhuma requisicao urgente no momento</h2>
+        <p>Quando novas requisicoes urgentes forem liberadas, elas aparecerão aqui automaticamente.</p>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading-container" id="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Carregando requisicoes...</p>
+    </div>
+
+</div>
+
+<!-- AUDIO DE ALERTA -->
+<audio id="audio-chamado" src="/static/chamado.mp3" preload="auto"></audio>
+
+<script src="/paineis/painel40/main.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

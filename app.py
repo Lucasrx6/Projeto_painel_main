@@ -59,7 +59,9 @@ from backend.routes.painel34_routes import painel34_bp
 from backend.routes.painel35_routes import painel35_bp
 from backend.routes.painel36_routes import painel36_bp
 from backend.routes.painel37_routes import painel37_bp
+from backend.routes.painel39_routes import painel39_bp
 from backend.routes.painel38_routes import painel38_bp
+from backend.routes.painel40_routes import painel40_bp
 from backend.routes.tests_admin_routes import tests_bp
 
 # =========================================================
@@ -136,7 +138,8 @@ paineis = [
     painel30_bp, painel31_bp, painel32_bp,
     #painel33_bp,
     painel34_bp, painel35_bp, painel36_bp,
-    painel37_bp, painel38_bp
+    painel37_bp, painel38_bp,
+    painel39_bp, painel40_bp
 ]
 
 for painel in paineis:
@@ -178,6 +181,14 @@ try:
     _start_worker_analise()
 except Exception as e:
     app.logger.warning(f'[worker_sentir_agir_analise] Nao iniciado automaticamente: {e}')
+
+# Worker IMAP — captura respostas de email e regulariza tratativas automaticamente
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina WORKER_IMAP_TRATATIVAS_AUTO=false no .env
+try:
+    from worker_imap_tratativas import start_in_background as _start_imap_worker
+    _start_imap_worker()
+except Exception as e:
+    app.logger.warning(f'[worker_imap_tratativas] Nao iniciado automaticamente: {e}')
 
 # =========================================================
 # ROTAS DE DESENVOLVIMENTO (Remover em produção)

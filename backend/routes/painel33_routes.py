@@ -153,7 +153,7 @@ def painel33_static(filename):
 
 @painel33_bp.route('/api/paineis/painel33/dashboard', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel33:dashboard', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel33:dashboard')
 def painel33_dashboard():
     try:
         condicoes, params = _build_common_filters()
@@ -188,7 +188,7 @@ def painel33_dashboard():
 
 @painel33_bp.route('/api/paineis/painel33/dados', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel33:dados', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel33:dados', vary_by_query=True)
 def painel33_dados():
     try:
         condicoes, params = _build_common_filters()
@@ -440,7 +440,7 @@ def _ensure_responsaveis_table(cur):
 
 @painel33_bp.route('/api/paineis/painel33/responsaveis', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel33:responsaveis')
+@cache_route(ttl=300, key_prefix='painel33:responsaveis')
 def painel33_responsaveis_listar():
     try:
         with get_db_connection() as conn:
@@ -516,7 +516,7 @@ def painel33_responsaveis_excluir():
 
 @painel33_bp.route('/api/paineis/painel33/visao-geral', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel33:visao-geral', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel33:visao-geral', vary_by_query=True)
 def painel33_visao_geral():
     try:
         from flask import session as flask_session
@@ -680,7 +680,7 @@ def painel33_debug_view_colunas():
 
 @painel33_bp.route('/api/paineis/painel33/valores/dashboard', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel33:valores-dashboard', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel33:valores-dashboard', vary_by_query=True)
 def painel33_valores_dashboard():
     try:
         condicoes, params = _build_common_filters()
@@ -755,7 +755,7 @@ def painel33_valores_dashboard():
 
 @painel33_bp.route('/api/paineis/painel33/valores/lista', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel33:valores-lista', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel33:valores-lista', vary_by_query=True)
 def painel33_valores_lista():
     try:
         condicoes, params = _build_common_filters()

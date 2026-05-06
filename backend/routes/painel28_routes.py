@@ -14,6 +14,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 painel28_bp = Blueprint(
     'painel28',
@@ -203,6 +204,7 @@ def servir_main_form():
 
 @painel28_bp.route('/servicos', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel28:servicos')
 def listar_servicos():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -393,6 +395,7 @@ def toggle_dupla(dupla_id):
 
 @painel28_bp.route('/setores', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel28:setores', vary_by_user=False)
 def listar_setores():
     try:
         conn = get_db_connection()
@@ -416,6 +419,7 @@ def listar_setores():
 
 @painel28_bp.route('/categorias-itens', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel28:categorias_itens', vary_by_user=False)
 def listar_categorias_itens():
     try:
         conn = get_db_connection()
@@ -475,6 +479,7 @@ def listar_categorias_itens():
 
 @painel28_bp.route('/config', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel28:config', vary_by_user=False)
 def obter_config():
     try:
         conn = get_db_connection()
@@ -1795,6 +1800,7 @@ def servir_style_config():
 
 @painel28_bp.route('/categorias', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel28:categorias', vary_by_user=False)
 def listar_categorias():
     """Lista todas as categorias (incluindo inativas) com seus itens."""
     try:

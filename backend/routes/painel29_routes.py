@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # PAINEL 29 - GESTÃO SENTIR E AGIR
 # Hospital Anchieta Ceilândia
 # Dashboard, Listagem, Edição (admin), Export Excel
@@ -497,7 +497,7 @@ def detalhe_visita(visita_id):
             FROM sentir_agir_tratativas t
             JOIN sentir_agir_itens i ON i.id = t.item_id
             JOIN sentir_agir_categorias c ON c.id = t.categoria_id
-            LEFT JOIN sentir_agir_responsaveis r ON r.id = t.responsavel_id
+            LEFT JOIN sentir_agir_responsaveis resp ON resp.id = t.responsavel_id
             WHERE t.visita_id = %s
             ORDER BY
                 CASE t.status
@@ -788,7 +788,7 @@ def exportar_excel():
         condicoes, params = _build_common_filters()
         where = " AND ".join(condicoes) if condicoes else "TRUE"
 
-        # Dados principais
+        # Dados principais -- visitas com campos de gestao
         sql = """
             SELECT
                 r.data_ronda AS "Data Ronda",
@@ -796,18 +796,31 @@ def exportar_excel():
                 s.nome AS "Setor",
                 v.leito AS "Leito",
                 v.nr_atendimento AS "Nr Atendimento",
+                v.nm_paciente AS "Paciente",
                 v.avaliacao_final AS "Avaliação Final",
                 r.status AS "Status Ronda",
+                v.status_tratativa AS "Status Tratativa",
                 v.observacoes AS "Observações",
                 v.criado_em AS "Data Registro",
+                r.criado_por AS "Criado Por",
                 (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
                  WHERE a.visita_id = v.id AND a.resultado = 'critico') AS "Qtd Crítico",
                 (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
                  WHERE a.visita_id = v.id AND a.resultado = 'atencao') AS "Qtd Atenção",
                 (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
                  WHERE a.visita_id = v.id AND a.resultado = 'adequado') AS "Qtd Adequado",
+                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
+                 WHERE a.visita_id = v.id AND a.resultado = 'nao_aplica') AS "Qtd Não Aplica",
                 (SELECT COUNT(*) FROM sentir_agir_imagens i
-                 WHERE i.visita_id = v.id) AS "Qtd Imagens"
+                 WHERE i.visita_id = v.id) AS "Qtd Imagens",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id) AS "Trat Total",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id AND t.status = 'pendente') AS "Trat Pendentes",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id AND t.status = 'em_tratativa') AS "Trat Em Tratativa",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t
+                 WHERE t.visita_id = v.id AND t.status = 'regularizado') AS "Trat Regularizadas"
             FROM sentir_agir_visitas v
             JOIN sentir_agir_rondas r ON r.id = v.ronda_id
             JOIN sentir_agir_setores s ON s.id = v.setor_id
@@ -819,33 +832,70 @@ def exportar_excel():
         cursor.execute(sql, params)
         rows = cursor.fetchall()
 
+        # Tratativas detalhadas (mesmos filtros da visita)
+        sql_trat = """
+            SELECT
+                r.data_ronda AS "Data Ronda",
+                s.nome AS "Setor",
+                v.leito AS "Leito",
+                v.nr_atendimento AS "Nr Atendimento",
+                v.nm_paciente AS "Paciente",
+                c.nome AS "Categoria",
+                i.descricao AS "Item",
+                t.status AS "Status",
+                t.data_inicio_tratativa AS "Início Tratativa",
+                t.data_resolucao AS "Data Resolução",
+                t.resolvido_por AS "Resolvido Por",
+                t.observacoes_resolucao AS "Observações Resolução",
+                COALESCE(resp.nome, t.responsavel_nome_manual, '') AS "Responsáveis"
+            FROM sentir_agir_tratativas t
+            JOIN sentir_agir_visitas v ON v.id = t.visita_id
+            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            JOIN sentir_agir_categorias c ON c.id = t.categoria_id
+            JOIN sentir_agir_itens i ON i.id = t.item_id
+            LEFT JOIN sentir_agir_responsaveis resp ON resp.id = t.responsavel_id
+            WHERE """ + where + """
+            ORDER BY r.data_ronda DESC, v.id, t.id
+        """
+
+        cursor.execute(sql_trat, params)
+        rows_trat = cursor.fetchall()
+
         cursor.close()
         release_connection(conn)
 
         if not rows:
             return jsonify({'success': False, 'error': 'Nenhum dado para exportar'}), 404
 
+        def _fmt(val):
+            if val is None:
+                return ''
+            if isinstance(val, datetime):
+                return val.strftime('%d/%m/%Y %H:%M')
+            if isinstance(val, date):
+                return val.strftime('%d/%m/%Y')
+            return str(val).replace(';', ',').replace('\n', ' ').replace('\r', '')
+
         # Gerar CSV (compatível com Excel, sem dependência de openpyxl)
         output = io.StringIO()
         # BOM para Excel reconhecer UTF-8
-        output.write('\ufeff')
+        output.write('﻿')
 
-        # Header
+        # === Seção 1: Visitas ===
+        output.write('=== VISITAS ===\n')
         colunas = list(rows[0].keys())
         output.write(';'.join(colunas) + '\n')
-
-        # Dados
         for row in rows:
-            valores = []
-            for col in colunas:
-                val = row[col]
-                if val is None:
-                    valores.append('')
-                elif isinstance(val, (datetime, date)):
-                    valores.append(val.strftime('%d/%m/%Y %H:%M') if isinstance(val, datetime) else val.strftime('%d/%m/%Y'))
-                else:
-                    valores.append(str(val).replace(';', ',').replace('\n', ' ').replace('\r', ''))
-            output.write(';'.join(valores) + '\n')
+            output.write(';'.join(_fmt(row[col]) for col in colunas) + '\n')
+
+        # === Seção 2: Tratativas (se houver) ===
+        if rows_trat:
+            output.write('\n=== TRATATIVAS ===\n')
+            colunas_trat = list(rows_trat[0].keys())
+            output.write(';'.join(colunas_trat) + '\n')
+            for row in rows_trat:
+                output.write(';'.join(_fmt(row[col]) for col in colunas_trat) + '\n')
 
         output.seek(0)
         bytes_output = io.BytesIO(output.getvalue().encode('utf-8'))
