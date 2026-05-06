@@ -7,6 +7,7 @@ from datetime import datetime
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
+from backend.cache import cache_route
 
 # Cria o Blueprint
 painel2_bp = Blueprint('painel2', __name__, url_prefix='/api/paineis/painel2')
@@ -14,6 +15,7 @@ painel2_bp = Blueprint('painel2', __name__, url_prefix='/api/paineis/painel2')
 
 @painel2_bp.route('/evolucoes', methods=['GET'])
 @login_required
+@cache_route(ttl=60, key_prefix='painel2:evolucoes')
 def get_evolucoes():
     """
     Retorna lista de evoluções de turno

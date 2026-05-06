@@ -108,7 +108,7 @@ def painel32_static(filename):
 
 @painel32_bp.route('/api/paineis/painel32/analise-salva', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel32:analise-salva', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel32:analise-salva')
 def analise_salva():
     """
     Retorna a analise ja persistida para uma data (gerada pelo
@@ -144,7 +144,7 @@ def analise_salva():
 
 @painel32_bp.route('/api/paineis/painel32/historico', methods=['GET'])
 @login_required
-@cache_route(ttl=180, key_prefix='painel32:historico')
+@cache_route(ttl=120, key_prefix='painel32:historico', vary_by_query=True)
 def historico():
     """
     Retorna lista de dias que possuem analise salva,

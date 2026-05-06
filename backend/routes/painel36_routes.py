@@ -126,7 +126,7 @@ def api_painel36_dashboard():
 
 @painel36_bp.route('/api/paineis/painel36/chamados', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel36:chamados', vary_by_query=True)
+@cache_route(ttl=30, key_prefix='painel36:chamados', vary_by_query=True)
 def api_painel36_chamados():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -285,7 +285,7 @@ def api_painel36_cancelar(chamado_id):
 
 @painel36_bp.route('/api/paineis/painel36/por-setor', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel36:por-setor', vary_by_query=True)
+@cache_route(ttl=60, key_prefix='painel36:por-setor', vary_by_query=True)
 def api_painel36_por_setor():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -341,7 +341,7 @@ def api_painel36_por_setor():
 
 @painel36_bp.route('/api/paineis/painel36/por-padioleiro', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel36:por-padioleiro', vary_by_query=True)
+@cache_route(ttl=60, key_prefix='painel36:por-padioleiro', vary_by_query=True)
 def api_painel36_por_padioleiro():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -489,7 +489,7 @@ def api_painel36_exportar():
 
 @painel36_bp.route('/api/paineis/painel36/config/padioleiros', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel36:cfg-padioleiros')
+@cache_route(ttl=300, key_prefix='painel36:config-padioleiros')
 def api_painel36_cfg_pad_listar():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -615,7 +615,7 @@ def api_painel36_cfg_pad_atualizar(padioleiro_id):
 
 @painel36_bp.route('/api/paineis/painel36/config/tipos-movimento', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel36:cfg-tipos')
+@cache_route(ttl=300, key_prefix='painel36:config-tipos-movimento')
 def api_painel36_cfg_tipos_listar():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -725,7 +725,7 @@ def api_painel36_cfg_tipos_atualizar(tipo_id):
 
 @painel36_bp.route('/api/paineis/painel36/config/destinos', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel36:cfg-destinos', vary_by_query=True)
+@cache_route(ttl=300, key_prefix='painel36:config-destinos')
 def api_painel36_cfg_dest_listar():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)

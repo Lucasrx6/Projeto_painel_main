@@ -14,7 +14,7 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
-from backend.cache import cache_route
+from backend.cache import cache_route, cache_delete_pattern
 
 try:
     import apprise as _apprise_lib
@@ -197,8 +197,9 @@ def _enviar_notificacao_tratativa(dados):
             'text-decoration:none;font-size:14px;">Abrir Tratativa</a></div>'
         ).format(link=link, cor=cor)
 
-    titulo = 'Sentir e Agir - CRITICO - {} - {}'.format(
-        dados.get('categoria_nome', '-'), dados.get('setor_nome', '-')
+    titulo = 'Sentir e Agir - CRITICO - {} - {} [TRAT:{}]'.format(
+        dados.get('categoria_nome', '-'), dados.get('setor_nome', '-'),
+        dados.get('tratativa_id', 0)
     )
 
     html = (
@@ -1449,6 +1450,9 @@ def criar_responsavel():
         cursor.close()
         release_connection(conn)
 
+        cache_delete_pattern('painel30:responsaveis:*')
+        cache_delete_pattern('painel30:filtros:*')
+
         return jsonify({'success': True, 'data': {'id': resp_id}, 'message': 'Responsavel criado'}), 201
     except Exception as e:
         traceback.print_exc()
@@ -1530,6 +1534,9 @@ def editar_responsavel(resp_id):
         cursor.close()
         release_connection(conn)
 
+        cache_delete_pattern('painel30:responsaveis:*')
+        cache_delete_pattern('painel30:filtros:*')
+
         return jsonify({'success': True, 'message': 'Responsavel atualizado'})
     except Exception as e:
         traceback.print_exc()
@@ -1575,8 +1582,70 @@ def toggle_responsavel(resp_id):
         cursor.close()
         release_connection(conn)
 
+        cache_delete_pattern('painel30:responsaveis:*')
+
         msg = 'Responsavel ativado' if novo_status else 'Responsavel desativado'
         return jsonify({'success': True, 'message': msg})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@painel30_bp.route('/api/paineis/painel30/responsaveis/<int:resp_id>', methods=['DELETE'])
+@login_required
+def excluir_responsavel(resp_id):
+    try:
+        if not _is_admin():
+            return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
+
+        usuario = _get_usuario()
+        ip = _get_ip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("SELECT id, nome FROM sentir_agir_responsaveis WHERE id = %s", (resp_id,))
+        resp = cursor.fetchone()
+        if not resp:
+            cursor.close()
+            release_connection(conn)
+            return jsonify({'success': False, 'error': 'Responsavel nao encontrado'}), 404
+
+        # Verifica se tem tratativas ativas vinculadas
+        cursor.execute("""
+            SELECT COUNT(*) AS total
+            FROM sentir_agir_tratativas
+            WHERE responsavel_id = %s AND status IN ('pendente', 'em_tratativa')
+        """, (resp_id,))
+        em_uso = cursor.fetchone()['total']
+        if em_uso > 0:
+            cursor.close()
+            release_connection(conn)
+            return jsonify({
+                'success': False,
+                'error': 'Responsavel possui {} tratativa(s) ativa(s). Reatribua antes de excluir.'.format(em_uso)
+            }), 409
+
+        # Remove vinculos N:M antes de excluir
+        cursor.execute("DELETE FROM sentir_agir_responsavel_categorias WHERE responsavel_id = %s", (resp_id,))
+        cursor.execute("DELETE FROM sentir_agir_responsavel_setores WHERE responsavel_id = %s", (resp_id,))
+
+        _registrar_log(
+            cursor, 'responsavel', resp_id, 'exclusao', usuario,
+            valor_anterior=resp['nome'],
+            ip_origem=ip
+        )
+
+        cursor.execute("DELETE FROM sentir_agir_responsaveis WHERE id = %s", (resp_id,))
+
+        conn.commit()
+        cursor.close()
+        release_connection(conn)
+
+        cache_delete_pattern('painel30:responsaveis:*')
+        cache_delete_pattern('painel30:filtros:*')
+
+        return jsonify({'success': True, 'message': 'Responsavel "{}" excluido'.format(resp['nome'])})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

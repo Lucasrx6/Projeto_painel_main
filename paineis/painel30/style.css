@@ -1318,6 +1318,8 @@ body {
 .r-btn-editar { background: var(--cor-alerta); color: #333; }
 .r-btn-toggle { background: #6c757d; color: white; }
 .r-btn-toggle.ativo { background: var(--cor-sucesso); }
+.r-btn-excluir { background: var(--cor-critico); color: white; }
+.r-btn-excluir:hover { background: #a71d2a; filter: none; }
 
 /* ========================================
    MULTI-SELECT DROPDOWN COMPONENT

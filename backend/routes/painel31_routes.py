@@ -603,6 +603,7 @@ def api_painel31_historico_real():
 
 @painel31_bp.route('/api/paineis/painel31/picos-hoje', methods=['GET'])
 @login_required
+@cache_route(ttl=120, key_prefix='painel31:picos-hoje')
 def api_painel31_picos_hoje():
     """
     Retorna a estimativa horaria de atendimentos para hoje, baseada em:
@@ -714,6 +715,7 @@ def api_painel31_picos_hoje():
 
 @painel31_bp.route('/api/paineis/painel31/previsoes/internacoes', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel31:previsoes-internacoes', vary_by_query=True)
 def api_painel31_previsoes_internacoes():
     from flask import request
     usuario_id = session.get('usuario_id')
@@ -786,6 +788,7 @@ def api_painel31_previsoes_internacoes():
 
 @painel31_bp.route('/api/paineis/painel31/historico-real/internacoes', methods=['GET'])
 @login_required
+@cache_route(ttl=180, key_prefix='painel31:historico-internacoes', vary_by_query=True)
 def api_painel31_historico_real_internacoes():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -835,6 +838,7 @@ def api_painel31_historico_real_internacoes():
 
 @painel31_bp.route('/api/paineis/painel31/modelo/internacoes', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel31:modelo-internacoes')
 def api_painel31_modelo_internacoes():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -878,6 +882,7 @@ def api_painel31_modelo_internacoes():
 
 @painel31_bp.route('/api/paineis/painel31/metricas/internacoes', methods=['GET'])
 @login_required
+@cache_route(ttl=300, key_prefix='painel31:metricas-internacoes')
 def api_painel31_metricas_internacoes():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)

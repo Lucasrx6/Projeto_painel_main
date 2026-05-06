@@ -179,6 +179,14 @@ try:
 except Exception as e:
     app.logger.warning(f'[worker_sentir_agir_analise] Nao iniciado automaticamente: {e}')
 
+# Worker IMAP — captura respostas de email e regulariza tratativas automaticamente
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina WORKER_IMAP_TRATATIVAS_AUTO=false no .env
+try:
+    from worker_imap_tratativas import start_in_background as _start_imap_worker
+    _start_imap_worker()
+except Exception as e:
+    app.logger.warning(f'[worker_imap_tratativas] Nao iniciado automaticamente: {e}')
+
 # =========================================================
 # ROTAS DE DESENVOLVIMENTO (Remover em produção)
 # =========================================================
@@ -266,9 +274,12 @@ if __name__ == '__main__':
     print("=" * 60 + "\n")
 
     # Inicia servidor
+    # reloader_type='stat' evita WinError 10038 no Python 3.12+ no Windows
+    # (o reloader 'watchdog' tem incompatibilidade com o select() do Windows)
     app.run(
         debug=app.config.get('DEBUG', False),
         host='0.0.0.0',
         port=5000,
-        use_reloader=app.config.get('DEBUG', False)
+        use_reloader=app.config.get('DEBUG', False),
+        reloader_type='stat'
     )
