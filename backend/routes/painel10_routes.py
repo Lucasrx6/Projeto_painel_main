@@ -319,7 +319,7 @@ def api_painel10_clinicas_consolidado():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Dados de tempo por clínica
+        # Dados de tempo por clínica (fonte primária)
         cursor.execute("SELECT * FROM vw_ps_tempo_por_clinica")
         tempo_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
 
@@ -328,45 +328,59 @@ def api_painel10_clinicas_consolidado():
         aguardando_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
 
         # Tempo do último paciente atendido por clínica (Tempo Máximo = referência fixa)
-        cursor.execute("""
-            SELECT DISTINCT ON (ds_clinica)
-                ds_clinica,
-                ROUND(
-                    EXTRACT(EPOCH FROM (
-                        dt_inicio_atendimento_med - COALESCE(retirada_senha, dt_entrada)
-                    )) / 60
-                )::int AS tempo_ultimo_atendido_min
-            FROM painel_ps_analise
-            WHERE dt_inicio_atendimento_med IS NOT NULL
-              AND dt_entrada >= NOW() - INTERVAL '24 hours'
-            ORDER BY ds_clinica, dt_inicio_atendimento_med DESC
-        """)
-        tempo_ultimo_rows = {r['ds_clinica']: r['tempo_ultimo_atendido_min'] for r in cursor.fetchall()}
+        # Isolado em try-except para não derrubar o endpoint se a tabela/coluna diferir
+        tempo_ultimo_rows = {}
+        try:
+            cursor.execute("""
+                SELECT DISTINCT ON (ds_clinica)
+                    ds_clinica,
+                    ROUND(
+                        EXTRACT(EPOCH FROM (
+                            dt_inicio_atendimento_med - COALESCE(retirada_senha, dt_entrada)
+                        )) / 60
+                    )::int AS tempo_ultimo_atendido_min
+                FROM painel_ps_analise
+                WHERE dt_inicio_atendimento_med IS NOT NULL
+                  AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                ORDER BY ds_clinica, dt_inicio_atendimento_med DESC
+            """)
+            tempo_ultimo_rows = {r['ds_clinica']: r['tempo_ultimo_atendido_min'] for r in cursor.fetchall()}
+        except Exception as e_max:
+            logger.warning('Tempo Maximo indisponivel (painel_ps_analise): %s', str(e_max))
+            conn.rollback()
 
         # Mapa nome_clinica -> cd_clinica a partir de painel17_atendimentos_ps (para mediana)
-        cursor.execute("""
-            SELECT DISTINCT cd_clinica, LOWER(TRIM(clinica)) AS clinica_key
-            FROM painel17_atendimentos_ps
-            WHERE dt_entrada >= NOW() - INTERVAL '1 day'
-        """)
-        clinica_cd_map = {r['clinica_key']: r['cd_clinica'] for r in cursor.fetchall()}
+        clinica_cd_map = {}
+        try:
+            cursor.execute("""
+                SELECT DISTINCT cd_clinica, LOWER(TRIM(clinica)) AS clinica_key
+                FROM painel17_atendimentos_ps
+                WHERE dt_entrada >= NOW() - INTERVAL '1 day'
+            """)
+            clinica_cd_map = {r['clinica_key']: r['cd_clinica'] for r in cursor.fetchall()}
+        except Exception as e_med:
+            logger.warning('Mediana indisponivel (painel17_atendimentos_ps): %s', str(e_med))
+            conn.rollback()
 
         def _calcular_mediana(cd_clinica):
-            cursor.execute("""
-                SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
-                FROM painel17_atendimentos_ps
-                WHERE cd_clinica = %s
-                  AND dt_inicio_atendimento_med IS NOT NULL
-                ORDER BY dt_inicio_atendimento_med DESC
-                LIMIT %s
-            """, (cd_clinica, _JANELA_MEDIANA))
-            tempos = []
-            for r in cursor.fetchall():
-                inicio = r.get('retirada_senha') or r.get('dt_entrada')
-                t = _tempo_minutos(inicio, r.get('dt_inicio_atendimento_med'))
-                if t is not None:
-                    tempos.append(t)
-            return round(statistics.median(tempos)) if tempos else None
+            try:
+                cursor.execute("""
+                    SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
+                    FROM painel17_atendimentos_ps
+                    WHERE cd_clinica = %s
+                      AND dt_inicio_atendimento_med IS NOT NULL
+                    ORDER BY dt_inicio_atendimento_med DESC
+                    LIMIT %s
+                """, (cd_clinica, _JANELA_MEDIANA))
+                tempos = []
+                for r in cursor.fetchall():
+                    inicio = r.get('retirada_senha') or r.get('dt_entrada')
+                    t = _tempo_minutos(inicio, r.get('dt_inicio_atendimento_med'))
+                    if t is not None:
+                        tempos.append(t)
+                return round(statistics.median(tempos)) if tempos else None
+            except Exception:
+                return None
 
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
         resultado = []
@@ -431,25 +445,69 @@ def api_painel10_pacientes_clinica():
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
+        rows = []
 
-        cursor.execute("""
-            SELECT
-                nm_pessoa_fisica,
-                nr_atendimento,
-                dt_entrada,
-                COALESCE(retirada_senha, dt_entrada) AS inicio_espera,
-                ROUND(
-                    EXTRACT(EPOCH FROM (NOW() - COALESCE(retirada_senha, dt_entrada))) / 60
-                )::int AS tempo_espera_min
-            FROM painel_ps_analise
-            WHERE ds_clinica = %s
-              AND dt_inicio_atendimento_med IS NULL
-              AND dt_alta IS NULL
-              AND dt_entrada >= NOW() - INTERVAL '24 hours'
-            ORDER BY COALESCE(retirada_senha, dt_entrada) ASC
-        """, (ds_clinica,))
+        # Tentativa 1: query completa com retirada_senha
+        try:
+            cursor.execute("""
+                SELECT
+                    nm_pessoa_fisica,
+                    nr_atendimento,
+                    dt_entrada,
+                    COALESCE(retirada_senha, dt_entrada) AS inicio_espera,
+                    ROUND(
+                        EXTRACT(EPOCH FROM (NOW() - COALESCE(retirada_senha, dt_entrada))) / 60
+                    )::int AS tempo_espera_min
+                FROM painel_ps_analise
+                WHERE ds_clinica = %s
+                  AND dt_inicio_atendimento_med IS NULL
+                  AND dt_alta IS NULL
+                  AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                ORDER BY COALESCE(retirada_senha, dt_entrada) ASC
+            """, (ds_clinica,))
+            rows = cursor.fetchall()
+        except Exception as e1:
+            logger.warning('pacientes-clinica tentativa 1 falhou: %s', str(e1))
+            conn.rollback()
 
-        rows = cursor.fetchall()
+            # Tentativa 2: sem retirada_senha (usa só dt_entrada)
+            try:
+                cursor.execute("""
+                    SELECT
+                        nm_pessoa_fisica,
+                        nr_atendimento,
+                        dt_entrada,
+                        dt_entrada AS inicio_espera,
+                        ROUND(
+                            EXTRACT(EPOCH FROM (NOW() - dt_entrada)) / 60
+                        )::int AS tempo_espera_min
+                    FROM painel_ps_analise
+                    WHERE ds_clinica = %s
+                      AND dt_inicio_atendimento_med IS NULL
+                      AND dt_alta IS NULL
+                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                    ORDER BY dt_entrada ASC
+                """, (ds_clinica,))
+                rows = cursor.fetchall()
+            except Exception as e2:
+                logger.warning('pacientes-clinica tentativa 2 falhou: %s', str(e2))
+                conn.rollback()
+
+                # Tentativa 3: query mínima para descobrir colunas disponíveis
+                try:
+                    cursor.execute("""
+                        SELECT *
+                        FROM painel_ps_analise
+                        WHERE ds_clinica = %s
+                          AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                        LIMIT 0
+                    """, (ds_clinica,))
+                    cols = [d.name for d in cursor.description] if cursor.description else []
+                    logger.warning('pacientes-clinica: colunas disponíveis em painel_ps_analise: %s', cols)
+                except Exception as e3:
+                    logger.error('pacientes-clinica: painel_ps_analise inacessível: %s', str(e3))
+                    conn.rollback()
+
         resultado = []
         for r in rows:
             inicio = r.get('inicio_espera')
@@ -473,7 +531,14 @@ def api_painel10_pacientes_clinica():
 
     except Exception as e:
         logger.error('Erro ao buscar pacientes da clinica %s: %s', ds_clinica, str(e), exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+        return jsonify({
+            'success': True,
+            'data': [],
+            'total': 0,
+            'clinica': ds_clinica,
+            'aviso': 'dados_indisponiveis',
+            'timestamp': datetime.now().isoformat()
+        })
     finally:
         if conn:
             release_connection(conn)

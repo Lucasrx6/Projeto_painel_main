@@ -292,7 +292,7 @@ function renderizarClinicasConsolidado(dados) {
     if (!tbody) return;
 
     if (!dados || dados.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="texto-centro"><div class="mensagem-sucesso"><i class="fas fa-check-circle" style="font-size:2rem;color:var(--cor-sucesso);margin-bottom:8px;display:block;"></i><p>Nenhum paciente aguardando atendimento</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="texto-centro"><div class="mensagem-vazia"><i class="fas fa-inbox" style="font-size:2rem;color:var(--cor-texto-muted);margin-bottom:8px;display:block;"></i><p>Nenhuma clínica com dados hoje</p></div></td></tr>';
         if (contador) contador.textContent = '0 clínica(s)';
         return;
     }
@@ -377,12 +377,15 @@ function carregarPacientesClinica(dsClinica, container) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.success) {
-                container.innerHTML = '<p class="texto-muted texto-centro" style="padding:12px">Erro ao carregar pacientes.</p>';
+                container.innerHTML = '<p class="texto-muted texto-centro" style="padding:12px"><i class="fas fa-exclamation-triangle"></i> Não foi possível carregar os pacientes.</p>';
                 return;
             }
             var pacientes = data.data || [];
             if (pacientes.length === 0) {
-                container.innerHTML = '<div class="mensagem-sucesso-mini"><i class="fas fa-check-circle"></i> Nenhum paciente aguardando nesta clínica</div>';
+                var msg = data.aviso === 'dados_indisponiveis'
+                    ? '<i class="fas fa-database"></i> Dados de pacientes indisponíveis'
+                    : '<i class="fas fa-check-circle"></i> Nenhum paciente aguardando nesta clínica';
+                container.innerHTML = '<div class="mensagem-sucesso-mini">' + msg + '</div>';
                 return;
             }
             var html = '<div class="pacientes-grid">';
