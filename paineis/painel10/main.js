@@ -318,7 +318,7 @@ function renderizarClinicasConsolidado(dados) {
             : '<span class="texto-muted">-</span>';
 
         var tempoMaxHtml = (tempoMax !== null && tempoMax !== undefined && tempoMax > 0)
-            ? '<span class="badge badge-tempo ' + getClasseTempo(tempoMax, 'espera') + '" title="Tempo do último paciente atendido">' + tempoMax + ' min</span>'
+            ? '<span class="badge badge-tempo ' + getClasseTempo(tempoMax, 'espera') + '" title="Paciente aguardando há mais tempo">' + tempoMax + ' min</span>'
             : '<span class="texto-muted">-</span>';
 
         var semMedicoAlerta = aguardando > 0 && medicosAtivos === 0;

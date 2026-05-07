@@ -352,27 +352,25 @@ def api_painel10_clinicas_consolidado():
         cursor.execute("SELECT * FROM vw_ps_aguardando_por_clinica")
         aguardando_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
 
-        # Tempo do último paciente atendido por clínica (Tempo Máximo = referência fixa)
-        # painel_ps_analise: dt_entrada e dt_atend_medico são character varying → cast ::timestamptz
+        # Tempo do paciente que está aguardando há mais tempo por clínica
+        # MIN(dt_entrada) entre os aguardando → diferença até NOW() = maior espera atual
         tempo_ultimo_rows = {}
         try:
             cursor.execute("""
-                SELECT DISTINCT ON (ds_clinica)
+                SELECT
                     ds_clinica,
                     ROUND(
-                        EXTRACT(EPOCH FROM (
-                            dt_atend_medico::timestamptz - dt_entrada::timestamptz
-                        )) / 60
-                    )::int AS tempo_ultimo_atendido_min
+                        EXTRACT(EPOCH FROM (NOW() - MIN(dt_entrada::timestamptz))) / 60
+                    )::int AS tempo_max_aguardando_min
                 FROM painel_ps_analise
-                WHERE dt_atend_medico IS NOT NULL
-                  AND dt_atend_medico != ''
+                WHERE (dt_atend_medico IS NULL OR dt_atend_medico = '')
+                  AND (dt_alta IS NULL OR dt_alta = '')
                   AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
-                ORDER BY ds_clinica, dt_atend_medico::timestamptz DESC
+                GROUP BY ds_clinica
             """)
-            tempo_ultimo_rows = {r['ds_clinica']: r['tempo_ultimo_atendido_min'] for r in cursor.fetchall()}
+            tempo_ultimo_rows = {r['ds_clinica']: r['tempo_max_aguardando_min'] for r in cursor.fetchall()}
         except Exception as e_max:
-            logger.warning('Tempo Maximo indisponivel (painel_ps_analise): %s', str(e_max))
+            logger.warning('Maior espera indisponivel (painel_ps_analise): %s', str(e_max))
             conn.rollback()
 
         # Mediana de espera por clínica — mesma lógica do painel17:
