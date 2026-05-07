@@ -400,6 +400,20 @@ def api_painel10_clinicas_consolidado():
             logger.warning('Medicos ativos indisponivel (medicos_ps/painel17): %s', str(e_med_at))
             conn.rollback()
 
+        def _match_medicos(ds_clinica, medicos_rows):
+            """Retorna contagem de medicos para ds_clinica.
+            Tenta match exato primeiro; fallback para match parcial (um nome contido no outro).
+            Necessário pois painel17 pode ter 'Ortopedia e Traumatologia'
+            enquanto a view tem 'Ortopedia'.
+            """
+            ds_upper = (ds_clinica or '').upper()
+            if ds_upper in medicos_rows:
+                return medicos_rows[ds_upper]
+            for key, val in medicos_rows.items():
+                if ds_upper in key or key in ds_upper:
+                    return val
+            return 0
+
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
         resultado = []
 
@@ -410,7 +424,7 @@ def api_painel10_clinicas_consolidado():
             aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
             tempo_max = tempo_ultimo_rows.get(ds_clinica)
             mediana = mediana_rows.get(ds_clinica)
-            medicos_ativos = medicos_ativos_rows.get((ds_clinica or '').upper(), 0)
+            medicos_ativos = _match_medicos(ds_clinica, medicos_ativos_rows)
 
             resultado.append({
                 'ds_clinica': ds_clinica,
