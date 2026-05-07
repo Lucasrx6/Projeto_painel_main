@@ -1163,6 +1163,15 @@ body {
     text-overflow: ellipsis;
 }
 
+.guiche-especialidade {
+    font-size: 0.65rem;
+    color: var(--cor-texto-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+}
+
 .guiche-tempo {
     font-size: 0.65rem;
     color: var(--cor-texto-muted);

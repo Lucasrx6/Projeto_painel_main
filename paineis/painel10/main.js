@@ -453,6 +453,9 @@ function renderizarMedicosConsultorios(dados) {
         html += '      <span class="guiche-tempo"><i class="fas fa-clock"></i> ' + escapeHtml(tempoConectado) + '</span>';
         html += '    </div>';
         html += '    <div class="guiche-usuario">' + escapeHtml(formatarNome(nome)) + '</div>';
+        if (especialidade) {
+            html += '    <div class="guiche-especialidade">' + escapeHtml(especialidade) + '</div>';
+        }
         html += '  </div>';
         html += '  <div class="guiche-atendimentos">';
         html += '    <span class="guiche-atend-valor">' + atendHoje + '</span>';
