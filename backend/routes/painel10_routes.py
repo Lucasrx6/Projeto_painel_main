@@ -14,9 +14,10 @@
 # =============================================================================
 
 import logging
+import statistics
 from datetime import datetime
 
-from flask import Blueprint, jsonify, send_from_directory, session, current_app
+from flask import Blueprint, jsonify, request, send_from_directory, session, current_app
 from psycopg2.extras import RealDictCursor
 
 from backend.database import get_db_connection, release_connection
@@ -27,6 +28,17 @@ from backend.cache import cache_route
 logger = logging.getLogger(__name__)
 
 painel10_bp = Blueprint('painel10', __name__)
+
+_JANELA_MEDIANA = 10
+_MAX_ESPERA_MIN = 300
+
+
+def _tempo_minutos(inicio, fim):
+    """Calcula diferença em minutos entre dois datetimes. Retorna None se inválido."""
+    if not inicio or not fim:
+        return None
+    diff = (fim - inicio).total_seconds() / 60.0
+    return round(diff, 1) if 0 < diff < _MAX_ESPERA_MIN else None
 
 
 # =============================================================================
@@ -283,3 +295,161 @@ def api_painel10_desempenho_recepcao():
         'data': dados,
         'timestamp': datetime.now().isoformat()
     })
+
+
+# =============================================================================
+# ENDPOINT: CLINICAS CONSOLIDADO (aguardando + tempo + mediana)
+# =============================================================================
+
+@painel10_bp.route('/api/paineis/painel10/clinicas-consolidado', methods=['GET'])
+@login_required
+@cache_route(ttl=90, key_prefix='painel10:clinicas-consolidado')
+def api_painel10_clinicas_consolidado():
+    """
+    Endpoint unificado que combina dados de aguardando, tempo por clínica e mediana.
+    Retorna lista com: ds_clinica, aguardando, total, realizados, tempo_medio, mediana, tempo_max.
+    """
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Dados de tempo por clínica
+        cursor.execute("SELECT * FROM vw_ps_tempo_por_clinica")
+        tempo_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
+
+        # Dados de aguardando por clínica
+        cursor.execute("SELECT * FROM vw_ps_aguardando_por_clinica")
+        aguardando_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
+
+        # Mapa nome_clinica -> cd_clinica a partir de painel17_atendimentos_ps
+        cursor.execute("""
+            SELECT DISTINCT cd_clinica, LOWER(TRIM(clinica)) AS clinica_key
+            FROM painel17_atendimentos_ps
+            WHERE dt_entrada >= NOW() - INTERVAL '1 day'
+        """)
+        clinica_cd_map = {r['clinica_key']: r['cd_clinica'] for r in cursor.fetchall()}
+
+        def _calcular_mediana(cd_clinica):
+            cursor.execute("""
+                SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
+                FROM painel17_atendimentos_ps
+                WHERE cd_clinica = %s
+                  AND dt_inicio_atendimento_med IS NOT NULL
+                ORDER BY dt_inicio_atendimento_med DESC
+                LIMIT %s
+            """, (cd_clinica, _JANELA_MEDIANA))
+            tempos = []
+            for r in cursor.fetchall():
+                inicio = r.get('retirada_senha') or r.get('dt_entrada')
+                t = _tempo_minutos(inicio, r.get('dt_inicio_atendimento_med'))
+                if t is not None:
+                    tempos.append(t)
+            return round(statistics.median(tempos)) if tempos else None
+
+        todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
+        resultado = []
+
+        for ds_clinica in todas_clinicas:
+            tp = tempo_rows.get(ds_clinica, {})
+            ag = aguardando_rows.get(ds_clinica, {})
+
+            cd = clinica_cd_map.get((ds_clinica or '').lower().strip())
+            mediana = _calcular_mediana(cd) if cd is not None else None
+
+            aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
+
+            resultado.append({
+                'ds_clinica': ds_clinica,
+                'aguardando_atendimento': aguardando,
+                'total_atendimentos': tp.get('total_atendimentos', 0),
+                'atendimentos_realizados': tp.get('atendimentos_realizados', 0),
+                'tempo_medio_espera_min': tp.get('tempo_medio_espera_min', 0),
+                'mediana_espera_min': mediana,
+                'tempo_max_espera_min': ag.get('tempo_max_espera_min', 0),
+            })
+
+        cursor.close()
+        return jsonify({
+            'success': True,
+            'data': resultado,
+            'total': len(resultado),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error('Erro ao buscar clinicas-consolidado: %s', str(e), exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+    finally:
+        if conn:
+            release_connection(conn)
+
+
+# =============================================================================
+# ENDPOINT: PACIENTES AGUARDANDO POR CLINICA (sub-painel)
+# =============================================================================
+
+@painel10_bp.route('/api/paineis/painel10/pacientes-clinica', methods=['GET'])
+@login_required
+def api_painel10_pacientes_clinica():
+    """
+    Retorna lista individual de pacientes aguardando em uma clínica.
+    Query param: ?clinica=<nome_da_clinica>
+    """
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    ds_clinica = request.args.get('clinica', '').strip()
+    if not ds_clinica:
+        return jsonify({'success': False, 'error': 'Parametro clinica obrigatorio'}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT
+                COALESCE(retirada_senha, dt_entrada) AS inicio_espera,
+                ROUND(
+                    EXTRACT(EPOCH FROM (NOW() - COALESCE(retirada_senha, dt_entrada))) / 60
+                )::int AS tempo_espera_min
+            FROM painel17_atendimentos_ps
+            WHERE LOWER(TRIM(clinica)) = LOWER(TRIM(%s))
+              AND dt_inicio_atendimento_med IS NULL
+              AND dt_alta IS NULL
+              AND dt_entrada >= NOW() - INTERVAL '24 hours'
+            ORDER BY COALESCE(retirada_senha, dt_entrada) ASC
+        """, (ds_clinica,))
+
+        rows = cursor.fetchall()
+        resultado = []
+        for r in rows:
+            inicio = r.get('inicio_espera')
+            resultado.append({
+                'inicio_espera': inicio.strftime('%H:%M') if inicio else '-',
+                'tempo_espera_min': r.get('tempo_espera_min') or 0,
+            })
+
+        cursor.close()
+        return jsonify({
+            'success': True,
+            'data': resultado,
+            'total': len(resultado),
+            'clinica': ds_clinica,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error('Erro ao buscar pacientes da clinica %s: %s', ds_clinica, str(e), exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+    finally:
+        if conn:
+            release_connection(conn)

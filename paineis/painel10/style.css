@@ -922,6 +922,114 @@ body {
     .grafico-barras { height: 280px; }
 }
 
+/* =========================================================
+   16. SUB-PAINEL DE PACIENTES (Espera por Clínica)
+   ========================================================= */
+
+.tabela-hint {
+    font-size: 0.75rem;
+    color: var(--cor-texto-muted);
+    margin-bottom: var(--espacamento-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-xs);
+}
+
+.tr-clinica-clickavel {
+    cursor: pointer;
+    transition: background var(--transicao-rapida);
+}
+
+.tr-clinica-clickavel:hover {
+    background: rgba(220, 53, 69, 0.05) !important;
+}
+
+.tr-clinica-ativa {
+    background: rgba(220, 53, 69, 0.08) !important;
+}
+
+.icone-expandir {
+    font-size: 0.65rem;
+    color: var(--cor-texto-muted);
+    transition: transform var(--transicao-rapida), color var(--transicao-rapida);
+    display: inline-block;
+    margin-right: 4px;
+}
+
+.icone-expandir.expandido {
+    transform: rotate(90deg);
+    color: var(--cor-primaria);
+}
+
+.tr-detalhe > td {
+    padding: 0 !important;
+    background: var(--cor-fundo);
+    border-bottom: 2px solid var(--cor-primaria-light) !important;
+}
+
+.painel-pacientes {
+    padding: var(--espacamento-md);
+}
+
+.loading-pacientes {
+    text-align: center;
+    color: var(--cor-texto-muted);
+    padding: var(--espacamento-md);
+    font-size: 0.82rem;
+}
+
+.mensagem-sucesso-mini {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    color: var(--cor-sucesso);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: var(--espacamento-sm);
+}
+
+.mensagem-sucesso-mini i {
+    font-size: 1rem;
+}
+
+.pacientes-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espacamento-sm);
+}
+
+.paciente-item {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    background: white;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    box-shadow: var(--sombra-sm);
+}
+
+.paciente-ordem {
+    font-weight: 700;
+    color: var(--cor-primaria);
+    min-width: 28px;
+    font-size: 0.85rem;
+}
+
+.paciente-entrada {
+    color: var(--cor-texto-secundario);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+}
+
+.paciente-entrada i {
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
 @media print {
     .painel-header, .btn-header { display: none; }
 

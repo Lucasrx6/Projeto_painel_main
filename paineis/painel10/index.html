@@ -135,47 +135,27 @@
             <!-- ABA 2: Espera & Clínicas -->
             <div class="tab-panel" id="tab-espera-clinicas">
                 <div class="painel-main content-scroll" id="scroll-espera-clinicas">
-                    <!-- Pacientes Aguardando -->
+                    <!-- Espera por Clínica (tabela unificada) -->
                     <section class="secao-analise">
                         <header class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-user-clock"></i><h2>Pacientes Aguardando</h2></div>
-                            <span class="secao-contador secao-contador-alerta" id="contador-aguardando">0 paciente(s)</span>
+                            <div class="secao-titulo"><i class="fas fa-clock"></i><h2>Espera por Clínica</h2></div>
+                            <span class="secao-contador secao-contador-alerta" id="contador-clinicas">0 clínica(s)</span>
                         </header>
                         <div class="secao-content">
+                            <p class="tabela-hint"><i class="fas fa-hand-pointer"></i> Clique em uma clínica para ver os pacientes aguardando</p>
                             <div class="tabela-container">
-                                <table class="tabela-dados">
+                                <table class="tabela-dados tabela-clinicas">
                                     <thead><tr>
                                         <th>Clínica</th>
                                         <th class="texto-centro">Aguardando</th>
-                                        <th class="texto-centro">Tempo Médio</th>
-                                        <th class="texto-centro">Tempo Máximo</th>
-                                    </tr></thead>
-                                    <tbody id="tbody-aguardando">
-                                        <tr><td colspan="4" class="texto-centro">Carregando...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </section>
-                    
-                    <!-- Tempo Médio por Clínica -->
-                    <section class="secao-analise">
-                        <header class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-clinic-medical"></i><h2>Tempo Médio por Clínica</h2></div>
-                            <span class="secao-contador" id="contador-tempo-clinica">0 clínica(s)</span>
-                        </header>
-                        <div class="secao-content">
-                            <div class="tabela-container">
-                                <table class="tabela-dados">
-                                    <thead><tr>
-                                        <th>Clínica</th>
                                         <th class="texto-centro">Total</th>
                                         <th class="texto-centro">Realizados</th>
-                                        <th class="texto-centro">Aguardando</th>
-                                        <th class="texto-centro">Tempo Médio</th>
+                                        <th class="texto-centro">T. Médio</th>
+                                        <th class="texto-centro">Mediana</th>
+                                        <th class="texto-centro">T. Máximo</th>
                                     </tr></thead>
-                                    <tbody id="tbody-tempo-clinica">
-                                        <tr><td colspan="5" class="texto-centro">Carregando...</td></tr>
+                                    <tbody id="tbody-clinicas-consolidado">
+                                        <tr><td colspan="7" class="texto-centro">Carregando...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
