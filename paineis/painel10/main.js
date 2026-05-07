@@ -675,9 +675,9 @@ function getClasseTempo(minutos, tipo) {
 }
 
 function getClasseAguardando(n) {
-    if (n <= 3)  return 'aguardando-bom';
-    if (n <= 7)  return 'aguardando-medio';
-    if (n <= 11) return 'aguardando-critico';
+    if (n <= 2) return 'aguardando-bom';
+    if (n <= 5) return 'aguardando-medio';
+    if (n <= 7) return 'aguardando-critico';
     return 'aguardando-critico aguardando-piscando';
 }
 
