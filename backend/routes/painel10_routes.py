@@ -15,6 +15,7 @@
 
 import logging
 import statistics
+import unicodedata
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app
@@ -31,6 +32,30 @@ painel10_bp = Blueprint('painel10', __name__)
 
 _JANELA_MEDIANA = 10
 _MAX_ESPERA_MIN = 300
+
+
+def _norm(texto):
+    """Remove acentos e normaliza para comparação de nomes de clínicas."""
+    if not texto:
+        return ''
+    nfkd = unicodedata.normalize('NFKD', str(texto).upper().strip())
+    return ''.join(c for c in nfkd if not unicodedata.combining(c))
+
+
+# Mapeamento de variações conhecidas de especialidade → fragmento canônico de ds_clinica
+# Edite aqui sempre que uma nova variação aparecer no sistema.
+_ALIAS_ESPECIALIDADE = {
+    'CLINICA GERAL':             'CLINICA MEDICA',
+    'CIRURGIAL GERAL':           'CIRURGICA GERAL',   # typo frequente
+    'CIRURGICA GERAL':           'CIRURGICA GERAL',
+    'GINECOLOGIA E OBSTETRICIA': 'GINECOLOGIA',
+    'OBSTETRICIA':               'GINECOLOGIA',
+    'ORTOPEDIA E TRAUMATOLOGIA': 'ORTOPEDIA',
+    'ORTOPEDIA':                 'ORTOPEDIA',
+    'PEDIATRIA':                 'PEDIATRIA',
+    'CLINICA MEDICA':            'CLINICA MEDICA',
+    'EMERGENCISTA':              'EMERGENCISTA',
+}
 
 
 def _tempo_minutos(inicio, fim):
@@ -392,18 +417,22 @@ def api_painel10_clinicas_consolidado():
             logger.warning('Medicos ativos indisponivel (medicos_ps): %s', str(e_med_at))
             conn.rollback()
 
-        def _match_medicos(ds_clinica, medicos_rows):
-            """Retorna contagem de medicos para ds_clinica.
-            Tenta match exato primeiro; fallback para match parcial (um nome contido no outro).
-            Necessário pois painel17 pode ter 'Ortopedia e Traumatologia'
-            enquanto a view tem 'Ortopedia'.
-            """
-            ds_upper = (ds_clinica or '').upper()
-            if ds_upper in medicos_rows:
-                return medicos_rows[ds_upper]
-            for key, val in medicos_rows.items():
-                if ds_upper in key or key in ds_upper:
-                    return val
+        # Normaliza e agrega contagens por nome canônico
+        # Ex.: "CLÍNICA GERAL" e "CLÍNICA MÉDICA" ambos somam para "CLINICA MEDICA"
+        canonical_medicos = {}
+        for esp_raw, count in medicos_ativos_rows.items():
+            esp_norm = _norm(esp_raw)
+            canonical = _ALIAS_ESPECIALIDADE.get(esp_norm, esp_norm)
+            canonical_medicos[canonical] = canonical_medicos.get(canonical, 0) + count
+
+        def _match_medicos(ds_clinica):
+            ds_norm = _norm(ds_clinica)
+            if ds_norm in canonical_medicos:
+                return canonical_medicos[ds_norm]
+            # Fallback parcial (ex.: "ORTOPEDIA" contido em "ORTOPEDIA E TRAUMATOLOGIA")
+            for canon, cnt in canonical_medicos.items():
+                if ds_norm in canon or canon in ds_norm:
+                    return cnt
             return 0
 
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
@@ -416,7 +445,7 @@ def api_painel10_clinicas_consolidado():
             aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
             tempo_max = tempo_ultimo_rows.get(ds_clinica)
             mediana = mediana_rows.get(ds_clinica)
-            medicos_ativos = _match_medicos(ds_clinica, medicos_ativos_rows)
+            medicos_ativos = _match_medicos(ds_clinica)
 
             resultado.append({
                 'ds_clinica': ds_clinica,
