@@ -327,7 +327,23 @@ def api_painel10_clinicas_consolidado():
         cursor.execute("SELECT * FROM vw_ps_aguardando_por_clinica")
         aguardando_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
 
-        # Mapa nome_clinica -> cd_clinica a partir de painel17_atendimentos_ps
+        # Tempo do último paciente atendido por clínica (Tempo Máximo = referência fixa)
+        cursor.execute("""
+            SELECT DISTINCT ON (ds_clinica)
+                ds_clinica,
+                ROUND(
+                    EXTRACT(EPOCH FROM (
+                        dt_inicio_atendimento_med - COALESCE(retirada_senha, dt_entrada)
+                    )) / 60
+                )::int AS tempo_ultimo_atendido_min
+            FROM painel_ps_analise
+            WHERE dt_inicio_atendimento_med IS NOT NULL
+              AND dt_entrada >= NOW() - INTERVAL '24 hours'
+            ORDER BY ds_clinica, dt_inicio_atendimento_med DESC
+        """)
+        tempo_ultimo_rows = {r['ds_clinica']: r['tempo_ultimo_atendido_min'] for r in cursor.fetchall()}
+
+        # Mapa nome_clinica -> cd_clinica a partir de painel17_atendimentos_ps (para mediana)
         cursor.execute("""
             SELECT DISTINCT cd_clinica, LOWER(TRIM(clinica)) AS clinica_key
             FROM painel17_atendimentos_ps
@@ -363,6 +379,7 @@ def api_painel10_clinicas_consolidado():
             mediana = _calcular_mediana(cd) if cd is not None else None
 
             aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
+            tempo_max = tempo_ultimo_rows.get(ds_clinica)
 
             resultado.append({
                 'ds_clinica': ds_clinica,
@@ -371,7 +388,7 @@ def api_painel10_clinicas_consolidado():
                 'atendimentos_realizados': tp.get('atendimentos_realizados', 0),
                 'tempo_medio_espera_min': tp.get('tempo_medio_espera_min', 0),
                 'mediana_espera_min': mediana,
-                'tempo_max_espera_min': ag.get('tempo_max_espera_min', 0),
+                'tempo_max_espera_min': tempo_max,
             })
 
         cursor.close()
@@ -417,12 +434,15 @@ def api_painel10_pacientes_clinica():
 
         cursor.execute("""
             SELECT
+                nm_pessoa_fisica,
+                nr_atendimento,
+                dt_entrada,
                 COALESCE(retirada_senha, dt_entrada) AS inicio_espera,
                 ROUND(
                     EXTRACT(EPOCH FROM (NOW() - COALESCE(retirada_senha, dt_entrada))) / 60
                 )::int AS tempo_espera_min
-            FROM painel17_atendimentos_ps
-            WHERE LOWER(TRIM(clinica)) = LOWER(TRIM(%s))
+            FROM painel_ps_analise
+            WHERE ds_clinica = %s
               AND dt_inicio_atendimento_med IS NULL
               AND dt_alta IS NULL
               AND dt_entrada >= NOW() - INTERVAL '24 hours'
@@ -433,7 +453,11 @@ def api_painel10_pacientes_clinica():
         resultado = []
         for r in rows:
             inicio = r.get('inicio_espera')
+            entrada = r.get('dt_entrada')
             resultado.append({
+                'nm_paciente': (r.get('nm_pessoa_fisica') or '').strip() or '-',
+                'nr_atendimento': str(r.get('nr_atendimento') or ''),
+                'dt_entrada': entrada.strftime('%d/%m %H:%M') if entrada else '-',
                 'inicio_espera': inicio.strftime('%H:%M') if inicio else '-',
                 'tempo_espera_min': r.get('tempo_espera_min') or 0,
             })

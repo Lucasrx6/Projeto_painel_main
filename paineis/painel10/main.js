@@ -307,15 +307,15 @@ function renderizarClinicasConsolidado(dados) {
 
         var tempoMedio = row.tempo_medio_espera_min || 0;
         var mediana = row.mediana_espera_min;
-        var tempoMax = row.tempo_max_espera_min || 0;
+        var tempoMax = row.tempo_max_espera_min;
         var detalheId = 'detalhe-clinica-' + i;
 
         var medianaHtml = (mediana !== null && mediana !== undefined)
             ? '<span class="badge badge-tempo ' + getClasseTempo(mediana, 'espera') + '">' + mediana + ' min</span>'
             : '<span class="texto-muted">-</span>';
 
-        var tempoMaxHtml = tempoMax > 0
-            ? '<span class="badge badge-tempo ' + getClasseTempo(tempoMax, 'espera') + '">' + tempoMax + ' min</span>'
+        var tempoMaxHtml = (tempoMax !== null && tempoMax !== undefined && tempoMax > 0)
+            ? '<span class="badge badge-tempo ' + getClasseTempo(tempoMax, 'espera') + '" title="Tempo do último paciente atendido">' + tempoMax + ' min</span>'
             : '<span class="texto-muted">-</span>';
 
         html += '<tr class="tr-clinica-clickavel" data-clinica="' + escapeAttr(row.ds_clinica) + '" data-detalhe="' + detalheId + '">';
@@ -392,7 +392,8 @@ function carregarPacientesClinica(dsClinica, container) {
                 var cls = getClasseTempo(tempo, 'espera');
                 html += '<div class="paciente-item">';
                 html += '  <span class="paciente-ordem">#' + (i + 1) + '</span>';
-                html += '  <span class="paciente-entrada"><i class="fas fa-clock"></i> ' + escapeHtml(p.inicio_espera) + '</span>';
+                html += '  <span class="paciente-nome">' + escapeHtml(p.nm_paciente) + '</span>';
+                html += '  <span class="paciente-entrada"><i class="fas fa-calendar-clock"></i> ' + escapeHtml(p.dt_entrada) + '</span>';
                 html += '  <span class="badge badge-tempo ' + cls + '">' + tempo + ' min</span>';
                 html += '</div>';
             }
