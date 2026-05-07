@@ -375,27 +375,30 @@ def api_painel10_clinicas_consolidado():
             logger.warning('Tempo Maximo indisponivel (painel_ps_analise): %s', str(e_max))
             conn.rollback()
 
-        # Mediana de espera por clínica via PERCENTILE_CONT em painel_ps_analise
-        # Usa ds_clinica direto → sem ambiguidade de join com painel17
+        # Mediana de espera por clínica — mesma lógica do painel17:
+        # painel17_atendimentos_ps com COALESCE(retirada_senha, dt_entrada) como início
         mediana_rows = {}
         try:
             cursor.execute("""
                 SELECT
-                    ds_clinica,
+                    clinica,
                     ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
                         EXTRACT(EPOCH FROM (
-                            dt_atend_medico::timestamptz - dt_entrada::timestamptz
+                            dt_inicio_atendimento_med - COALESCE(retirada_senha, dt_entrada)
                         )) / 60
                     ))::int AS mediana_espera_min
-                FROM painel_ps_analise
-                WHERE dt_atend_medico IS NOT NULL
-                  AND dt_atend_medico != ''
-                  AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
-                GROUP BY ds_clinica
+                FROM painel17_atendimentos_ps
+                WHERE dt_inicio_atendimento_med IS NOT NULL
+                  AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                  AND clinica IS NOT NULL
+                  AND EXTRACT(EPOCH FROM (
+                      dt_inicio_atendimento_med - COALESCE(retirada_senha, dt_entrada)
+                  )) / 60 BETWEEN 1 AND 300
+                GROUP BY clinica
             """)
-            mediana_rows = {r['ds_clinica']: r['mediana_espera_min'] for r in cursor.fetchall()}
+            mediana_rows = {_norm(r['clinica']): r['mediana_espera_min'] for r in cursor.fetchall()}
         except Exception as e_med:
-            logger.warning('Mediana indisponivel (painel_ps_analise): %s', str(e_med))
+            logger.warning('Mediana indisponivel (painel17_atendimentos_ps): %s', str(e_med))
             conn.rollback()
 
         # Médicos ativos por clínica: usa especialidade de medicos_ps diretamente.
@@ -425,15 +428,24 @@ def api_painel10_clinicas_consolidado():
             canonical = _ALIAS_ESPECIALIDADE.get(esp_norm, esp_norm)
             canonical_medicos[canonical] = canonical_medicos.get(canonical, 0) + count
 
-        def _match_medicos(ds_clinica):
+        def _match_clinica(ds_clinica, mapa):
+            """Match genérico com normalização + alias + parcial."""
             ds_norm = _norm(ds_clinica)
-            if ds_norm in canonical_medicos:
-                return canonical_medicos[ds_norm]
-            # Fallback parcial (ex.: "ORTOPEDIA" contido em "ORTOPEDIA E TRAUMATOLOGIA")
-            for canon, cnt in canonical_medicos.items():
-                if ds_norm in canon or canon in ds_norm:
-                    return cnt
-            return 0
+            if ds_norm in mapa:
+                return mapa[ds_norm]
+            # Aplica alias: se a chave do mapa tem alias que bate com ds_norm
+            for key_norm, val in mapa.items():
+                alias_norm = _ALIAS_ESPECIALIDADE.get(key_norm)
+                if alias_norm and (alias_norm == ds_norm or alias_norm in ds_norm or ds_norm in alias_norm):
+                    return val
+            # Fallback parcial
+            for key_norm, val in mapa.items():
+                if ds_norm in key_norm or key_norm in ds_norm:
+                    return val
+            return None
+
+        def _match_medicos(ds_clinica):
+            return _match_clinica(ds_clinica, canonical_medicos) or 0
 
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
         resultado = []
@@ -444,7 +456,7 @@ def api_painel10_clinicas_consolidado():
 
             aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
             tempo_max = tempo_ultimo_rows.get(ds_clinica)
-            mediana = mediana_rows.get(ds_clinica)
+            mediana = _match_clinica(ds_clinica, mediana_rows)
             medicos_ativos = _match_medicos(ds_clinica)
 
             resultado.append({
