@@ -373,25 +373,31 @@ def api_painel10_clinicas_consolidado():
             logger.warning('Mediana indisponivel (painel_ps_analise): %s', str(e_med))
             conn.rollback()
 
-        # Médicos ativos por clínica agora (consulta iniciada nas últimas 60 min sem fim/alta)
-        # painel17_atendimentos_ps.clinica pode ter casing diferente de ds_clinica → compara via UPPER
+        # Médicos ativos por clínica: médicos logados em medicos_ps, atribuídos à
+        # clínica do atendimento mais recente deles hoje em painel17_atendimentos_ps
         medicos_ativos_rows = {}
         try:
             cursor.execute("""
                 SELECT
-                    UPPER(clinica) AS clinica_upper,
-                    COUNT(DISTINCT nm_medico) AS medicos_ativos
-                FROM painel17_atendimentos_ps
-                WHERE dt_inicio_atendimento_med IS NOT NULL
-                  AND dt_fim_atendimento IS NULL
-                  AND dt_alta IS NULL
-                  AND dt_inicio_atendimento_med >= NOW() - INTERVAL '60 minutes'
-                  AND clinica IS NOT NULL
-                GROUP BY UPPER(clinica)
+                    UPPER(sub.clinica) AS clinica_upper,
+                    COUNT(DISTINCT sub.nm_usuario) AS medicos_ativos
+                FROM (
+                    SELECT DISTINCT ON (UPPER(mp.ds_usuario))
+                        mp.nm_usuario,
+                        p17.clinica
+                    FROM medicos_ps mp
+                    JOIN painel17_atendimentos_ps p17
+                        ON UPPER(mp.ds_usuario) = UPPER(p17.nm_medico)
+                       AND p17.dt_inicio_atendimento_med IS NOT NULL
+                       AND p17.dt_entrada >= NOW() - INTERVAL '24 hours'
+                    WHERE p17.clinica IS NOT NULL
+                    ORDER BY UPPER(mp.ds_usuario), p17.dt_inicio_atendimento_med DESC NULLS LAST
+                ) sub
+                GROUP BY UPPER(sub.clinica)
             """)
             medicos_ativos_rows = {r['clinica_upper']: r['medicos_ativos'] for r in cursor.fetchall()}
         except Exception as e_med_at:
-            logger.warning('Medicos ativos indisponivel (painel17_atendimentos_ps): %s', str(e_med_at))
+            logger.warning('Medicos ativos indisponivel (medicos_ps/painel17): %s', str(e_med_at))
             conn.rollback()
 
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
