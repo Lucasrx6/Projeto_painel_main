@@ -373,31 +373,23 @@ def api_painel10_clinicas_consolidado():
             logger.warning('Mediana indisponivel (painel_ps_analise): %s', str(e_med))
             conn.rollback()
 
-        # Médicos ativos por clínica: médicos logados em medicos_ps, atribuídos à
-        # clínica do atendimento mais recente deles hoje em painel17_atendimentos_ps
+        # Médicos ativos por clínica: usa especialidade de medicos_ps diretamente.
+        # Não depende de painel17 → funciona mesmo que o médico ainda não tenha
+        # iniciado nenhuma consulta hoje.
         medicos_ativos_rows = {}
         try:
             cursor.execute("""
                 SELECT
-                    UPPER(sub.clinica) AS clinica_upper,
-                    COUNT(DISTINCT sub.nm_usuario) AS medicos_ativos
-                FROM (
-                    SELECT DISTINCT ON (UPPER(mp.ds_usuario))
-                        mp.nm_usuario,
-                        p17.clinica
-                    FROM medicos_ps mp
-                    JOIN painel17_atendimentos_ps p17
-                        ON UPPER(mp.ds_usuario) = UPPER(p17.nm_medico)
-                       AND p17.dt_inicio_atendimento_med IS NOT NULL
-                       AND p17.dt_entrada >= NOW() - INTERVAL '24 hours'
-                    WHERE p17.clinica IS NOT NULL
-                    ORDER BY UPPER(mp.ds_usuario), p17.dt_inicio_atendimento_med DESC NULLS LAST
-                ) sub
-                GROUP BY UPPER(sub.clinica)
+                    UPPER(especialidade) AS clinica_upper,
+                    COUNT(*) AS medicos_ativos
+                FROM medicos_ps
+                WHERE especialidade IS NOT NULL
+                  AND especialidade != ''
+                GROUP BY UPPER(especialidade)
             """)
             medicos_ativos_rows = {r['clinica_upper']: r['medicos_ativos'] for r in cursor.fetchall()}
         except Exception as e_med_at:
-            logger.warning('Medicos ativos indisponivel (medicos_ps/painel17): %s', str(e_med_at))
+            logger.warning('Medicos ativos indisponivel (medicos_ps): %s', str(e_med_at))
             conn.rollback()
 
         def _match_medicos(ds_clinica, medicos_rows):
