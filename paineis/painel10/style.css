@@ -677,6 +677,28 @@ body {
     color: #155724;
 }
 
+.badge-medico {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--raio-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-medico-ativo {
+    background: var(--cor-sucesso-light);
+    color: #155724;
+    border: 1px solid #a3d9a5;
+}
+
+.badge-medico-ausente {
+    background: var(--cor-fundo);
+    color: var(--cor-texto-muted);
+    border: 1px solid var(--cor-borda);
+}
+
 /* =========================================================
    12. ESTADOS E FEEDBACK
    ========================================================= */
@@ -1039,6 +1061,149 @@ body {
 .paciente-entrada i {
     font-size: 0.7rem;
     opacity: 0.7;
+}
+
+/* =========================================================
+   17. MÉDICOS NOS CONSULTÓRIOS (Cards)
+   ========================================================= */
+
+.guiches-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--espacamento-sm);
+}
+
+.guiche-card {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-md);
+    padding: var(--espacamento-md);
+    background: var(--cor-fundo);
+    border-radius: var(--raio-md);
+    border: 1px solid var(--cor-borda);
+    border-left: 4px solid var(--cor-info);
+    transition: var(--transicao-rapida);
+}
+
+.guiche-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-card-hover);
+}
+
+.guiche-card.status-atendendo {
+    border-left-color: var(--cor-sucesso);
+}
+
+.guiche-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.guiche-header-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+    flex-wrap: wrap;
+}
+
+.guiche-numero {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+}
+
+.guiche-badge {
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: var(--raio-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+}
+
+.guiche-badge-consulta {
+    background: var(--cor-sucesso-light);
+    color: #155724;
+    border: 1px solid #a3d9a5;
+}
+
+.guiche-usuario {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.guiche-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    margin-top: 3px;
+    flex-wrap: wrap;
+}
+
+.guiche-login {
+    font-size: 0.68rem;
+    color: var(--cor-texto-muted);
+}
+
+.guiche-tempo {
+    font-size: 0.68rem;
+    color: var(--cor-sucesso);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.guiche-tempo i {
+    font-size: 0.6rem;
+}
+
+.guiche-atendimentos {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 48px;
+    padding: var(--espacamento-xs) var(--espacamento-sm);
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    border: 1px solid var(--cor-borda);
+}
+
+.guiche-atend-valor {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--cor-primaria);
+    line-height: 1.1;
+}
+
+.guiche-atend-label {
+    font-size: 0.55rem;
+    color: var(--cor-texto-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .guiches-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .guiche-card {
+        padding: var(--espacamento-sm);
+        gap: var(--espacamento-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .guiches-grid { grid-template-columns: 1fr; }
 }
 
 @media print {

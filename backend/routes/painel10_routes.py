@@ -373,6 +373,27 @@ def api_painel10_clinicas_consolidado():
             logger.warning('Mediana indisponivel (painel_ps_analise): %s', str(e_med))
             conn.rollback()
 
+        # Médicos ativos por clínica agora (consulta iniciada nas últimas 60 min sem fim/alta)
+        # painel17_atendimentos_ps.clinica pode ter casing diferente de ds_clinica → compara via UPPER
+        medicos_ativos_rows = {}
+        try:
+            cursor.execute("""
+                SELECT
+                    UPPER(clinica) AS clinica_upper,
+                    COUNT(DISTINCT nm_medico) AS medicos_ativos
+                FROM painel17_atendimentos_ps
+                WHERE dt_inicio_atendimento_med IS NOT NULL
+                  AND dt_fim_atendimento IS NULL
+                  AND dt_alta IS NULL
+                  AND dt_inicio_atendimento_med >= NOW() - INTERVAL '60 minutes'
+                  AND clinica IS NOT NULL
+                GROUP BY UPPER(clinica)
+            """)
+            medicos_ativos_rows = {r['clinica_upper']: r['medicos_ativos'] for r in cursor.fetchall()}
+        except Exception as e_med_at:
+            logger.warning('Medicos ativos indisponivel (painel17_atendimentos_ps): %s', str(e_med_at))
+            conn.rollback()
+
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
         resultado = []
 
@@ -383,15 +404,16 @@ def api_painel10_clinicas_consolidado():
             aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
             tempo_max = tempo_ultimo_rows.get(ds_clinica)
             mediana = mediana_rows.get(ds_clinica)
+            medicos_ativos = medicos_ativos_rows.get((ds_clinica or '').upper(), 0)
 
             resultado.append({
                 'ds_clinica': ds_clinica,
                 'aguardando_atendimento': aguardando,
                 'total_atendimentos': tp.get('total_atendimentos', 0),
                 'atendimentos_realizados': tp.get('atendimentos_realizados', 0),
-                'tempo_medio_espera_min': tp.get('tempo_medio_espera_min', 0),
                 'mediana_espera_min': mediana,
                 'tempo_max_espera_min': tempo_max,
+                'medicos_ativos': medicos_ativos,
             })
 
         cursor.close()

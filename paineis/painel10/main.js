@@ -20,7 +20,8 @@ var CONFIG = {
         pacientesClinica: BASE_URL + '/api/paineis/painel10/pacientes-clinica',
         atendimentosHora: BASE_URL + '/api/paineis/painel10/atendimentos-hora',
         desempenhoMedico: BASE_URL + '/api/paineis/painel10/desempenho-medico',
-        desempenhoRecepcao: BASE_URL + '/api/paineis/painel10/desempenho-recepcao'
+        desempenhoRecepcao: BASE_URL + '/api/paineis/painel10/desempenho-recepcao',
+        medicosConsultorios: BASE_URL + '/api/paineis/painel18/medicos'
     },
     intervaloRefresh: 60000,
     velocidadeScroll: 0.5,
@@ -173,7 +174,8 @@ function carregarTudo() {
         { url: CONFIG.api.clinicasConsolidado, chave: 'clinicas' },
         { url: CONFIG.api.atendimentosHora, chave: 'porHora' },
         { url: CONFIG.api.desempenhoMedico, chave: 'medicos' },
-        { url: CONFIG.api.desempenhoRecepcao, chave: 'recepcao' }
+        { url: CONFIG.api.desempenhoRecepcao, chave: 'recepcao' },
+        { url: CONFIG.api.medicosConsultorios, chave: 'medicosConsult' }
     ];
 
     var resultados = {};
@@ -204,7 +206,7 @@ function carregarTudo() {
 function finalizarCarregamento(dados, erros) {
     carregando = false;
 
-    if (erros >= 4) {
+    if (erros >= 5) {
         errosConsecutivos++;
         atualizarStatus('offline');
         if (errosConsecutivos >= 3) {
@@ -268,6 +270,7 @@ function atualizarDashboard(d) {
 function renderizarConteudo(dados) {
     renderizarRecepcao(dados.recepcao);
     renderizarClinicasConsolidado(dados.clinicas);
+    renderizarMedicosConsultorios(dados.medicosConsult);
     renderizarGrafico(dados.porHora);
     renderizarMedicos(dados.medicos);
 }
@@ -305,9 +308,9 @@ function renderizarClinicasConsolidado(dados) {
         var aguardando = row.aguardando_atendimento || 0;
         totalAguardando += aguardando;
 
-        var tempoMedio = row.tempo_medio_espera_min || 0;
         var mediana = row.mediana_espera_min;
         var tempoMax = row.tempo_max_espera_min;
+        var medicosAtivos = row.medicos_ativos || 0;
         var detalheId = 'detalhe-clinica-' + i;
 
         var medianaHtml = (mediana !== null && mediana !== undefined)
@@ -318,12 +321,16 @@ function renderizarClinicasConsolidado(dados) {
             ? '<span class="badge badge-tempo ' + getClasseTempo(tempoMax, 'espera') + '" title="Tempo do último paciente atendido">' + tempoMax + ' min</span>'
             : '<span class="texto-muted">-</span>';
 
+        var medicosHtml = medicosAtivos > 0
+            ? '<span class="badge-medico badge-medico-ativo"><i class="fas fa-circle" style="font-size:0.45rem;margin-right:3px"></i> ' + medicosAtivos + ' ativo' + (medicosAtivos > 1 ? 's' : '') + '</span>'
+            : '<span class="badge-medico badge-medico-ausente"><i class="far fa-circle" style="font-size:0.45rem;margin-right:3px"></i> Sem médico</span>';
+
         html += '<tr class="tr-clinica-clickavel" data-clinica="' + escapeAttr(row.ds_clinica) + '" data-detalhe="' + detalheId + '">';
         html += '  <td><span class="clinica-nome"><i class="fas fa-chevron-right icone-expandir"></i> ' + escapeHtml(row.ds_clinica) + '</span></td>';
         html += '  <td class="texto-centro"><span class="badge badge-aguardando-grande">' + formatarNumero(aguardando) + '</span></td>';
         html += '  <td class="texto-centro">' + formatarNumero(row.total_atendimentos) + '</td>';
         html += '  <td class="texto-centro">' + formatarNumero(row.atendimentos_realizados) + '</td>';
-        html += '  <td class="texto-centro"><span class="badge badge-tempo ' + getClasseTempo(tempoMedio, 'espera') + '">' + (tempoMedio || '-') + ' min</span></td>';
+        html += '  <td class="texto-centro">' + medicosHtml + '</td>';
         html += '  <td class="texto-centro">' + medianaHtml + '</td>';
         html += '  <td class="texto-centro">' + tempoMaxHtml + '</td>';
         html += '</tr>';
@@ -407,6 +414,62 @@ function carregarPacientesClinica(dsClinica, container) {
             console.error('[Painel10] Erro ao carregar pacientes:', err);
             container.innerHTML = '<p class="texto-muted texto-centro" style="padding:12px">Falha ao carregar pacientes.</p>';
         });
+}
+
+// ----- MEDICOS NOS CONSULTORIOS -----
+function renderizarMedicosConsultorios(dados) {
+    var grid = document.getElementById('medicos-consultorio-grid');
+    var contador = document.getElementById('contador-medicos-consultorio');
+    if (!grid) return;
+
+    if (!dados || !dados.dados || dados.dados.length === 0) {
+        grid.innerHTML = '<div class="mensagem-vazia"><i class="fas fa-user-md"></i><p>Nenhum médico logado no momento</p></div>';
+        if (contador) contador.textContent = '0 médico(s)';
+        return;
+    }
+
+    var lista = dados.dados;
+    if (contador) contador.textContent = lista.length + ' médico' + (lista.length !== 1 ? 's' : '');
+
+    var html = '';
+    for (var i = 0; i < lista.length; i++) {
+        var item = lista[i];
+        var nome = item.ds_usuario || '-';
+        var consultorio = item.consultorio || '-';
+        var especialidade = item.especialidade || '';
+        var tempoConectado = item.tempo_conectado || '-';
+        var emConsulta = item.em_consulta || 0;
+        var clinicas = item.clinicas || [];
+        var atendHoje = item.atendimentos_hoje || 0;
+
+        var statusClass = emConsulta > 0 ? 'status-atendendo' : '';
+
+        html += '<div class="guiche-card ' + statusClass + '">';
+        html += '  <div class="guiche-info">';
+        html += '    <div class="guiche-header-line">';
+        html += '      <span class="guiche-numero">' + escapeHtml(consultorio) + '</span>';
+        if (emConsulta > 0) {
+            html += '      <span class="guiche-badge guiche-badge-consulta"><i class="fas fa-circle" style="font-size:0.45rem;margin-right:3px"></i> Em atendimento</span>';
+        }
+        html += '    </div>';
+        html += '    <div class="guiche-usuario">' + escapeHtml(formatarNome(nome)) + '</div>';
+        html += '    <div class="guiche-meta">';
+        if (especialidade) {
+            html += '      <span class="guiche-login">' + escapeHtml(especialidade) + '</span>';
+        } else if (clinicas.length > 0) {
+            html += '      <span class="guiche-login">' + escapeHtml(clinicas.join(', ')) + '</span>';
+        }
+        html += '      <span class="guiche-tempo"><i class="fas fa-clock"></i> ' + escapeHtml(tempoConectado) + '</span>';
+        html += '    </div>';
+        html += '  </div>';
+        html += '  <div class="guiche-atendimentos">';
+        html += '    <span class="guiche-atend-valor">' + atendHoje + '</span>';
+        html += '    <span class="guiche-atend-label">atend.</span>';
+        html += '  </div>';
+        html += '</div>';
+    }
+
+    grid.innerHTML = html;
 }
 
 // ----- GRAFICO POR HORA -----
@@ -607,6 +670,13 @@ function getClasseTempo(minutos, tipo) {
     if (minutos < limites.bom) return 'tempo-bom';
     if (minutos < limites.medio) return 'tempo-medio';
     return 'tempo-critico';
+}
+
+function formatarNome(nome) {
+    if (!nome || nome === '-') return '-';
+    return nome.toLowerCase().replace(/(?:^|\s)\S/g, function(letra) {
+        return letra.toUpperCase();
+    });
 }
 
 function escapeHtml(text) {
