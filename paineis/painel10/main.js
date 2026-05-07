@@ -27,7 +27,7 @@ var CONFIG = {
     pausaFinal: 8000,
     pausaAposReset: 5000,
     watchdogInterval: 5000,
-    tempoEspera: { bom: 30, medio: 60 },
+    tempoEspera: { bom: 11, medio: 20 },
     tempoAtendimento: { bom: 15, medio: 30 }
 };
 

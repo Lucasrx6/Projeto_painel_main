@@ -328,7 +328,7 @@ def api_painel10_clinicas_consolidado():
         aguardando_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
 
         # Tempo do último paciente atendido por clínica (Tempo Máximo = referência fixa)
-        # Isolado em try-except para não derrubar o endpoint se a tabela/coluna diferir
+        # painel_ps_analise: dt_entrada e dt_atend_medico são character varying → cast ::timestamptz
         tempo_ultimo_rows = {}
         try:
             cursor.execute("""
@@ -336,51 +336,42 @@ def api_painel10_clinicas_consolidado():
                     ds_clinica,
                     ROUND(
                         EXTRACT(EPOCH FROM (
-                            dt_inicio_atendimento_med - COALESCE(retirada_senha, dt_entrada)
+                            dt_atend_medico::timestamptz - dt_entrada::timestamptz
                         )) / 60
                     )::int AS tempo_ultimo_atendido_min
                 FROM painel_ps_analise
-                WHERE dt_inicio_atendimento_med IS NOT NULL
-                  AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                ORDER BY ds_clinica, dt_inicio_atendimento_med DESC
+                WHERE dt_atend_medico IS NOT NULL
+                  AND dt_atend_medico != ''
+                  AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
+                ORDER BY ds_clinica, dt_atend_medico::timestamptz DESC
             """)
             tempo_ultimo_rows = {r['ds_clinica']: r['tempo_ultimo_atendido_min'] for r in cursor.fetchall()}
         except Exception as e_max:
             logger.warning('Tempo Maximo indisponivel (painel_ps_analise): %s', str(e_max))
             conn.rollback()
 
-        # Mapa nome_clinica -> cd_clinica a partir de painel17_atendimentos_ps (para mediana)
-        clinica_cd_map = {}
+        # Mediana de espera por clínica via PERCENTILE_CONT em painel_ps_analise
+        # Usa ds_clinica direto → sem ambiguidade de join com painel17
+        mediana_rows = {}
         try:
             cursor.execute("""
-                SELECT DISTINCT cd_clinica, LOWER(TRIM(clinica)) AS clinica_key
-                FROM painel17_atendimentos_ps
-                WHERE dt_entrada >= NOW() - INTERVAL '1 day'
+                SELECT
+                    ds_clinica,
+                    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
+                        EXTRACT(EPOCH FROM (
+                            dt_atend_medico::timestamptz - dt_entrada::timestamptz
+                        )) / 60
+                    ))::int AS mediana_espera_min
+                FROM painel_ps_analise
+                WHERE dt_atend_medico IS NOT NULL
+                  AND dt_atend_medico != ''
+                  AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
+                GROUP BY ds_clinica
             """)
-            clinica_cd_map = {r['clinica_key']: r['cd_clinica'] for r in cursor.fetchall()}
+            mediana_rows = {r['ds_clinica']: r['mediana_espera_min'] for r in cursor.fetchall()}
         except Exception as e_med:
-            logger.warning('Mediana indisponivel (painel17_atendimentos_ps): %s', str(e_med))
+            logger.warning('Mediana indisponivel (painel_ps_analise): %s', str(e_med))
             conn.rollback()
-
-        def _calcular_mediana(cd_clinica):
-            try:
-                cursor.execute("""
-                    SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
-                    FROM painel17_atendimentos_ps
-                    WHERE cd_clinica = %s
-                      AND dt_inicio_atendimento_med IS NOT NULL
-                    ORDER BY dt_inicio_atendimento_med DESC
-                    LIMIT %s
-                """, (cd_clinica, _JANELA_MEDIANA))
-                tempos = []
-                for r in cursor.fetchall():
-                    inicio = r.get('retirada_senha') or r.get('dt_entrada')
-                    t = _tempo_minutos(inicio, r.get('dt_inicio_atendimento_med'))
-                    if t is not None:
-                        tempos.append(t)
-                return round(statistics.median(tempos)) if tempos else None
-            except Exception:
-                return None
 
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
         resultado = []
@@ -389,11 +380,9 @@ def api_painel10_clinicas_consolidado():
             tp = tempo_rows.get(ds_clinica, {})
             ag = aguardando_rows.get(ds_clinica, {})
 
-            cd = clinica_cd_map.get((ds_clinica or '').lower().strip())
-            mediana = _calcular_mediana(cd) if cd is not None else None
-
             aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
             tempo_max = tempo_ultimo_rows.get(ds_clinica)
+            mediana = mediana_rows.get(ds_clinica)
 
             resultado.append({
                 'ds_clinica': ds_clinica,
@@ -445,78 +434,42 @@ def api_painel10_pacientes_clinica():
 
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        rows = []
 
-        # Tentativa 1: query completa com retirada_senha
-        try:
-            cursor.execute("""
-                SELECT
-                    nm_pessoa_fisica,
-                    nr_atendimento,
-                    dt_entrada,
-                    COALESCE(retirada_senha, dt_entrada) AS inicio_espera,
-                    ROUND(
-                        EXTRACT(EPOCH FROM (NOW() - COALESCE(retirada_senha, dt_entrada))) / 60
-                    )::int AS tempo_espera_min
-                FROM painel_ps_analise
-                WHERE ds_clinica = %s
-                  AND dt_inicio_atendimento_med IS NULL
-                  AND dt_alta IS NULL
-                  AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                ORDER BY COALESCE(retirada_senha, dt_entrada) ASC
-            """, (ds_clinica,))
-            rows = cursor.fetchall()
-        except Exception as e1:
-            logger.warning('pacientes-clinica tentativa 1 falhou: %s', str(e1))
-            conn.rollback()
+        # painel_ps_analise: dt_entrada, dt_atend_medico, dt_alta são character varying
+        # Pacientes aguardando = sem dt_atend_medico preenchido e sem alta
+        cursor.execute("""
+            SELECT
+                nm_pessoa_fisica,
+                nr_atendimento,
+                dt_entrada,
+                ROUND(
+                    EXTRACT(EPOCH FROM (NOW() - dt_entrada::timestamptz)) / 60
+                )::int AS tempo_espera_min
+            FROM painel_ps_analise
+            WHERE ds_clinica = %s
+              AND (dt_atend_medico IS NULL OR dt_atend_medico = '')
+              AND (dt_alta IS NULL OR dt_alta = '')
+              AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
+            ORDER BY dt_entrada::timestamptz ASC
+        """, (ds_clinica,))
 
-            # Tentativa 2: sem retirada_senha (usa só dt_entrada)
-            try:
-                cursor.execute("""
-                    SELECT
-                        nm_pessoa_fisica,
-                        nr_atendimento,
-                        dt_entrada,
-                        dt_entrada AS inicio_espera,
-                        ROUND(
-                            EXTRACT(EPOCH FROM (NOW() - dt_entrada)) / 60
-                        )::int AS tempo_espera_min
-                    FROM painel_ps_analise
-                    WHERE ds_clinica = %s
-                      AND dt_inicio_atendimento_med IS NULL
-                      AND dt_alta IS NULL
-                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                    ORDER BY dt_entrada ASC
-                """, (ds_clinica,))
-                rows = cursor.fetchall()
-            except Exception as e2:
-                logger.warning('pacientes-clinica tentativa 2 falhou: %s', str(e2))
-                conn.rollback()
-
-                # Tentativa 3: query mínima para descobrir colunas disponíveis
-                try:
-                    cursor.execute("""
-                        SELECT *
-                        FROM painel_ps_analise
-                        WHERE ds_clinica = %s
-                          AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                        LIMIT 0
-                    """, (ds_clinica,))
-                    cols = [d.name for d in cursor.description] if cursor.description else []
-                    logger.warning('pacientes-clinica: colunas disponíveis em painel_ps_analise: %s', cols)
-                except Exception as e3:
-                    logger.error('pacientes-clinica: painel_ps_analise inacessível: %s', str(e3))
-                    conn.rollback()
-
+        rows = cursor.fetchall()
         resultado = []
         for r in rows:
-            inicio = r.get('inicio_espera')
-            entrada = r.get('dt_entrada')
+            entrada_str = r.get('dt_entrada') or ''
+            # Formata dd/mm HH:MM a partir da string "2026-04-15 16:27:31-03"
+            try:
+                dt_fmt = entrada_str[8:10] + '/' + entrada_str[5:7] + ' ' + entrada_str[11:16]
+                hora_fmt = entrada_str[11:16]
+            except Exception:
+                dt_fmt = entrada_str[:16] if entrada_str else '-'
+                hora_fmt = '-'
+
             resultado.append({
                 'nm_paciente': (r.get('nm_pessoa_fisica') or '').strip() or '-',
                 'nr_atendimento': str(r.get('nr_atendimento') or ''),
-                'dt_entrada': entrada.strftime('%d/%m %H:%M') if entrada else '-',
-                'inicio_espera': inicio.strftime('%H:%M') if inicio else '-',
+                'dt_entrada': dt_fmt or '-',
+                'inicio_espera': hora_fmt or '-',
                 'tempo_espera_min': r.get('tempo_espera_min') or 0,
             })
 
@@ -539,6 +492,82 @@ def api_painel10_pacientes_clinica():
             'aviso': 'dados_indisponiveis',
             'timestamp': datetime.now().isoformat()
         })
+    finally:
+        if conn:
+            release_connection(conn)
+
+
+# =============================================================================
+# ENDPOINT: DIAGNOSTICO DA TABELA painel_ps_analise (admin)
+# =============================================================================
+
+@painel10_bp.route('/api/paineis/painel10/diagnostico-ps', methods=['GET'])
+@login_required
+def api_painel10_diagnostico_ps():
+    """Inspeciona colunas e sample de painel_ps_analise para depuracao."""
+    if not session.get('is_admin', False):
+        return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Sem conexao'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        resultado = {}
+
+        # Colunas de painel_ps_analise
+        try:
+            cursor.execute("""
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_name = 'painel_ps_analise'
+                ORDER BY ordinal_position
+            """)
+            resultado['colunas_painel_ps_analise'] = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            resultado['colunas_painel_ps_analise'] = str(e)
+            conn.rollback()
+
+        # Colunas de painel17_atendimentos_ps
+        try:
+            cursor.execute("""
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_name = 'painel17_atendimentos_ps'
+                ORDER BY ordinal_position
+            """)
+            resultado['colunas_painel17'] = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            resultado['colunas_painel17'] = str(e)
+            conn.rollback()
+
+        # Sample de 2 linhas de painel_ps_analise
+        try:
+            cursor.execute("SELECT * FROM painel_ps_analise LIMIT 2")
+            sample = cursor.fetchall()
+            # Converte datetimes para string para serializar
+            resultado['sample_painel_ps_analise'] = [
+                {k: (str(v) if v is not None else None) for k, v in dict(r).items()}
+                for r in sample
+            ]
+        except Exception as e:
+            resultado['sample_painel_ps_analise'] = str(e)
+            conn.rollback()
+
+        # Contagem geral de painel_ps_analise (ultimas 24h)
+        try:
+            cursor.execute("SELECT COUNT(*) AS total FROM painel_ps_analise WHERE dt_entrada >= NOW() - INTERVAL '24 hours'")
+            resultado['total_24h'] = dict(cursor.fetchone())
+        except Exception as e:
+            resultado['total_24h'] = str(e)
+            conn.rollback()
+
+        cursor.close()
+        return jsonify({'success': True, 'diagnostico': resultado})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if conn:
             release_connection(conn)
