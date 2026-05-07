@@ -321,13 +321,15 @@ function renderizarClinicasConsolidado(dados) {
             ? '<span class="badge badge-tempo ' + getClasseTempo(tempoMax, 'espera') + '" title="Tempo do último paciente atendido">' + tempoMax + ' min</span>'
             : '<span class="texto-muted">-</span>';
 
+        var semMedicoAlerta = aguardando > 0 && medicosAtivos === 0;
+
         var medicosHtml = medicosAtivos > 0
             ? '<span class="badge-medico badge-medico-ativo"><i class="fas fa-circle" style="font-size:0.45rem;margin-right:3px"></i> ' + medicosAtivos + ' ativo' + (medicosAtivos > 1 ? 's' : '') + '</span>'
-            : '<span class="badge-medico badge-medico-ausente"><i class="far fa-circle" style="font-size:0.45rem;margin-right:3px"></i> Sem médico</span>';
+            : '<span class="badge-medico badge-medico-ausente' + (semMedicoAlerta ? ' badge-medico-alerta' : '') + '"><i class="fas fa-triangle-exclamation" style="font-size:0.65rem;margin-right:3px"></i> Sem médico</span>';
 
-        html += '<tr class="tr-clinica-clickavel" data-clinica="' + escapeAttr(row.ds_clinica) + '" data-detalhe="' + detalheId + '">';
+        html += '<tr class="tr-clinica-clickavel' + (semMedicoAlerta ? ' tr-sem-medico-alerta' : '') + '" data-clinica="' + escapeAttr(row.ds_clinica) + '" data-detalhe="' + detalheId + '">';
         html += '  <td><span class="clinica-nome"><i class="fas fa-chevron-right icone-expandir"></i> ' + escapeHtml(row.ds_clinica) + '</span></td>';
-        html += '  <td class="texto-centro"><span class="badge badge-aguardando-grande">' + formatarNumero(aguardando) + '</span></td>';
+        html += '  <td class="texto-centro"><span class="badge badge-aguardando-grande ' + getClasseAguardando(aguardando) + '">' + formatarNumero(aguardando) + '</span></td>';
         html += '  <td class="texto-centro">' + formatarNumero(row.total_atendimentos) + '</td>';
         html += '  <td class="texto-centro">' + formatarNumero(row.atendimentos_realizados) + '</td>';
         html += '  <td class="texto-centro">' + medicosHtml + '</td>';
@@ -670,6 +672,13 @@ function getClasseTempo(minutos, tipo) {
     if (minutos < limites.bom) return 'tempo-bom';
     if (minutos < limites.medio) return 'tempo-medio';
     return 'tempo-critico';
+}
+
+function getClasseAguardando(n) {
+    if (n <= 3)  return 'aguardando-bom';
+    if (n <= 7)  return 'aguardando-medio';
+    if (n <= 11) return 'aguardando-critico';
+    return 'aguardando-critico aguardando-piscando';
 }
 
 function formatarNome(nome) {
