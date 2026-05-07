@@ -450,19 +450,9 @@ function renderizarMedicosConsultorios(dados) {
         html += '  <div class="guiche-info">';
         html += '    <div class="guiche-header-line">';
         html += '      <span class="guiche-numero">' + escapeHtml(consultorio) + '</span>';
-        if (emConsulta > 0) {
-            html += '      <span class="guiche-badge guiche-badge-consulta"><i class="fas fa-circle" style="font-size:0.45rem;margin-right:3px"></i> Em atendimento</span>';
-        }
-        html += '    </div>';
-        html += '    <div class="guiche-usuario">' + escapeHtml(formatarNome(nome)) + '</div>';
-        html += '    <div class="guiche-meta">';
-        if (especialidade) {
-            html += '      <span class="guiche-login">' + escapeHtml(especialidade) + '</span>';
-        } else if (clinicas.length > 0) {
-            html += '      <span class="guiche-login">' + escapeHtml(clinicas.join(', ')) + '</span>';
-        }
         html += '      <span class="guiche-tempo"><i class="fas fa-clock"></i> ' + escapeHtml(tempoConectado) + '</span>';
         html += '    </div>';
+        html += '    <div class="guiche-usuario">' + escapeHtml(formatarNome(nome)) + '</div>';
         html += '  </div>';
         html += '  <div class="guiche-atendimentos">';
         html += '    <span class="guiche-atend-valor">' + atendHoje + '</span>';

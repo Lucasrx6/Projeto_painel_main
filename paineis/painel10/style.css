@@ -1109,24 +1109,23 @@ body {
 
 .guiches-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: var(--espacamento-sm);
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 6px;
 }
 
 .guiche-card {
     display: flex;
     align-items: center;
-    gap: var(--espacamento-md);
-    padding: var(--espacamento-md);
+    gap: var(--espacamento-sm);
+    padding: 8px 10px;
     background: var(--cor-fundo);
     border-radius: var(--raio-md);
     border: 1px solid var(--cor-borda);
-    border-left: 4px solid var(--cor-info);
+    border-left: 3px solid var(--cor-info);
     transition: var(--transicao-rapida);
 }
 
 .guiche-card:hover {
-    transform: translateY(-2px);
     box-shadow: var(--sombra-card-hover);
 }
 
@@ -1142,35 +1141,21 @@ body {
 .guiche-header-line {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 2px;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px;
+    margin-bottom: 1px;
 }
 
 .guiche-numero {
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 700;
-    color: var(--cor-texto);
-}
-
-.guiche-badge {
-    font-size: 0.58rem;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: var(--raio-sm);
+    color: var(--cor-texto-secundario);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    line-height: 1;
-}
-
-.guiche-badge-consulta {
-    background: var(--cor-sucesso-light);
-    color: #155724;
-    border: 1px solid #a3d9a5;
+    letter-spacing: 0.3px;
 }
 
 .guiche-usuario {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--cor-texto);
     white-space: nowrap;
@@ -1178,30 +1163,17 @@ body {
     text-overflow: ellipsis;
 }
 
-.guiche-meta {
-    display: flex;
-    align-items: center;
-    gap: var(--espacamento-sm);
-    margin-top: 3px;
-    flex-wrap: wrap;
-}
-
-.guiche-login {
-    font-size: 0.68rem;
-    color: var(--cor-texto-muted);
-}
-
 .guiche-tempo {
-    font-size: 0.68rem;
-    color: var(--cor-sucesso);
-    font-weight: 600;
+    font-size: 0.65rem;
+    color: var(--cor-texto-muted);
     display: flex;
     align-items: center;
     gap: 3px;
+    white-space: nowrap;
 }
 
 .guiche-tempo i {
-    font-size: 0.6rem;
+    font-size: 0.58rem;
 }
 
 .guiche-atendimentos {
@@ -1210,40 +1182,30 @@ body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    min-width: 48px;
-    padding: var(--espacamento-xs) var(--espacamento-sm);
+    min-width: 36px;
+    padding: 3px 6px;
     background: var(--cor-fundo-card);
-    border-radius: var(--raio-md);
+    border-radius: var(--raio-sm);
     border: 1px solid var(--cor-borda);
 }
 
 .guiche-atend-valor {
-    font-size: 1.3rem;
+    font-size: 1rem;
     font-weight: 800;
     color: var(--cor-primaria);
     line-height: 1.1;
 }
 
 .guiche-atend-label {
-    font-size: 0.55rem;
+    font-size: 0.5rem;
     color: var(--cor-texto-muted);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     font-weight: 600;
 }
 
-@media (max-width: 768px) {
-    .guiches-grid {
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    }
-    .guiche-card {
-        padding: var(--espacamento-sm);
-        gap: var(--espacamento-sm);
-    }
-}
-
 @media (max-width: 480px) {
-    .guiches-grid { grid-template-columns: 1fr; }
+    .guiches-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media print {
