@@ -4,6 +4,7 @@ Hospital Management Dashboard System
 """
 from flask import Flask, jsonify
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 import sys
 import io
@@ -82,6 +83,15 @@ app = Flask(__name__)
 # Carrega configuração
 config_class = get_config()
 app.config.from_object(config_class)
+
+# Proxy reverso (nginx → Gunicorn): garante que HTTPS e IP real sejam lidos corretamente
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# Cookies seguros quando a requisição chegar via HTTPS
+if os.getenv('HTTPS_ENABLED', 'false').lower() == 'true':
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # Valida configuração
 validate_production_config()
