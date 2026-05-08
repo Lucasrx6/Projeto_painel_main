@@ -366,8 +366,9 @@ def api_painel10_clinicas_consolidado():
                 WHERE (dt_atend_medico IS NULL OR dt_atend_medico = '')
                   AND (dt_alta IS NULL OR dt_alta = '')
                   AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
+                  AND EXTRACT(EPOCH FROM (NOW() - dt_entrada::timestamptz)) / 60 <= %s
                 GROUP BY ds_clinica
-            """)
+            """, (_MAX_ESPERA_MIN,))
             tempo_ultimo_rows = {r['ds_clinica']: r['tempo_max_aguardando_min'] for r in cursor.fetchall()}
         except Exception as e_max:
             logger.warning('Maior espera indisponivel (painel_ps_analise): %s', str(e_max))
@@ -523,12 +524,16 @@ def api_painel10_pacientes_clinica():
               AND (dt_atend_medico IS NULL OR dt_atend_medico = '')
               AND (dt_alta IS NULL OR dt_alta = '')
               AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
+              AND EXTRACT(EPOCH FROM (NOW() - dt_entrada::timestamptz)) / 60 <= %s
             ORDER BY dt_entrada::timestamptz ASC
-        """, (ds_clinica,))
+        """, (ds_clinica, _MAX_ESPERA_MIN))
 
         rows = cursor.fetchall()
         resultado = []
         for r in rows:
+            tempo_min = r.get('tempo_espera_min') or 0
+            if tempo_min > _MAX_ESPERA_MIN:
+                continue
             entrada_str = r.get('dt_entrada') or ''
             # Formata dd/mm HH:MM a partir da string "2026-04-15 16:27:31-03"
             try:
@@ -543,7 +548,7 @@ def api_painel10_pacientes_clinica():
                 'nr_atendimento': str(r.get('nr_atendimento') or ''),
                 'dt_entrada': dt_fmt or '-',
                 'inicio_espera': hora_fmt or '-',
-                'tempo_espera_min': r.get('tempo_espera_min') or 0,
+                'tempo_espera_min': tempo_min,
             })
 
         cursor.close()

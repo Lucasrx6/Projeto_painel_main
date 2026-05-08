@@ -25,6 +25,7 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import apprise
+import requests
 import schedule
 import time
 import logging
@@ -94,6 +95,9 @@ INTERVALO_MIN   = int(os.getenv('NOTIF_PACIENTE_PS_INTERVALO_MIN', '10'))
 COOLDOWN_MIN    = INTERVALO_MIN          # cooldown = mesmo intervalo
 ESPERA_MIN_ALERTA = 10                   # paciente aguardando >= 10 min
 
+# Google Chat webhook (opcional — deixar em branco para desativar)
+GCHAT_WEBHOOK_PS = os.getenv('GCHAT_WEBHOOK_PACIENTE_PS', '')
+
 
 # =========================================================
 # NORMALIZACAO E ALIAS DE CLINICAS
@@ -140,6 +144,53 @@ def _clinica_tem_medico(ds_clinica, especialidades_ativas):
             return True
 
     return False
+
+
+# =========================================================
+# GOOGLE CHAT
+# =========================================================
+
+def montar_mensagem_gchat(alertas):
+    """Monta mensagem em texto/markdown para Google Chat."""
+    agora = datetime.now().strftime('%d/%m/%Y %H:%M')
+    linhas = []
+    for a in alertas:
+        linhas.append('• *{}*  —  {} aguardando  —  máx {}min'.format(
+            a['ds_clinica'], a['qt_aguardando'], a['max_espera_min']
+        ))
+    return (
+        '⚠️ *ALERTA PS — Paciente sem Médico*\n'
+        'Hospital Anchieta Ceilandia — {agora}\n\n'
+        '*{qt} clínica(s)* com paciente aguardando ≥{espera}min sem médico:\n\n'
+        '{linhas}\n\n'
+        '_Repete a cada {intervalo}min enquanto a condição persistir._'
+    ).format(
+        agora=agora,
+        qt=len(alertas),
+        espera=ESPERA_MIN_ALERTA,
+        linhas='\n'.join(linhas),
+        intervalo=INTERVALO_MIN
+    )
+
+
+def enviar_gchat(alertas):
+    """Envia alerta para o Google Chat via webhook configurado em GCHAT_WEBHOOK_PACIENTE_PS."""
+    if not GCHAT_WEBHOOK_PS:
+        return False, 'Webhook nao configurado'
+
+    try:
+        mensagem = montar_mensagem_gchat(alertas)
+        payload = {'text': mensagem}
+        resp = requests.post(GCHAT_WEBHOOK_PS, json=payload, timeout=10)
+        resp.raise_for_status()
+        logger.info('[paciente_ps] Google Chat OK (status %s)', resp.status_code)
+        return True, 'Google Chat enviado (HTTP {})'.format(resp.status_code)
+    except requests.exceptions.HTTPError as e:
+        logger.error('[paciente_ps] Google Chat HTTP erro: %s', e)
+        return False, 'HTTP {}'.format(e.response.status_code if e.response else str(e))
+    except Exception as e:
+        logger.error('[paciente_ps] Erro Google Chat: %s', e)
+        return False, str(e)
 
 
 # =========================================================
@@ -315,7 +366,7 @@ def registrar_log(conn, ds_clinica, qt_aguardando, max_espera_min, sucesso, resp
             None,
             ds_clinica,
             dados_extra,
-            None,
+            '',                              # topico_ntfy: vazio (notificador usa email/gchat)
             'notificado' if sucesso else 'erro',
             agora,
             agora if sucesso else None,
@@ -510,7 +561,18 @@ def verificar_pacientes_ps():
         )
 
         corpo_html = montar_email_html(alertas_novos)
-        sucesso, resposta = enviar_email(destinatarios, titulo, corpo_html)
+        sucesso_email, resposta_email = enviar_email(destinatarios, titulo, corpo_html)
+
+        # Google Chat (independente do email — falha de um nao cancela o outro)
+        sucesso_gchat, resposta_gchat = enviar_gchat(alertas_novos)
+        if GCHAT_WEBHOOK_PS:
+            if sucesso_gchat:
+                logger.info('[paciente_ps] Google Chat enviado.')
+            else:
+                logger.warning('[paciente_ps] Falha Google Chat: %s', resposta_gchat)
+
+        sucesso  = sucesso_email or sucesso_gchat
+        resposta = 'email={} gchat={}'.format(resposta_email, resposta_gchat)
 
         # Registra log por clinica
         for alerta in alertas_novos:
@@ -523,10 +585,10 @@ def verificar_pacientes_ps():
                 resposta
             )
 
-        if sucesso:
-            logger.info('[paciente_ps] Alerta enviado para %s destinatario(s).', len(destinatarios))
+        if sucesso_email:
+            logger.info('[paciente_ps] Email enviado para %s destinatario(s).', len(destinatarios))
         else:
-            logger.warning('[paciente_ps] Falha no envio: %s', resposta)
+            logger.warning('[paciente_ps] Falha email: %s', resposta_email)
 
     except Exception as e:
         logger.error('[paciente_ps] Erro no ciclo: %s', e, exc_info=True)
@@ -543,6 +605,7 @@ def main():
     logger.info('  NOTIFICADOR PACIENTE PS SEM MEDICO')
     logger.info('  Intervalo: %s min | Alerta a partir de: %s min de espera', INTERVALO_MIN, ESPERA_MIN_ALERTA)
     logger.info('  SMTP: %s via %s:%s', SMTP_FROM or SMTP_USER, SMTP_HOST or '(nao configurado)', SMTP_PORT)
+    logger.info('  GChat: %s', GCHAT_WEBHOOK_PS[:60] + '...' if GCHAT_WEBHOOK_PS else '(nao configurado)')
     logger.info('  Banco: %s@%s:%s/%s',
                 DB_CONFIG['user'], DB_CONFIG['host'],
                 DB_CONFIG['port'], DB_CONFIG['database'])

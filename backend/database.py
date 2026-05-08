@@ -445,6 +445,18 @@ def init_db():
             )
         """)
 
+        # Migracoes incrementais: garante colunas que podem nao existir em schemas antigos
+        for ddl in [
+            "ALTER TABLE usuarios          ADD COLUMN IF NOT EXISTS criado_em     TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE usuarios          ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE permissoes_paineis ADD COLUMN IF NOT EXISTS criado_em    TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE historico_usuarios ADD COLUMN IF NOT EXISTS criado_em    TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        ]:
+            try:
+                cursor.execute(ddl)
+            except Exception:
+                conn.rollback()
+
         # Cria indices para melhor performance
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_usuarios_usuario ON usuarios(usuario);
