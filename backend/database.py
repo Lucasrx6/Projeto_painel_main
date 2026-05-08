@@ -80,10 +80,17 @@ _CONNECTION_EXTRAS = {
 # Pool de conexoes (None ate ser inicializado)
 _connection_pool = None
 
-# Configuracoes do pool
-POOL_MIN_CONNECTIONS = int(os.getenv('DB_POOL_MIN', '2'))
-POOL_MAX_CONNECTIONS = int(os.getenv('DB_POOL_MAX', '10'))
-USE_CONNECTION_POOL = os.getenv('DB_USE_POOL', 'true').lower() == 'true'
+# Orçamento total de conexões ao PostgreSQL (compartilhado entre todos os workers).
+# Com 1 worker (recomendado): pool = DB_POOL_BUDGET inteiro.
+# Com N workers: pool por worker = DB_POOL_BUDGET // N  (evita estourar max_connections).
+# DB_POOL_MAX sobrescreve o cálculo automático se definido explicitamente no .env.
+_GUNICORN_WORKERS  = int(os.getenv('GUNICORN_WORKERS', '1'))
+_POOL_BUDGET       = int(os.getenv('DB_POOL_BUDGET', '20'))
+_pool_per_worker   = max(2, _POOL_BUDGET // _GUNICORN_WORKERS)
+
+POOL_MIN_CONNECTIONS = int(os.getenv('DB_POOL_MIN', str(max(1, _pool_per_worker // 4))))
+POOL_MAX_CONNECTIONS = int(os.getenv('DB_POOL_MAX', str(_pool_per_worker)))
+USE_CONNECTION_POOL  = os.getenv('DB_USE_POOL', 'true').lower() == 'true'
 
 
 def init_connection_pool():
@@ -123,6 +130,42 @@ def close_connection_pool():
         logger.info("Connection pool fechado")
 
 
+def _make_pool_conn(conn):
+    """
+    Faz o conn.close() de uma conexao do pool chamar putconn() automaticamente.
+
+    Problema raiz: rotas chamam conn.close() diretamente — o pool nunca fica
+    sabendo que a conexao foi liberada e o slot fica "em uso" para sempre.
+    Esta funcao patches close() uma unica vez por objeto de conexao.
+    """
+    # Guarda o close() real apenas na primeira vez (evita empilhar patches)
+    if not hasattr(conn, '_real_close'):
+        conn._real_close = conn.close
+
+    real_close = conn._real_close  # sempre aponta para o close() original
+
+    def _pool_aware_close():
+        global _connection_pool
+        # Só devolve ao pool se a flag estiver ativa (evita dupla devolução)
+        if getattr(conn, '_from_pool', False):
+            conn._from_pool = False
+            try:
+                if _connection_pool is not None and not conn.closed:
+                    _connection_pool.putconn(conn)
+                    return
+            except Exception:
+                pass
+        # Fallback: fecha a conexao normalmente
+        try:
+            real_close()
+        except Exception:
+            pass
+
+    conn._from_pool = True
+    conn.close = _pool_aware_close
+    return conn
+
+
 # =========================================================
 # CONEXAO COM O BANCO
 # =========================================================
@@ -147,7 +190,9 @@ def get_db_connection(use_dict_cursor=False, retry_count=3, retry_delay=2):
             conn = _connection_pool.getconn()
             if use_dict_cursor:
                 conn.cursor_factory = RealDictCursor
-            return conn
+            # Patcha close() para devolver ao pool automaticamente
+            # (resolve pool exhausted quando rotas chamam conn.close() diretamente)
+            return _make_pool_conn(conn)
         except Exception as e:
             logger.warning(f"Erro ao obter conexao do pool: {e}. Usando conexao direta.")
 
@@ -187,25 +232,18 @@ def get_db_connection(use_dict_cursor=False, retry_count=3, retry_delay=2):
 
 def release_connection(conn):
     """
-    Libera uma conexao de volta para o pool ou fecha.
+    Libera uma conexao de volta para o pool ou fecha diretamente.
 
-    Args:
-        conn: Conexao a ser liberada
+    Com _make_pool_conn aplicado, conn.close() ja chama putconn() internamente
+    para conexoes do pool. Para conexoes diretas (fallback), fecha normalmente.
+    Nao ha mais risco de "trying to put unkeyed connection".
     """
     if conn is None:
         return
-
     try:
-        if USE_CONNECTION_POOL and _connection_pool is not None:
-            _connection_pool.putconn(conn)
-        else:
-            conn.close()
+        conn.close()
     except Exception as e:
         logger.warning(f"Erro ao liberar conexao: {e}")
-        try:
-            conn.close()
-        except:
-            pass
 
 
 @contextmanager

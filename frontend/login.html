@@ -3,331 +3,399 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login - Sistema de Paineis</title>
+    <title>Login — Sistema de Paineis</title>
 
-    <!-- ============================================================
-         PWA META TAGS
-         ============================================================ -->
-    <meta name="theme-color" content="#dc3545">
+    <!-- PWA META TAGS -->
+    <meta name="theme-color" content="#c62828">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Paineis HAC">
     <meta name="description" content="Login - Sistema de Paineis - Hospital Anchieta Ceilandia">
-
-    <!-- Seguranca -->
     <meta name="robots" content="noindex, nofollow">
 
-    <!-- Manifest e icones -->
+    <!-- Manifest e ícones -->
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/static/img/logo.png">
     <link rel="icon" href="/static/img/favicon.png">
 
-    <!-- Preconnect para performance -->
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-
     <!-- CSS -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/frontend/login.css">
     <link rel="stylesheet" href="/frontend/tema.css">
     <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
-    <main class="login-container" role="main">
-        <div class="login-box">
-            <!-- ============================================================
-                 HEADER
-                 ============================================================ -->
-            <header class="login-header">
-                <div class="logo-container">
+    <main class="login-split" role="main">
+
+        <!-- ══════════════════════════════════════════════════════════════
+             PAINEL ESQUERDO — BRANDING (apenas desktop)
+             ══════════════════════════════════════════════════════════════ -->
+        <aside class="login-brand" aria-hidden="true">
+            <!-- Círculos decorativos -->
+            <div class="brand-bg-circle brand-bg-circle--xl"></div>
+            <div class="brand-bg-circle brand-bg-circle--lg"></div>
+            <div class="brand-bg-circle brand-bg-circle--md"></div>
+            <div class="brand-bg-circle brand-bg-circle--sm"></div>
+            <div class="brand-bg-circle brand-bg-circle--xs"></div>
+
+            <div class="brand-content">
+                <div class="brand-logo-wrapper">
                     <img src="/static/img/logo.png"
-                         alt="Hospital Anchieta Ceilandia"
+                         alt=""
                          onerror="this.style.display='none'">
                 </div>
-                <h1>Sistema de Paineis</h1>
-                <p id="login-subtitle">Faca login para continuar</p>
-            </header>
+                <h2 class="brand-name">Hospital Anchieta</h2>
+                <p class="brand-location">Ceilândia — DF</p>
+                <div class="brand-divider"></div>
+                <p class="brand-tagline">Sistema de Gestão em Saúde</p>
 
-            <!-- ============================================================
-                 FORMULARIO DE LOGIN
-                 ============================================================ -->
-            <form id="form-login" novalidate autocomplete="on">
-                <div class="form-group">
-                    <label for="usuario">
-                        <i class="fas fa-user" aria-hidden="true"></i> Usuario
-                    </label>
-                    <input type="text"
-                           id="usuario"
-                           name="usuario"
-                           class="form-control"
-                           required
-                           minlength="3"
-                           maxlength="50"
-                           autocomplete="username"
-                           autocapitalize="none"
-                           autocorrect="off"
-                           spellcheck="false"
-                           placeholder="Digite seu usuario"
-                           aria-required="true"
-                           aria-describedby="usuario-help">
-                    <small id="usuario-help" class="visually-hidden">Digite seu nome de usuario para acessar o sistema</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="senha">
-                        <i class="fas fa-lock" aria-hidden="true"></i> Senha
-                    </label>
-                    <input type="password"
-                           id="senha"
-                           name="senha"
-                           class="form-control"
-                           required
-                           minlength="4"
-                           maxlength="128"
-                           autocomplete="current-password"
-                           placeholder="Digite sua senha"
-                           aria-required="true"
-                           aria-describedby="senha-help">
-                    <small id="senha-help" class="visually-hidden">Digite sua senha para acessar o sistema</small>
-                </div>
-
-                <!-- Salvar acesso (para paineis estaticos / TVs) -->
-                <div class="form-group-salvar">
-                    <label class="label-salvar">
-                        <input type="checkbox" id="salvar-acesso" name="salvar-acesso">
-                        <span>Salvar acesso neste dispositivo</span>
-                    </label>
-                    <small class="texto-salvar">
-                        <i class="fas fa-tv" aria-hidden="true"></i>
-                        Recomendado para paineis em TVs e monitores fixos
-                    </small>
-                </div>
-
-                <!-- Mensagem de erro/sucesso -->
-                <div id="mensagem-login"
-                     class="alert"
-                     style="display: none;"
-                     role="alert"
-                     aria-live="polite">
-                </div>
-
-                <!-- Botao de login -->
-                <button type="submit" class="btn-login" id="btn-login">
-                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                    <span id="btn-login-texto">Entrar</span>
-                </button>
-            </form>
-
-            <!-- Link Esqueci minha senha -->
-            <div class="forgot-password">
-                <a href="#" id="link-esqueci-senha" onclick="mostrarFormReset(); return false;">
-                    <i class="fas fa-question-circle"></i> Esqueci minha senha
-                </a>
-            </div>
-
-            <!-- ============================================================
-                 RESET DE SENHA — ETAPA 1: Solicitar PIN
-                 ============================================================ -->
-            <div id="reset-step-1" class="reset-container" style="display: none;">
-                <div class="reset-header">
-                    <i class="fas fa-key reset-icon"></i>
-                    <h2>Redefinir Senha</h2>
-                    <p>Informe seu usuario para receber o codigo de verificacao por email</p>
-                </div>
-
-                <div class="form-group">
-                    <label for="reset-usuario">
-                        <i class="fas fa-user" aria-hidden="true"></i> Usuario
-                    </label>
-                    <input type="text"
-                           id="reset-usuario"
-                           class="form-control"
-                           placeholder="Digite seu usuario"
-                           autocomplete="username"
-                           autocapitalize="none"
-                           autocorrect="off"
-                           maxlength="50">
-                </div>
-
-                <div id="mensagem-reset-1" class="alert" style="display: none;" role="alert"></div>
-
-                <button type="button" class="btn-login" id="btn-enviar-pin" onclick="solicitarPinReset()">
-                    <i class="fas fa-paper-plane" aria-hidden="true"></i>
-                    <span>Enviar Codigo</span>
-                </button>
-
-                <div class="reset-voltar">
-                    <a href="#" onclick="voltarParaLogin(); return false;">
-                        <i class="fas fa-arrow-left"></i> Voltar ao login
-                    </a>
+                <div class="brand-features">
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="fas fa-chart-line"></i></div>
+                        <span>Painéis em Tempo Real</span>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="fas fa-shield-alt"></i></div>
+                        <span>Acesso Seguro e Controlado</span>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="fas fa-mobile-alt"></i></div>
+                        <span>Responsivo em Todos os Dispositivos</span>
+                    </div>
                 </div>
             </div>
+        </aside>
 
-            <!-- ============================================================
-                 RESET DE SENHA — ETAPA 2: Digitar PIN
-                 ============================================================ -->
-            <div id="reset-step-2" class="reset-container" style="display: none;">
-                <div class="reset-header">
-                    <i class="fas fa-envelope-open-text reset-icon"></i>
-                    <h2>Codigo Enviado</h2>
-                    <p>Digite o codigo de 4 digitos enviado para <strong id="reset-email-mascarado"></strong></p>
+        <!-- ══════════════════════════════════════════════════════════════
+             PAINEL DIREITO — FORMULÁRIO
+             ══════════════════════════════════════════════════════════════ -->
+        <section class="login-panel">
+            <div class="login-form-container">
+
+                <!-- Marca mobile (visível apenas em telas pequenas) -->
+                <div class="mobile-brand" aria-hidden="true">
+                    <img src="/static/img/logo.png"
+                         class="mobile-brand-logo"
+                         alt=""
+                         onerror="this.style.display='none'">
+                    <p class="mobile-brand-name">Hospital Anchieta</p>
+                    <p class="mobile-brand-loc">Ceilândia — DF</p>
                 </div>
 
-                <div class="pin-inputs-container">
-                    <input type="text" class="pin-input" id="pin-1" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
-                    <input type="text" class="pin-input" id="pin-2" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                    <input type="text" class="pin-input" id="pin-3" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                    <input type="text" class="pin-input" id="pin-4" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                </div>
+                <!-- ──────────────────────────────────────────────────────
+                     HEADER DO FORMULÁRIO
+                     ────────────────────────────────────────────────────── -->
+                <header class="login-header">
+                    <h1 class="login-title">Bem-vindo de volta</h1>
+                    <p id="login-subtitle">Acesse com suas credenciais</p>
+                </header>
 
-                <div id="mensagem-reset-2" class="alert" style="display: none;" role="alert"></div>
+                <!-- ──────────────────────────────────────────────────────
+                     FORMULÁRIO DE LOGIN
+                     ────────────────────────────────────────────────────── -->
+                <form id="form-login" novalidate autocomplete="on">
 
-                <button type="button" class="btn-login" id="btn-verificar-pin" onclick="verificarPinReset()">
-                    <i class="fas fa-check-circle" aria-hidden="true"></i>
-                    <span>Verificar Codigo</span>
-                </button>
+                    <div class="form-group">
+                        <label class="field-label" for="usuario">Usuário</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user input-icon-left" aria-hidden="true"></i>
+                            <input type="text"
+                                   id="usuario"
+                                   name="usuario"
+                                   class="form-control"
+                                   required
+                                   minlength="3"
+                                   maxlength="50"
+                                   autocomplete="username"
+                                   autocapitalize="none"
+                                   autocorrect="off"
+                                   spellcheck="false"
+                                   placeholder="Digite seu usuário"
+                                   aria-required="true"
+                                   aria-describedby="usuario-help">
+                        </div>
+                        <small id="usuario-help" class="visually-hidden">Digite seu nome de usuário para acessar o sistema</small>
+                    </div>
 
-                <div class="reset-timer" id="reset-timer">
-                    <span id="timer-texto">Reenviar codigo em <strong id="timer-contagem">60</strong>s</span>
-                    <a href="#" id="link-reenviar" style="display: none;" onclick="reenviarPin(); return false;">
-                        <i class="fas fa-redo"></i> Reenviar codigo
+                    <div class="form-group">
+                        <label class="field-label" for="senha">Senha</label>
+                        <div class="input-wrapper input-wrapper--password">
+                            <i class="fas fa-lock input-icon-left" aria-hidden="true"></i>
+                            <input type="password"
+                                   id="senha"
+                                   name="senha"
+                                   class="form-control"
+                                   required
+                                   minlength="4"
+                                   maxlength="128"
+                                   autocomplete="current-password"
+                                   placeholder="Digite sua senha"
+                                   aria-required="true"
+                                   aria-describedby="senha-help">
+                            <button type="button" class="toggle-senha" id="toggle-senha-login" aria-label="Mostrar senha" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <small id="senha-help" class="visually-hidden">Digite sua senha para acessar o sistema</small>
+                    </div>
+
+                    <!-- Salvar acesso (painéis em TVs/monitores fixos) -->
+                    <div class="form-group-salvar">
+                        <label class="label-salvar">
+                            <input type="checkbox" id="salvar-acesso" name="salvar-acesso">
+                            <span>Salvar acesso neste dispositivo</span>
+                        </label>
+                        <small class="texto-salvar">
+                            <i class="fas fa-tv" aria-hidden="true"></i>
+                            Recomendado para painéis em TVs e monitores fixos
+                        </small>
+                    </div>
+
+                    <!-- Mensagem de erro/sucesso -->
+                    <div id="mensagem-login"
+                         class="alert"
+                         style="display: none;"
+                         role="alert"
+                         aria-live="polite">
+                    </div>
+
+                    <!-- Botão de login -->
+                    <button type="submit" class="btn-login" id="btn-login">
+                        <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+                        <span id="btn-login-texto">Entrar no Sistema</span>
+                    </button>
+                </form>
+
+                <!-- Link Esqueci minha senha -->
+                <div class="forgot-password">
+                    <a href="#" id="link-esqueci-senha" onclick="mostrarFormReset(); return false;">
+                        <i class="fas fa-question-circle"></i> Esqueci minha senha
                     </a>
                 </div>
 
-                <div class="reset-voltar">
-                    <a href="#" onclick="voltarParaLogin(); return false;">
-                        <i class="fas fa-arrow-left"></i> Voltar ao login
-                    </a>
+                <!-- ──────────────────────────────────────────────────────
+                     RESET — ETAPA 1: Solicitar PIN
+                     ────────────────────────────────────────────────────── -->
+                <div id="reset-step-1" class="reset-container" style="display: none;">
+                    <div class="reset-header">
+                        <i class="fas fa-key reset-icon"></i>
+                        <h2>Redefinir Senha</h2>
+                        <p>Informe seu usuário para receber o código de verificação por e-mail</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label" for="reset-usuario">Usuário</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user input-icon-left" aria-hidden="true"></i>
+                            <input type="text"
+                                   id="reset-usuario"
+                                   class="form-control"
+                                   placeholder="Digite seu usuário"
+                                   autocomplete="username"
+                                   autocapitalize="none"
+                                   autocorrect="off"
+                                   maxlength="50">
+                        </div>
+                    </div>
+
+                    <div id="mensagem-reset-1" class="alert" style="display: none;" role="alert"></div>
+
+                    <button type="button" class="btn-login" id="btn-enviar-pin" onclick="solicitarPinReset()">
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                        <span>Enviar Código</span>
+                    </button>
+
+                    <div class="reset-voltar">
+                        <a href="#" onclick="voltarParaLogin(); return false;">
+                            <i class="fas fa-arrow-left"></i> Voltar ao login
+                        </a>
+                    </div>
                 </div>
+
+                <!-- ──────────────────────────────────────────────────────
+                     RESET — ETAPA 2: Digitar PIN
+                     ────────────────────────────────────────────────────── -->
+                <div id="reset-step-2" class="reset-container" style="display: none;">
+                    <div class="reset-header">
+                        <i class="fas fa-envelope-open-text reset-icon"></i>
+                        <h2>Código Enviado</h2>
+                        <p>Digite o código de 4 dígitos enviado para <strong id="reset-email-mascarado"></strong></p>
+                    </div>
+
+                    <div class="pin-inputs-container">
+                        <input type="text" class="pin-input" id="pin-1" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
+                        <input type="text" class="pin-input" id="pin-2" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                        <input type="text" class="pin-input" id="pin-3" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                        <input type="text" class="pin-input" id="pin-4" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                    </div>
+
+                    <div id="mensagem-reset-2" class="alert" style="display: none;" role="alert"></div>
+
+                    <button type="button" class="btn-login" id="btn-verificar-pin" onclick="verificarPinReset()">
+                        <i class="fas fa-check-circle" aria-hidden="true"></i>
+                        <span>Verificar Código</span>
+                    </button>
+
+                    <div class="reset-timer" id="reset-timer">
+                        <span id="timer-texto">Reenviar código em <strong id="timer-contagem">60</strong>s</span>
+                        <a href="#" id="link-reenviar" style="display: none;" onclick="reenviarPin(); return false;">
+                            <i class="fas fa-redo"></i> Reenviar código
+                        </a>
+                    </div>
+
+                    <div class="reset-voltar">
+                        <a href="#" onclick="voltarParaLogin(); return false;">
+                            <i class="fas fa-arrow-left"></i> Voltar ao login
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ──────────────────────────────────────────────────────
+                     RESET — ETAPA 3: Nova senha
+                     ────────────────────────────────────────────────────── -->
+                <div id="reset-step-3" class="reset-container" style="display: none;">
+                    <div class="reset-header">
+                        <i class="fas fa-shield-alt reset-icon"></i>
+                        <h2>Nova Senha</h2>
+                        <p>Defina sua nova senha de acesso</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label" for="reset-nova-senha">Nova Senha</label>
+                        <div class="input-wrapper input-wrapper--password">
+                            <i class="fas fa-lock input-icon-left" aria-hidden="true"></i>
+                            <input type="password"
+                                   id="reset-nova-senha"
+                                   class="form-control"
+                                   placeholder="Mínimo 8 caracteres"
+                                   maxlength="128"
+                                   autocomplete="new-password">
+                            <button type="button" class="toggle-senha" aria-label="Mostrar senha" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label" for="reset-confirma-senha">Confirmar Senha</label>
+                        <div class="input-wrapper input-wrapper--password">
+                            <i class="fas fa-lock input-icon-left" aria-hidden="true"></i>
+                            <input type="password"
+                                   id="reset-confirma-senha"
+                                   class="form-control"
+                                   placeholder="Repita a nova senha"
+                                   maxlength="128"
+                                   autocomplete="new-password">
+                            <button type="button" class="toggle-senha" aria-label="Mostrar senha" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="senha-requisitos">
+                        <small><i class="fas fa-info-circle"></i> A senha deve conter: 8+ caracteres, maiúscula, minúscula, número e caractere especial</small>
+                    </div>
+
+                    <div id="mensagem-reset-3" class="alert" style="display: none;" role="alert"></div>
+
+                    <button type="button" class="btn-login" id="btn-confirmar-reset" onclick="confirmarResetSenha()">
+                        <i class="fas fa-save" aria-hidden="true"></i>
+                        <span>Alterar Senha</span>
+                    </button>
+
+                    <div class="reset-voltar">
+                        <a href="#" onclick="voltarParaLogin(); return false;">
+                            <i class="fas fa-arrow-left"></i> Voltar ao login
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ──────────────────────────────────────────────────────
+                     FORCE RESET — Troca obrigatória
+                     ────────────────────────────────────────────────────── -->
+                <div id="force-reset-container" class="reset-container" style="display: none;">
+                    <div class="reset-header">
+                        <i class="fas fa-exclamation-triangle reset-icon" style="color: #f59e0b;"></i>
+                        <h2>Troca de Senha Obrigatória</h2>
+                        <p>O administrador solicitou que você defina uma nova senha antes de continuar</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label" for="force-nova-senha">Nova Senha</label>
+                        <div class="input-wrapper input-wrapper--password">
+                            <i class="fas fa-lock input-icon-left" aria-hidden="true"></i>
+                            <input type="password"
+                                   id="force-nova-senha"
+                                   class="form-control"
+                                   placeholder="Mínimo 8 caracteres"
+                                   maxlength="128"
+                                   autocomplete="new-password">
+                            <button type="button" class="toggle-senha" aria-label="Mostrar senha" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label" for="force-confirma-senha">Confirmar Senha</label>
+                        <div class="input-wrapper input-wrapper--password">
+                            <i class="fas fa-lock input-icon-left" aria-hidden="true"></i>
+                            <input type="password"
+                                   id="force-confirma-senha"
+                                   class="form-control"
+                                   placeholder="Repita a nova senha"
+                                   maxlength="128"
+                                   autocomplete="new-password">
+                            <button type="button" class="toggle-senha" aria-label="Mostrar senha" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="senha-requisitos">
+                        <small><i class="fas fa-info-circle"></i> A senha deve conter: 8+ caracteres, maiúscula, minúscula, número e caractere especial</small>
+                    </div>
+
+                    <div id="mensagem-force-reset" class="alert" style="display: none;" role="alert"></div>
+
+                    <button type="button" class="btn-login" id="btn-force-reset" onclick="confirmarForceReset()">
+                        <i class="fas fa-save" aria-hidden="true"></i>
+                        <span>Definir Nova Senha</span>
+                    </button>
+                </div>
+
+                <!-- ──────────────────────────────────────────────────────
+                     FOOTER
+                     ────────────────────────────────────────────────────── -->
+                <footer class="login-footer" id="login-footer">
+                    <p>© 2025 <strong>Hospital Anchieta</strong> — Ceilândia</p>
+                </footer>
+
             </div>
-
-            <!-- ============================================================
-                 RESET DE SENHA — ETAPA 3: Nova senha
-                 ============================================================ -->
-            <div id="reset-step-3" class="reset-container" style="display: none;">
-                <div class="reset-header">
-                    <i class="fas fa-shield-alt reset-icon"></i>
-                    <h2>Nova Senha</h2>
-                    <p>Defina sua nova senha de acesso</p>
-                </div>
-
-                <div class="form-group">
-                    <label for="reset-nova-senha">
-                        <i class="fas fa-lock" aria-hidden="true"></i> Nova Senha
-                    </label>
-                    <input type="password"
-                           id="reset-nova-senha"
-                           class="form-control"
-                           placeholder="Minimo 8 caracteres"
-                           maxlength="128"
-                           autocomplete="new-password">
-                </div>
-
-                <div class="form-group">
-                    <label for="reset-confirma-senha">
-                        <i class="fas fa-lock" aria-hidden="true"></i> Confirmar Senha
-                    </label>
-                    <input type="password"
-                           id="reset-confirma-senha"
-                           class="form-control"
-                           placeholder="Repita a nova senha"
-                           maxlength="128"
-                           autocomplete="new-password">
-                </div>
-
-                <div class="senha-requisitos">
-                    <small><i class="fas fa-info-circle"></i> A senha deve conter: 8+ caracteres, maiuscula, minuscula, numero e caractere especial</small>
-                </div>
-
-                <div id="mensagem-reset-3" class="alert" style="display: none;" role="alert"></div>
-
-                <button type="button" class="btn-login" id="btn-confirmar-reset" onclick="confirmarResetSenha()">
-                    <i class="fas fa-save" aria-hidden="true"></i>
-                    <span>Alterar Senha</span>
-                </button>
-
-                <div class="reset-voltar">
-                    <a href="#" onclick="voltarParaLogin(); return false;">
-                        <i class="fas fa-arrow-left"></i> Voltar ao login
-                    </a>
-                </div>
-            </div>
-
-            <!-- ============================================================
-                 FORCE RESET — Modal de troca obrigatória
-                 ============================================================ -->
-            <div id="force-reset-container" class="reset-container" style="display: none;">
-                <div class="reset-header">
-                    <i class="fas fa-exclamation-triangle reset-icon" style="color: #ffc107;"></i>
-                    <h2>Troca de Senha Obrigatoria</h2>
-                    <p>O administrador solicitou que voce defina uma nova senha antes de continuar</p>
-                </div>
-
-                <div class="form-group">
-                    <label for="force-nova-senha">
-                        <i class="fas fa-lock" aria-hidden="true"></i> Nova Senha
-                    </label>
-                    <input type="password"
-                           id="force-nova-senha"
-                           class="form-control"
-                           placeholder="Minimo 8 caracteres"
-                           maxlength="128"
-                           autocomplete="new-password">
-                </div>
-
-                <div class="form-group">
-                    <label for="force-confirma-senha">
-                        <i class="fas fa-lock" aria-hidden="true"></i> Confirmar Senha
-                    </label>
-                    <input type="password"
-                           id="force-confirma-senha"
-                           class="form-control"
-                           placeholder="Repita a nova senha"
-                           maxlength="128"
-                           autocomplete="new-password">
-                </div>
-
-                <div class="senha-requisitos">
-                    <small><i class="fas fa-info-circle"></i> A senha deve conter: 8+ caracteres, maiuscula, minuscula, numero e caractere especial</small>
-                </div>
-
-                <div id="mensagem-force-reset" class="alert" style="display: none;" role="alert"></div>
-
-                <button type="button" class="btn-login" id="btn-force-reset" onclick="confirmarForceReset()">
-                    <i class="fas fa-save" aria-hidden="true"></i>
-                    <span>Definir Nova Senha</span>
-                </button>
-            </div>
-
-            <!-- ============================================================
-                 FOOTER
-                 ============================================================ -->
-            <footer class="login-footer" id="login-footer">
-                <p><strong>Hospital Anchieta</strong> - Ceilandia</p>
-            </footer>
-        </div>
+        </section>
     </main>
 
-    <!-- ============================================================
-         ESTILOS AUXILIARES (inline para performance)
-         ============================================================ -->
-    <style>
-        /* Classe para leitores de tela */
-        .visually-hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-    </style>
+    <!-- Toggle de visibilidade de senha -->
+    <script>
+        document.querySelectorAll('.toggle-senha').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var input = this.closest('.input-wrapper').querySelector('input[type="password"], input[type="text"]');
+                var icon  = this.querySelector('i');
+                if (!input) return;
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('fa-eye', 'fa-eye-slash');
+                    this.setAttribute('aria-label', 'Ocultar senha');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('fa-eye-slash', 'fa-eye');
+                    this.setAttribute('aria-label', 'Mostrar senha');
+                }
+            });
+        });
+    </script>
 
-    <!-- ============================================================
-         SCRIPTS
-         ============================================================ -->
     <script src="/frontend/login.js"></script>
 </body>
 </html>
