@@ -79,3 +79,25 @@ def run_tests():
             'success': False,
             'error': str(e)
         }), 500
+
+
+@tests_bp.route('/sistema/run', methods=['POST'])
+@admin_required
+def run_sistema_checks():
+    """
+    Executa verificações e reparos do sistema e retorna os resultados.
+    POST /api/admin/tests/sistema/run
+    """
+    try:
+        from worker_tests_sistema import executar_tudo
+        resultado = executar_tudo()
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({
+            'output': f'[ERRO] Falha ao executar verificações do sistema:\n{e}',
+            'duracao': 0,
+            'report': {
+                'summary': {'ok': 0, 'erros': 1, 'reparados': 0, 'total': 1},
+                'duration': 0,
+            }
+        }), 500

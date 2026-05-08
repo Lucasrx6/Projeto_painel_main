@@ -200,6 +200,90 @@
             color: #adb5bd;
             margin-bottom: 1rem;
         }
+
+        /* === Seção Verificação do Sistema === */
+        .section-divider {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--text-secondary, #6b7280);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .section-divider::before, .section-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-light, #e5e7eb);
+        }
+
+        .run-btn-sistema {
+            background: #0d6efd;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: var(--radius-md, 8px);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .run-btn-sistema:hover {
+            background: #0b5ed7;
+            transform: translateY(-2px);
+            color: white;
+        }
+        .run-btn-sistema:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stat-box.ok     { background: #f0fdf4; color: #166534; }
+        .stat-box.ok::before { background: #22c55e; }
+
+        .stat-box.erros  { background: #fef2f2; color: #991b1b; }
+        .stat-box.erros::before { background: #ef4444; }
+
+        .stat-box.reparados { background: #fff7ed; color: #9a3412; }
+        .stat-box.reparados::before { background: #f97316; }
+
+        .sistema-terminal {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1.5rem;
+            border-radius: var(--radius-md, 8px);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            max-height: 700px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            border-left: 4px solid #3b82f6;
+        }
+        .sistema-terminal .ok-text     { color: #4ade80; font-weight: bold; }
+        .sistema-terminal .erro-text   { color: #f87171; font-weight: bold; }
+        .sistema-terminal .rep-text    { color: #fb923c; font-weight: bold; }
+        .sistema-terminal .warn-text   { color: #fbbf24; font-weight: bold; }
+        .sistema-terminal .head-text   { color: #60a5fa; font-weight: bold; }
+
+        .last-auto-run {
+            font-size: 0.8rem;
+            color: var(--text-secondary, #6b7280);
+            margin-top: 0.5rem;
+        }
+
+        .tema-azul .run-btn-sistema { background: #1d4ed8; }
+        .tema-azul .run-btn-sistema:hover { background: #1e40af; }
+        .tema-azul .stat-box.ok      { background: rgba(34,197,94,0.15);  color: #4ade80; }
+        .tema-azul .stat-box.erros   { background: rgba(239,68,68,0.15);  color: #f87171; }
+        .tema-azul .stat-box.reparados { background: rgba(249,115,22,0.15); color: #fb923c; }
     </style>
 </head>
 <body>
@@ -228,13 +312,64 @@
          CONTEÚDO PRINCIPAL
          ============================================================ -->
     <main class="test-dashboard">
+        <!-- ======================================================
+             SEÇÃO: VERIFICAÇÃO DO SISTEMA
+             ====================================================== -->
+        <div class="section-divider"><span><i class="fas fa-heartbeat" style="margin-right:6px;"></i>Verificação do Sistema</span></div>
+
+        <div class="action-card">
+            <div class="empty-icon-large"><i class="fas fa-stethoscope"></i></div>
+            <h2 style="margin-bottom: 1rem;">Diagnóstico e Auto-Reparo</h2>
+            <p class="text-secondary" style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Verifica todos os pontos críticos do sistema: banco de dados, Redis, SMTP, tabelas, views, constraints, notificadores e dados operacionais.
+                Executa reparos automáticos quando possível e envia relatório por email.
+            </p>
+            <button id="runSistemaBtn" class="run-btn-sistema" onclick="runSistema()">
+                <i class="fas fa-play"></i>
+                Verificar Sistema Agora
+            </button>
+            <div class="last-auto-run" id="sistemaAutoInfo">Ciclo automático a cada 6 horas — resultados também enviados por email.</div>
+        </div>
+
+        <div id="sistemaResultsContainer" class="results-card">
+            <div class="results-header">
+                <h3><i class="fas fa-stethoscope" style="margin-right: 8px;"></i> Diagnóstico do Sistema</h3>
+                <span id="sistema-timestamp" style="font-size: 0.9rem; color: var(--text-secondary);"></span>
+            </div>
+
+            <div id="sistemaStatsContainer" class="summary-stats" style="display: none;">
+                <div class="stat-box ok">
+                    <div class="stat-value" id="sistemaStatOK">-</div>
+                    <div class="stat-label">OK</div>
+                </div>
+                <div class="stat-box erros">
+                    <div class="stat-value" id="sistemaStatErros">-</div>
+                    <div class="stat-label">Erros</div>
+                </div>
+                <div class="stat-box reparados">
+                    <div class="stat-value" id="sistemaStatReparados">-</div>
+                    <div class="stat-label">Reparados</div>
+                </div>
+                <div class="stat-box time">
+                    <div class="stat-value" id="sistemaStatTempo">-</div>
+                    <div class="stat-label">Tempo (s)</div>
+                </div>
+            </div>
+
+            <h4 style="margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-terminal"></i> Saída do Diagnóstico</h4>
+            <div id="sistemaTerminal" class="sistema-terminal">Aguardando execução do diagnóstico do sistema...</div>
+        </div>
+
+        <!-- divider entre as seções -->
+        <div class="section-divider"><span><i class="fas fa-flask" style="margin-right:6px;"></i>Testes Automatizados (Pytest)</span></div>
+
         <div class="action-card">
             <div class="empty-icon-large"><i class="fas fa-shield-halved"></i></div>
             <h2 style="margin-bottom: 1rem;">Suíte de Testes Automatizados</h2>
             <p class="text-secondary" style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 600px; margin-left: auto; margin-right: auto;">
                 Execute a bateria completa de testes de software (Pytest) para validar a integridade estrutural da API, incluindo rotas críticas de autenticação, permissões, validadores e o sistema de cache.
             </p>
-            
+
             <button id="runTestsBtn" class="run-btn" onclick="runTests()">
                 <i class="fas fa-play"></i>
                 Iniciar Bateria de Testes
@@ -388,6 +523,80 @@
                 btn.disabled = false;
                 icon.className = 'fas fa-redo-alt';
                 btn.innerHTML = icon.outerHTML + ' Executar Novamente';
+            }
+        }
+
+        async function runSistema() {
+            const btn = document.getElementById('runSistemaBtn');
+            const resultsDiv = document.getElementById('sistemaResultsContainer');
+            const terminal = document.getElementById('sistemaTerminal');
+            const statsDiv = document.getElementById('sistemaStatsContainer');
+            const icon = btn.querySelector('i');
+            const timestampSpan = document.getElementById('sistema-timestamp');
+
+            btn.disabled = true;
+            icon.className = 'fas fa-circle-notch spin';
+            btn.innerHTML = icon.outerHTML + ' Verificando...';
+            resultsDiv.style.display = 'block';
+            statsDiv.style.display = 'none';
+            terminal.innerHTML = 'Iniciando diagnóstico do sistema...\n';
+            terminal.style.borderLeftColor = '#6b7280';
+
+            const now = new Date();
+            timestampSpan.textContent = `Última verificação: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`;
+
+            try {
+                const response = await fetch('/api/admin/tests/sistema/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Acesso negado. Apenas administradores podem rodar diagnósticos.');
+                }
+
+                const data = await response.json();
+
+                // Renderiza saída do terminal com colorização
+                let output = (data.output || data.erro || 'Sem saída disponível.');
+
+                // Escapa HTML para evitar injeção
+                output = output
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+
+                // Colorização por palavras-chave (após escape)
+                output = output.replace(/\[OK\]/g,       '<span class="ok-text">[OK]</span>');
+                output = output.replace(/\[ERRO\]/g,     '<span class="erro-text">[ERRO]</span>');
+                output = output.replace(/\[REPARADO\]/g, '<span class="rep-text">[REPARADO]</span>');
+                output = output.replace(/\[AVISO\]/g,    '<span class="warn-text">[AVISO]</span>');
+                output = output.replace(/(={3,}[^\n]+={3,})/g, '<span class="head-text">$1</span>');
+
+                terminal.innerHTML = output;
+
+                // Estatísticas — usa data.report.summary
+                const summary = data.report && data.report.summary;
+                if (summary) {
+                    statsDiv.style.display = 'grid';
+                    document.getElementById('sistemaStatOK').innerText        = summary.ok        !== undefined ? summary.ok        : '-';
+                    document.getElementById('sistemaStatErros').innerText     = summary.erros     !== undefined ? summary.erros     : '-';
+                    document.getElementById('sistemaStatReparados').innerText = summary.reparados !== undefined ? summary.reparados : '-';
+                    const dur = data.report.duration !== undefined ? parseFloat(data.report.duration).toFixed(1) : '-';
+                    document.getElementById('sistemaStatTempo').innerText = dur;
+
+                    terminal.style.borderLeftColor = (summary.erros === 0) ? '#22c55e' : '#ef4444';
+                } else {
+                    terminal.style.borderLeftColor = '#ef4444';
+                }
+
+            } catch (error) {
+                terminal.innerHTML += `\n<span class="erro-text">❌ Falha ao executar diagnóstico: ${error.message}</span>`;
+                terminal.style.borderLeftColor = '#ef4444';
+            } finally {
+                btn.disabled = false;
+                icon.className = 'fas fa-sync-alt';
+                btn.innerHTML = icon.outerHTML + ' Verificar Novamente';
             }
         }
     </script>

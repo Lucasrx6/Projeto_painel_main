@@ -198,6 +198,14 @@ try:
 except Exception as e:
     app.logger.warning(f'[notificador_paciente_ps] Nao iniciado automaticamente: {e}')
 
+# Worker verificação do sistema — roda a cada 6h, envia relatório por email e executa auto-reparos
+# OFF SWITCH: comente as 3 linhas abaixo para desativar
+try:
+    from worker_tests_sistema import start_in_background as _start_tests_sistema
+    _start_tests_sistema()
+except Exception as e:
+    app.logger.warning(f'[worker_tests_sistema] Nao iniciado automaticamente: {e}')
+
 # =========================================================
 # ROTAS DE DESENVOLVIMENTO (Remover em produção)
 # =========================================================
