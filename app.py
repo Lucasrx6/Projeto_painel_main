@@ -190,6 +190,14 @@ try:
 except Exception as e:
     app.logger.warning(f'[worker_imap_tratativas] Nao iniciado automaticamente: {e}')
 
+# Notificador Paciente PS — alerta quando há paciente aguardando >10min sem médico no PS
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_PACIENTE_PS_AUTO=false no .env
+try:
+    from notificador_paciente_ps import start_in_background as _start_paciente_ps
+    _start_paciente_ps()
+except Exception as e:
+    app.logger.warning(f'[notificador_paciente_ps] Nao iniciado automaticamente: {e}')
+
 # =========================================================
 # ROTAS DE DESENVOLVIMENTO (Remover em produção)
 # =========================================================

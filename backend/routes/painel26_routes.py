@@ -8,7 +8,6 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
-from backend.cache import cache_route
 
 painel26_bp = Blueprint('painel26', __name__)
 
@@ -46,7 +45,6 @@ def painel26():
 
 @painel26_bp.route('/api/paineis/painel26/dashboard', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel26:dashboard')
 def api_painel26_dashboard():
     """Retorna KPIs e resumo para dashboard"""
     if not _verificar_acesso():
@@ -115,7 +113,6 @@ def api_painel26_dashboard():
 
 @painel26_bp.route('/api/paineis/painel26/tipos', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel26:tipos')
 def api_painel26_tipos():
     """Lista tipos de evento"""
     if not _verificar_acesso():
@@ -154,7 +151,6 @@ def api_painel26_tipos():
 
 @painel26_bp.route('/api/paineis/painel26/destinatarios', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel26:destinatarios', vary_by_query=True)
 def api_painel26_destinatarios():
     """Lista destinatarios com filtros"""
     if not _verificar_acesso():
@@ -309,7 +305,8 @@ def api_painel26_destinatarios_editar(dest_id):
 
         cursor.execute("""
                     UPDATE notificacoes_destinatarios
-                    SET nome = %s,
+                    SET tipo_evento = %s,
+                        nome = %s,
                         email = %s,
                         destino = %s,
                         especialidade = %s,
@@ -320,6 +317,7 @@ def api_painel26_destinatarios_editar(dest_id):
                         dt_atualizacao = CURRENT_TIMESTAMP
                     WHERE id = %s
                 """, (
+            dados.get('tipo_evento', '').strip(),
             dados.get('nome', '').strip(),
             dados.get('email', '').strip().lower(),
             dados.get('email', '').strip().lower(),
@@ -441,7 +439,6 @@ def api_painel26_destinatarios_excluir(dest_id):
 
 @painel26_bp.route('/api/paineis/painel26/historico', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel26:historico', vary_by_query=True)
 def api_painel26_historico():
     """Lista historico de envios com filtros"""
     if not _verificar_acesso():
@@ -500,7 +497,6 @@ def api_painel26_historico():
 
 @painel26_bp.route('/api/paineis/painel26/especialidades', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel26:especialidades')
 def api_painel26_especialidades():
     """Lista especialidades disponiveis dos pareceres"""
     if not _verificar_acesso():

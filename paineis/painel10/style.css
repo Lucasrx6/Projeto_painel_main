@@ -1089,6 +1089,17 @@ body {
     white-space: nowrap;
 }
 
+.paciente-nr-atend {
+    font-size: 0.72rem;
+    color: var(--cor-texto-muted);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-sm);
+    padding: 1px 6px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
 .paciente-entrada {
     color: var(--cor-texto-secundario);
     display: flex;

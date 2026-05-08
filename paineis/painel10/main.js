@@ -405,6 +405,9 @@ function carregarPacientesClinica(dsClinica, container) {
                 html += '<div class="paciente-item">';
                 html += '  <span class="paciente-ordem">#' + (i + 1) + '</span>';
                 html += '  <span class="paciente-nome">' + escapeHtml(p.nm_paciente) + '</span>';
+                if (p.nr_atendimento) {
+                    html += '  <span class="paciente-nr-atend">' + escapeHtml(p.nr_atendimento) + '</span>';
+                }
                 html += '  <span class="paciente-entrada"><i class="fas fa-calendar-clock"></i> ' + escapeHtml(p.dt_entrada) + '</span>';
                 html += '  <span class="badge badge-tempo ' + cls + '">' + tempo + ' min</span>';
                 html += '</div>';
