@@ -9,7 +9,6 @@ param(
     [int]$CertDays    = 3650
 )
 
-$ErrorActionPreference = "Stop"
 $SslDir    = "$NginxDir\ssl"
 $ConfDir   = "$NginxDir\conf"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -43,7 +42,7 @@ foreach ($c in $candidates) {
     } catch {}
 }
 if (-not $OpenSSL) {
-    Write-Error "OpenSSL nao encontrado. Ele vem junto com o Git for Windows - verifique a instalacao."
+    Write-Host "[ERRO] OpenSSL nao encontrado. Ele vem junto com o Git for Windows - verifique a instalacao." -ForegroundColor Red
     exit 1
 }
 Write-Host "[2/5] OpenSSL: $OpenSSL" -ForegroundColor Green
@@ -82,13 +81,12 @@ keyUsage         = digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 "@ | Set-Content -Encoding ascii $TempConf
 
-& $OpenSSL req -x509 -nodes -days $CertDays -newkey rsa:2048 `
-    -keyout "$SslDir\painel.key" `
-    -out    "$SslDir\painel.crt" `
-    -config $TempConf 2>&1 | Out-Null
+# Roda via cmd /c para evitar que PS 5.1 trate stderr do OpenSSL como erro
+$opensslCmd = "`"$OpenSSL`" req -x509 -nodes -days $CertDays -newkey rsa:2048 -keyout `"$SslDir\painel.key`" -out `"$SslDir\painel.crt`" -config `"$TempConf`" 2>nul"
+cmd /c $opensslCmd
 
 if (-not (Test-Path "$SslDir\painel.crt")) {
-    Write-Error "Falha ao gerar certificado SSL."
+    Write-Host "[ERRO] Falha ao gerar certificado SSL." -ForegroundColor Red
     exit 1
 }
 Write-Host "[4/5] Certificado gerado (valido $CertDays dias): $SslDir\painel.crt" -ForegroundColor Green
@@ -114,7 +112,8 @@ $NginxExe = "$NginxDir\nginx.exe"
 $test = & $NginxExe -t 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Error "Erro na configuracao do nginx:`n$test"
+    Write-Host "[ERRO] Configuracao do nginx invalida:" -ForegroundColor Red
+    Write-Host $test
     exit 1
 }
 
