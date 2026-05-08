@@ -63,6 +63,7 @@ from backend.routes.painel39_routes import painel39_bp
 from backend.routes.painel38_routes import painel38_bp
 from backend.routes.painel40_routes import painel40_bp
 from backend.routes.tests_admin_routes import tests_bp
+from backend.routes.admin_acessos_routes import acessos_bp
 
 # =========================================================
 # CONFIGURAÇÃO INICIAL
@@ -115,6 +116,13 @@ init_db()
 # Inicializa cache Redis (falha graciosamente se Redis indisponivel)
 init_redis(app)
 
+# ── Rastreamento de acessos (suprime log do werkzeug no terminal) ──────────
+import logging as _logging
+_logging.getLogger('werkzeug').setLevel(_logging.WARNING)  # Remove linhas "GET /api/... 200 -"
+
+from backend.access_tracker import init_access_tracker
+init_access_tracker(app)
+
 # =========================================================
 # REGISTRO DE BLUEPRINTS
 # =========================================================
@@ -125,6 +133,7 @@ app.register_blueprint(main_bp)
 app.register_blueprint(pwa_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(tests_bp)
+app.register_blueprint(acessos_bp)
 
 # Blueprints de Painéis
 paineis = [

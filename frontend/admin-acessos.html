@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento de Acessos - HAC</title>
+    <meta name="theme-color" content="#0d6efd">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/frontend/admin-usuarios.css">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+
+    <style>
+        :root {
+            --verde:    #22c55e;
+            --amarelo:  #f59e0b;
+            --vermelho: #ef4444;
+            --azul:     #3b82f6;
+            --cinza:    #6b7280;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg-primary, #f3f4f6); }
+
+        /* ── Layout ── */
+        .page-wrap { max-width: 1600px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; }
+
+        /* ── Stat cards topo ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--surface-primary, #fff);
+            border-radius: 12px;
+            padding: 1.25rem 1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            display: flex; flex-direction: column; align-items: center;
+            position: relative; overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 100%; height: 4px;
+        }
+        .stat-card.verde::before  { background: var(--verde); }
+        .stat-card.azul::before   { background: var(--azul); }
+        .stat-card.amarelo::before{ background: var(--amarelo); }
+        .stat-card.cinza::before  { background: var(--cinza); }
+        .stat-card.vermelho::before { background: var(--vermelho); }
+        .stat-num { font-size: 2rem; font-weight: 700; line-height: 1; }
+        .stat-lbl { font-size: .75rem; font-weight: 600; text-transform: uppercase;
+                    letter-spacing: .05em; color: var(--cinza); margin-top: .35rem; }
+
+        /* ── Seções ── */
+        .section-card {
+            background: var(--surface-primary, #fff);
+            border-radius: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: .9rem 1.5rem;
+            border-bottom: 1px solid var(--border-light, #e5e7eb);
+        }
+        .section-header h2 {
+            margin: 0; font-size: 1.05rem; font-weight: 600;
+            color: var(--text-primary, #111827);
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .section-body { padding: 1.25rem 1.5rem; }
+
+        /* ── Conectados: cards ── */
+        .conn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        .conn-card {
+            border: 1px solid var(--border-light, #e5e7eb);
+            border-radius: 10px; padding: 1rem;
+            position: relative; overflow: hidden;
+        }
+        .conn-card.ativo   { border-left: 4px solid var(--verde); }
+        .conn-card.recente { border-left: 4px solid var(--amarelo); }
+        .conn-ip   { font-size: .85rem; font-weight: 700; font-family: monospace; }
+        .conn-host { font-size: .75rem; color: var(--cinza); margin-bottom: .5rem; }
+        .conn-user { font-size: .8rem; color: #374151; }
+        .conn-user i { color: var(--cinza); }
+        .conn-painel-tag {
+            display: inline-block;
+            background: #eff6ff; color: #1d4ed8;
+            border-radius: 20px; padding: 1px 8px;
+            font-size: .7rem; font-weight: 600;
+            margin: 2px 2px 0 0;
+        }
+        .badge-status {
+            position: absolute; top: .7rem; right: .7rem;
+            border-radius: 20px; padding: 2px 8px;
+            font-size: .65rem; font-weight: 700; letter-spacing: .04em;
+        }
+        .badge-ativo   { background: #dcfce7; color: #166534; }
+        .badge-recente { background: #fef3c7; color: #92400e; }
+        .conn-tempo { font-size: .7rem; color: var(--cinza); margin-top: .5rem; }
+        .conn-reqs  { font-size: .7rem; color: var(--cinza); }
+
+        /* ── Filtros ── */
+        .filter-bar {
+            display: flex; flex-wrap: wrap; gap: .75rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-primary, #f9fafb);
+            border-bottom: 1px solid var(--border-light, #e5e7eb);
+        }
+        .filter-bar input, .filter-bar select {
+            border: 1px solid #d1d5db; border-radius: 8px;
+            padding: .45rem .75rem; font-size: .85rem;
+            background: var(--surface-primary, #fff);
+            color: var(--text-primary, #111827);
+            min-width: 130px;
+        }
+        .filter-bar input:focus, .filter-bar select:focus {
+            outline: none; border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+        }
+        .btn-filtrar {
+            background: #3b82f6; color: #fff; border: none;
+            padding: .45rem 1.1rem; border-radius: 8px;
+            font-size: .85rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-filtrar:hover { background: #2563eb; }
+        .btn-limpar {
+            background: transparent; color: var(--cinza);
+            border: 1px solid #d1d5db;
+            padding: .45rem 1rem; border-radius: 8px;
+            font-size: .85rem; cursor: pointer;
+        }
+        .btn-exportar {
+            background: #166534; color: #fff; border: none;
+            padding: .45rem 1.1rem; border-radius: 8px;
+            font-size: .85rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: .4rem;
+        }
+        .btn-exportar:hover { background: #14532d; }
+
+        /* ── Tabela ── */
+        .log-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+        .log-table th {
+            text-align: left; padding: .6rem .9rem;
+            font-size: .7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .06em; color: var(--cinza);
+            border-bottom: 2px solid var(--border-light, #e5e7eb);
+            white-space: nowrap;
+        }
+        .log-table td { padding: .55rem .9rem; border-bottom: 1px solid var(--border-light, #e5e7eb); }
+        .log-table tr:hover td { background: var(--bg-primary, #f9fafb); }
+        .log-table tr:last-child td { border-bottom: none; }
+        .td-ip { font-family: monospace; font-size: .8rem; font-weight: 600; color: #1d4ed8; }
+        .td-dt { color: var(--cinza); white-space: nowrap; }
+        .td-desc { color: #374151; max-width: 320px; }
+        .td-painel {
+            display: inline-block; background: #eff6ff; color: #1d4ed8;
+            border-radius: 20px; padding: 1px 8px; font-size: .72rem; font-weight: 600;
+            white-space: nowrap;
+        }
+        .status-ok     { color: #166534; font-weight: 600; }
+        .status-err    { color: #991b1b; font-weight: 600; }
+        .status-warn   { color: #92400e; font-weight: 600; }
+        .status-info   { color: var(--cinza); }
+        .tipo-badge {
+            display: inline-block; border-radius: 20px;
+            padding: 1px 7px; font-size: .68rem; font-weight: 700;
+        }
+        .tipo-painel  { background: #eff6ff; color: #1e40af; }
+        .tipo-login   { background: #dcfce7; color: #166534; }
+        .tipo-logout  { background: #f3f4f6; color: #374151; }
+        .tipo-admin   { background: #fef3c7; color: #92400e; }
+        .tipo-erro    { background: #fee2e2; color: #991b1b; }
+        .tipo-sistema { background: #f3f4f6; color: #6b7280; }
+
+        /* ── Paginação ── */
+        .paginacao {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: .9rem 1.5rem; border-top: 1px solid var(--border-light, #e5e7eb);
+            font-size: .82rem; color: var(--cinza);
+        }
+        .paginacao-btns { display: flex; gap: .4rem; }
+        .pag-btn {
+            border: 1px solid #d1d5db; background: var(--surface-primary, #fff);
+            border-radius: 6px; padding: .3rem .7rem;
+            font-size: .8rem; cursor: pointer; color: var(--text-primary, #111827);
+        }
+        .pag-btn:hover:not(:disabled) { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+        .pag-btn:disabled { opacity: .4; cursor: not-allowed; }
+        .pag-btn.ativo { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+        /* ── Gráfico bar mini ── */
+        .hora-chart {
+            display: flex; align-items: flex-end; gap: 2px;
+            height: 50px; padding: 0 .5rem;
+        }
+        .hora-bar {
+            flex: 1; background: #bfdbfe; border-radius: 2px 2px 0 0;
+            min-height: 2px; transition: height .3s;
+            cursor: default; position: relative;
+        }
+        .hora-bar:hover { background: #3b82f6; }
+        .hora-bar[title]:hover::after {
+            content: attr(title);
+            position: absolute; bottom: calc(100% + 4px); left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b; color: #fff;
+            padding: 2px 6px; border-radius: 4px; font-size: .65rem;
+            white-space: nowrap; pointer-events: none;
+        }
+
+        /* ── Auto-refresh indicator ── */
+        .refresh-dot {
+            display: inline-block; width: 8px; height: 8px;
+            background: var(--verde); border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: .3; }
+        }
+
+        /* ── Tema azul ── */
+        .tema-azul .section-card, .tema-azul .stat-card, .tema-azul .conn-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+        .tema-azul .section-header h2, .tema-azul .stat-num { color: #f8fafc; }
+        .tema-azul .section-header { border-bottom-color: #334155; }
+        .tema-azul .log-table th { color: #94a3b8; border-bottom-color: #334155; }
+        .tema-azul .log-table td { border-bottom-color: #334155; }
+        .tema-azul .log-table tr:hover td { background: #0f172a; }
+        .tema-azul .filter-bar { background: #0f172a; border-bottom-color: #334155; }
+        .tema-azul .filter-bar input, .tema-azul .filter-bar select {
+            background: #1e293b; border-color: #475569; color: #f1f5f9;
+        }
+        .tema-azul .td-desc { color: #cbd5e1; }
+        .tema-azul .hora-bar { background: #1d4ed8; }
+        .tema-azul .conn-user { color: #cbd5e1; }
+        .tema-azul .conn-painel-tag { background: #1e3a5f; color: #93c5fd; }
+        .tema-azul .paginacao { border-top-color: #334155; }
+        .tema-azul .pag-btn { background: #1e293b; border-color: #475569; color: #cbd5e1; }
+        .tema-azul .btn-limpar { border-color: #475569; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================ HEADER -->
+<header class="admin-header">
+    <div class="header-content">
+        <div class="header-left">
+            <img src="/static/img/logo.png" alt="HAC" class="logo-header" onerror="this.style.display='none'">
+            <h1><i class="fas fa-chart-network" aria-hidden="true"></i> Monitoramento de Acessos</h1>
+        </div>
+        <div class="header-right">
+            <span id="admin-nome">Admin</span>
+            <button type="button" id="btn-voltar" class="btn-header">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </button>
+            <button type="button" id="btn-logout" class="btn-header btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </button>
+        </div>
+    </div>
+</header>
+
+<div class="page-wrap">
+
+    <!-- ══════════════════════════════════════════════ STATS TOPO -->
+    <div class="stats-grid">
+        <div class="stat-card verde">
+            <div class="stat-num" id="st-ativos">—</div>
+            <div class="stat-lbl">Ativos Agora</div>
+        </div>
+        <div class="stat-card azul">
+            <div class="stat-num" id="st-hoje">—</div>
+            <div class="stat-lbl">Acessos Hoje</div>
+        </div>
+        <div class="stat-card azul">
+            <div class="stat-num" id="st-semana">—</div>
+            <div class="stat-lbl">Esta Semana</div>
+        </div>
+        <div class="stat-card amarelo">
+            <div class="stat-num" id="st-mes">—</div>
+            <div class="stat-lbl">Este Mês</div>
+        </div>
+        <div class="stat-card cinza">
+            <div class="stat-num" id="st-ips-hoje">—</div>
+            <div class="stat-lbl">Computadores Hoje</div>
+        </div>
+        <div class="stat-card vermelho">
+            <div class="stat-num" id="st-erros">—</div>
+            <div class="stat-lbl">Erros Hoje</div>
+        </div>
+        <div class="stat-card cinza" style="grid-column: span 1;">
+            <div class="hora-chart" id="hora-chart" title="Acessos por hora hoje"></div>
+            <div class="stat-lbl" style="margin-top:.3rem;">Acessos por Hora</div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ CONECTADOS AGORA -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2><i class="fas fa-circle-dot" style="color:var(--verde)"></i>
+                Conectados Agora
+                <span id="badge-ativos" style="background:#dcfce7;color:#166534;
+                    border-radius:20px;padding:2px 10px;font-size:.75rem;font-weight:700;">0</span>
+            </h2>
+            <div style="display:flex;align-items:center;gap:.75rem;font-size:.8rem;color:var(--cinza);">
+                <span><span class="refresh-dot"></span> Atualiza em <span id="refresh-countdown">30</span>s</span>
+                <button onclick="carregarConectados()" class="btn-filtrar" style="padding:.35rem .8rem;font-size:.78rem;">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        <div class="section-body">
+            <div id="conn-container" class="conn-grid">
+                <div style="color:var(--cinza);font-size:.9rem;">Carregando...</div>
+            </div>
+            <div id="conn-vazio" style="display:none;text-align:center;padding:2rem;color:var(--cinza);">
+                <i class="fas fa-moon" style="font-size:2rem;opacity:.3;"></i>
+                <p style="margin-top:.75rem;">Nenhum computador ativo nos últimos 10 minutos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ TOP PAINÉIS (7 dias) -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2><i class="fas fa-chart-bar" style="color:#3b82f6;"></i> Painéis Mais Acessados — Últimos 7 Dias</h2>
+        </div>
+        <div class="section-body" id="top-paineis-body" style="padding:.75rem 1.5rem;">
+            <div style="color:var(--cinza);">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ HISTÓRICO -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2><i class="fas fa-history" style="color:#6b7280;"></i> Histórico de Acessos</h2>
+            <div style="display:flex;gap:.5rem;">
+                <button class="btn-exportar" onclick="exportarCSV()">
+                    <i class="fas fa-file-csv"></i> Exportar CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filter-bar">
+            <input type="date" id="f-dt-ini" title="Data início" placeholder="De">
+            <input type="date" id="f-dt-fim" title="Data fim"    placeholder="Até">
+            <input type="text" id="f-ip"     placeholder="IP (ex: 10.61.27)" style="max-width:160px;">
+            <select id="f-painel">
+                <option value="">Todos os Painéis</option>
+            </select>
+            <select id="f-tipo">
+                <option value="">Todos os tipos</option>
+                <option value="painel">Visualização de Painel</option>
+                <option value="login">Login</option>
+                <option value="logout">Logout</option>
+                <option value="admin">Ação Administrativa</option>
+                <option value="erro">Erro de Acesso</option>
+                <option value="sistema">Sistema</option>
+            </select>
+            <input type="text" id="f-busca" placeholder="Buscar..." style="min-width:180px;">
+            <button class="btn-filtrar" onclick="filtrar()"><i class="fas fa-search"></i> Filtrar</button>
+            <button class="btn-limpar"  onclick="limparFiltros()">Limpar</button>
+        </div>
+
+        <!-- Tabela -->
+        <div style="overflow-x:auto;">
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Data / Hora</th>
+                        <th>IP</th>
+                        <th>Usuário</th>
+                        <th>Painel / Tela</th>
+                        <th>Descrição do Acesso</th>
+                        <th>Tipo</th>
+                        <th>Resultado</th>
+                        <th style="text-align:right;">ms</th>
+                    </tr>
+                </thead>
+                <tbody id="log-tbody">
+                    <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--cinza);">
+                        <i class="fas fa-circle-notch fa-spin"></i> Carregando histórico...
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        <div class="paginacao">
+            <span id="pag-info" style="font-size:.8rem;"></span>
+            <div class="paginacao-btns" id="pag-btns"></div>
+        </div>
+    </div>
+
+</div><!-- /page-wrap -->
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════════════════════════════════
+let _pagina      = 1;
+let _totalPaginas = 1;
+let _refreshTimer = null;
+let _countdown   = 30;
+let _countdownTimer = null;
+
+// ══════════════════════════════════════════════════════════════════════
+// INICIALIZAÇÃO
+// ══════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/verificar-sessao')
+        .then(r => r.json())
+        .then(d => {
+            if (d.autenticado) document.getElementById('admin-nome').textContent = d.usuario;
+            else location.href = '/login.html';
+        }).catch(() => location.href = '/login.html');
+
+    document.getElementById('btn-voltar').addEventListener('click',
+        () => location.href = '/frontend/dashboard.html');
+    document.getElementById('btn-logout').addEventListener('click',
+        () => fetch('/api/logout', {method:'POST'}).then(() => location.href = '/login.html'));
+
+    // Enter no campo de busca
+    document.getElementById('f-busca').addEventListener('keydown', e => {
+        if (e.key === 'Enter') filtrar();
+    });
+
+    // Define datas padrão (últimos 7 dias)
+    const hoje = new Date();
+    const inicio = new Date(hoje); inicio.setDate(hoje.getDate() - 7);
+    document.getElementById('f-dt-ini').value = inicio.toISOString().split('T')[0];
+    document.getElementById('f-dt-fim').value = hoje.toISOString().split('T')[0];
+
+    carregarStats();
+    carregarConectados();
+    carregarPaineisFiltro();
+    carregarHistorico();
+
+    // Auto-refresh conectados (30s)
+    iniciarContagem();
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// CONTAGEM REGRESSIVA AUTO-REFRESH
+// ══════════════════════════════════════════════════════════════════════
+function iniciarContagem() {
+    _countdown = 30;
+    clearInterval(_countdownTimer);
+    _countdownTimer = setInterval(() => {
+        _countdown--;
+        const el = document.getElementById('refresh-countdown');
+        if (el) el.textContent = _countdown;
+        if (_countdown <= 0) {
+            carregarConectados();
+            _countdown = 30;
+        }
+    }, 1000);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════════════════════════════
+async function carregarStats() {
+    try {
+        const r = await fetch('/api/admin/acessos/stats');
+        const d = await r.json();
+        const t = d.totais || {};
+        document.getElementById('st-hoje').textContent    = fmt(t.hoje);
+        document.getElementById('st-semana').textContent  = fmt(t.semana);
+        document.getElementById('st-mes').textContent     = fmt(t.mes);
+        document.getElementById('st-ips-hoje').textContent = fmt(t.ips_hoje);
+        document.getElementById('st-erros').textContent   = fmt(t.erros_hoje);
+
+        // Gráfico de barras por hora
+        const chart = document.getElementById('hora-chart');
+        const dados  = d.acessos_por_hora || Array(24).fill(0);
+        const max    = Math.max(1, ...dados);
+        chart.innerHTML = dados.map((v, h) =>
+            `<div class="hora-bar" style="height:${Math.round(v/max*100)}%"
+                title="${h}h: ${v} acesso(s)"></div>`
+        ).join('');
+
+        // Top painéis
+        const topEl = document.getElementById('top-paineis-body');
+        if (d.top_paineis && d.top_paineis.length) {
+            const maxP = Math.max(1, ...d.top_paineis.map(p => p.acessos));
+            topEl.innerHTML = d.top_paineis.map(p => `
+                <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;">
+                    <div style="min-width:200px;font-size:.82rem;font-weight:500;
+                        color:var(--text-primary,#111827);">${p.painel_nome || p.painel_codigo}</div>
+                    <div style="flex:1;background:#f3f4f6;border-radius:20px;height:8px;overflow:hidden;">
+                        <div style="width:${Math.round(p.acessos/maxP*100)}%;
+                            background:#3b82f6;height:100%;border-radius:20px;"></div>
+                    </div>
+                    <div style="min-width:80px;font-size:.78rem;color:var(--cinza);text-align:right;">
+                        ${fmt(p.acessos)} acessos</div>
+                    <div style="min-width:90px;font-size:.78rem;color:var(--cinza);text-align:right;">
+                        ${p.computadores} computador${p.computadores>1?'es':''}</div>
+                </div>
+            `).join('');
+        } else {
+            topEl.innerHTML = '<div style="color:var(--cinza);font-size:.85rem;">Sem dados para o período</div>';
+        }
+    } catch(e) {
+        console.warn('Erro ao carregar stats:', e);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// CONECTADOS AGORA
+// ══════════════════════════════════════════════════════════════════════
+async function carregarConectados() {
+    try {
+        const r = await fetch('/api/admin/acessos/conectados');
+        const d = await r.json();
+        const usuarios = d.usuarios || [];
+
+        document.getElementById('st-ativos').textContent = d.total_ativos || 0;
+        document.getElementById('badge-ativos').textContent =
+            `${d.total_ativos || 0} ativo${d.total_ativos !== 1 ? 's' : ''}, ${d.total_recentes || 0} recente${d.total_recentes !== 1 ? 's' : ''}`;
+
+        const container = document.getElementById('conn-container');
+        const vazio     = document.getElementById('conn-vazio');
+
+        if (!usuarios.length) {
+            container.style.display = 'none';
+            vazio.style.display     = 'block';
+            return;
+        }
+
+        container.style.display = 'grid';
+        vazio.style.display     = 'none';
+
+        container.innerHTML = usuarios.map(u => {
+            const isAtivo = u.status === 'ativo';
+            const paineisTags = (u.paineis_ativos || [])
+                .map(p => `<span class="conn-painel-tag">${p.nome.split('—')[0].trim()}</span>`)
+                .join('') || '<span style="color:var(--cinza);font-size:.72rem;">Nenhum painel ativo</span>';
+
+            const tempo = u.tempo_conectado_min < 60
+                ? `${u.tempo_conectado_min}min conectado`
+                : `${Math.floor(u.tempo_conectado_min/60)}h ${u.tempo_conectado_min%60}min`;
+
+            return `
+            <div class="conn-card ${u.status}">
+                <span class="badge-status badge-${u.status}">
+                    ${isAtivo ? '● Ativo' : '○ Recente'}
+                </span>
+                <div class="conn-ip">${u.ip}</div>
+                <div class="conn-host">${u.hostname && u.hostname !== u.ip ? u.hostname : '<span style="opacity:.5">Hostname não resolvido</span>'}</div>
+                <div class="conn-user"><i class="fas fa-user fa-xs"></i> ${u.usuario_nome}</div>
+                <div style="margin-top:.6rem;">${paineisTags}</div>
+                <div class="conn-tempo"><i class="fas fa-clock fa-xs"></i> ${tempo} · último ${u.ultimo_acesso}</div>
+                <div class="conn-reqs">${u.total_requests} requisições nesta sessão</div>
+            </div>`;
+        }).join('');
+
+        // Reinicia contagem
+        _countdown = 30;
+    } catch(e) {
+        document.getElementById('conn-container').innerHTML =
+            '<div style="color:#991b1b;">Erro ao carregar conectados</div>';
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// FILTRO DE PAINÉIS (dropdown)
+// ══════════════════════════════════════════════════════════════════════
+async function carregarPaineisFiltro() {
+    try {
+        const r = await fetch('/api/admin/acessos/paineis-lista');
+        const lista = await r.json();
+        const sel = document.getElementById('f-painel');
+        lista.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.painel_codigo;
+            opt.textContent = `${p.painel_nome || p.painel_codigo} (${fmt(p.total)})`;
+            sel.appendChild(opt);
+        });
+    } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// HISTÓRICO
+// ══════════════════════════════════════════════════════════════════════
+async function carregarHistorico(pagina = 1) {
+    _pagina = pagina;
+    const tbody = document.getElementById('log-tbody');
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--cinza);">
+        <i class="fas fa-circle-notch fa-spin"></i> Buscando registros...</td></tr>`;
+
+    const params = new URLSearchParams({
+        pagina, por_pagina: 50,
+        ip:        document.getElementById('f-ip').value.trim(),
+        painel:    document.getElementById('f-painel').value,
+        tipo:      document.getElementById('f-tipo').value,
+        busca:     document.getElementById('f-busca').value.trim(),
+        dt_inicio: document.getElementById('f-dt-ini').value,
+        dt_fim:    document.getElementById('f-dt-fim').value,
+    });
+
+    try {
+        const r = await fetch('/api/admin/acessos/historico?' + params);
+        const d = await r.json();
+
+        _totalPaginas = d.total_paginas || 1;
+        renderHistorico(d.registros || []);
+        renderPaginacao(d.total || 0, d.pagina || 1, d.total_paginas || 1, d.por_pagina || 50);
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#991b1b;">
+            Erro ao carregar histórico</td></tr>`;
+    }
+}
+
+function renderHistorico(registros) {
+    const tbody = document.getElementById('log-tbody');
+    if (!registros.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--cinza);">
+            <i class="fas fa-search fa-lg" style="opacity:.3;"></i>
+            <br>Nenhum registro encontrado para os filtros selecionados</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = registros.map(r => {
+        // Status
+        let statusCls = 'status-info', statusIco = '—';
+        if (r.status_code && r.status_code < 300) {
+            statusCls = 'status-ok'; statusIco = `<i class="fas fa-check"></i> ${r.status_label.split('(')[0]}`;
+        } else if (r.status_code === 403 || r.status_code === 401) {
+            statusCls = 'status-warn'; statusIco = `<i class="fas fa-lock"></i> ${r.status_label.split('(')[0]}`;
+        } else if (r.status_code && r.status_code >= 400) {
+            statusCls = 'status-err'; statusIco = `<i class="fas fa-times"></i> ${r.status_label.split('(')[0]}`;
+        }
+
+        // Tipo badge
+        const tipoCls = {
+            painel: 'tipo-painel', login: 'tipo-login', logout: 'tipo-logout',
+            admin: 'tipo-admin', erro: 'tipo-erro', sistema: 'tipo-sistema',
+        }[r.tipo_acesso] || 'tipo-sistema';
+        const tipoLabel = {
+            painel: 'Painel', login: 'Login', logout: 'Logout',
+            admin: 'Admin', erro: 'Erro', sistema: 'Sistema',
+        }[r.tipo_acesso] || r.tipo_acesso;
+
+        const painel = r.painel_nome && r.painel_nome !== '—'
+            ? `<span class="td-painel">${r.painel_nome.split('—')[0].trim()}</span>`
+            : `<span style="color:var(--cinza);font-size:.78rem;">${r.tipo_acesso === 'login' ? 'Login' : r.tipo_acesso === 'admin' ? 'Administrativo' : 'Sistema'}</span>`;
+
+        const dur = r.duracao_ms != null
+            ? `<span style="font-size:.75rem;color:${r.duracao_ms>1000?'#dc2626':r.duracao_ms>500?'#d97706':'var(--cinza)'};">${r.duracao_ms}</span>`
+            : '—';
+
+        return `<tr>
+            <td class="td-dt">${r.dt_acesso}</td>
+            <td class="td-ip">${r.ip}</td>
+            <td style="font-size:.8rem;">${r.usuario_nome}</td>
+            <td>${painel}</td>
+            <td class="td-desc">${r.descricao}</td>
+            <td><span class="tipo-badge ${tipoCls}">${tipoLabel}</span></td>
+            <td class="${statusCls}" style="white-space:nowrap;font-size:.78rem;">${statusIco}</td>
+            <td style="text-align:right;">${dur}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderPaginacao(total, pagina, totalPags, porPagina) {
+    const inicio = (pagina - 1) * porPagina + 1;
+    const fim    = Math.min(pagina * porPagina, total);
+    document.getElementById('pag-info').textContent =
+        total === 0 ? 'Nenhum registro' :
+        `Exibindo ${inicio.toLocaleString('pt-BR')}–${fim.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} registro(s)`;
+
+    const btns = document.getElementById('pag-btns');
+    btns.innerHTML = '';
+
+    const addBtn = (label, pg, disabled = false, ativo = false) => {
+        const b = document.createElement('button');
+        b.className = 'pag-btn' + (ativo ? ' ativo' : '');
+        b.innerHTML = label;
+        b.disabled  = disabled;
+        b.onclick   = () => carregarHistorico(pg);
+        btns.appendChild(b);
+    };
+
+    addBtn('<i class="fas fa-chevron-left"></i>', pagina - 1, pagina <= 1);
+
+    // Páginas próximas
+    const inicio_ = Math.max(1, pagina - 2);
+    const fim_    = Math.min(totalPags, pagina + 2);
+    if (inicio_ > 1) { addBtn('1', 1); if (inicio_ > 2) addBtn('...', pagina, true); }
+    for (let p = inicio_; p <= fim_; p++) addBtn(String(p), p, false, p === pagina);
+    if (fim_ < totalPags) { if (fim_ < totalPags - 1) addBtn('...', pagina, true); addBtn(String(totalPags), totalPags); }
+
+    addBtn('<i class="fas fa-chevron-right"></i>', pagina + 1, pagina >= totalPags);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// FILTRAR / LIMPAR
+// ══════════════════════════════════════════════════════════════════════
+function filtrar() {
+    carregarHistorico(1);
+}
+
+function limparFiltros() {
+    const hoje  = new Date();
+    const ini   = new Date(hoje); ini.setDate(hoje.getDate() - 7);
+    document.getElementById('f-dt-ini').value = ini.toISOString().split('T')[0];
+    document.getElementById('f-dt-fim').value = hoje.toISOString().split('T')[0];
+    document.getElementById('f-ip').value     = '';
+    document.getElementById('f-painel').value = '';
+    document.getElementById('f-tipo').value   = '';
+    document.getElementById('f-busca').value  = '';
+    carregarHistorico(1);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// EXPORTAR CSV
+// ══════════════════════════════════════════════════════════════════════
+function exportarCSV() {
+    const params = new URLSearchParams({
+        ip:        document.getElementById('f-ip').value.trim(),
+        painel:    document.getElementById('f-painel').value,
+        tipo:      document.getElementById('f-tipo').value,
+        busca:     document.getElementById('f-busca').value.trim(),
+        dt_inicio: document.getElementById('f-dt-ini').value,
+        dt_fim:    document.getElementById('f-dt-fim').value,
+    });
+    window.location.href = '/api/admin/acessos/exportar?' + params;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ══════════════════════════════════════════════════════════════════════
+function fmt(n) {
+    if (n == null) return '—';
+    return Number(n).toLocaleString('pt-BR');
+}
+</script>
+</body>
+</html>

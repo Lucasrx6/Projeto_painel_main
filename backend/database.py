@@ -466,6 +466,35 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_historico_criado ON historico_usuarios(criado_em);
         """)
 
+        # Log de acessos — histórico auditável de 6 meses
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS access_log (
+                id           BIGSERIAL PRIMARY KEY,
+                dt_acesso    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                ip           VARCHAR(45) NOT NULL,
+                painel_codigo VARCHAR(50),
+                painel_nome  VARCHAR(150),
+                endpoint     VARCHAR(300),
+                descricao    TEXT NOT NULL,
+                metodo       VARCHAR(10) NOT NULL DEFAULT 'GET',
+                status_code  SMALLINT,
+                duracao_ms   INTEGER,
+                usuario_id   INTEGER,
+                usuario_nome VARCHAR(100),
+                tipo_acesso  VARCHAR(30) DEFAULT 'painel'
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_access_log_dt
+                ON access_log(dt_acesso DESC);
+            CREATE INDEX IF NOT EXISTS idx_access_log_ip_dt
+                ON access_log(ip, dt_acesso DESC);
+            CREATE INDEX IF NOT EXISTS idx_access_log_painel
+                ON access_log(painel_codigo, dt_acesso DESC);
+            CREATE INDEX IF NOT EXISTS idx_access_log_tipo
+                ON access_log(tipo_acesso, dt_acesso DESC);
+        """)
+
         # Migracoes incrementais: adicionar colunas que podem nao existir ainda
         try:
             cursor.execute("""

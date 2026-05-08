@@ -247,6 +247,9 @@
         .stat-box.ok     { background: #f0fdf4; color: #166534; }
         .stat-box.ok::before { background: #22c55e; }
 
+        .stat-box.avisos { background: #fffbeb; color: #92400e; }
+        .stat-box.avisos::before { background: #f59e0b; }
+
         .stat-box.erros  { background: #fef2f2; color: #991b1b; }
         .stat-box.erros::before { background: #ef4444; }
 
@@ -281,9 +284,10 @@
 
         .tema-azul .run-btn-sistema { background: #1d4ed8; }
         .tema-azul .run-btn-sistema:hover { background: #1e40af; }
-        .tema-azul .stat-box.ok      { background: rgba(34,197,94,0.15);  color: #4ade80; }
-        .tema-azul .stat-box.erros   { background: rgba(239,68,68,0.15);  color: #f87171; }
-        .tema-azul .stat-box.reparados { background: rgba(249,115,22,0.15); color: #fb923c; }
+        .tema-azul .stat-box.ok        { background: rgba(34,197,94,0.15);   color: #4ade80; }
+        .tema-azul .stat-box.avisos    { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+        .tema-azul .stat-box.erros     { background: rgba(239,68,68,0.15);   color: #f87171; }
+        .tema-azul .stat-box.reparados { background: rgba(249,115,22,0.15);  color: #fb923c; }
     </style>
 </head>
 <body>
@@ -341,6 +345,10 @@
                 <div class="stat-box ok">
                     <div class="stat-value" id="sistemaStatOK">-</div>
                     <div class="stat-label">OK</div>
+                </div>
+                <div class="stat-box avisos">
+                    <div class="stat-value" id="sistemaStatAvisos">-</div>
+                    <div class="stat-label">Avisos</div>
                 </div>
                 <div class="stat-box erros">
                     <div class="stat-value" id="sistemaStatErros">-</div>
@@ -567,10 +575,11 @@
                     .replace(/>/g, '&gt;');
 
                 // Colorização por palavras-chave (após escape)
-                output = output.replace(/\[OK\]/g,       '<span class="ok-text">[OK]</span>');
-                output = output.replace(/\[ERRO\]/g,     '<span class="erro-text">[ERRO]</span>');
-                output = output.replace(/\[REPARADO\]/g, '<span class="rep-text">[REPARADO]</span>');
-                output = output.replace(/\[AVISO\]/g,    '<span class="warn-text">[AVISO]</span>');
+                output = output.replace(/\[OK\]\s*/g,     '<span class="ok-text">[OK]   </span>');
+                output = output.replace(/\[ERRO\]\s*/g,   '<span class="erro-text">[ERRO]  </span>');
+                output = output.replace(/\[AVISO\]\s*/g,  '<span class="warn-text">[AVISO] </span>');
+                output = output.replace(/\[REP\]\s*/g,    '<span class="rep-text">[REP]   </span>');
+                output = output.replace(/\[FALHOU\]\s*/g, '<span class="erro-text">[FALHOU]</span>');
                 output = output.replace(/(={3,}[^\n]+={3,})/g, '<span class="head-text">$1</span>');
 
                 terminal.innerHTML = output;
@@ -580,12 +589,19 @@
                 if (summary) {
                     statsDiv.style.display = 'grid';
                     document.getElementById('sistemaStatOK').innerText        = summary.ok        !== undefined ? summary.ok        : '-';
+                    document.getElementById('sistemaStatAvisos').innerText    = summary.avisos    !== undefined ? summary.avisos    : '-';
                     document.getElementById('sistemaStatErros').innerText     = summary.erros     !== undefined ? summary.erros     : '-';
                     document.getElementById('sistemaStatReparados').innerText = summary.reparados !== undefined ? summary.reparados : '-';
                     const dur = data.report.duration !== undefined ? parseFloat(data.report.duration).toFixed(1) : '-';
                     document.getElementById('sistemaStatTempo').innerText = dur;
 
-                    terminal.style.borderLeftColor = (summary.erros === 0) ? '#22c55e' : '#ef4444';
+                    if (summary.erros > 0) {
+                        terminal.style.borderLeftColor = '#ef4444';      // vermelho: erros
+                    } else if (summary.avisos > 0) {
+                        terminal.style.borderLeftColor = '#f59e0b';      // amarelo: avisos
+                    } else {
+                        terminal.style.borderLeftColor = '#22c55e';      // verde: tudo OK
+                    }
                 } else {
                     terminal.style.borderLeftColor = '#ef4444';
                 }

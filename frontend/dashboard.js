@@ -202,6 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const btnMonitoramentoAcessos = document.getElementById('btn-monitoramento-acessos');
+    if (btnMonitoramentoAcessos) {
+        btnMonitoramentoAcessos.addEventListener('click', () => {
+            window.location.href = '/api/admin/acessos/page';
+        });
+    }
+
     // Hamburger mobile
     const btnHamburger = document.getElementById('btn-hamburger');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
