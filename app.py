@@ -324,7 +324,7 @@ if __name__ == '__main__':
     app.run(
         debug=app.config.get('DEBUG', False),
         host='127.0.0.1',
-        port=5001,
+        port=5000,
         use_reloader=app.config.get('DEBUG', False),
         reloader_type='stat'
     )
