@@ -323,7 +323,7 @@ if __name__ == '__main__':
     # (o reloader 'watchdog' tem incompatibilidade com o select() do Windows)
     app.run(
         debug=app.config.get('DEBUG', False),
-        host='0.0.0.0',
+        host='127.0.0.1',
         port=5000,
         use_reloader=app.config.get('DEBUG', False),
         reloader_type='stat'
