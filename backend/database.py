@@ -130,40 +130,78 @@ def close_connection_pool():
         logger.info("Connection pool fechado")
 
 
-def _make_pool_conn(conn):
+class _PoolConnectionWrapper:
     """
-    Faz o conn.close() de uma conexao do pool chamar putconn() automaticamente.
+    Wrapper leve para conexoes do pool.
 
-    Problema raiz: rotas chamam conn.close() diretamente — o pool nunca fica
-    sabendo que a conexao foi liberada e o slot fica "em uso" para sempre.
-    Esta funcao patches close() uma unica vez por objeto de conexao.
+    Problema raiz: psycopg2 connections sao objetos C que nao permitem
+    atribuicao de atributos arbitrarios (_real_close, _from_pool, etc.).
+    Este wrapper intercepta close() para devolver a conexao ao pool via
+    putconn(), e delega todos os outros acessos ao objeto real.
     """
-    # Guarda o close() real apenas na primeira vez (evita empilhar patches)
-    if not hasattr(conn, '_real_close'):
-        conn._real_close = conn.close
 
-    real_close = conn._real_close  # sempre aponta para o close() original
+    __slots__ = ('_conn', '_returned')
 
-    def _pool_aware_close():
+    def __init__(self, conn):
+        object.__setattr__(self, '_conn', conn)
+        object.__setattr__(self, '_returned', False)
+
+    # --- Delegacao transparente ----------------------------------------
+    def __getattr__(self, name):
+        return getattr(object.__getattribute__(self, '_conn'), name)
+
+    def __setattr__(self, name, value):
+        if name in ('_conn', '_returned'):
+            object.__setattr__(self, name, value)
+        else:
+            setattr(object.__getattribute__(self, '_conn'), name, value)
+
+    # --- Suporte a context manager (with conn: ...) --------------------
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    # --- close() que devolve ao pool -----------------------------------
+    def close(self):
         global _connection_pool
-        # Só devolve ao pool se a flag estiver ativa (evita dupla devolução)
-        if getattr(conn, '_from_pool', False):
-            conn._from_pool = False
-            try:
-                if _connection_pool is not None and not conn.closed:
-                    _connection_pool.putconn(conn)
-                    return
-            except Exception:
-                pass
-        # Fallback: fecha a conexao normalmente
+        conn = object.__getattribute__(self, '_conn')
+        returned = object.__getattribute__(self, '_returned')
+
+        if returned:
+            return  # ja devolvida — evita dupla devolucao
+
+        object.__setattr__(self, '_returned', True)
+
         try:
-            real_close()
+            if _connection_pool is not None and not conn.closed:
+                _connection_pool.putconn(conn)
+                return
         except Exception:
             pass
 
-    conn._from_pool = True
-    conn.close = _pool_aware_close
-    return conn
+        # Fallback: fecha a conexao diretamente
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    @property
+    def closed(self):
+        """Retorna o status closed da conexao real."""
+        conn = object.__getattribute__(self, '_conn')
+        returned = object.__getattribute__(self, '_returned')
+        return returned or conn.closed
+
+
+def _make_pool_conn(conn):
+    """
+    Envolve uma conexao do pool em um wrapper que intercepta close()
+    para devolver automaticamente ao pool via putconn().
+    """
+    return _PoolConnectionWrapper(conn)
 
 
 # =========================================================
