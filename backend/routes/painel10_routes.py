@@ -645,7 +645,7 @@ def api_painel10_diagnostico_ps():
         return jsonify({'success': True, 'diagnostico': resultado})
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
     finally:
         if conn:
             release_connection(conn)

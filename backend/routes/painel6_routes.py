@@ -75,7 +75,7 @@ def painel6_dashboard():
 
     except Exception as e:
         current_app.logger.error(f"[ERRO] /dashboard: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel6_bp.route('/api/paineis/painel6/lista', methods=['GET'])
@@ -150,11 +150,11 @@ def painel6_lista():
     except Exception as e:
         current_app.logger.error(f"[ERRO] /lista: {e}")
         import traceback
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
 
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500
 
 
@@ -203,7 +203,7 @@ def painel6_paciente_detalhe(nr_atendimento):
         current_app.logger.error(f"❌ Erro em /paciente: {e}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500
 
 
@@ -238,7 +238,7 @@ def painel6_forcar_analise(nr_atendimento):
         current_app.logger.error(f"❌ Erro ao forçar análise: {e}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500
 
 
@@ -267,5 +267,5 @@ def painel6_test():
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500

@@ -129,19 +129,24 @@ def cache_delete(key: str):
 
 def cache_delete_pattern(pattern: str) -> int:
     """
-    Remove todas as chaves que casam com o pattern usando KEYS.
+    Remove todas as chaves que casam com o pattern usando SCAN iterativo.
     Ex: cache_delete_pattern('painel4:*') remove todo o cache do painel4.
 
-    ATENCAO: KEYS escaneia todo o keyspace — usar apenas em manutencao
-    ou quando o volume de chaves for pequeno (sistema hospitalar local).
+    Usa SCAN ao inves de KEYS para evitar bloqueio do Redis
+    em keyspaces grandes.
     """
     if _redis_client is None:
         return 0
     try:
-        keys = _redis_client.keys(pattern)
-        if keys:
-            return _redis_client.delete(*keys)
-        return 0
+        deleted = 0
+        cursor = '0'
+        while True:
+            cursor, keys = _redis_client.scan(cursor=cursor, match=pattern, count=100)
+            if keys:
+                deleted += _redis_client.delete(*keys)
+            if cursor == 0:
+                break
+        return deleted
     except Exception as e:
         logger.warning(f'Erro ao deletar cache por pattern [{pattern}]: {e}')
         return 0

@@ -164,6 +164,13 @@ class _PoolConnectionWrapper:
         self.close()
         return False
 
+    # --- Destrutor (Garbage Collection) --------------------------------
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
     # --- close() que devolve ao pool -----------------------------------
     def close(self):
         global _connection_pool
@@ -332,6 +339,41 @@ def get_db_cursor(use_dict_cursor=True, commit=True):
 # =========================================================
 # HEALTH CHECK
 # =========================================================
+
+def pool_health():
+    """
+    Retorna metricas do pool de conexoes para monitoramento.
+
+    Returns:
+        dict: Status do pool com metricas de uso
+    """
+    if _connection_pool is None:
+        return {
+            'status': 'disabled',
+            'message': 'Pool nao inicializado ou desabilitado'
+        }
+
+    try:
+        # ThreadedConnectionPool expoe _used (dict de conexoes em uso)
+        # e _pool (lista de conexoes disponiveis)
+        used = len(getattr(_connection_pool, '_used', {}))
+        available = len(getattr(_connection_pool, '_pool', []))
+
+        return {
+            'status': 'healthy',
+            'min_connections': POOL_MIN_CONNECTIONS,
+            'max_connections': POOL_MAX_CONNECTIONS,
+            'used': used,
+            'available': available,
+            'total': used + available,
+            'utilization_pct': round(used / POOL_MAX_CONNECTIONS * 100, 1) if POOL_MAX_CONNECTIONS > 0 else 0,
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': str(e)
+        }
+
 
 def check_db_health():
     """

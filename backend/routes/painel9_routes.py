@@ -112,7 +112,7 @@ def api_painel9_lab():
         current_app.logger.error(f'Erro ao buscar lab pendentes: {e}', exc_info=True)
         if conn:
             release_connection(conn)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel9_bp.route('/api/paineis/painel9/setores', methods=['GET'])
@@ -162,4 +162,4 @@ def api_painel9_setores():
         current_app.logger.error(f'Erro ao buscar setores painel9: {e}', exc_info=True)
         if conn:
             release_connection(conn)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

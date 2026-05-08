@@ -115,6 +115,10 @@ ATIVO_SEGUNDOS       = 120    # < 2 min = ativo (verde)
 RECENTE_SEGUNDOS     = 600    # < 10 min = recente (amarelo)
 HOSTNAME_CACHE_TTL   = 86400  # 24h
 
+# Pool de threads para escritas assíncronas no banco
+# (substitui criação de thread por requisição — limita a 2 threads concorrentes)
+_write_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix='access_w')
+
 # Paths completamente ignorados
 _IGNORAR = (
     '/static/', '/manifest.json', '/sw.js', '/favicon',
@@ -253,10 +257,11 @@ def _atualizar_sessao(ip: str, painel_codigo, usuario_id, usuario_nome: str) -> 
 def _write_log_async(ip, painel_codigo, painel_nome, endpoint,
                      descricao, metodo, status_code, duracao_ms,
                      usuario_id, usuario_nome, tipo_acesso) -> None:
-    """Grava no access_log em thread daemon — não bloqueia a resposta HTTP."""
+    """Grava no access_log via pool de threads — não bloqueia a resposta HTTP."""
     def _write():
+        conn = None
         try:
-            from backend.database import get_db_connection
+            from backend.database import get_db_connection, release_connection
             conn = get_db_connection()
             if not conn:
                 return
@@ -272,11 +277,20 @@ def _write_log_async(ip, painel_codigo, painel_nome, endpoint,
                   usuario_id, usuario_nome, tipo_acesso))
             conn.commit()
             cur.close()
-            conn.close()
         except Exception as e:
             logger.debug('[access_tracker] write failed: %s', e)
+        finally:
+            if conn:
+                try:
+                    release_connection(conn)
+                except Exception:
+                    pass
 
-    threading.Thread(target=_write, daemon=True, name='access_log_w').start()
+    try:
+        _write_pool.submit(_write)
+    except RuntimeError:
+        # Pool shutdown — ignorar silenciosamente
+        pass
 
 
 # ─────────────────────────────────────────────────────────
@@ -451,3 +465,83 @@ def cleanup_old_sessions() -> int:
         for ip in to_remove:
             del _sessions[ip]
     return len(to_remove)
+
+
+def _cleanup_throttle() -> int:
+    """Remove entradas expiradas do dict _throttle (> 2× THROTTLE_SEGUNDOS)."""
+    now = time.time()
+    cutoff = THROTTLE_SEGUNDOS * 2
+    with _throttle_lock:
+        expired = [k for k, ts in _throttle.items() if now - ts > cutoff]
+        for k in expired:
+            del _throttle[k]
+    return len(expired)
+
+
+def _cleanup_hostname_cache() -> int:
+    """Remove entradas expiradas do cache de hostnames."""
+    now = time.time()
+    with _hostname_cache_lock:
+        expired = [ip for ip, (_, ts) in _hostname_cache.items()
+                   if now - ts > HOSTNAME_CACHE_TTL]
+        for ip in expired:
+            del _hostname_cache[ip]
+    return len(expired)
+
+
+def _cleanup_access_log() -> int:
+    """Remove registros do access_log com mais de 6 meses."""
+    try:
+        from backend.database import get_db_connection, release_connection
+        conn = get_db_connection()
+        if not conn:
+            return 0
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                DELETE FROM access_log
+                WHERE dt_acesso < NOW() - INTERVAL '6 months'
+            """)
+            deleted = cur.rowcount
+            conn.commit()
+            cur.close()
+            return deleted
+        except Exception:
+            conn.rollback()
+            return 0
+        finally:
+            release_connection(conn)
+    except Exception:
+        return 0
+
+
+def _periodic_cleanup():
+    """
+    Thread daemon que limpa dicts em memória a cada 30 minutos.
+    Previne crescimento indefinido de _sessions, _throttle e _hostname_cache.
+    Também limpa registros antigos da tabela access_log (retenção de 6 meses).
+    """
+    while True:
+        try:
+            time.sleep(1800)  # 30 min
+            s = cleanup_old_sessions()
+            t = _cleanup_throttle()
+            h = _cleanup_hostname_cache()
+            a = _cleanup_access_log()
+            if s + t + h + a > 0:
+                logger.debug(
+                    '[access_tracker] cleanup: %d sessions, %d throttle, '
+                    '%d hostnames, %d access_log removidos',
+                    s, t, h, a
+                )
+        except Exception as e:
+            logger.debug('[access_tracker] cleanup error: %s', e)
+
+
+# Inicia thread de limpeza periódica (daemon — morre com o processo)
+_cleanup_thread = threading.Thread(
+    target=_periodic_cleanup,
+    name='access_tracker_cleanup',
+    daemon=True
+)
+_cleanup_thread.start()

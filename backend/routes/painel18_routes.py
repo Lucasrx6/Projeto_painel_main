@@ -187,7 +187,7 @@ def api_painel18_medicos():
         logger.error('Erro ao buscar medicos painel18: %s', str(e))
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500
     finally:
         if conn:
@@ -290,7 +290,7 @@ def api_painel18_ranking():
         logger.error('Erro ao buscar ranking painel18: %s', str(e))
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500
     finally:
         if conn:
@@ -399,7 +399,7 @@ def api_painel18_stats():
         logger.error('Erro ao buscar stats painel18: %s', str(e))
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500
     finally:
         if conn:

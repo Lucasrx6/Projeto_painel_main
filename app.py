@@ -167,6 +167,13 @@ def health_redis():
     return jsonify(cache_health())
 
 
+@app.route('/api/health/pool')
+def health_pool():
+    """Status do pool de conexoes PostgreSQL: uso, disponibilidade e metricas."""
+    from backend.database import pool_health
+    return jsonify(pool_health())
+
+
 # Notificador de pareceres — integrado como thread daemon
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_PARECERES_AUTO=false no .env
 try:

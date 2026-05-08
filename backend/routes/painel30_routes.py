@@ -9,12 +9,11 @@ import json
 import traceback
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from flask import Blueprint, request, jsonify, send_from_directory, session
+from flask import current_app, Blueprint, request, jsonify, send_from_directory, session
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
-from backend.cache import cache_route, cache_delete_pattern
 
 try:
     import apprise as _apprise_lib
@@ -361,7 +360,6 @@ def painel30_static(filename):
 
 @painel30_bp.route('/api/paineis/painel30/dashboard', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel30:dashboard')
 def dashboard():
     try:
         conn = get_db_connection()
@@ -410,8 +408,8 @@ def dashboard():
 
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -420,7 +418,6 @@ def dashboard():
 
 @painel30_bp.route('/api/paineis/painel30/tratativas', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel30:tratativas', vary_by_query=True)
 def listar_tratativas():
     try:
         conn = get_db_connection()
@@ -500,8 +497,8 @@ def listar_tratativas():
             'is_admin': _is_admin()
         })
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -510,7 +507,6 @@ def listar_tratativas():
 
 @painel30_bp.route('/api/paineis/painel30/criticos-resumo', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel30:criticos-resumo')
 def criticos_resumo():
     try:
         conn = get_db_connection()
@@ -626,8 +622,8 @@ def criticos_resumo():
             }
         })
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -636,7 +632,6 @@ def criticos_resumo():
 
 @painel30_bp.route('/api/paineis/painel30/categorias-criticas', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel30:categorias-criticas')
 def categorias_criticas():
     try:
         conn = get_db_connection()
@@ -697,8 +692,8 @@ def categorias_criticas():
             'periodo': periodo
         })
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -776,8 +771,8 @@ def detalhe_tratativa(tratativa_id):
 
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -933,8 +928,8 @@ def atualizar_tratativa(tratativa_id):
             'novo_status_visita': novo_status_visita
         })
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -943,7 +938,6 @@ def atualizar_tratativa(tratativa_id):
 
 @painel30_bp.route('/api/paineis/painel30/categorias-itens', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel30:categorias-itens')
 def categorias_itens():
     if not _is_admin():
         return jsonify({'success': False, 'error': 'Apenas administradores'}), 403
@@ -973,8 +967,8 @@ def categorias_itens():
 
         return jsonify({'success': True, 'data': [cats[c] for c in cats_ordem]})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel30_bp.route('/api/paineis/painel30/tratativas/<int:tratativa_id>/mover', methods=['POST'])
@@ -1109,8 +1103,8 @@ def mover_tratativa(tratativa_id):
         })
 
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1254,7 +1248,7 @@ def atualizar_responsavel_auto(tratativa_id):
                     cur2.close()
                     conn2.close()
                 except Exception:
-                    traceback.print_exc()
+                    pass
 
         msg = 'Responsavel atualizado'
         if email_enviado:
@@ -1271,8 +1265,8 @@ def atualizar_responsavel_auto(tratativa_id):
         })
 
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1281,7 +1275,6 @@ def atualizar_responsavel_auto(tratativa_id):
 
 @painel30_bp.route('/api/paineis/painel30/filtros', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel30:filtros')
 def filtros():
     try:
         conn = get_db_connection()
@@ -1315,8 +1308,8 @@ def filtros():
             }
         })
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1325,7 +1318,6 @@ def filtros():
 
 @painel30_bp.route('/api/paineis/painel30/responsaveis', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel30:responsaveis')
 def listar_responsaveis():
     try:
         conn = get_db_connection()
@@ -1381,8 +1373,8 @@ def listar_responsaveis():
 
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel30_bp.route('/api/paineis/painel30/responsaveis', methods=['POST'])
@@ -1450,13 +1442,10 @@ def criar_responsavel():
         cursor.close()
         release_connection(conn)
 
-        cache_delete_pattern('painel30:responsaveis:*')
-        cache_delete_pattern('painel30:filtros:*')
-
         return jsonify({'success': True, 'data': {'id': resp_id}, 'message': 'Responsavel criado'}), 201
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel30_bp.route('/api/paineis/painel30/responsaveis/<int:resp_id>', methods=['PUT'])
@@ -1534,13 +1523,10 @@ def editar_responsavel(resp_id):
         cursor.close()
         release_connection(conn)
 
-        cache_delete_pattern('painel30:responsaveis:*')
-        cache_delete_pattern('painel30:filtros:*')
-
         return jsonify({'success': True, 'message': 'Responsavel atualizado'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel30_bp.route('/api/paineis/painel30/responsaveis/<int:resp_id>/toggle', methods=['PUT'])
@@ -1582,13 +1568,11 @@ def toggle_responsavel(resp_id):
         cursor.close()
         release_connection(conn)
 
-        cache_delete_pattern('painel30:responsaveis:*')
-
         msg = 'Responsavel ativado' if novo_status else 'Responsavel desativado'
         return jsonify({'success': True, 'message': msg})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel30_bp.route('/api/paineis/painel30/responsaveis/<int:resp_id>', methods=['DELETE'])
@@ -1642,10 +1626,7 @@ def excluir_responsavel(resp_id):
         cursor.close()
         release_connection(conn)
 
-        cache_delete_pattern('painel30:responsaveis:*')
-        cache_delete_pattern('painel30:filtros:*')
-
         return jsonify({'success': True, 'message': 'Responsavel "{}" excluido'.format(resp['nome'])})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

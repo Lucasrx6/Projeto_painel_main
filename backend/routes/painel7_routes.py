@@ -81,7 +81,7 @@ def painel7_dashboard():
         current_app.logger.error(f"[ERRO] /painel7/dashboard: {e}")
         import traceback
         current_app.logger.error(traceback.format_exc())
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel7_bp.route('/api/paineis/painel7/lista', methods=['GET'])
@@ -207,7 +207,7 @@ def painel7_lista():
         current_app.logger.error(f"[ERRO] /painel7/lista: {e}")
         import traceback
         current_app.logger.error(traceback.format_exc())
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel7_bp.route('/api/paineis/painel7/detalhes/<nr_atendimento>', methods=['GET'])
@@ -262,4 +262,4 @@ def painel7_detalhes(nr_atendimento):
 
     except Exception as e:
         current_app.logger.error(f"[ERRO] /painel7/detalhes: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

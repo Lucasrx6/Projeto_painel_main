@@ -9,7 +9,6 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
-from backend.cache import cache_route
 
 painel15_bp = Blueprint('painel15', __name__)
 
@@ -37,7 +36,6 @@ def painel15():
 
 @painel15_bp.route('/api/paineis/painel15/locais', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel15:locais')
 def api_painel15_locais():
     """
     Lista locais ativos agrupados por setor para os selects do formulario
@@ -94,7 +92,6 @@ def api_painel15_locais():
 
 @painel15_bp.route('/api/paineis/painel15/problemas', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel15:problemas')
 def api_painel15_problemas():
     """Lista tipos de problema ativos para o select"""
     usuario_id = session.get('usuario_id')
@@ -279,7 +276,6 @@ def api_painel15_abrir():
 
 @painel15_bp.route('/api/paineis/painel15/acompanhar', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel15:acompanhar', vary_by_query=True)
 def api_painel15_acompanhar():
     """Lista chamados recentes (ultimas 24h)"""
     usuario_id = session.get('usuario_id')

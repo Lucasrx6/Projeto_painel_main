@@ -15,7 +15,7 @@ import traceback
 import statistics
 from datetime import datetime, date
 from decimal import Decimal
-from flask import Blueprint, request, jsonify, send_from_directory, session, Response
+from flask import current_app, Blueprint, request, jsonify, send_from_directory, session, Response
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection
 from backend.middleware.decorators import login_required
@@ -23,6 +23,22 @@ from backend.user_management import verificar_permissao_painel
 from backend.cache import cache_route
 
 painel33_bp = Blueprint('painel33', __name__)
+
+@painel33_bp.after_request
+def invalidate_cache_on_write(response):
+    """
+    Invalida o cache do painel33 automaticamente apos
+    qualquer operacao de escrita (POST, PUT, DELETE) bem sucedida.
+    """
+    from flask import request
+    if request.method in ['POST', 'PUT', 'DELETE'] and 200 <= response.status_code < 300:
+        try:
+            from backend.cache import cache_delete_pattern
+            cache_delete_pattern('painel33:*')
+            current_app.logger.debug(f'Cache invalidado via {request.method} {request.path}')
+        except Exception as e:
+            current_app.logger.warning(f'Erro ao invalidar cache do painel33: {e}')
+    return response
 
 # Cache para /filtros — evita 7 queries DISTINCT a cada carregamento
 _filtros_cache      = {'data': None, 'ts': 0.0}
@@ -178,7 +194,7 @@ def painel33_dashboard():
         return jsonify({'ok': True, 'dados': _serial_row(dict(row)) if row else {}})
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar dashboard', 'detalhe': str(e)}), 500
 
 
@@ -237,7 +253,7 @@ def painel33_dados():
         })
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar dados', 'detalhe': str(e)}), 500
 
 
@@ -308,7 +324,7 @@ def painel33_paciente():
         })
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar paciente', 'detalhe': str(e)}), 500
 
 
@@ -358,7 +374,7 @@ def painel33_filtros():
         return jsonify({'ok': True, 'filtros': filtros})
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar filtros', 'detalhe': str(e)}), 500
 
 
@@ -418,7 +434,7 @@ def painel33_export():
         )
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao exportar', 'detalhe': str(e)}), 500
 
 
@@ -459,7 +475,7 @@ def painel33_responsaveis_listar():
                 rows = cur.fetchall()
         return jsonify({'ok': True, 'responsaveis': [dict(r) for r in rows]})
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': str(e)}), 500
 
 
@@ -486,7 +502,7 @@ def painel33_responsaveis_salvar():
             conn.commit()
         return jsonify({'ok': True})
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': str(e)}), 500
 
 
@@ -506,7 +522,7 @@ def painel33_responsaveis_excluir():
             conn.commit()
         return jsonify({'ok': True})
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': str(e)}), 500
 
 
@@ -633,7 +649,7 @@ def painel33_visao_geral():
         })
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar visão geral', 'detalhe': str(e)}), 500
 
 
@@ -670,7 +686,7 @@ def painel33_debug_view_colunas():
                 resultado['_amostra_valores'] = dict(zip(cols, [str(v) for v in (row or [])])) if row else {}
         return jsonify({'ok': True, 'tabelas': resultado})
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': str(e)}), 500
 
 
@@ -745,7 +761,7 @@ def painel33_valores_dashboard():
         })
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar dashboard de valores', 'detalhe': str(e)}), 500
 
 
@@ -834,7 +850,7 @@ def painel33_valores_lista():
         })
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar lista de valores', 'detalhe': str(e)}), 500
 
 
@@ -958,5 +974,5 @@ def painel33_valores_detalhe(nr_sequencia):
                 })
 
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'ok': False, 'erro': 'Erro ao carregar detalhe de valores', 'detalhe': str(e)}), 500

@@ -186,7 +186,7 @@ def api_painel25_dashboard():
 
     except Exception as e:
         current_app.logger.error('[P25] Erro dashboard: %s', e, exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
     finally:
         if conn:
             release_connection(conn)
@@ -331,7 +331,7 @@ def api_painel25_dados():
 
     except Exception as e:
         current_app.logger.error('[P25] Erro dados: %s', e, exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
     finally:
         if conn:
             release_connection(conn)
@@ -396,7 +396,7 @@ def api_painel25_filtros():
 
     except Exception as e:
         current_app.logger.error('[P25] Erro filtros: %s', e, exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
     finally:
         if conn:
             release_connection(conn)

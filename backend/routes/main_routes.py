@@ -41,7 +41,7 @@ def login_page():
         return send_from_directory('frontend', 'login.html')
     except Exception as e:
         current_app.logger.error(f'Erro ao servir login.html: {e}')
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @main_bp.route('/frontend/<path:path>')

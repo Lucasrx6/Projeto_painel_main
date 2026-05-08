@@ -9,18 +9,34 @@ import uuid
 import threading
 import traceback
 from datetime import datetime, date
-from flask import Blueprint, request, jsonify, send_from_directory, session
+from flask import current_app, Blueprint, request, jsonify, send_from_directory, session
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
-from backend.cache import cache_route
 
 painel28_bp = Blueprint(
     'painel28',
     __name__,
     url_prefix='/api/paineis/painel28'
 )
+
+@painel28_bp.after_request
+def invalidate_cache_on_write(response):
+    """
+    Invalida o cache do painel28 automaticamente apos
+    qualquer operacao de escrita (POST, PUT, DELETE) bem sucedida.
+    """
+    from flask import request
+    if request.method in ['POST', 'PUT', 'DELETE'] and 200 <= response.status_code < 300:
+        try:
+            from backend.cache import cache_delete_pattern
+            cache_delete_pattern('painel28:*')
+            current_app.logger.debug(f'Cache invalidado via {request.method} {request.path}')
+        except Exception as e:
+            current_app.logger.warning(f'Erro ao invalidar cache do painel28: {e}')
+    return response
+
 
 # ----------------------------------------------------------
 # LOCK EM MEMORIA: pacientes sendo visitados no momento
@@ -204,7 +220,6 @@ def servir_main_form():
 
 @painel28_bp.route('/servicos', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel28:servicos')
 def listar_servicos():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -256,8 +271,8 @@ def listar_servicos():
         release_connection(conn)
         return jsonify({'success': True, 'data': servicos})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -286,8 +301,8 @@ def listar_duplas():
         release_connection(conn)
         return jsonify({'success': True, 'data': duplas})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/duplas', methods=['POST'])
@@ -318,8 +333,8 @@ def criar_dupla():
         release_connection(conn)
         return jsonify({'success': True, 'data': {'id': dupla_id}, 'message': 'Dupla criada'}), 201
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/duplas/<int:dupla_id>', methods=['PUT'])
@@ -356,8 +371,8 @@ def editar_dupla(dupla_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Dupla atualizada'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/duplas/<int:dupla_id>/toggle', methods=['PUT'])
@@ -385,8 +400,8 @@ def toggle_dupla(dupla_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Dupla ativada' if novo_status else 'Dupla desativada'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -395,7 +410,6 @@ def toggle_dupla(dupla_id):
 
 @painel28_bp.route('/setores', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel28:setores', vary_by_user=False)
 def listar_setores():
     try:
         conn = get_db_connection()
@@ -409,8 +423,8 @@ def listar_setores():
         release_connection(conn)
         return jsonify({'success': True, 'data': setores})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -419,7 +433,6 @@ def listar_setores():
 
 @painel28_bp.route('/categorias-itens', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel28:categorias_itens', vary_by_user=False)
 def listar_categorias_itens():
     try:
         conn = get_db_connection()
@@ -469,8 +482,8 @@ def listar_categorias_itens():
             })
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -479,7 +492,6 @@ def listar_categorias_itens():
 
 @painel28_bp.route('/config', methods=['GET'])
 @login_required
-@cache_route(ttl=300, key_prefix='painel28:config', vary_by_user=False)
 def obter_config():
     try:
         conn = get_db_connection()
@@ -493,8 +505,8 @@ def obter_config():
             config[row['chave']] = row['valor']
         return jsonify({'success': True, 'data': config})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -619,8 +631,8 @@ def fila_pacientes():
 
         return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/proximo-paciente', methods=['GET'])
@@ -729,8 +741,8 @@ def proximo_paciente():
 
         return jsonify({'success': True, 'data': item})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -821,8 +833,8 @@ def listar_precaucao_contato():
             resultado.append(item)
         return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/precaucao-contato', methods=['POST'])
@@ -858,8 +870,8 @@ def marcar_precaucao_contato():
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Paciente marcado em precaução de contato. Removido da fila.'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/precaucao-contato/<nr_atendimento>', methods=['DELETE'])
@@ -883,8 +895,8 @@ def remover_precaucao_contato(nr_atendimento):
             return jsonify({'success': False, 'error': 'Paciente não encontrado em precaução de contato'}), 404
         return jsonify({'success': True, 'message': 'Precaução de contato removida. Paciente voltou à fila.'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -945,8 +957,8 @@ def criar_ronda():
         release_connection(conn)
         return jsonify({'success': True, 'data': {'id': ronda_id, 'existente': False}, 'message': 'Ronda criada'}), 201
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/rondas/<int:ronda_id>/concluir', methods=['PUT'])
@@ -977,8 +989,8 @@ def concluir_ronda(ronda_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Ronda concluida com sucesso'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1205,8 +1217,8 @@ def registrar_visita():
         }), 201
 
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1287,8 +1299,8 @@ def upload_imagem():
         return jsonify(
             {'success': True, 'data': {'id': imagem_id, 'caminho': caminho_relativo}, 'message': 'Imagem enviada'}), 201
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/imagens/<int:imagem_id>', methods=['GET'])
@@ -1311,8 +1323,8 @@ def servir_imagem(imagem_id):
         return send_from_directory(os.path.dirname(caminho_completo), os.path.basename(caminho_completo),
                                    mimetype=imagem['tipo_mime'])
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/imagens/<int:imagem_id>', methods=['DELETE'])
@@ -1347,8 +1359,8 @@ def deletar_imagem(imagem_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Imagem removida'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1385,8 +1397,8 @@ def listar_visitas_ronda(ronda_id):
             resultado.append(item)
         return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1477,8 +1489,8 @@ def detalhe_visita(visita_id):
         visita_dict['imagens'] = imagens_lista
         return jsonify({'success': True, 'data': visita_dict})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1646,8 +1658,8 @@ def atualizar_visita(visita_id):
             msg += '. %d nova(s) tratativa(s) criada(s).' % tratativas_criadas
         return jsonify({'success': True, 'data': {'id': visita_id}, 'message': msg})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1707,8 +1719,8 @@ def ronda_em_andamento(dupla_id):
         ronda_dict['visitas'] = visitas_lista
         return jsonify({'success': True, 'data': ronda_dict})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1768,8 +1780,8 @@ def excluir_visita(visita_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Visita removida'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -1800,7 +1812,6 @@ def servir_style_config():
 
 @painel28_bp.route('/categorias', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel28:categorias', vary_by_user=False)
 def listar_categorias():
     """Lista todas as categorias (incluindo inativas) com seus itens."""
     try:
@@ -1838,8 +1849,8 @@ def listar_categorias():
 
         return jsonify({'success': True, 'data': resultado})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/categorias', methods=['POST'])
@@ -1873,8 +1884,8 @@ def criar_categoria():
         release_connection(conn)
         return jsonify({'success': True, 'data': {'id': cat_id}, 'message': 'Categoria criada'}), 201
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/categorias/<int:cat_id>', methods=['PUT'])
@@ -1913,8 +1924,8 @@ def editar_categoria(cat_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Categoria atualizada'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/categorias/<int:cat_id>/toggle', methods=['PUT'])
@@ -1944,8 +1955,8 @@ def toggle_categoria(cat_id):
         return jsonify({'success': True,
                         'message': 'Categoria ativada' if novo_status else 'Categoria desativada'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/categorias/<int:cat_id>/reordenar', methods=['PUT'])
@@ -1992,8 +2003,8 @@ def reordenar_categoria(cat_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Reordenado'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -2045,8 +2056,8 @@ def criar_item():
         release_connection(conn)
         return jsonify({'success': True, 'data': {'id': item_id}, 'message': 'Item criado'}), 201
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/itens/<int:item_id>', methods=['PUT'])
@@ -2090,8 +2101,8 @@ def editar_item(item_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Item atualizado'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/itens/<int:item_id>/toggle', methods=['PUT'])
@@ -2121,8 +2132,8 @@ def toggle_item(item_id):
         return jsonify({'success': True,
                         'message': 'Item ativado' if novo_status else 'Item desativado'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 @painel28_bp.route('/itens/<int:item_id>/reordenar', methods=['PUT'])
@@ -2170,5 +2181,5 @@ def reordenar_item(item_id):
         release_connection(conn)
         return jsonify({'success': True, 'message': 'Reordenado'})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

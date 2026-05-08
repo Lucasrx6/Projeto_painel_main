@@ -14,7 +14,7 @@ import json
 import traceback
 from datetime import datetime, date
 from decimal import Decimal
-from flask import Blueprint, request, jsonify, send_from_directory, session, Response
+from flask import current_app, Blueprint, request, jsonify, send_from_directory, session, Response
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
@@ -134,8 +134,8 @@ def analise_salva():
 
         return jsonify({'success': True, 'data': _serial_row(row)})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -177,8 +177,8 @@ def historico():
         release_connection(conn)
         return jsonify({'success': True, 'data': rows})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -294,8 +294,8 @@ def dados():
             }
         })
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # ============================================================
@@ -422,7 +422,6 @@ def gerar_analise():
             cursor.close()
             release_connection(conn)
         except Exception as db_err:
-            traceback.print_exc()
             # Nao falha a requisicao por erro ao salvar — apenas loga
             print('Aviso: nao foi possivel salvar analise no banco:', db_err)
 
@@ -436,7 +435,7 @@ def gerar_analise():
             }
         })
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao chamar IA: ' + str(e)}), 500
 
 
@@ -515,7 +514,7 @@ def sugestao_abordagem():
             }
         })
     except Exception as e:
-        traceback.print_exc()
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao chamar IA: ' + str(e)}), 500
 
 
@@ -640,5 +639,5 @@ def exportar():
             headers={'Content-Disposition': 'attachment; filename=' + nome_arquivo}
         )
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

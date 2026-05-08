@@ -106,9 +106,10 @@ APP_BASE_URL = os.getenv('APP_BASE_URL', '').rstrip('/')
 # =========================================================
 
 def get_connection():
-    """Abre conexao com PostgreSQL."""
+    """Abre conexao com PostgreSQL usando o pool central."""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        from backend.database import get_db_connection
+        conn = get_db_connection()
         return conn
     except Exception as e:
         logger.error('Erro ao conectar no banco: %s', e)

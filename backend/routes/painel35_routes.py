@@ -8,7 +8,6 @@ from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, release_connection
 from backend.middleware.decorators import login_required
 from backend.user_management import verificar_permissao_painel
-from backend.cache import cache_route
 
 painel35_bp = Blueprint('painel35', __name__)
 
@@ -31,7 +30,6 @@ def painel35():
 
 @painel35_bp.route('/api/paineis/painel35/padioleiros', methods=['GET'])
 @login_required
-@cache_route(ttl=120, key_prefix='painel35:padioleiros')
 def api_painel35_padioleiros():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)
@@ -67,7 +65,6 @@ def api_painel35_padioleiros():
 
 @painel35_bp.route('/api/paineis/painel35/fila', methods=['GET'])
 @login_required
-@cache_route(ttl=30, key_prefix='painel35:fila', vary_by_query=True)
 def api_painel35_fila():
     """Retorna: fila aguardando + chamado ativo do padioleiro (se informado)"""
     usuario_id = session.get('usuario_id')
@@ -395,7 +392,6 @@ def api_painel35_cancelar(chamado_id):
 
 @painel35_bp.route('/api/paineis/painel35/historico-hoje', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel35:historico-hoje')
 def api_painel35_historico_hoje():
     usuario_id = session.get('usuario_id')
     is_admin = session.get('is_admin', False)

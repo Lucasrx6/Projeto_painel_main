@@ -108,7 +108,7 @@ def api_painel27_dashboard():
         current_app.logger.error('Erro dashboard P27: %s', e, exc_info=True)
         if conn:
             release_connection(conn)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # =========================================================
@@ -216,7 +216,7 @@ def api_painel27_dados():
         current_app.logger.error('Erro dados P27: %s', e, exc_info=True)
         if conn:
             release_connection(conn)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # =========================================================
@@ -269,7 +269,7 @@ def api_painel27_historico_sinais(nr_atendimento):
         current_app.logger.error('Erro historico sinais P27: %s', e, exc_info=True)
         if conn:
             release_connection(conn)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # =========================================================
@@ -324,7 +324,7 @@ def api_painel27_historico_exames(nr_atendimento):
         current_app.logger.error('Erro historico exames P27: %s', e, exc_info=True)
         if conn:
             release_connection(conn)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
 # =========================================================
@@ -382,4 +382,4 @@ def api_painel27_filtros():
         current_app.logger.error('Erro filtros P27: %s', e, exc_info=True)
         if conn:
             release_connection(conn)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

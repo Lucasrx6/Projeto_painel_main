@@ -44,4 +44,9 @@ def post_fork(server, worker):
     server.log.info(f"Worker {worker.pid} iniciado ({threads} threads)")
 
 def worker_exit(server, worker):
-    server.log.warning(f"Worker {worker.pid} encerrado")
+    try:
+        from backend.database import close_connection_pool
+        close_connection_pool()
+    except Exception:
+        pass
+    server.log.warning(f"Worker {worker.pid} encerrado — pool fechado")

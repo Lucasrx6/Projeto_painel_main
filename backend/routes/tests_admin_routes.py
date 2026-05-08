@@ -77,7 +77,7 @@ def run_tests():
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erro interno do servidor'
         }), 500
 
 
