@@ -109,18 +109,17 @@ Write-Host "[5/5] Configuracoes nginx copiadas para: $ConfDir" -ForegroundColor 
 # Testar config e recarregar nginx
 # ------------------------------------------------------------
 $NginxExe = "$NginxDir\nginx.exe"
-$test = & $NginxExe -p $NginxDir -t 2>&1
+cmd /c "`"$NginxExe`" -p `"$NginxDir`" -t"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "[ERRO] Configuracao do nginx invalida:" -ForegroundColor Red
-    Write-Host $test
+    Write-Host "[ERRO] Configuracao do nginx invalida. Veja a mensagem acima." -ForegroundColor Red
     exit 1
 }
 
-# Nginx pode estar parado - tenta reload, se falhar tenta start
-& $NginxExe -p $NginxDir -s reload 2>&1 | Out-Null
+# Tenta reload (nginx ja rodando); se falhar, inicia
+cmd /c "`"$NginxExe`" -p `"$NginxDir`" -s reload"
 if ($LASTEXITCODE -ne 0) {
-    & $NginxExe -p $NginxDir 2>&1 | Out-Null
+    Start-Process -FilePath $NginxExe -ArgumentList "-p `"$NginxDir`"" -WindowStyle Hidden
 }
 
 # ------------------------------------------------------------
