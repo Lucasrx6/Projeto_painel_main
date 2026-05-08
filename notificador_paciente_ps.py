@@ -295,15 +295,17 @@ def _chave_clinica(ds_clinica):
 
 def clinica_em_cooldown(conn, ds_clinica):
     """Retorna True se ja enviamos alerta para esta clinica nos ultimos COOLDOWN_MIN min."""
+    from datetime import timedelta
+    cutoff = datetime.now() - timedelta(minutes=COOLDOWN_MIN)
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("""
         SELECT dt_ultima_notificacao
         FROM notificacoes_log
         WHERE chave_evento = %s
           AND status = 'notificado'
-          AND dt_ultima_notificacao >= NOW() - INTERVAL '%s minutes'
+          AND dt_ultima_notificacao >= %s
         LIMIT 1
-    """, (_chave_clinica(ds_clinica), COOLDOWN_MIN))
+    """, (_chave_clinica(ds_clinica), cutoff))
     result = cursor.fetchone()
     cursor.close()
     return result is not None

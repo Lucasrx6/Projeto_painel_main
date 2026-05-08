@@ -58,6 +58,17 @@ def init_redis(app):
         _redis_client = client
         app.logger.info(f'Redis conectado com sucesso: {redis_url}')
 
+        # Aplica limite de memória para evitar crescimento ilimitado.
+        # Padrão: 256mb com política LRU (descarta chaves menos usadas ao atingir o limite).
+        # Sobrescreva com REDIS_MAXMEMORY no .env (ex: 512mb, 1gb).
+        maxmemory = app.config.get('REDIS_MAXMEMORY', '256mb')
+        try:
+            client.config_set('maxmemory', maxmemory)
+            client.config_set('maxmemory-policy', 'allkeys-lru')
+            app.logger.info(f'Redis maxmemory={maxmemory} policy=allkeys-lru')
+        except Exception as e_mem:
+            app.logger.warning(f'Nao foi possivel configurar maxmemory Redis: {e_mem}')
+
     except Exception as e:
         app.logger.warning(
             f'Redis indisponivel ({type(e).__name__}: {e}) — '
