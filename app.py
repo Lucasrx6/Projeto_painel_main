@@ -232,6 +232,14 @@ try:
 except Exception as e:
     app.logger.warning(f'[worker_tests_sistema] Nao iniciado automaticamente: {e}')
 
+# Notificador de Ocupação Hospitalar — envia Excel + resumo HTML nos horários configurados
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_OCUPACAO_AUTO=false no .env
+try:
+    from backend.notificador_ocupacao_hospitalar import start_in_background as _start_notif_ocupacao
+    _start_notif_ocupacao()
+except Exception as e:
+    app.logger.warning(f'[notificador_ocupacao] Nao iniciado automaticamente: {e}')
+
 # =========================================================
 # ROTAS DE DESENVOLVIMENTO (Remover em produção)
 # =========================================================

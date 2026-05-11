@@ -3,8 +3,28 @@ Configuração centralizada de logging do sistema
 Rotação diária com retenção de 3 dias
 """
 import os
+import time
 import logging
 from logging.handlers import TimedRotatingFileHandler
+
+
+class _SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
+    """
+    TimedRotatingFileHandler com retry para Windows.
+
+    No Windows, os.rename() falha com PermissionError (WinError 32) quando
+    outra thread ainda está com o arquivo aberto no momento da rotação.
+    Este handler tenta até 10 vezes com intervalo de 200ms antes de desistir.
+    O servidor nunca cai — na pior hipótese o arquivo não é rotacionado naquele ciclo.
+    """
+
+    def rotate(self, source, dest):
+        for _ in range(10):
+            try:
+                super().rotate(source, dest)
+                return
+            except PermissionError:
+                time.sleep(0.2)
 
 
 def setup_logging(app):
@@ -29,7 +49,7 @@ def setup_logging(app):
     # ========================================
     # ROTAÇÃO DIÁRIA - Mantém apenas 3 dias
     # ========================================
-    file_handler = TimedRotatingFileHandler(
+    file_handler = _SafeTimedRotatingFileHandler(
         'logs/painel.log',
         when='midnight',  # Rotaciona à meia-noite
         interval=1,  # A cada 1 dia

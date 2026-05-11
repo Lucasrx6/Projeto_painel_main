@@ -555,5 +555,77 @@ def main():
         executar_envio()
 
 
+# ========================================
+# INICIALIZAÇÃO INTEGRADA (thread daemon no Flask/Gunicorn)
+# ========================================
+
+_background_started = False
+
+
+def start_in_background():
+    """
+    Inicia o notificador como thread daemon junto com o Flask/Gunicorn.
+
+    OFF SWITCHES (em ordem de praticidade):
+      1. .env  -> NOTIF_OCUPACAO_AUTO=false  (desativa sem tocar no código)
+      2. app.py -> comentar o bloco de 3 linhas (reverte)
+      3. Qualquer exceção de startup é capturada (nunca derruba o servidor Flask)
+    """
+    global _background_started
+    if _background_started:
+        return
+
+    if os.getenv('NOTIF_OCUPACAO_AUTO', 'true').lower() != 'true':
+        logger.info('[notificador_ocupacao] Auto-start desativado (NOTIF_OCUPACAO_AUTO=false)')
+        return
+
+    # Guard Werkzeug: inicia apenas no processo filho do reloader, não no monitor.
+    try:
+        from werkzeug.serving import is_running_from_reloader
+        if is_running_from_reloader() and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+            return
+    except ImportError:
+        pass
+
+    _background_started = True
+
+    import threading
+
+    def _run():
+        try:
+            cfg = _cfg()
+            logger.info(
+                '[notificador_ocupacao] Thread daemon iniciada — destinatários: %s | horários: %s | intervalo: %sh',
+                cfg['destinatarios'], cfg['horarios'], cfg['intervalo_h']
+            )
+
+            # Aguarda 60s antes do primeiro envio para o Flask terminar de subir
+            time.sleep(60)
+            executar_envio()
+
+            while True:
+                cfg = _cfg()
+                if cfg['horarios']:
+                    proximo = _proxima_execucao_horarios(cfg['horarios'])
+                    if proximo is None:
+                        proximo = datetime.now() + timedelta(hours=6)
+                else:
+                    proximo = datetime.now() + timedelta(hours=cfg['intervalo_h'])
+
+                logger.info('[notificador_ocupacao] Próximo envio: %s', proximo.strftime('%d/%m/%Y %H:%M'))
+
+                while datetime.now() < proximo:
+                    time.sleep(30)
+
+                executar_envio()
+
+        except Exception as e:
+            logger.error('[notificador_ocupacao] Erro fatal na thread daemon: %s', e, exc_info=True)
+
+    t = threading.Thread(target=_run, name='notificador_ocupacao', daemon=True)
+    t.start()
+    logger.info('[notificador_ocupacao] Thread daemon registrada')
+
+
 if __name__ == '__main__':
     main()
