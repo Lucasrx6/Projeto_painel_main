@@ -81,7 +81,7 @@ def _cfg():
 # ========================================
 
 def _get_conn():
-    return psycopg2.connect(
+    conn = psycopg2.connect(
         host=os.getenv('DB_HOST', 'localhost'),
         dbname=os.getenv('DB_NAME', 'postgres'),
         user=os.getenv('DB_USER', 'postgres'),
@@ -89,6 +89,25 @@ def _get_conn():
         port=int(os.getenv('DB_PORT', '5432')),
         connect_timeout=10
     )
+    # Descobre o schema onde obter_nome_setor está definida e adiciona ao search_path.
+    # Necessário porque a função pode estar num schema custom (ex: tasy, public_tasy).
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT n.nspname
+                FROM pg_proc p
+                JOIN pg_namespace n ON p.pronamespace = n.oid
+                WHERE p.proname = 'obter_nome_setor'
+            """)
+            schemas = [r[0] for r in cur.fetchall()]
+        if schemas:
+            path = ', '.join(schemas + ['public', 'pg_catalog'])
+            with conn.cursor() as cur:
+                cur.execute(f"SET search_path TO {path}")
+            conn.commit()
+    except Exception:
+        pass  # se falhar, segue com search_path padrão
+    return conn
 
 
 def _query(conn, sql):
@@ -109,14 +128,14 @@ def buscar_dados():
 
         cols_setor, setores = _query(conn, """
             SELECT *,
-                   SUBSTR(obter_nome_setor(cd_setor_atendimento::varchar), 1, 60) AS nm_setor
+                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
             FROM vw_ocupacao_por_setor
             ORDER BY nm_setor
         """)
 
         cols_pac, pacientes = _query(conn, """
             SELECT *,
-                   SUBSTR(obter_nome_setor(cd_setor_atendimento::varchar), 1, 60) AS nm_setor
+                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
             FROM vw_pacientes_internados
             ORDER BY nm_setor, 2
         """)
