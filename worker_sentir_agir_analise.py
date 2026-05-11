@@ -83,6 +83,7 @@ logger.addHandler(_fh)
 _sh = logging.StreamHandler(sys.stdout)
 _sh.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s'))
 logger.addHandler(_sh)
+logger.propagate = False  # evita duplicação: mensagem não sobe para o root logger do Flask
 
 
 # =========================================================
