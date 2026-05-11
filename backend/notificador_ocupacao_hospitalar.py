@@ -145,6 +145,24 @@ def _nome_coluna(col):
     return col.replace('_', ' ').title()
 
 
+# Colunas que contêm nomes de pessoas e devem ser anonimizadas (LGPD)
+_COLUNAS_NOME = {'nm_pessoa_fisica', 'nm_guerra'}
+
+
+def _anonimizar_nome(nome):
+    """
+    Retorna iniciais de todos os nomes exceto o último, que fica completo.
+    Ex: 'Lucas Fernandes de Oliveira' → 'L F D Oliveira'
+    """
+    if not nome:
+        return nome
+    partes = str(nome).strip().split()
+    if len(partes) == 1:
+        return partes[0][0].upper() + '.'
+    iniciais = [p[0].upper() for p in partes[:-1]]
+    return ' '.join(iniciais) + ' ' + partes[-1].capitalize()
+
+
 def _estilo_header(cell, cor_fundo=_COR_HEADER):
     cell.font = Font(bold=True, color=_COR_TEXTO, size=11)
     cell.fill = PatternFill("solid", fgColor=cor_fundo)
@@ -289,6 +307,8 @@ def _aba_pacientes(wb, cols, pacientes):
             val = row.get(col)
             if isinstance(val, datetime):
                 val = val.strftime('%d/%m/%Y %H:%M')
+            if col.lower() in _COLUNAS_NOME and val:
+                val = _anonimizar_nome(val)
             cell.value = val
             _borda(cell)
             cell.alignment = Alignment(vertical="center")
