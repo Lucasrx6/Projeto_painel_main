@@ -110,7 +110,7 @@ DB_QUERY_LENTA_S     = int(os.getenv('MONITOR_DB_SLOW_S',       '60'))
 DISK_LOG_RETENCAO_D  = int(os.getenv('MONITOR_LOG_RETENCAO_D',  '30'))
 
 EMAIL_RELATORIO = 'lucas.oliveira@saofranciscodf.med.br'
-INTERVALO_HORAS = 6
+INTERVALO_HORAS = 12
 
 TABELAS_CRITICAS = [
     ('usuarios',                   'Usuários do sistema'),
@@ -1416,9 +1416,6 @@ def start_in_background():
         _scheduler = _sched.Scheduler()
 
         logger.info('[tests_sistema] Worker iniciado — verificação a cada %sh', INTERVALO_HORAS)
-
-        time.sleep(30)
-        ciclo_automatico()
 
         _scheduler.every(INTERVALO_HORAS).hours.do(ciclo_automatico)
 

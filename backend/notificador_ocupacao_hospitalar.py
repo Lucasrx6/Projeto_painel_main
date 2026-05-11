@@ -603,9 +603,6 @@ def start_in_background():
                 '[notificador_ocupacao] Thread daemon iniciada — destinatários: %s | horários: %s | intervalo: %sh',
                 cfg['destinatarios'], cfg['horarios'], cfg['intervalo_h']
             )
-            time.sleep(60)  # aguarda Flask terminar de subir
-            executar_envio()
-
             while True:
                 cfg = _cfg()
                 proximo = _proximo_horario(cfg['horarios']) if cfg['horarios'] else \
