@@ -690,16 +690,13 @@ def start_in_background():
         logger.info('[notificador_pareceres] Auto-start desativado (NOTIF_PARECERES_AUTO=false)')
         return
 
-    # Guard Werkzeug: inicia apenas no processo filho (WERKZEUG_RUN_MAIN='true').
-    # O processo monitor/watcher NÃO define WERKZEUG_RUN_MAIN, mas is_running_from_reloader()
-    # retorna True em AMBOS os processos — o AND garante que só o filho passa.
-    # Em modo standalone (sem reloader), is_running_from_reloader() = False → thread inicia normalmente.
-    try:
-        from werkzeug.serving import is_running_from_reloader
-        if is_running_from_reloader() and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
-            return
-    except ImportError:
-        pass
+    # Guard: no modo debug o Werkzeug reloader cria dois processos (monitor + filho).
+    # Só o processo filho (WERKZEUG_RUN_MAIN='true') deve iniciar threads.
+    # Em produção/gunicorn não há reloader → FLASK_ENV != 'development' → passa normalmente.
+    flask_debug = (os.environ.get('FLASK_ENV') == 'development' or
+                   os.environ.get('FLASK_DEBUG', '0') in ('1', 'true', 'True'))
+    if flask_debug and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        return
 
     _background_started = True
 
