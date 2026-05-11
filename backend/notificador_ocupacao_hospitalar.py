@@ -81,7 +81,7 @@ def _cfg():
 # ========================================
 
 def _get_conn():
-    conn = psycopg2.connect(
+    return psycopg2.connect(
         host=os.getenv('DB_HOST', 'localhost'),
         dbname=os.getenv('DB_NAME', 'postgres'),
         user=os.getenv('DB_USER', 'postgres'),
@@ -89,25 +89,6 @@ def _get_conn():
         port=int(os.getenv('DB_PORT', '5432')),
         connect_timeout=10
     )
-    # Descobre o schema onde obter_nome_setor está definida e adiciona ao search_path.
-    # Necessário porque a função pode estar num schema custom (ex: tasy, public_tasy).
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT DISTINCT n.nspname
-                FROM pg_proc p
-                JOIN pg_namespace n ON p.pronamespace = n.oid
-                WHERE p.proname = 'obter_nome_setor'
-            """)
-            schemas = [r[0] for r in cur.fetchall()]
-        if schemas:
-            path = ', '.join(schemas + ['public', 'pg_catalog'])
-            with conn.cursor() as cur:
-                cur.execute(f"SET search_path TO {path}")
-            conn.commit()
-    except Exception:
-        pass  # se falhar, segue com search_path padrão
-    return conn
 
 
 def _query(conn, sql):
@@ -126,19 +107,11 @@ def buscar_dados():
         _, dashboard_rows = _query(conn, "SELECT * FROM vw_ocupacao_dashboard")
         dashboard = dashboard_rows[0] if dashboard_rows else {}
 
-        cols_setor, setores = _query(conn, """
-            SELECT *,
-                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
-            FROM vw_ocupacao_por_setor
-            ORDER BY nm_setor
-        """)
+        cols_setor, setores = _query(conn, "SELECT * FROM vw_ocupacao_por_setor")
 
-        cols_pac, pacientes = _query(conn, """
-            SELECT *,
-                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
-            FROM vw_pacientes_internados
-            ORDER BY nm_setor, 2
-        """)
+        cols_pac, pacientes = _query(
+            conn, "SELECT * FROM vw_pacientes_internados ORDER BY 1, 2"
+        )
 
         return dashboard, cols_setor, setores, cols_pac, pacientes
     finally:
@@ -156,6 +129,20 @@ _COR_LIVRE    = "375623"   # verde escuro
 _COR_ALERTA   = "FF8C00"   # laranja
 _COR_TEXTO    = "FFFFFF"   # branco
 _COR_ZEBRA    = "FDECEA"   # rosa claro alternado
+
+
+_COL_ALIASES = {
+    'obter_nome_setor(a.cd_setor_atendimento)': 'Setor',
+    'cd_setor_atendimento': 'Cód. Setor',
+}
+
+
+def _nome_coluna(col):
+    """Traduz nomes de colunas técnicas/feios para labels legíveis no Excel."""
+    lower = col.lower()
+    if lower in _COL_ALIASES:
+        return _COL_ALIASES[lower]
+    return col.replace('_', ' ').title()
 
 
 def _estilo_header(cell, cor_fundo=_COR_HEADER):
@@ -250,7 +237,7 @@ def _aba_por_setor(wb, cols, setores):
     # Header
     for j, col in enumerate(cols, 1):
         cell = ws.cell(row=1, column=j)
-        cell.value = col.replace('_', ' ').title()
+        cell.value = _nome_coluna(col)
         _estilo_header(cell)
     ws.row_dimensions[1].height = 22
 
@@ -291,7 +278,7 @@ def _aba_pacientes(wb, cols, pacientes):
 
     for j, col in enumerate(cols, 1):
         cell = ws.cell(row=1, column=j)
-        cell.value = col.replace('_', ' ').title()
+        cell.value = _nome_coluna(col)
         _estilo_header(cell)
     ws.row_dimensions[1].height = 22
 
@@ -360,8 +347,10 @@ def gerar_corpo_html(dashboard, setores, now):
     linhas_setores = ""
     for i, s in enumerate(setores):
         bg = "#DEEAF1" if i % 2 == 0 else "#FFFFFF"
-        # nm_setor vem da query (obter_nome_setor); fallback para colunas genéricas
-        nome = s.get('nm_setor') or s.get('setor') or s.get('nome_setor') or s.get('descricao') or (list(s.values())[0] if s else '-')
+        # A coluna de nome do setor vem com o nome da expressão original do Apache Hop
+        nome = (s.get('obter_nome_setor(a.cd_setor_atendimento)')
+                or s.get('nm_setor') or s.get('setor') or s.get('nome_setor')
+                or (list(s.values())[0] if s else '-'))
         t_leitos  = s.get('total_leitos') or s.get('leitos') or '-'
         t_ocup    = s.get('leitos_ocupados') or s.get('ocupados') or '-'
         t_livre   = s.get('leitos_livres') or s.get('livres') or '-'
