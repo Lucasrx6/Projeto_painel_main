@@ -107,11 +107,19 @@ def buscar_dados():
         _, dashboard_rows = _query(conn, "SELECT * FROM vw_ocupacao_dashboard")
         dashboard = dashboard_rows[0] if dashboard_rows else {}
 
-        cols_setor, setores = _query(conn, "SELECT * FROM vw_ocupacao_por_setor")
+        cols_setor, setores = _query(conn, """
+            SELECT *,
+                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
+            FROM vw_ocupacao_por_setor
+            ORDER BY nm_setor
+        """)
 
-        cols_pac, pacientes = _query(
-            conn, "SELECT * FROM vw_pacientes_internados ORDER BY 1, 2"
-        )
+        cols_pac, pacientes = _query(conn, """
+            SELECT *,
+                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
+            FROM vw_pacientes_internados
+            ORDER BY nm_setor, 2
+        """)
 
         return dashboard, cols_setor, setores, cols_pac, pacientes
     finally:
@@ -122,13 +130,13 @@ def buscar_dados():
 # GERAÇÃO DO EXCEL
 # ========================================
 
-_COR_HEADER   = "1F4E79"   # azul escuro
-_COR_TITULO   = "2E75B6"   # azul médio
-_COR_OCUPADO  = "C00000"   # vermelho
+_COR_HEADER   = "9B1C24"   # vermelho escuro
+_COR_TITULO   = "DC3545"   # vermelho padrão HAC
+_COR_OCUPADO  = "C00000"   # vermelho crítico
 _COR_LIVRE    = "375623"   # verde escuro
 _COR_ALERTA   = "FF8C00"   # laranja
 _COR_TEXTO    = "FFFFFF"   # branco
-_COR_ZEBRA    = "DEEAF1"   # azul claro alternado
+_COR_ZEBRA    = "FDECEA"   # rosa claro alternado
 
 
 def _estilo_header(cell, cor_fundo=_COR_HEADER):
@@ -194,7 +202,7 @@ def _aba_resumo(wb, dashboard, now):
             _estilo_header(ws.cell(row=row, column=2))
         else:
             ws.cell(row=row, column=1).font = Font(bold=True)
-            ws.cell(row=row, column=1).fill = PatternFill("solid", fgColor="D6E4F0")
+            ws.cell(row=row, column=1).fill = PatternFill("solid", fgColor="F5D0D3")
             _borda(ws.cell(row=row, column=1))
             _borda(ws.cell(row=row, column=2))
 
@@ -333,8 +341,8 @@ def gerar_corpo_html(dashboard, setores, now):
     linhas_setores = ""
     for i, s in enumerate(setores):
         bg = "#DEEAF1" if i % 2 == 0 else "#FFFFFF"
-        # tenta encontrar coluna de taxa e nome do setor dinamicamente
-        nome = s.get('setor') or s.get('nome_setor') or s.get('descricao') or list(s.values())[0] if s else '-'
+        # nm_setor vem da query (obter_nome_setor); fallback para colunas genéricas
+        nome = s.get('nm_setor') or s.get('setor') or s.get('nome_setor') or s.get('descricao') or (list(s.values())[0] if s else '-')
         t_leitos  = s.get('total_leitos') or s.get('leitos') or '-'
         t_ocup    = s.get('leitos_ocupados') or s.get('ocupados') or '-'
         t_livre   = s.get('leitos_livres') or s.get('livres') or '-'
@@ -355,7 +363,7 @@ def gerar_corpo_html(dashboard, setores, now):
     tabela_setores = f"""
     <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px">
         <thead>
-            <tr style="background:#1F4E79;color:#fff">
+            <tr style="background:#dc3545;color:#fff">
                 <th style="padding:8px 10px;border:1px solid #ddd;text-align:left">Setor</th>
                 <th style="padding:8px 10px;border:1px solid #ddd">Total</th>
                 <th style="padding:8px 10px;border:1px solid #ddd">Ocupados</th>
@@ -373,7 +381,7 @@ def gerar_corpo_html(dashboard, setores, now):
 <div style="max-width:700px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
 
   <!-- Cabeçalho -->
-  <div style="background:#1F4E79;padding:24px 30px;color:#fff">
+  <div style="background:#dc3545;padding:24px 30px;color:#fff">
     <h1 style="margin:0;font-size:20px">Relatório de Ocupação Hospitalar</h1>
     <p style="margin:4px 0 0;font-size:13px;opacity:0.85">Hospital Anchieta Ceilândia — {now.strftime('%d/%m/%Y às %H:%M')}</p>
   </div>
@@ -412,7 +420,7 @@ def gerar_corpo_html(dashboard, setores, now):
     </div>
 
     <!-- Tabela por setor -->
-    <h2 style="font-size:15px;color:#1F4E79;margin:0 0 8px">Ocupação por Setor</h2>
+    <h2 style="font-size:15px;color:#dc3545;margin:0 0 8px">Ocupação por Setor</h2>
     {tabela_setores}
 
     <p style="font-size:12px;color:#888;margin-top:20px;border-top:1px solid #eee;padding-top:12px">
