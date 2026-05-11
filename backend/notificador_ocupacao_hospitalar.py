@@ -114,8 +114,10 @@ _CANDIDATOS_SETOR = [
     'nm_setor', 'nome_setor', 'ds_setor', 'descricao_setor', 'setor',
 ]
 
-# Colunas de nome de pessoa (LGPD)
-_COLUNAS_NOME = {'nm_pessoa_fisica', 'nm_guerra'}
+# Labels que representam nomes de pessoas (LGPD) — compara pelo label exibido no Excel,
+# não pelo nome da coluna, para funcionar independente de como a view nomeia as colunas.
+_LABELS_NOME = {'paciente', 'médico', 'medico', 'nm paciente', 'nm guerra',
+                'nome paciente', 'nome medico', 'medico atendimento'}
 
 # Mapeamento de nomes de colunas técnicos para labels legíveis no Excel
 _COL_LABELS = {
@@ -315,8 +317,8 @@ def _aba_pacientes(wb, cols, pacientes):
             # Nome do setor
             if col.lower() in _CANDIDATOS_SETOR:
                 val = _nome_setor(row)
-            # Anonimização LGPD
-            elif col.lower() in _COLUNAS_NOME and val:
+            # Anonimização LGPD — compara pelo label para funcionar com qualquer nome de coluna
+            elif _label_coluna(col).lower() in _LABELS_NOME and val:
                 val = _anonimizar(val)
             cell = ws.cell(row=i, column=j, value=val)
             _borda(cell)
