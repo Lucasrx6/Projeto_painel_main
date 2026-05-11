@@ -109,14 +109,14 @@ def buscar_dados():
 
         cols_setor, setores = _query(conn, """
             SELECT *,
-                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
+                   SUBSTR(obter_nome_setor(cd_setor_atendimento::varchar), 1, 60) AS nm_setor
             FROM vw_ocupacao_por_setor
             ORDER BY nm_setor
         """)
 
         cols_pac, pacientes = _query(conn, """
             SELECT *,
-                   SUBSTR(obter_nome_setor(cd_setor_atendimento), 1, 60) AS nm_setor
+                   SUBSTR(obter_nome_setor(cd_setor_atendimento::varchar), 1, 60) AS nm_setor
             FROM vw_pacientes_internados
             ORDER BY nm_setor, 2
         """)
