@@ -401,32 +401,32 @@ def api_painel10_clinicas_consolidado():
             logger.warning('Mediana indisponivel (painel17_atendimentos_ps): %s', str(e_med))
             conn.rollback()
 
-        # Médicos ativos por clínica: usa especialidade de medicos_ps diretamente.
-        # Não depende de painel17 → funciona mesmo que o médico ainda não tenha
-        # iniciado nenhuma consulta hoje.
-        medicos_ativos_rows = {}
+        # Médicos ativos por clínica: usa consultório (sala) de medicos_ps.
+        # Consultórios são fixos por clínica → mapeamento confiável independente do
+        # cadastro de especialidade do médico.
+        # Salas: 9,10=Pediatria | 7,8=Ortopedia | 3=Cirúrgica Geral | 6=Gineco | 0,1,2,4,5=Clínica Médica
+        canonical_medicos = {}
         try:
             cursor.execute("""
-                SELECT
-                    UPPER(especialidade) AS clinica_upper,
-                    COUNT(*) AS medicos_ativos
-                FROM medicos_ps
-                WHERE especialidade IS NOT NULL
-                  AND especialidade != ''
-                GROUP BY UPPER(especialidade)
+                SELECT clinica_canonical, COUNT(*) AS medicos_ativos
+                FROM (
+                    SELECT CASE
+                        WHEN CAST(consultorio AS TEXT) IN ('9', '10')               THEN 'PEDIATRIA'
+                        WHEN CAST(consultorio AS TEXT) IN ('7', '8')                THEN 'ORTOPEDIA'
+                        WHEN CAST(consultorio AS TEXT) IN ('3')                     THEN 'CIRURGICA GERAL'
+                        WHEN CAST(consultorio AS TEXT) IN ('6')                     THEN 'GINECOLOGIA'
+                        WHEN CAST(consultorio AS TEXT) IN ('0', '1', '2', '4', '5') THEN 'CLINICA MEDICA'
+                    END AS clinica_canonical
+                    FROM medicos_ps
+                    WHERE consultorio IS NOT NULL
+                ) sub
+                WHERE clinica_canonical IS NOT NULL
+                GROUP BY clinica_canonical
             """)
-            medicos_ativos_rows = {r['clinica_upper']: r['medicos_ativos'] for r in cursor.fetchall()}
+            canonical_medicos = {r['clinica_canonical']: r['medicos_ativos'] for r in cursor.fetchall()}
         except Exception as e_med_at:
             logger.warning('Medicos ativos indisponivel (medicos_ps): %s', str(e_med_at))
             conn.rollback()
-
-        # Normaliza e agrega contagens por nome canônico
-        # Ex.: "CLÍNICA GERAL" e "CLÍNICA MÉDICA" ambos somam para "CLINICA MEDICA"
-        canonical_medicos = {}
-        for esp_raw, count in medicos_ativos_rows.items():
-            esp_norm = _norm(esp_raw)
-            canonical = _ALIAS_ESPECIALIDADE.get(esp_norm, esp_norm)
-            canonical_medicos[canonical] = canonical_medicos.get(canonical, 0) + count
 
         def _match_clinica(ds_clinica, mapa):
             """Match genérico com normalização + alias + parcial."""
