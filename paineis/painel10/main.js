@@ -321,10 +321,11 @@ function renderizarClinicasConsolidado(dados) {
 
         var altaHtml;
         if (aguardandoAlta > 0) {
-            var altaTempo = (tempoMaxAlta !== null && tempoMaxAlta !== undefined)
-                ? '<br><small style="color:var(--cor-texto-muted);font-size:0.7rem;font-weight:400">' + tempoMaxAlta + ' min</small>'
+            var tempoAltaCls = (tempoMaxAlta !== null && tempoMaxAlta !== undefined) ? getClasseTempo(tempoMaxAlta, 'espera') : '';
+            var altaTempoHtml = (tempoMaxAlta !== null && tempoMaxAlta !== undefined)
+                ? ' <span class="badge badge-tempo ' + tempoAltaCls + '" style="margin-left:4px">' + tempoMaxAlta + ' min</span>'
                 : '';
-            altaHtml = '<span class="badge badge-aguardando-grande ' + getClasseAguardando(aguardandoAlta) + '">' + aguardandoAlta + '</span>' + altaTempo;
+            altaHtml = '<span class="badge badge-aguardando-grande ' + getClasseAguardando(aguardandoAlta) + '">' + aguardandoAlta + '</span>' + altaTempoHtml;
         } else {
             altaHtml = '<span class="texto-muted">-</span>';
         }
@@ -338,11 +339,11 @@ function renderizarClinicasConsolidado(dados) {
         html += '<tr class="tr-clinica-clickavel' + (semMedicoAlerta ? ' tr-sem-medico-alerta' : '') + '" data-clinica="' + escapeAttr(row.ds_clinica) + '" data-detalhe="' + detalheId + '">';
         html += '  <td><span class="clinica-nome"><i class="fas fa-chevron-right icone-expandir"></i> ' + escapeHtml(row.ds_clinica) + '</span></td>';
         html += '  <td class="texto-centro"><span class="badge badge-aguardando-grande ' + getClasseAguardando(aguardando) + '">' + formatarNumero(aguardando) + '</span></td>';
-        html += '  <td class="texto-centro">' + altaHtml + '</td>';
         html += '  <td class="texto-centro">' + formatarNumero(row.total_atendimentos) + '</td>';
         html += '  <td class="texto-centro">' + formatarNumero(row.atendimentos_realizados) + '</td>';
         html += '  <td class="texto-centro">' + medicosHtml + '</td>';
         html += '  <td class="texto-centro">' + tempoMaxHtml + '</td>';
+        html += '  <td class="texto-centro">' + altaHtml + '</td>';
         html += '</tr>';
 
         // Linha de detalhe com sub-abas
