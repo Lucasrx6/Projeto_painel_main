@@ -411,11 +411,11 @@ def api_painel10_clinicas_consolidado():
                 SELECT clinica_canonical, COUNT(*) AS medicos_ativos
                 FROM (
                     SELECT CASE
-                        WHEN CAST(consultorio AS TEXT) IN ('9', '10')               THEN 'PEDIATRIA'
-                        WHEN CAST(consultorio AS TEXT) IN ('7', '8')                THEN 'ORTOPEDIA'
-                        WHEN CAST(consultorio AS TEXT) IN ('3')                     THEN 'CIRURGICA GERAL'
-                        WHEN CAST(consultorio AS TEXT) IN ('6')                     THEN 'GINECOLOGIA'
-                        WHEN CAST(consultorio AS TEXT) IN ('0', '1', '2', '4', '5') THEN 'CLINICA MEDICA'
+                        WHEN CAST(consultorio AS TEXT) IN ('9', '09', '10')                          THEN 'PEDIATRIA'
+                        WHEN CAST(consultorio AS TEXT) IN ('7', '07', '8', '08')                     THEN 'ORTOPEDIA'
+                        WHEN CAST(consultorio AS TEXT) IN ('3', '03')                                THEN 'CIRURGICA GERAL'
+                        WHEN CAST(consultorio AS TEXT) IN ('6', '06')                                THEN 'GINECOLOGIA'
+                        WHEN CAST(consultorio AS TEXT) IN ('0', '00', '1', '01', '2', '02', '4', '04', '5', '05') THEN 'CLINICA MEDICA'
                     END AS clinica_canonical
                     FROM medicos_ps
                     WHERE consultorio IS NOT NULL
