@@ -447,12 +447,38 @@ def api_painel10_clinicas_consolidado():
         def _match_medicos(ds_clinica):
             return _match_clinica(ds_clinica, canonical_medicos) or 0
 
+        # Pacientes aguardando alta (atendidos pelo médico, sem dt_alta)
+        alta_rows = {}
+        try:
+            cursor.execute("""
+                SELECT
+                    ds_clinica,
+                    COUNT(*) AS aguardando_alta,
+                    MAX(
+                        ROUND(
+                            EXTRACT(EPOCH FROM (
+                                NOW() - COALESCE(NULLIF(dt_lib_medico, ''), NULLIF(dt_atend_medico, ''))::timestamptz
+                            )) / 60
+                        )::int
+                    ) AS tempo_max_alta_min
+                FROM painel_ps_analise
+                WHERE (dt_alta IS NULL OR dt_alta = '')
+                  AND (dt_atend_medico IS NOT NULL AND dt_atend_medico != '')
+                  AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
+                GROUP BY ds_clinica
+            """)
+            alta_rows = {r['ds_clinica']: dict(r) for r in cursor.fetchall()}
+        except Exception as e_alta:
+            logger.warning('Aguardando alta indisponivel: %s', str(e_alta))
+            conn.rollback()
+
         todas_clinicas = sorted(set(list(tempo_rows.keys()) + list(aguardando_rows.keys())))
         resultado = []
 
         for ds_clinica in todas_clinicas:
             tp = tempo_rows.get(ds_clinica, {})
             ag = aguardando_rows.get(ds_clinica, {})
+            al = alta_rows.get(ds_clinica, {})
 
             aguardando = ag.get('total_aguardando') if ag.get('total_aguardando') is not None else tp.get('aguardando_atendimento', 0)
             tempo_max = tempo_ultimo_rows.get(ds_clinica)
@@ -462,6 +488,8 @@ def api_painel10_clinicas_consolidado():
             resultado.append({
                 'ds_clinica': ds_clinica,
                 'aguardando_atendimento': aguardando,
+                'aguardando_alta': al.get('aguardando_alta', 0),
+                'tempo_max_alta_min': al.get('tempo_max_alta_min'),
                 'total_atendimentos': tp.get('total_atendimentos', 0),
                 'atendimentos_realizados': tp.get('atendimentos_realizados', 0),
                 'mediana_espera_min': mediana,
@@ -563,6 +591,89 @@ def api_painel10_pacientes_clinica():
 
     except Exception as e:
         logger.error('Erro ao buscar pacientes da clinica %s: %s', ds_clinica, str(e), exc_info=True)
+        return jsonify({
+            'success': True,
+            'data': [],
+            'total': 0,
+            'clinica': ds_clinica,
+            'aviso': 'dados_indisponiveis',
+            'timestamp': datetime.now().isoformat()
+        })
+    finally:
+        if conn:
+            release_connection(conn)
+
+
+# =============================================================================
+# ENDPOINT: PACIENTES AGUARDANDO ALTA POR CLINICA
+# =============================================================================
+
+@painel10_bp.route('/api/paineis/painel10/pacientes-alta', methods=['GET'])
+@login_required
+def api_painel10_pacientes_alta():
+    """
+    Retorna pacientes aguardando alta (atendidos pelo médico, sem dt_alta registrada).
+    Query param: ?clinica=<nome_da_clinica>
+    """
+    if not _verificar_acesso():
+        return jsonify({'success': False, 'error': 'Sem permissao'}), 403
+
+    ds_clinica = request.args.get('clinica', '').strip()
+    if not ds_clinica:
+        return jsonify({'success': False, 'error': 'Parametro clinica obrigatorio'}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
+
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT
+                nm_pessoa_fisica,
+                nr_atendimento,
+                COALESCE(NULLIF(dt_lib_medico, ''), NULLIF(dt_atend_medico, '')) AS dt_inicio_espera,
+                ROUND(
+                    EXTRACT(EPOCH FROM (
+                        NOW() - COALESCE(NULLIF(dt_lib_medico, ''), NULLIF(dt_atend_medico, ''))::timestamptz
+                    )) / 60
+                )::int AS tempo_aguardando_alta_min
+            FROM painel_ps_analise
+            WHERE ds_clinica = %s
+              AND (dt_alta IS NULL OR dt_alta = '')
+              AND (dt_atend_medico IS NOT NULL AND dt_atend_medico != '')
+              AND dt_entrada::timestamptz >= NOW() - INTERVAL '24 hours'
+            ORDER BY COALESCE(NULLIF(dt_lib_medico, ''), NULLIF(dt_atend_medico, ''))::timestamptz ASC
+        """, (ds_clinica,))
+
+        rows = cursor.fetchall()
+        resultado = []
+        for r in rows:
+            tempo_min = r.get('tempo_aguardando_alta_min') or 0
+            dt_inicio = str(r.get('dt_inicio_espera') or '')
+            try:
+                hora_fmt = dt_inicio[11:16]
+            except Exception:
+                hora_fmt = '-'
+
+            resultado.append({
+                'nm_paciente': (r.get('nm_pessoa_fisica') or '').strip() or '-',
+                'nr_atendimento': str(r.get('nr_atendimento') or ''),
+                'hora_atendimento': hora_fmt or '-',
+                'tempo_aguardando_alta_min': tempo_min,
+            })
+
+        cursor.close()
+        return jsonify({
+            'success': True,
+            'data': resultado,
+            'total': len(resultado),
+            'clinica': ds_clinica,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error('Erro ao buscar pacientes alta clinica %s: %s', ds_clinica, str(e), exc_info=True)
         return jsonify({
             'success': True,
             'data': [],

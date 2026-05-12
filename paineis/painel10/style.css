@@ -927,6 +927,40 @@ body {
     .metricas-3 { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* =========================================================
+   16. SUB-ABAS DOS DETALHES DE CLÍNICA
+   ========================================================= */
+
+.subtabs-nav {
+    display: flex;
+    border-bottom: 2px solid var(--cor-borda);
+    margin-bottom: 10px;
+}
+
+.subtab-btn {
+    padding: 5px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    color: var(--cor-texto-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.subtab-btn:hover { color: var(--cor-primaria); }
+
+.subtab-btn.subtab-ativo {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
 @media (max-width: 992px) {
     .header-content { flex-wrap: wrap; }
     .btn-text { display: none; }
