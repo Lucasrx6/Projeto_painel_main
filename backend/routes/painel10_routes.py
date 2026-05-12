@@ -46,6 +46,7 @@ def _norm(texto):
 # Edite aqui sempre que uma nova variação aparecer no sistema.
 _ALIAS_ESPECIALIDADE = {
     'CLINICA GERAL':             'CLINICA MEDICA',
+    'CIRURGIA GERAL':            'CIRURGICA GERAL',   # especialidade no medicos_ps → nome da clínica
     'CIRURGIAL GERAL':           'CIRURGICA GERAL',   # typo frequente
     'CIRURGICA GERAL':           'CIRURGICA GERAL',
     'GINECOLOGIA E OBSTETRICIA': 'GINECOLOGIA',
