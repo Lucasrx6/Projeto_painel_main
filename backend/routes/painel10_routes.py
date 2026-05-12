@@ -411,11 +411,11 @@ def api_painel10_clinicas_consolidado():
                 SELECT clinica_canonical, COUNT(*) AS medicos_ativos
                 FROM (
                     SELECT CASE
-                        WHEN CAST(consultorio AS TEXT) IN ('9', '09', '10')                          THEN 'PEDIATRIA'
-                        WHEN CAST(consultorio AS TEXT) IN ('7', '07', '8', '08')                     THEN 'ORTOPEDIA'
-                        WHEN CAST(consultorio AS TEXT) IN ('3', '03')                                THEN 'CIRURGICA GERAL'
-                        WHEN CAST(consultorio AS TEXT) IN ('6', '06')                                THEN 'GINECOLOGIA'
-                        WHEN CAST(consultorio AS TEXT) IN ('0', '00', '1', '01', '2', '02', '4', '04', '5', '05') THEN 'CLINICA MEDICA'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('09', '10') THEN 'PEDIATRIA'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('07', '08') THEN 'ORTOPEDIA'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('03')       THEN 'CIRURGICA GERAL'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('06')       THEN 'GINECOLOGIA'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('00', '01', '02', '04', '05') THEN 'CLINICA MEDICA'
                     END AS clinica_canonical
                     FROM medicos_ps
                     WHERE consultorio IS NOT NULL
@@ -640,6 +640,74 @@ def api_painel10_diagnostico_ps():
             resultado['total_24h'] = dict(cursor.fetchone())
         except Exception as e:
             resultado['total_24h'] = str(e)
+            conn.rollback()
+
+        # ── Diagnóstico medicos_ps ────────────────────────────────────────
+        # Colunas da tabela
+        try:
+            cursor.execute("""
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_name = 'medicos_ps'
+                ORDER BY ordinal_position
+            """)
+            resultado['colunas_medicos_ps'] = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            resultado['colunas_medicos_ps'] = str(e)
+            conn.rollback()
+
+        # Sample de 5 linhas completas (todos os campos)
+        try:
+            cursor.execute("SELECT * FROM medicos_ps LIMIT 5")
+            resultado['sample_medicos_ps'] = [
+                {k: (str(v) if v is not None else None) for k, v in dict(r).items()}
+                for r in cursor.fetchall()
+            ]
+        except Exception as e:
+            resultado['sample_medicos_ps'] = str(e)
+            conn.rollback()
+
+        # Valores distintos e contagem por consultorio (vê exatamente o que está no banco)
+        try:
+            cursor.execute("""
+                SELECT
+                    consultorio,
+                    LENGTH(CAST(consultorio AS TEXT)) AS len,
+                    COUNT(*) AS total
+                FROM medicos_ps
+                GROUP BY consultorio
+                ORDER BY consultorio
+            """)
+            resultado['consultorio_distinct'] = [
+                {k: (str(v) if v is not None else None) for k, v in dict(r).items()}
+                for r in cursor.fetchall()
+            ]
+        except Exception as e:
+            resultado['consultorio_distinct'] = str(e)
+            conn.rollback()
+
+        # Resultado da query atual de médicos ativos (o que o painel está recebendo)
+        try:
+            cursor.execute("""
+                SELECT clinica_canonical, COUNT(*) AS medicos_ativos
+                FROM (
+                    SELECT CASE
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('09', '10') THEN 'PEDIATRIA'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('07', '08') THEN 'ORTOPEDIA'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('03')       THEN 'CIRURGICA GERAL'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('06')       THEN 'GINECOLOGIA'
+                        WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('00', '01', '02', '04', '05') THEN 'CLINICA MEDICA'
+                        ELSE '(sem match: ' || consultorio || ')'
+                    END AS clinica_canonical
+                    FROM medicos_ps
+                    WHERE consultorio IS NOT NULL
+                ) sub
+                GROUP BY clinica_canonical
+                ORDER BY clinica_canonical
+            """)
+            resultado['medicos_por_clinica_atual'] = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            resultado['medicos_por_clinica_atual'] = str(e)
             conn.rollback()
 
         cursor.close()
