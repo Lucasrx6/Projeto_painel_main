@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # PAINEL 29 - GESTÃO SENTIR E AGIR
 # Hospital Anchieta Ceilândia
 # Dashboard, Listagem, Edição (admin), Export Excel
@@ -489,7 +489,7 @@ def detalhe_visita(visita_id):
                 i.descricao AS item_descricao,
                 c.nome AS categoria_nome,
                 c.icone AS categoria_icone,
-                COALESCE(r.nome, t.responsavel_nome_manual, 'Sem responsavel') AS responsavel_display
+                COALESCE(resp.nome, t.responsavel_nome_manual, 'Sem responsavel') AS responsavel_display
             FROM sentir_agir_tratativas t
             JOIN sentir_agir_itens i ON i.id = t.item_id
             JOIN sentir_agir_categorias c ON c.id = t.categoria_id
