@@ -790,43 +790,30 @@ def exportar_excel():
         where = " AND ".join(condicoes) if condicoes else "TRUE"
 
         # ── 1. RESUMO / KPIs ─────────────────────────────────────────
+        # LEFT JOIN com tratativas — params usados uma única vez, sem subqueries repetidas
         cursor.execute("""
             SELECT
-                COUNT(DISTINCT v.id)                                                          AS total_visitas,
-                COUNT(DISTINCT r.id)                                                          AS total_rondas,
-                COUNT(DISTINCT v.leito)                                                       AS total_leitos,
-                COUNT(DISTINCT r.dupla_id)                                                    AS total_duplas,
-                SUM(CASE WHEN v.avaliacao_final = 'critico'         THEN 1 ELSE 0 END)       AS total_criticos,
-                SUM(CASE WHEN v.avaliacao_final = 'atencao'         THEN 1 ELSE 0 END)       AS total_atencao,
-                SUM(CASE WHEN v.avaliacao_final = 'adequado'        THEN 1 ELSE 0 END)       AS total_adequados,
-                SUM(CASE WHEN v.avaliacao_final = 'impossibilitada' THEN 1 ELSE 0 END)       AS total_impossibilitadas,
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
-                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
-                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
-                 WHERE """ + where + """)                                                     AS trat_total,
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
-                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
-                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
-                 WHERE """ + where + """ AND t2.status = 'pendente')                         AS trat_pendentes,
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
-                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
-                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
-                 WHERE """ + where + """ AND t2.status = 'em_tratativa')                     AS trat_em_tratativa,
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
-                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
-                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
-                 WHERE """ + where + """ AND t2.status = 'regularizado')                     AS trat_regularizadas,
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
-                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
-                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
-                 WHERE """ + where + """ AND t2.status = 'impossibilitado')                  AS trat_impossibilitadas,
-                MIN(r.data_ronda)                                                             AS data_inicio,
-                MAX(r.data_ronda)                                                             AS data_fim
+                COUNT(DISTINCT v.id)                                                               AS total_visitas,
+                COUNT(DISTINCT r.id)                                                               AS total_rondas,
+                COUNT(DISTINCT v.leito)                                                            AS total_leitos,
+                COUNT(DISTINCT r.dupla_id)                                                         AS total_duplas,
+                COUNT(DISTINCT CASE WHEN v.avaliacao_final = 'critico'         THEN v.id END)     AS total_criticos,
+                COUNT(DISTINCT CASE WHEN v.avaliacao_final = 'atencao'         THEN v.id END)     AS total_atencao,
+                COUNT(DISTINCT CASE WHEN v.avaliacao_final = 'adequado'        THEN v.id END)     AS total_adequados,
+                COUNT(DISTINCT CASE WHEN v.avaliacao_final = 'impossibilitada' THEN v.id END)     AS total_impossibilitadas,
+                COUNT(t.id)                                                                        AS trat_total,
+                COUNT(CASE WHEN t.status = 'pendente'        THEN 1 END)                          AS trat_pendentes,
+                COUNT(CASE WHEN t.status = 'em_tratativa'    THEN 1 END)                          AS trat_em_tratativa,
+                COUNT(CASE WHEN t.status = 'regularizado'    THEN 1 END)                          AS trat_regularizadas,
+                COUNT(CASE WHEN t.status = 'impossibilitado' THEN 1 END)                          AS trat_impossibilitadas,
+                MIN(r.data_ronda)                                                                  AS data_inicio,
+                MAX(r.data_ronda)                                                                  AS data_fim
             FROM sentir_agir_visitas v
             JOIN sentir_agir_rondas  r ON r.id = v.ronda_id
             JOIN sentir_agir_setores s ON s.id = v.setor_id
             JOIN sentir_agir_duplas  d ON d.id = r.dupla_id
-            WHERE """ + where, params * 5)
+            LEFT JOIN sentir_agir_tratativas t ON t.visita_id = v.id
+            WHERE """ + where, params)
         kpis = cursor.fetchone() or {}
 
         # Top 5 itens críticos
