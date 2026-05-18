@@ -35,7 +35,7 @@ tasklist /fi "imagename eq nginx.exe" /nh 2>nul | find /i "nginx.exe" >nul
 if %errorlevel% == 0 (
     echo [%DATA% %HORA%] Nginx ja esta em execucao. Enviando reload de configuracao... >> "%LOG_FILE%"
     echo [%DATA% %HORA%] Nginx ja esta em execucao. Enviando reload...
-    "%NGINX_EXE%" -s reload
+    "%NGINX_EXE%" -p "%NGINX_DIR%" -s reload
     if %errorlevel% == 0 (
         echo [%DATA% %HORA%] Reload concluido com sucesso. >> "%LOG_FILE%"
         echo [%DATA% %HORA%] Reload concluido com sucesso.
@@ -48,16 +48,16 @@ if %errorlevel% == 0 (
 
 :: Testa a configuracao antes de iniciar
 echo [%DATA% %HORA%] Testando configuracao... >> "%LOG_FILE%"
-"%NGINX_EXE%" -t 2>>"%LOG_FILE%"
+"%NGINX_EXE%" -p "%NGINX_DIR%" -t 2>>"%LOG_FILE%"
 if %errorlevel% neq 0 (
     echo [%DATA% %HORA%] ERRO: Configuracao invalida. Nginx NAO iniciado. Veja o log acima. >> "%LOG_FILE%"
     echo [%DATA% %HORA%] ERRO: Configuracao invalida. Nginx NAO iniciado. Verifique %LOG_FILE%
     exit /b 1
 )
 
-:: Inicia o Nginx
+:: Inicia o Nginx com prefix path para garantir que encontra nginx.conf e logs
 echo [%DATA% %HORA%] Configuracao OK. Iniciando processo... >> "%LOG_FILE%"
-start "" "%NGINX_EXE%"
+start "" "%NGINX_EXE%" -p "%NGINX_DIR%"
 
 :: Aguarda 2 segundos e confirma que subiu
 timeout /t 2 /nobreak >nul

@@ -287,7 +287,7 @@
         </div>
         <div class="stat-card azul">
             <div class="stat-num" id="st-hoje">—</div>
-            <div class="stat-lbl">Acessos Hoje</div>
+            <div class="stat-lbl">Requisições Hoje</div>
         </div>
         <div class="stat-card azul">
             <div class="stat-num" id="st-semana">—</div>
@@ -306,8 +306,8 @@
             <div class="stat-lbl">Erros Hoje</div>
         </div>
         <div class="stat-card cinza" style="grid-column: span 1;">
-            <div class="hora-chart" id="hora-chart" title="Acessos por hora hoje"></div>
-            <div class="stat-lbl" style="margin-top:.3rem;">Acessos por Hora</div>
+            <div class="hora-chart" id="hora-chart" title="Requisições por hora hoje"></div>
+            <div class="stat-lbl" style="margin-top:.3rem;">Requisições por Hora</div>
         </div>
     </div>
 
@@ -511,7 +511,7 @@ async function carregarStats() {
                             background:#3b82f6;height:100%;border-radius:20px;"></div>
                     </div>
                     <div style="min-width:80px;font-size:.78rem;color:var(--cinza);text-align:right;">
-                        ${fmt(p.acessos)} acessos</div>
+                        ${fmt(p.acessos)} requisições</div>
                     <div style="min-width:90px;font-size:.78rem;color:var(--cinza);text-align:right;">
                         ${p.computadores} computador${p.computadores>1?'es':''}</div>
                 </div>
