@@ -8,6 +8,11 @@ import os
 import io
 import traceback
 from datetime import datetime, date, timedelta
+from openpyxl import Workbook
+from openpyxl.styles import (
+    PatternFill, Font, Alignment, Border, Side, GradientFill
+)
+from openpyxl.utils import get_column_letter
 from decimal import Decimal
 from flask import Blueprint, request, jsonify, send_from_directory, send_file, session, current_app
 from psycopg2.extras import RealDictCursor
@@ -776,7 +781,7 @@ def alterar_status_ronda(ronda_id):
 @painel29_bp.route('/api/paineis/painel29/exportar', methods=['GET'])
 @login_required
 def exportar_excel():
-    """Exporta dados filtrados para Excel."""
+    """Exporta dados filtrados para Excel (.xlsx) com 5 abas completas."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -784,128 +789,468 @@ def exportar_excel():
         condicoes, params = _build_common_filters()
         where = " AND ".join(condicoes) if condicoes else "TRUE"
 
-        # Dados principais -- visitas com campos de gestao
-        sql = """
+        # ── 1. RESUMO / KPIs ─────────────────────────────────────────
+        cursor.execute("""
             SELECT
-                r.data_ronda AS "Data Ronda",
-                d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS "Dupla",
-                s.nome AS "Setor",
-                v.leito AS "Leito",
-                v.nr_atendimento AS "Nr Atendimento",
-                v.nm_paciente AS "Paciente",
-                v.avaliacao_final AS "Avaliação Final",
-                r.status AS "Status Ronda",
-                v.status_tratativa AS "Status Tratativa",
-                v.observacoes AS "Observações",
-                v.criado_em AS "Data Registro",
-                r.criado_por AS "Criado Por",
-                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
-                 WHERE a.visita_id = v.id AND a.resultado = 'critico') AS "Qtd Crítico",
-                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
-                 WHERE a.visita_id = v.id AND a.resultado = 'atencao') AS "Qtd Atenção",
-                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
-                 WHERE a.visita_id = v.id AND a.resultado = 'adequado') AS "Qtd Adequado",
-                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
-                 WHERE a.visita_id = v.id AND a.resultado = 'nao_aplica') AS "Qtd Não Aplica",
-                (SELECT COUNT(*) FROM sentir_agir_imagens i
-                 WHERE i.visita_id = v.id) AS "Qtd Imagens",
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t
-                 WHERE t.visita_id = v.id) AS "Trat Total",
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t
-                 WHERE t.visita_id = v.id AND t.status = 'pendente') AS "Trat Pendentes",
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t
-                 WHERE t.visita_id = v.id AND t.status = 'em_tratativa') AS "Trat Em Tratativa",
-                (SELECT COUNT(*) FROM sentir_agir_tratativas t
-                 WHERE t.visita_id = v.id AND t.status = 'regularizado') AS "Trat Regularizadas"
+                COUNT(DISTINCT v.id)                                                          AS total_visitas,
+                COUNT(DISTINCT r.id)                                                          AS total_rondas,
+                COUNT(DISTINCT v.leito)                                                       AS total_leitos,
+                COUNT(DISTINCT r.dupla_id)                                                    AS total_duplas,
+                SUM(CASE WHEN v.avaliacao_final = 'critico'         THEN 1 ELSE 0 END)       AS total_criticos,
+                SUM(CASE WHEN v.avaliacao_final = 'atencao'         THEN 1 ELSE 0 END)       AS total_atencao,
+                SUM(CASE WHEN v.avaliacao_final = 'adequado'        THEN 1 ELSE 0 END)       AS total_adequados,
+                SUM(CASE WHEN v.avaliacao_final = 'impossibilitada' THEN 1 ELSE 0 END)       AS total_impossibilitadas,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
+                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
+                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
+                 WHERE """ + where + """)                                                     AS trat_total,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
+                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
+                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
+                 WHERE """ + where + """ AND t2.status = 'pendente')                         AS trat_pendentes,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
+                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
+                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
+                 WHERE """ + where + """ AND t2.status = 'em_tratativa')                     AS trat_em_tratativa,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
+                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
+                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
+                 WHERE """ + where + """ AND t2.status = 'regularizado')                     AS trat_regularizadas,
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t2
+                 JOIN sentir_agir_visitas v2 ON v2.id = t2.visita_id
+                 JOIN sentir_agir_rondas  r2 ON r2.id = v2.ronda_id
+                 WHERE """ + where + """ AND t2.status = 'impossibilitado')                  AS trat_impossibilitadas,
+                MIN(r.data_ronda)                                                             AS data_inicio,
+                MAX(r.data_ronda)                                                             AS data_fim
             FROM sentir_agir_visitas v
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+            JOIN sentir_agir_rondas  r ON r.id = v.ronda_id
             JOIN sentir_agir_setores s ON s.id = v.setor_id
-            JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+            JOIN sentir_agir_duplas  d ON d.id = r.dupla_id
+            WHERE """ + where, params * 5)
+        kpis = cursor.fetchone() or {}
+
+        # Top 5 itens críticos
+        cursor.execute("""
+            SELECT
+                c.nome AS categoria,
+                i.descricao AS item,
+                COUNT(*) AS qtd_critico
+            FROM sentir_agir_avaliacoes a
+            JOIN sentir_agir_itens     i ON i.id = a.item_id
+            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+            JOIN sentir_agir_visitas   v ON v.id = a.visita_id
+            JOIN sentir_agir_rondas    r ON r.id = v.ronda_id
+            JOIN sentir_agir_setores   s ON s.id = v.setor_id
+            JOIN sentir_agir_duplas    d ON d.id = r.dupla_id
+            WHERE a.resultado = 'critico' AND """ + where + """
+            GROUP BY c.nome, i.descricao
+            ORDER BY qtd_critico DESC
+            LIMIT 5
+        """, params)
+        top_criticos = cursor.fetchall()
+
+        # ── 2. VISITAS ────────────────────────────────────────────────
+        cursor.execute("""
+            SELECT
+                r.id                                                                  AS "ID Ronda",
+                v.id                                                                  AS "ID Visita",
+                r.data_ronda                                                          AS "Data Ronda",
+                d.nome_visitante_1 || ' e ' || d.nome_visitante_2                    AS "Dupla",
+                s.nome                                                                AS "Setor",
+                v.leito                                                               AS "Leito",
+                v.nr_atendimento                                                      AS "Nr Atendimento",
+                v.nm_paciente                                                         AS "Paciente",
+                v.avaliacao_final                                                     AS "Avaliação Final",
+                r.status                                                              AS "Status Ronda",
+                v.status_tratativa                                                    AS "Status Tratativa",
+                v.observacoes                                                         AS "Observações Gerais",
+                v.criado_em                                                           AS "Data Registro",
+                r.criado_por                                                          AS "Registrado Por",
+                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
+                 WHERE a.visita_id = v.id AND a.resultado = 'critico')               AS "Críticos",
+                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
+                 WHERE a.visita_id = v.id AND a.resultado = 'atencao')               AS "Atenção",
+                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
+                 WHERE a.visita_id = v.id AND a.resultado = 'adequado')              AS "Adequados",
+                (SELECT COUNT(*) FROM sentir_agir_avaliacoes a
+                 WHERE a.visita_id = v.id AND a.resultado = 'nao_aplica')            AS "Não Aplica",
+                (SELECT COUNT(*) FROM sentir_agir_imagens  i WHERE i.visita_id = v.id) AS "Qtd Imagens",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t WHERE t.visita_id = v.id)                           AS "Trat Total",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t WHERE t.visita_id = v.id AND t.status = 'pendente') AS "Trat Pendentes",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t WHERE t.visita_id = v.id AND t.status = 'em_tratativa') AS "Trat Em Tratativa",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t WHERE t.visita_id = v.id AND t.status = 'regularizado') AS "Trat Regularizadas",
+                (SELECT COUNT(*) FROM sentir_agir_tratativas t WHERE t.visita_id = v.id AND t.status = 'impossibilitado') AS "Trat Impossibilitadas"
+            FROM sentir_agir_visitas v
+            JOIN sentir_agir_rondas  r ON r.id = v.ronda_id
+            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            JOIN sentir_agir_duplas  d ON d.id = r.dupla_id
             WHERE """ + where + """
             ORDER BY r.data_ronda DESC, v.criado_em DESC
-        """
+        """, params)
+        rows_visitas = cursor.fetchall()
 
-        cursor.execute(sql, params)
-        rows = cursor.fetchall()
-
-        # Tratativas detalhadas (mesmos filtros da visita)
-        sql_trat = """
+        # ── 3. AVALIAÇÕES POR ITEM ────────────────────────────────────
+        cursor.execute("""
             SELECT
-                r.data_ronda AS "Data Ronda",
-                s.nome AS "Setor",
-                v.leito AS "Leito",
-                v.nr_atendimento AS "Nr Atendimento",
-                v.nm_paciente AS "Paciente",
-                c.nome AS "Categoria",
-                i.descricao AS "Item",
-                t.status AS "Status",
-                t.data_inicio_tratativa AS "Início Tratativa",
-                t.data_resolucao AS "Data Resolução",
-                t.resolvido_por AS "Resolvido Por",
-                t.observacoes_resolucao AS "Observações Resolução",
-                COALESCE(resp.nome, t.responsavel_nome_manual, '') AS "Responsáveis"
+                r.data_ronda                                                          AS "Data Ronda",
+                d.nome_visitante_1 || ' e ' || d.nome_visitante_2                    AS "Dupla",
+                s.nome                                                                AS "Setor",
+                v.leito                                                               AS "Leito",
+                v.nr_atendimento                                                      AS "Nr Atendimento",
+                v.nm_paciente                                                         AS "Paciente",
+                c.nome                                                                AS "Categoria",
+                i.descricao                                                           AS "Item Avaliado",
+                a.resultado                                                           AS "Resultado",
+                COALESCE(t.descricao_problema, '')                                   AS "Obs / Descrição do Problema",
+                COALESCE(t.status, '')                                               AS "Status Tratativa Vinculada"
+            FROM sentir_agir_avaliacoes a
+            JOIN sentir_agir_itens      i ON i.id = a.item_id
+            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+            JOIN sentir_agir_visitas    v ON v.id = a.visita_id
+            JOIN sentir_agir_rondas     r ON r.id = v.ronda_id
+            JOIN sentir_agir_setores    s ON s.id = v.setor_id
+            JOIN sentir_agir_duplas     d ON d.id = r.dupla_id
+            LEFT JOIN sentir_agir_tratativas t
+                   ON t.visita_id = a.visita_id
+                  AND t.item_id   = a.item_id
+                  AND t.status NOT IN ('cancelado')
+            WHERE """ + where + """
+            ORDER BY r.data_ronda DESC, v.id, c.ordem, i.ordem
+        """, params)
+        rows_aval = cursor.fetchall()
+
+        # ── 4. TRATATIVAS DETALHADAS ──────────────────────────────────
+        cursor.execute("""
+            SELECT
+                r.data_ronda                                                          AS "Data Ronda",
+                d.nome_visitante_1 || ' e ' || d.nome_visitante_2                    AS "Dupla",
+                s.nome                                                                AS "Setor",
+                v.leito                                                               AS "Leito",
+                v.nr_atendimento                                                      AS "Nr Atendimento",
+                v.nm_paciente                                                         AS "Paciente",
+                c.nome                                                                AS "Categoria",
+                i.descricao                                                           AS "Item",
+                t.status                                                              AS "Status",
+                COALESCE(t.prioridade, '')                                            AS "Prioridade",
+                t.descricao_problema                                                  AS "Descrição do Problema",
+                COALESCE(t.plano_acao, '')                                            AS "Plano de Ação",
+                COALESCE(resp.nome, t.responsavel_nome_manual, '')                   AS "Responsável",
+                t.criado_em                                                           AS "Aberta Em",
+                t.data_inicio_tratativa                                               AS "Início Tratativa",
+                t.data_resolucao                                                      AS "Data Resolução",
+                COALESCE(t.resolvido_por, '')                                        AS "Resolvido Por",
+                COALESCE(t.observacoes_resolucao, '')                                AS "Obs Resolução"
             FROM sentir_agir_tratativas t
-            JOIN sentir_agir_visitas v ON v.id = t.visita_id
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-            JOIN sentir_agir_setores s ON s.id = v.setor_id
+            JOIN sentir_agir_visitas    v ON v.id = t.visita_id
+            JOIN sentir_agir_rondas     r ON r.id = v.ronda_id
+            JOIN sentir_agir_setores    s ON s.id = v.setor_id
+            JOIN sentir_agir_duplas     d ON d.id = r.dupla_id
             JOIN sentir_agir_categorias c ON c.id = t.categoria_id
-            JOIN sentir_agir_itens i ON i.id = t.item_id
+            JOIN sentir_agir_itens      i ON i.id = t.item_id
             LEFT JOIN sentir_agir_responsaveis resp ON resp.id = t.responsavel_id
             WHERE """ + where + """
-            ORDER BY r.data_ronda DESC, v.id, t.id
-        """
-
-        cursor.execute(sql_trat, params)
+            ORDER BY
+                CASE t.status
+                    WHEN 'pendente'       THEN 1
+                    WHEN 'em_tratativa'   THEN 2
+                    WHEN 'regularizado'   THEN 3
+                    WHEN 'impossibilitado' THEN 4
+                    ELSE 5
+                END,
+                r.data_ronda DESC, v.id, t.id
+        """, params)
         rows_trat = cursor.fetchall()
+
+        # ── 5. PRECAUÇÃO DE CONTATO ───────────────────────────────────
+        cursor.execute("""
+            SELECT
+                p.nr_atendimento   AS "Nr Atendimento",
+                p.nm_paciente      AS "Paciente",
+                p.leito            AS "Leito",
+                p.marcado_por      AS "Marcado Por",
+                p.marcado_em       AS "Marcado Em",
+                COALESCE(p.observacao, '') AS "Observação"
+            FROM sentir_agir_precaucao_contato p
+            ORDER BY p.marcado_em DESC
+        """)
+        rows_precaucao = cursor.fetchall()
 
         cursor.close()
         release_connection(conn)
 
-        if not rows:
-            return jsonify({'success': False, 'error': 'Nenhum dado para exportar'}), 404
+        if not rows_visitas:
+            return jsonify({'success': False, 'error': 'Nenhum dado para exportar no período selecionado'}), 404
 
-        def _fmt(val):
+        # ── Helpers de estilo ─────────────────────────────────────────
+        def _fmt_cell(val):
+            """Converte valor para tipo nativo do Excel (mantém datas como date/datetime)."""
             if val is None:
                 return ''
-            if isinstance(val, datetime):
-                return val.strftime('%d/%m/%Y %H:%M')
-            if isinstance(val, date):
-                return val.strftime('%d/%m/%Y')
-            return str(val).replace(';', ',').replace('\n', ' ').replace('\r', '')
+            if isinstance(val, (datetime, date)):
+                return val
+            if isinstance(val, Decimal):
+                return float(val)
+            return val
 
-        # Gerar CSV (compatível com Excel, sem dependência de openpyxl)
-        output = io.StringIO()
-        # BOM para Excel reconhecer UTF-8
-        output.write('﻿')
+        COR_HAC       = '1B3A6B'   # azul HAC (cabeçalhos principais)
+        COR_SECAO     = '2E86AB'   # azul médio (subtítulos de seção)
+        COR_VERDE     = '166534'
+        COR_AMARELO   = 'B45309'
+        COR_VERMELHO  = '991B1B'
+        COR_CINZA     = '6B7280'
+        BRANCO        = 'FFFFFF'
 
-        # === Seção 1: Visitas ===
-        output.write('=== VISITAS ===\n')
-        colunas = list(rows[0].keys())
-        output.write(';'.join(colunas) + '\n')
-        for row in rows:
-            output.write(';'.join(_fmt(row[col]) for col in colunas) + '\n')
+        def _fill(hex_color):
+            return PatternFill('solid', fgColor=hex_color)
 
-        # === Seção 2: Tratativas (se houver) ===
+        def _font(bold=False, color=BRANCO, size=10):
+            return Font(bold=bold, color=color, size=size, name='Calibri')
+
+        def _borda():
+            lado = Side(style='thin', color='D1D5DB')
+            return Border(left=lado, right=lado, top=lado, bottom=lado)
+
+        def _centro():
+            return Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+        def _esquerda():
+            return Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+        def _aplicar_cabecalho(ws, colunas, linha=1,
+                               bg=COR_HAC, fg=BRANCO, bold=True, size=10):
+            for col_idx, titulo in enumerate(colunas, start=1):
+                cel = ws.cell(row=linha, column=col_idx, value=titulo)
+                cel.fill      = _fill(bg)
+                cel.font      = _font(bold=bold, color=fg, size=size)
+                cel.alignment = _centro()
+                cel.border    = _borda()
+
+        def _aplicar_linha(ws, dados, linha, zebra=False):
+            bg_zebra = 'F0F4FF' if zebra else BRANCO
+            for col_idx, val in enumerate(dados, start=1):
+                cel = ws.cell(row=linha, column=col_idx, value=_fmt_cell(val))
+                cel.fill      = _fill(bg_zebra)
+                cel.font      = Font(name='Calibri', size=9, color='111827')
+                cel.alignment = _esquerda()
+                cel.border    = _borda()
+                # Formatar datas
+                if isinstance(val, datetime):
+                    cel.number_format = 'DD/MM/YYYY HH:MM'
+                elif isinstance(val, date):
+                    cel.number_format = 'DD/MM/YYYY'
+
+        def _ajustar_colunas(ws, larguras_min=None):
+            """Ajusta largura de cada coluna pelo conteúdo, com mínimo configurável."""
+            larguras_min = larguras_min or {}
+            for col in ws.columns:
+                max_len = 0
+                col_letra = get_column_letter(col[0].column)
+                for cel in col:
+                    try:
+                        v = str(cel.value) if cel.value is not None else ''
+                        max_len = max(max_len, len(v))
+                    except Exception:
+                        pass
+                min_w = larguras_min.get(col_letra, 10)
+                ws.column_dimensions[col_letra].width = min(max(max_len + 2, min_w), 60)
+
+        # ── Criar workbook ────────────────────────────────────────────
+        wb = Workbook()
+        wb.remove(wb.active)   # remove a aba padrão vazia
+
+        periodo_str = ''
+        if kpis.get('data_inicio') and kpis.get('data_fim'):
+            di = kpis['data_inicio']
+            df = kpis['data_fim']
+            di_str = di.strftime('%d/%m/%Y') if isinstance(di, date) else str(di)
+            df_str = df.strftime('%d/%m/%Y') if isinstance(df, date) else str(df)
+            periodo_str = '%s a %s' % (di_str, df_str)
+
+        # ══════════════════════════════════════════════════════════════
+        # ABA 1 — RESUMO
+        # ══════════════════════════════════════════════════════════════
+        ws1 = wb.create_sheet('Resumo')
+        ws1.sheet_view.showGridLines = False
+
+        # Título
+        ws1.merge_cells('A1:D1')
+        t = ws1['A1']
+        t.value     = 'GESTÃO SENTIR E AGIR — RESUMO DO PERÍODO'
+        t.fill      = _fill(COR_HAC)
+        t.font      = _font(bold=True, size=14)
+        t.alignment = _centro()
+        ws1.row_dimensions[1].height = 32
+
+        ws1.merge_cells('A2:D2')
+        p = ws1['A2']
+        p.value     = 'Período: %s    |    Gerado em: %s' % (
+            periodo_str or 'Todos', datetime.now().strftime('%d/%m/%Y %H:%M'))
+        p.fill      = _fill('E8EFF8')
+        p.font      = Font(name='Calibri', size=10, color='374151')
+        p.alignment = _centro()
+        ws1.row_dimensions[2].height = 18
+
+        def _kpi_row(ws, linha, rotulo, valor, cor_bg=COR_HAC):
+            cel_r = ws.cell(row=linha, column=1, value=rotulo)
+            cel_r.fill      = _fill('F3F4F6')
+            cel_r.font      = Font(name='Calibri', size=10, bold=True, color='374151')
+            cel_r.alignment = _esquerda()
+            cel_r.border    = _borda()
+
+            cel_v = ws.cell(row=linha, column=2, value=valor if valor is not None else 0)
+            cel_v.fill      = _fill('FFFFFF')
+            cel_v.font      = Font(name='Calibri', size=10, color='111827')
+            cel_v.alignment = _centro()
+            cel_v.border    = _borda()
+
+        # Bloco Visitas
+        ws1.merge_cells('A4:B4')
+        s = ws1['A4']
+        s.value = 'VISITAS'
+        s.fill  = _fill(COR_SECAO); s.font = _font(bold=True, size=11); s.alignment = _centro()
+        ws1.row_dimensions[4].height = 20
+
+        _kpi_row(ws1, 5,  'Total de Visitas',        kpis.get('total_visitas', 0))
+        _kpi_row(ws1, 6,  'Total de Rondas',          kpis.get('total_rondas', 0))
+        _kpi_row(ws1, 7,  'Leitos Distintos',         kpis.get('total_leitos', 0))
+        _kpi_row(ws1, 8,  'Duplas Ativas',            kpis.get('total_duplas', 0))
+        _kpi_row(ws1, 9,  'Críticos',                 kpis.get('total_criticos', 0))
+        _kpi_row(ws1, 10, 'Atenção',                  kpis.get('total_atencao', 0))
+        _kpi_row(ws1, 11, 'Adequados',                kpis.get('total_adequados', 0))
+        _kpi_row(ws1, 12, 'Impossibilitadas',         kpis.get('total_impossibilitadas', 0))
+
+        # Bloco Tratativas
+        ws1.merge_cells('A14:B14')
+        s2 = ws1['A14']
+        s2.value = 'TRATATIVAS'
+        s2.fill  = _fill(COR_SECAO); s2.font = _font(bold=True, size=11); s2.alignment = _centro()
+        ws1.row_dimensions[14].height = 20
+
+        _kpi_row(ws1, 15, 'Total de Tratativas',      kpis.get('trat_total', 0))
+        _kpi_row(ws1, 16, 'Pendentes',                kpis.get('trat_pendentes', 0))
+        _kpi_row(ws1, 17, 'Em Tratativa',             kpis.get('trat_em_tratativa', 0))
+        _kpi_row(ws1, 18, 'Regularizadas',            kpis.get('trat_regularizadas', 0))
+        _kpi_row(ws1, 19, 'Impossibilitadas',         kpis.get('trat_impossibilitadas', 0))
+
+        # Top 5 críticos
+        if top_criticos:
+            ws1.merge_cells('A21:B21')
+            s3 = ws1['A21']
+            s3.value = 'TOP 5 ITENS CRÍTICOS'
+            s3.fill  = _fill('991B1B'); s3.font = _font(bold=True, size=11); s3.alignment = _centro()
+            ws1.row_dimensions[21].height = 20
+
+            _aplicar_cabecalho(ws1, ['Categoria / Item', 'Qtd Crítico'], linha=22,
+                               bg='FEE2E2', fg='991B1B', bold=True)
+            for idx, tc in enumerate(top_criticos, start=23):
+                _kpi_row(ws1, idx,
+                         '%s — %s' % (tc.get('categoria', ''), tc.get('item', '')),
+                         tc.get('qtd_critico', 0))
+
+        ws1.column_dimensions['A'].width = 36
+        ws1.column_dimensions['B'].width = 18
+        ws1.column_dimensions['C'].width = 18
+        ws1.column_dimensions['D'].width = 18
+
+        # ══════════════════════════════════════════════════════════════
+        # ABA 2 — VISITAS
+        # ══════════════════════════════════════════════════════════════
+        ws2 = wb.create_sheet('Visitas')
+        ws2.sheet_view.showGridLines = False
+        ws2.freeze_panes = 'A2'
+
+        if rows_visitas:
+            colunas = list(rows_visitas[0].keys())
+            _aplicar_cabecalho(ws2, colunas)
+            for idx, row in enumerate(rows_visitas, start=2):
+                _aplicar_linha(ws2, [row[c] for c in colunas], idx, zebra=(idx % 2 == 0))
+            _ajustar_colunas(ws2, {'A': 10, 'B': 10, 'C': 14, 'E': 18,
+                                   'F': 16, 'G': 26, 'H': 14})
+
+        # ══════════════════════════════════════════════════════════════
+        # ABA 3 — AVALIAÇÕES POR ITEM
+        # ══════════════════════════════════════════════════════════════
+        ws3 = wb.create_sheet('Avaliações por Item')
+        ws3.sheet_view.showGridLines = False
+        ws3.freeze_panes = 'A2'
+
+        if rows_aval:
+            colunas_a = list(rows_aval[0].keys())
+            _aplicar_cabecalho(ws3, colunas_a)
+            for idx, row in enumerate(rows_aval, start=2):
+                _aplicar_linha(ws3, [row[c] for c in colunas_a], idx, zebra=(idx % 2 == 0))
+                # Colorir células de resultado
+                resultado = row.get('Resultado', '')
+                cel_res = ws3.cell(row=idx, column=colunas_a.index('Resultado') + 1)
+                if resultado == 'critico':
+                    cel_res.fill = _fill('FEE2E2')
+                    cel_res.font = Font(name='Calibri', size=9, color=COR_VERMELHO, bold=True)
+                elif resultado == 'atencao':
+                    cel_res.fill = _fill('FEF3C7')
+                    cel_res.font = Font(name='Calibri', size=9, color=COR_AMARELO, bold=True)
+                elif resultado == 'adequado':
+                    cel_res.fill = _fill('DCFCE7')
+                    cel_res.font = Font(name='Calibri', size=9, color=COR_VERDE, bold=True)
+            _ajustar_colunas(ws3, {'A': 14, 'H': 28, 'I': 14, 'J': 40})
+
+        # ══════════════════════════════════════════════════════════════
+        # ABA 4 — TRATATIVAS
+        # ══════════════════════════════════════════════════════════════
+        ws4 = wb.create_sheet('Tratativas')
+        ws4.sheet_view.showGridLines = False
+        ws4.freeze_panes = 'A2'
+
         if rows_trat:
-            output.write('\n=== TRATATIVAS ===\n')
-            colunas_trat = list(rows_trat[0].keys())
-            output.write(';'.join(colunas_trat) + '\n')
-            for row in rows_trat:
-                output.write(';'.join(_fmt(row[col]) for col in colunas_trat) + '\n')
+            colunas_t = list(rows_trat[0].keys())
+            _aplicar_cabecalho(ws4, colunas_t)
+            for idx, row in enumerate(rows_trat, start=2):
+                _aplicar_linha(ws4, [row[c] for c in colunas_t], idx, zebra=(idx % 2 == 0))
+                # Colorir coluna Status
+                status = row.get('Status', '')
+                cel_st = ws4.cell(row=idx, column=colunas_t.index('Status') + 1)
+                if status == 'pendente':
+                    cel_st.fill = _fill('FEE2E2')
+                    cel_st.font = Font(name='Calibri', size=9, color=COR_VERMELHO, bold=True)
+                elif status == 'em_tratativa':
+                    cel_st.fill = _fill('FEF3C7')
+                    cel_st.font = Font(name='Calibri', size=9, color=COR_AMARELO, bold=True)
+                elif status == 'regularizado':
+                    cel_st.fill = _fill('DCFCE7')
+                    cel_st.font = Font(name='Calibri', size=9, color=COR_VERDE, bold=True)
+            _ajustar_colunas(ws4, {'A': 14, 'K': 30, 'L': 36, 'M': 22})
 
+        # ══════════════════════════════════════════════════════════════
+        # ABA 5 — PRECAUÇÃO DE CONTATO
+        # ══════════════════════════════════════════════════════════════
+        ws5 = wb.create_sheet('Precaução de Contato')
+        ws5.sheet_view.showGridLines = False
+        ws5.freeze_panes = 'A2'
+
+        if rows_precaucao:
+            colunas_p = list(rows_precaucao[0].keys())
+            _aplicar_cabecalho(ws5, colunas_p)
+            for idx, row in enumerate(rows_precaucao, start=2):
+                _aplicar_linha(ws5, [row[c] for c in colunas_p], idx, zebra=(idx % 2 == 0))
+            _ajustar_colunas(ws5, {'B': 26, 'D': 22, 'F': 36})
+        else:
+            ws5['A1'].value = 'Nenhum paciente em precaução de contato.'
+            ws5['A1'].font  = Font(name='Calibri', size=10, color=COR_CINZA, italic=True)
+
+        # ── Serializar e retornar ─────────────────────────────────────
+        output = io.BytesIO()
+        wb.save(output)
         output.seek(0)
-        bytes_output = io.BytesIO(output.getvalue().encode('utf-8'))
 
-        nome_arquivo = 'sentir_agir_%s.csv' % datetime.now().strftime('%Y%m%d_%H%M%S')
+        nome_arquivo = 'sentir_agir_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
 
         return send_file(
-            bytes_output,
-            mimetype='text/csv; charset=utf-8',
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
             download_name=nome_arquivo
         )
     except Exception as e:
-        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        current_app.logger.error("Erro no endpoint exportar: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
