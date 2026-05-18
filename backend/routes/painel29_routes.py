@@ -955,8 +955,7 @@ def exportar_excel():
                 p.nm_paciente      AS "Paciente",
                 p.leito            AS "Leito",
                 p.marcado_por      AS "Marcado Por",
-                p.marcado_em       AS "Marcado Em",
-                COALESCE(p.observacao, '') AS "Observação"
+                p.marcado_em       AS "Marcado Em"
             FROM sentir_agir_precaucao_contato p
             ORDER BY p.marcado_em DESC
         """)
