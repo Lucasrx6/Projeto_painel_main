@@ -899,7 +899,7 @@
             .then(function (blob) {
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = 'sentir_agir_' + dataHoje().replace(/-/g, '') + '.csv';
+                a.download = 'sentir_agir_' + dataHoje().replace(/-/g, '') + '.xlsx';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
