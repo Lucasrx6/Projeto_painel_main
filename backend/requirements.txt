@@ -18,7 +18,7 @@ redis==5.0.1
 # ============================================
 # BANCO DE DADOS
 # ============================================
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.9  # 2.9.9 nao tem wheel para Python 3.13; instala a mais recente disponivel
 
 # ============================================
 # SEGURANÇA E AUTENTICAÇÃO
@@ -38,7 +38,7 @@ groq==0.4.0
 # ============================================
 # SERVIDOR WSGI (PRODUÇÃO)
 # ============================================
-gunicorn==21.2.0
+gunicorn==21.2.0  # apenas Linux/Mac; no Windows Server use waitress ou rode via python app.py
 
 # ============================================
 # UTILITÁRIOS

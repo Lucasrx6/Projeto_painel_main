@@ -929,19 +929,27 @@ def _registrar_historico_interno(
     Returns:
         bool: True se registrou com sucesso
     """
+    # SAVEPOINT isola o INSERT do historico da transacao principal.
+    # Se falhar (ex: tabela corrompida), revertemos apenas o savepoint
+    # e a operacao original (permissao, edicao, etc.) continua valida.
     try:
-        # Sanitiza strings
         acao = sanitizar_string(acao, 50)
         detalhes = sanitizar_string(detalhes, 500)
 
+        cursor.execute("SAVEPOINT sp_historico")
         cursor.execute("""
             INSERT INTO historico_usuarios (usuario_id, acao, detalhes, realizado_por)
             VALUES (%s, %s, %s, %s)
         """, (usuario_id, acao, detalhes, realizado_por))
+        cursor.execute("RELEASE SAVEPOINT sp_historico")
 
         return True
 
     except Exception as e:
+        try:
+            cursor.execute("ROLLBACK TO SAVEPOINT sp_historico")
+        except Exception:
+            pass
         logger.error(f'Erro ao registrar historico: {e}')
         return False
 
