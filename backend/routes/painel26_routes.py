@@ -498,7 +498,7 @@ def api_painel26_historico():
 @painel26_bp.route('/api/paineis/painel26/especialidades', methods=['GET'])
 @login_required
 def api_painel26_especialidades():
-    """Lista especialidades disponiveis dos pareceres"""
+    """Lista especialidades disponiveis da tabela especialidade_medica (ETL HOP)"""
     if not _verificar_acesso():
         return jsonify({'success': False, 'error': 'Sem permissao'}), 403
 
@@ -510,11 +510,9 @@ def api_painel26_especialidades():
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
-            SELECT DISTINCT especialidade_destino AS especialidade
-            FROM pareceres_pendentes
-            WHERE especialidade_destino IS NOT NULL
-              AND especialidade_destino != ''
-            ORDER BY especialidade_destino
+            SELECT ds_especialidade AS especialidade
+            FROM especialidade_medica
+            ORDER BY ds_especialidade
         """)
 
         especialidades = [r['especialidade'] for r in cursor.fetchall()]
