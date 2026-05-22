@@ -177,8 +177,9 @@
                     } else {
                         html += '<td style="padding:7px 10px;color:#bbb;font-size:0.73rem;">&mdash;</td>';
                     }
-                    if (visitadoHoje) {
-                        html += '<td style="padding:7px 10px;text-align:center;"><span style="background:#28a745;color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">Sim</span></td>';
+                    var ultimaVisita = formatarDataHora(p.ultima_ronda_em);
+                    if (ultimaVisita && ultimaVisita !== '--') {
+                        html += '<td style="padding:7px 10px;text-align:center;font-size:0.72rem;color:#555;">' + escapeHtml(ultimaVisita) + '</td>';
                     } else {
                         html += '<td style="padding:7px 10px;text-align:center;"><span style="color:#ccc;font-size:0.75rem;">&mdash;</span></td>';
                     }
@@ -1637,6 +1638,15 @@
     function fecharModal(id) { var m = document.getElementById(id); if (m) m.classList.remove('ativo'); }
     function setTexto(id, t) { var el = document.getElementById(id); if (el) el.textContent = t; }
     function formatarData(s) { if (!s) return '--'; var p = s.split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : s; }
+    function formatarDataHora(iso) {
+        if (!iso) return '--';
+        var s = iso.replace('T', ' ').split('.')[0];
+        var pts = s.split(' ');
+        var dp = pts[0].split('-');
+        var dateFmt = dp.length === 3 ? dp[2] + '/' + dp[1] : pts[0];
+        var timeFmt = pts.length > 1 ? pts[1].split(':').slice(0, 2).join(':') : '';
+        return dateFmt + (timeFmt ? ' ' + timeFmt : '');
+    }
     function formatarResultado(r) { return { 'critico': 'Critico', 'atencao': 'Atencao', 'adequado': 'Adequado', 'nao_aplica': 'N/A', 'sim': 'Sim', 'nao': 'Nao', 'impossibilitada': 'Impossibilitada' }[r] || r; }
     function escapeHtml(t) { if (!t) return ''; var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
     function escapeAttr(t) { if (!t) return ''; return t.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

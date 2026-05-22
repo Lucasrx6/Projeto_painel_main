@@ -545,21 +545,23 @@ def fila_pacientes():
                   )
                 ORDER BY
                     CASE
-                        WHEN EXISTS (
+                        WHEN NOT EXISTS (
                             SELECT 1 FROM sentir_agir_visitas v
                             WHERE v.nr_atendimento = f.nr_atendimento
                               AND v.avaliacao_final NOT IN ('impossibilitada')
-                              AND v.criado_em >= CURRENT_DATE
-                        ) THEN 2
-                        WHEN EXISTS (
-                            SELECT 1 FROM sentir_agir_visitas v
-                            WHERE v.nr_atendimento = f.nr_atendimento
-                              AND v.avaliacao_final = 'impossibilitada'
-                              AND v.criado_em >= CURRENT_DATE
-                        ) THEN 1
-                        ELSE 0
+                        ) THEN 0
+                        ELSE 1
                     END ASC,
-                    COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
+                    COALESCE(
+                        (
+                            SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
+                            FROM sentir_agir_visitas v
+                            WHERE v.nr_atendimento = f.nr_atendimento
+                              AND v.avaliacao_final NOT IN ('impossibilitada')
+                            ORDER BY v.criado_em DESC LIMIT 1
+                        ),
+                        f.qt_dia_permanencia * 24.0
+                    ) DESC NULLS LAST
                 LIMIT %s
             """, (limite,))
             pacientes = cursor.fetchall()
@@ -656,21 +658,23 @@ def proximo_paciente():
                   )
                 ORDER BY
                     CASE
-                        WHEN EXISTS (
+                        WHEN NOT EXISTS (
                             SELECT 1 FROM sentir_agir_visitas v
                             WHERE v.nr_atendimento = f.nr_atendimento
                               AND v.avaliacao_final NOT IN ('impossibilitada')
-                              AND v.criado_em >= CURRENT_DATE
-                        ) THEN 2
-                        WHEN EXISTS (
-                            SELECT 1 FROM sentir_agir_visitas v
-                            WHERE v.nr_atendimento = f.nr_atendimento
-                              AND v.avaliacao_final = 'impossibilitada'
-                              AND v.criado_em >= CURRENT_DATE
-                        ) THEN 1
-                        ELSE 0
+                        ) THEN 0
+                        ELSE 1
                     END ASC,
-                    COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
+                    COALESCE(
+                        (
+                            SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
+                            FROM sentir_agir_visitas v
+                            WHERE v.nr_atendimento = f.nr_atendimento
+                              AND v.avaliacao_final NOT IN ('impossibilitada')
+                            ORDER BY v.criado_em DESC LIMIT 1
+                        ),
+                        f.qt_dia_permanencia * 24.0
+                    ) DESC NULLS LAST
                 LIMIT 1
             """)
             paciente = cursor.fetchone()
