@@ -6,11 +6,11 @@ Worker IMAP - Captura de Respostas para Tratativas (Sentir e Agir)
 Monitora a caixa IMAP buscando respostas aos emails de notificacao de
 tratativas. Quando uma resposta e encontrada:
   - Extrai o ID da tratativa do token [TRAT:XXXXX] no assunto
-  - Atualiza status → regularizado
-  - Preenche observacoes_resolucao com o corpo da resposta
-  - Registra resolvido_por com o email do respondente
+  - Atualiza status → em_tratativa
+  - Preenche observacoes_resolucao com o texto da resposta + data do email
   - Atualiza status_tratativa da visita pai automaticamente
   - Registra a acao em sentir_agir_log (auditoria)
+  - A finalizacao (→ regularizado) fica a cargo do usuario no Painel 30
 
 Intervalo configuravel via IMAP_REPLY_INTERVALO_H no .env (padrao: 1h)
 
@@ -29,10 +29,9 @@ from psycopg2.extras import RealDictCursor
 import os
 import re
 import time
-import logging
-import logging.handlers
 import sys
 import threading
+from backend.notificador_utils import setup_notificador_logging, get_db_config
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -43,43 +42,14 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 # LOGGING
 # =========================================================
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
-
-logger = logging.getLogger('worker_imap_tratativas')
-logger.setLevel(logging.INFO)
-
-file_handler = logging.handlers.RotatingFileHandler(
-    os.path.join(LOG_DIR, 'worker_imap_tratativas.log'),
-    maxBytes=5 * 1024 * 1024,
-    backupCount=3,
-    encoding='utf-8'
-)
-file_handler.setFormatter(logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-))
-logger.addHandler(file_handler)
-
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setFormatter(logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%H:%M:%S'
-))
-logger.addHandler(console_handler)
+logger = setup_notificador_logging('worker_imap_tratativas', 'worker_imap_tratativas.log')
 
 
 # =========================================================
 # CONFIGURACAO
 # =========================================================
 
-DB_CONFIG = {
-    'host':     os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'postgres'),
-    'user':     os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'port':     os.getenv('DB_PORT', '5432')
-}
+DB_CONFIG = get_db_config()
 
 SMTP_USER   = os.getenv('SMTP_USER', '')
 SMTP_PASS   = os.getenv('SMTP_PASS', '')
@@ -91,6 +61,27 @@ INTERVALO_SEG   = int(INTERVALO_HORAS * 3600)
 
 # Regex que extrai o tratativa_id do assunto
 _TOKEN_RE = re.compile(r'\[TRAT:(\d+)\]', re.IGNORECASE)
+
+_DIAS_PT  = ['seg.', 'ter.', 'qua.', 'qui.', 'sex.', 'sáb.', 'dom.']
+_MESES_PT = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.',
+             'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.']
+
+
+def _formatar_data_email(date_header: str) -> str:
+    """Converte header Date do email em formato legivel: sex., 22 de mai. de 2026 às 10:09,"""
+    try:
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(date_header)
+        return '{}, {} de {} de {} às {:02d}:{:02d},'.format(
+            _DIAS_PT[dt.weekday()],
+            dt.day,
+            _MESES_PT[dt.month - 1],
+            dt.year,
+            dt.hour,
+            dt.minute
+        )
+    except Exception:
+        return ''
 
 
 # =========================================================
@@ -150,8 +141,11 @@ def _extrair_texto_reply(msg) -> str:
         # Quoted text: linha começa com ">"
         if linha.startswith('>'):
             break
-        # Cabecalho de reply: "On <data>... wrote:" / "Em <data>... escreveu:"
+        # Cabecalho de reply numa linha só: "On <data>... wrote:" / "Em <data>... escreveu:"
         if re.match(r'^(On |Em |De:|From:).{0,120}(wrote:|escreveu:)', linha, re.IGNORECASE):
+            break
+        # Gmail PT — cabeçalho quebrado em duas linhas: "Em sex., 22 de mai. de 2026 às..."
+        if re.match(r'^Em \w{2,4}\.,?\s+\d{1,2} de ', linha):
             break
         linhas.append(linha)
 
@@ -168,17 +162,17 @@ def conectar_imap() -> imaplib.IMAP4_SSL:
 # PROCESSAMENTO DE UMA RESPOSTA
 # =========================================================
 
-def _processar_resposta(conn, tratativa_id: int, remetente: str, corpo: str) -> bool:
+def _processar_resposta(conn, tratativa_id: int, remetente: str, corpo: str,
+                        data_email: str = '') -> bool:
     """
     Atualiza a tratativa no banco com os dados da resposta por email.
 
     Campos atualizados em sentir_agir_tratativas:
-      - status                → 'regularizado'
-      - observacoes_resolucao ← corpo da resposta + metadados do email
-      - resolvido_por         ← email/nome do remetente
-      - data_resolucao        ← NOW()
+      - status                → 'em_tratativa'
+      - observacoes_resolucao ← texto da resposta + data formatada do email
       - data_inicio_tratativa ← NOW() se ainda nao tiver sido preenchido
 
+    A finalizacao (status → 'regularizado') deve ser feita manualmente no sistema (Painel 30).
     Tambem atualiza status_tratativa na sentir_agir_visitas.
     Registra acao em sentir_agir_log para auditoria.
     """
@@ -195,7 +189,7 @@ def _processar_resposta(conn, tratativa_id: int, remetente: str, corpo: str) -> 
         cursor.close()
         return False
 
-    if tratativa['status'] in ('regularizado', 'cancelado'):
+    if tratativa['status'] in ('regularizado', 'cancelado', 'em_tratativa'):
         logger.info(
             '[IMAP] Tratativa #%d ja esta com status "%s" — resposta ignorada',
             tratativa_id, tratativa['status']
@@ -203,21 +197,19 @@ def _processar_resposta(conn, tratativa_id: int, remetente: str, corpo: str) -> 
         cursor.close()
         return False
 
-    # Monta texto da resolucao
+    # Monta texto da observacao: apenas o conteudo da resposta + data do email
     texto_resposta = corpo or '(Resposta sem texto extraivel)'
-    obs_completa = 'Regularizado via resposta por email.\n\n{}'.format(texto_resposta)
+    obs_completa = '{}\n\n{}'.format(texto_resposta, data_email).strip()
 
     cursor.execute("""
         UPDATE sentir_agir_tratativas
         SET
-            status                = 'regularizado',
+            status                = 'em_tratativa',
             observacoes_resolucao = %s,
-            resolvido_por         = %s,
-            data_resolucao        = NOW(),
             data_inicio_tratativa = COALESCE(data_inicio_tratativa, NOW()),
             atualizado_em         = NOW()
         WHERE id = %s
-    """, (obs_completa[:3000], remetente[:200], tratativa_id))
+    """, (obs_completa[:3000], tratativa_id))
 
     # Log de auditoria
     cursor.execute("""
@@ -225,7 +217,7 @@ def _processar_resposta(conn, tratativa_id: int, remetente: str, corpo: str) -> 
             (entidade, entidade_id, acao, campo_alterado,
              valor_anterior, valor_novo, usuario, ip_origem)
         VALUES ('tratativa', %s, 'resposta_email', 'status',
-                %s, 'regularizado', %s, 'imap_worker')
+                %s, 'em_tratativa', %s, 'imap_worker')
     """, (tratativa_id, tratativa['status'], remetente[:200]))
 
     # Recalcula status_tratativa da visita pai
@@ -263,7 +255,7 @@ def _processar_resposta(conn, tratativa_id: int, remetente: str, corpo: str) -> 
     cursor.close()
 
     logger.info(
-        '[IMAP] Tratativa #%d regularizada por email | Remetente: %s | Status visita: %s',
+        '[IMAP] Tratativa #%d em tratativa via resposta email | Remetente: %s | Status visita: %s',
         tratativa_id, remetente, novo_status_visita
     )
     return True
@@ -328,13 +320,14 @@ def verificar_respostas_email():
 
                 tratativa_id = int(match.group(1))
                 corpo = _extrair_texto_reply(msg)
+                data_email = _formatar_data_email(msg.get('Date', ''))
 
                 logger.info(
                     '[IMAP] Resposta recebida: Tratativa #%d | De: %s',
                     tratativa_id, remetente
                 )
 
-                ok = _processar_resposta(conn, tratativa_id, remetente, corpo)
+                ok = _processar_resposta(conn, tratativa_id, remetente, corpo, data_email)
 
                 # Marca como lido independente do resultado (evita reprocessamento)
                 imap.store(num, '+FLAGS', '\\Seen')
@@ -411,6 +404,11 @@ def main():
 # =========================================================
 
 _background_started = False
+_stop_event = threading.Event()
+
+
+def stop():
+    _stop_event.set()
 
 
 def start_in_background():
@@ -437,6 +435,7 @@ def start_in_background():
         return
 
     _background_started = True
+    _stop_event.clear()
 
     def _run():
         try:
@@ -445,19 +444,20 @@ def start_in_background():
                 INTERVALO_HORAS
             )
             # Aguarda 30s no startup para nao sobrecarregar a inicializacao do Flask
-            time.sleep(30)
-            while True:
+            _stop_event.wait(30)
+            while not _stop_event.is_set():
                 try:
                     verificar_respostas_email()
                 except Exception as e:
                     logger.error('[worker_imap_tratativas] Erro no ciclo: %s', e, exc_info=True)
-                time.sleep(INTERVALO_SEG)
+                _stop_event.wait(INTERVALO_SEG)
         except Exception as e:
             logger.error('[worker_imap_tratativas] Erro fatal: %s', e, exc_info=True)
 
     t = threading.Thread(target=_run, name='worker_imap_tratativas', daemon=True)
     t.start()
     logger.info('[worker_imap_tratativas] Thread daemon registrada (intervalo %.1fh)', INTERVALO_HORAS)
+    return _stop_event
 
 
 if __name__ == '__main__':

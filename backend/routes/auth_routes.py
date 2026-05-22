@@ -117,17 +117,12 @@ def cadastro():
             # Atualiza force_reset_senha se marcado
             if force_reset:
                 try:
-                    from backend.database import get_db_connection
-                    conn = get_db_connection()
-                    if conn:
-                        cur = conn.cursor()
+                    from backend.database import get_db_cursor
+                    with get_db_cursor(commit=True) as cur:
                         cur.execute(
                             "UPDATE usuarios SET force_reset_senha = TRUE WHERE id = %s",
                             (resultado['usuario_id'],)
                         )
-                        conn.commit()
-                        cur.close()
-                        conn.close()
                 except Exception as e:
                     current_app.logger.error(f'Erro ao definir force_reset: {e}')
 
@@ -273,7 +268,7 @@ def minhas_permissoes():
     # Hub de Serviços (painel28) é especial: aparece automaticamente se o usuário
     # tem qualquer sub-painel do hub liberado, sem precisar de permissão explícita.
     if not is_admin and 'painel28' not in permissoes:
-        _HUB_PAINEIS = frozenset(['painel34', 'painel35', 'painel36'])
+        _HUB_PAINEIS = frozenset(['painel14', 'painel34', 'painel35', 'painel36'])
         if set(permissoes) & _HUB_PAINEIS:
             permissoes = permissoes + ['painel28']
 

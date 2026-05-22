@@ -11,15 +11,12 @@ import traceback
 from datetime import datetime, date
 from flask import current_app, Blueprint, request, jsonify, send_from_directory, session
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 
 painel28_bp = Blueprint(
     'painel28',
-    __name__,
-    url_prefix='/api/paineis/painel28'
-)
+    __name__)
 
 @painel28_bp.after_request
 def invalidate_cache_on_write(response):
@@ -178,38 +175,36 @@ def _auto_finalizar_rondas_expiradas(cursor):
 # ROTAS DE ARQUIVOS ESTÁTICOS (HTML, CSS, JS)
 # ============================================================
 
-@painel28_bp.route('/index', endpoint='index_html', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/index', endpoint='index_html', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def servir_hub():
-    if not verificar_permissao_painel(session.get('usuario_id'), 'painel28'):
-        return jsonify({'error': 'Sem permissao para este painel'}), 403
     return send_from_directory(PAINEL_DIR, 'index.html')
 
 
-@painel28_bp.route('/formulario', endpoint='formulario_html', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/formulario', endpoint='formulario_html', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def servir_formulario():
-    if not verificar_permissao_painel(session.get('usuario_id'), 'painel28'):
-        return jsonify({'error': 'Sem permissao para este painel'}), 403
     return send_from_directory(PAINEL_DIR, 'formulario.html')
 
 
-@painel28_bp.route('/style_hub.css', endpoint='style_hub_css', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/style_hub.css', endpoint='style_hub_css', methods=['GET'])
 def servir_style_hub():
     return send_from_directory(PAINEL_DIR, 'style_hub.css')
 
 
-@painel28_bp.route('/style_form.css', endpoint='style_form_css', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/style_form.css', endpoint='style_form_css', methods=['GET'])
 def servir_style_form():
     return send_from_directory(PAINEL_DIR, 'style_form.css')
 
 
-@painel28_bp.route('/main_hub.js', endpoint='main_hub_js', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/main_hub.js', endpoint='main_hub_js', methods=['GET'])
 def servir_main_hub():
     return send_from_directory(PAINEL_DIR, 'main_hub.js')
 
 
-@painel28_bp.route('/main_form.js', endpoint='main_form_js', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/main_form.js', endpoint='main_form_js', methods=['GET'])
 def servir_main_form():
     return send_from_directory(PAINEL_DIR, 'main_form.js')
 
@@ -218,58 +213,45 @@ def servir_main_form():
 # API: HUB - SERVIÇOS
 # ============================================================
 
-@painel28_bp.route('/servicos', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/servicos', methods=['GET'])
 @login_required
 def listar_servicos():
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        is_admin = session.get('is_admin', False)
+        usuario_id = session.get('usuario_id')
+        with get_db_cursor() as cursor:
 
-        if is_admin:
-            cursor.execute("""
-                SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem
-                FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
-            """)
-            servicos = cursor.fetchall()
-        else:
-            # Busca todas as permissões do usuário
-            perms_cursor = conn.cursor()
-            perms_cursor.execute(
-                "SELECT painel_nome FROM permissoes_paineis WHERE usuario_id = %s",
-                (usuario_id,)
-            )
-            perms_set = {row[0] for row in perms_cursor.fetchall()}
-            perms_cursor.close()
+            if is_admin:
+                cursor.execute("""
+                    SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem, permissao_requerida
+                    FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
+                """)
+                servicos = cursor.fetchall()
+            else:
+                # Busca todas as permissões do usuário
+                cursor.execute(
+                    "SELECT painel_nome FROM permissoes_paineis WHERE usuario_id = %s",
+                    (usuario_id,)
+                )
+                perms_set = {row['painel_nome'] for row in cursor.fetchall()}
 
-            # Busca todos os serviços ativos
-            cursor.execute("""
-                SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem
-                FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
-            """)
-            todos = cursor.fetchall()
+                # Busca todos os serviços ativos com a permissão explícita de cada um
+                cursor.execute("""
+                    SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem, permissao_requerida
+                    FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
+                """)
+                todos = cursor.fetchall()
 
-            # Filtra em Python usando o padrão /painel/X da URL
-            import re as _re
-            _pat = _re.compile(r'^/painel/([a-z0-9]+)$')
-
-            servicos = []
-            for srv in todos:
-                url = srv.get('url_destino') or ''
-                m = _pat.match(url)
-                if m:
-                    # Serviço de painel: exige que o usuário tenha aquele painel liberado
-                    if m.group(1) in perms_set:
-                        servicos.append(srv)
-                else:
-                    # Serviço externo/especial: exige painel28 explicitamente
-                    if 'painel28' in perms_set:
+                # Filtra pela coluna permissao_requerida:
+                # - NULL → visível a qualquer usuário autenticado (link externo, etc.)
+                # - 'painel35' → exige que o usuário tenha painel35 liberado
+                servicos = []
+                for srv in todos:
+                    req = srv.get('permissao_requerida')
+                    if req is None or req in perms_set:
                         servicos.append(srv)
 
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': servicos})
+            return jsonify({'success': True, 'data': servicos})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -279,34 +261,33 @@ def listar_servicos():
 # API: DUPLAS - CRUD
 # ============================================================
 
-@painel28_bp.route('/duplas', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/duplas', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def listar_duplas():
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        todas = request.args.get('todas', '0')
-        if todas == '1':
-            cursor.execute("""
-                SELECT id, nome_visitante_1, nome_visitante_2, ordem, ativo
-                FROM sentir_agir_duplas ORDER BY ordem, nome_visitante_1
-            """)
-        else:
-            cursor.execute("""
-                SELECT id, nome_visitante_1, nome_visitante_2, ordem
-                FROM sentir_agir_duplas WHERE ativo = TRUE ORDER BY ordem, nome_visitante_1
-            """)
-        duplas = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': duplas})
+        with get_db_cursor() as cursor:
+            todas = request.args.get('todas', '0')
+            if todas == '1':
+                cursor.execute("""
+                    SELECT id, nome_visitante_1, nome_visitante_2, ordem, ativo
+                    FROM sentir_agir_duplas ORDER BY ordem, nome_visitante_1
+                """)
+            else:
+                cursor.execute("""
+                    SELECT id, nome_visitante_1, nome_visitante_2, ordem
+                    FROM sentir_agir_duplas WHERE ativo = TRUE ORDER BY ordem, nome_visitante_1
+                """)
+            duplas = cursor.fetchall()
+            return jsonify({'success': True, 'data': duplas})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/duplas', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/duplas', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def criar_dupla():
     try:
         dados = request.get_json()
@@ -318,27 +299,24 @@ def criar_dupla():
             return jsonify({'success': False, 'error': 'Informe os dois nomes'}), 400
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS prox FROM sentir_agir_duplas")
-        prox_ordem = cursor.fetchone()['prox']
-        cursor.execute("""
-            INSERT INTO sentir_agir_duplas (nome_visitante_1, nome_visitante_2, ordem, ativo)
-            VALUES (%s, %s, %s, TRUE) RETURNING id
-        """, (nome1, nome2, prox_ordem))
-        dupla_id = cursor.fetchone()['id']
-        _registrar_log(cursor, 'dupla', dupla_id, 'criacao', usuario, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': {'id': dupla_id}, 'message': 'Dupla criada'}), 201
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS prox FROM sentir_agir_duplas")
+            prox_ordem = cursor.fetchone()['prox']
+            cursor.execute("""
+                INSERT INTO sentir_agir_duplas (nome_visitante_1, nome_visitante_2, ordem, ativo)
+                VALUES (%s, %s, %s, TRUE) RETURNING id
+            """, (nome1, nome2, prox_ordem))
+            dupla_id = cursor.fetchone()['id']
+            _registrar_log(cursor, 'dupla', dupla_id, 'criacao', usuario, ip_origem=ip)
+            return jsonify({'success': True, 'data': {'id': dupla_id}, 'message': 'Dupla criada'}), 201
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/duplas/<int:dupla_id>', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/duplas/<int:dupla_id>', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def editar_dupla(dupla_id):
     try:
         dados = request.get_json()
@@ -350,55 +328,44 @@ def editar_dupla(dupla_id):
             return jsonify({'success': False, 'error': 'Informe os dois nomes'}), 400
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome_visitante_1, nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s",
-                       (dupla_id,))
-        dupla = cursor.fetchone()
-        if not dupla:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
-        cursor.execute("""
-            UPDATE sentir_agir_duplas SET nome_visitante_1 = %s, nome_visitante_2 = %s, atualizado_em = NOW() WHERE id = %s
-        """, (nome1, nome2, dupla_id))
-        _registrar_log(cursor, 'dupla', dupla_id, 'edicao', usuario,
-                       campo_alterado='nomes',
-                       valor_anterior=dupla['nome_visitante_1'] + ' e ' + dupla['nome_visitante_2'],
-                       valor_novo=nome1 + ' e ' + nome2, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Dupla atualizada'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, nome_visitante_1, nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s",
+                           (dupla_id,))
+            dupla = cursor.fetchone()
+            if not dupla:
+                return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
+            cursor.execute("""
+                UPDATE sentir_agir_duplas SET nome_visitante_1 = %s, nome_visitante_2 = %s, atualizado_em = NOW() WHERE id = %s
+            """, (nome1, nome2, dupla_id))
+            _registrar_log(cursor, 'dupla', dupla_id, 'edicao', usuario,
+                           campo_alterado='nomes',
+                           valor_anterior=dupla['nome_visitante_1'] + ' e ' + dupla['nome_visitante_2'],
+                           valor_novo=nome1 + ' e ' + nome2, ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Dupla atualizada'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/duplas/<int:dupla_id>/toggle', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/duplas/<int:dupla_id>/toggle', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def toggle_dupla(dupla_id):
     try:
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, ativo FROM sentir_agir_duplas WHERE id = %s", (dupla_id,))
-        dupla = cursor.fetchone()
-        if not dupla:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
-        novo_status = not dupla['ativo']
-        cursor.execute("UPDATE sentir_agir_duplas SET ativo = %s, atualizado_em = NOW() WHERE id = %s",
-                       (novo_status, dupla_id))
-        _registrar_log(cursor, 'dupla', dupla_id, 'alteracao_status', usuario,
-                       campo_alterado='ativo', valor_anterior=str(dupla['ativo']),
-                       valor_novo=str(novo_status), ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Dupla ativada' if novo_status else 'Dupla desativada'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, ativo FROM sentir_agir_duplas WHERE id = %s", (dupla_id,))
+            dupla = cursor.fetchone()
+            if not dupla:
+                return jsonify({'success': False, 'error': 'Dupla nao encontrada'}), 404
+            novo_status = not dupla['ativo']
+            cursor.execute("UPDATE sentir_agir_duplas SET ativo = %s, atualizado_em = NOW() WHERE id = %s",
+                           (novo_status, dupla_id))
+            _registrar_log(cursor, 'dupla', dupla_id, 'alteracao_status', usuario,
+                           campo_alterado='ativo', valor_anterior=str(dupla['ativo']),
+                           valor_novo=str(novo_status), ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Dupla ativada' if novo_status else 'Dupla desativada'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -408,20 +375,18 @@ def toggle_dupla(dupla_id):
 # API: SETORES
 # ============================================================
 
-@painel28_bp.route('/setores', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/setores', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def listar_setores():
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT id, nome, sigla, icone, ordem
-            FROM sentir_agir_setores WHERE ativo = TRUE ORDER BY ordem, nome
-        """)
-        setores = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': setores})
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, nome, sigla, icone, ordem
+                FROM sentir_agir_setores WHERE ativo = TRUE ORDER BY ordem, nome
+            """)
+            setores = cursor.fetchall()
+            return jsonify({'success': True, 'data': setores})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -431,56 +396,54 @@ def listar_setores():
 # API: CATEGORIAS E ITENS (com tipo semaforo/sim_nao)
 # ============================================================
 
-@painel28_bp.route('/categorias-itens', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/categorias-itens', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def listar_categorias_itens():
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT id, nome, icone, cor, ordem, permite_nao_aplica
-            FROM sentir_agir_categorias WHERE ativo = TRUE ORDER BY ordem
-        """)
-        categorias = cursor.fetchall()
-        cursor.execute("""
-            SELECT id, categoria_id, descricao, ordem,
-                   COALESCE(tipo, 'semaforo') AS tipo,
-                   COALESCE(critico_quando, 'nao') AS critico_quando,
-                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica,
-                   COALESCE(gera_critico, TRUE) AS gera_critico
-            FROM sentir_agir_itens WHERE ativo = TRUE ORDER BY ordem
-        """)
-        itens = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, nome, icone, cor, ordem, permite_nao_aplica
+                FROM sentir_agir_categorias WHERE ativo = TRUE ORDER BY ordem
+            """)
+            categorias = cursor.fetchall()
+            cursor.execute("""
+                SELECT id, categoria_id, descricao, ordem,
+                       COALESCE(tipo, 'semaforo') AS tipo,
+                       COALESCE(critico_quando, 'nao') AS critico_quando,
+                       COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica,
+                       COALESCE(gera_critico, TRUE) AS gera_critico
+                FROM sentir_agir_itens WHERE ativo = TRUE ORDER BY ordem
+            """)
+            itens = cursor.fetchall()
 
-        itens_por_categoria = {}
-        for item in itens:
-            cat_id = item['categoria_id']
-            if cat_id not in itens_por_categoria:
-                itens_por_categoria[cat_id] = []
-            itens_por_categoria[cat_id].append({
-                'id': item['id'],
-                'descricao': item['descricao'],
-                'ordem': item['ordem'],
-                'tipo': item['tipo'],
-                'critico_quando': item['critico_quando'],
-                'permite_nao_aplica': item['permite_nao_aplica'],
-                'gera_critico': item['gera_critico']
-            })
+            itens_por_categoria = {}
+            for item in itens:
+                cat_id = item['categoria_id']
+                if cat_id not in itens_por_categoria:
+                    itens_por_categoria[cat_id] = []
+                itens_por_categoria[cat_id].append({
+                    'id': item['id'],
+                    'descricao': item['descricao'],
+                    'ordem': item['ordem'],
+                    'tipo': item['tipo'],
+                    'critico_quando': item['critico_quando'],
+                    'permite_nao_aplica': item['permite_nao_aplica'],
+                    'gera_critico': item['gera_critico']
+                })
 
-        resultado = []
-        for cat in categorias:
-            resultado.append({
-                'id': cat['id'],
-                'nome': cat['nome'],
-                'icone': cat['icone'],
-                'cor': cat['cor'],
-                'ordem': cat['ordem'],
-                'permite_nao_aplica': cat['permite_nao_aplica'],
-                'itens': itens_por_categoria.get(cat['id'], [])
-            })
-        return jsonify({'success': True, 'data': resultado})
+            resultado = []
+            for cat in categorias:
+                resultado.append({
+                    'id': cat['id'],
+                    'nome': cat['nome'],
+                    'icone': cat['icone'],
+                    'cor': cat['cor'],
+                    'ordem': cat['ordem'],
+                    'permite_nao_aplica': cat['permite_nao_aplica'],
+                    'itens': itens_por_categoria.get(cat['id'], [])
+                })
+            return jsonify({'success': True, 'data': resultado})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -490,20 +453,18 @@ def listar_categorias_itens():
 # API: CONFIG
 # ============================================================
 
-@painel28_bp.route('/config', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/config', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def obter_config():
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT chave, valor FROM sentir_agir_config")
-        rows = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
-        config = {}
-        for row in rows:
-            config[row['chave']] = row['valor']
-        return jsonify({'success': True, 'data': config})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT chave, valor FROM sentir_agir_config")
+            rows = cursor.fetchall()
+            config = {}
+            for row in rows:
+                config[row['chave']] = row['valor']
+            return jsonify({'success': True, 'data': config})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -513,8 +474,9 @@ def obter_config():
 # API: FILA DE PACIENTES (integração com ocupação hospitalar)
 # ============================================================
 
-@painel28_bp.route('/fila-pacientes', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/fila-pacientes', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def fila_pacientes():
     try:
         limite = request.args.get('limite', '20')
@@ -525,90 +487,203 @@ def fila_pacientes():
         except (ValueError, TypeError):
             limite = 20
 
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        # Finaliza rondas esquecidas antes de calcular a fila
-        _auto_finalizar_rondas_expiradas(cursor)
-        conn.commit()
+            # Finaliza rondas esquecidas antes de calcular a fila
+            _auto_finalizar_rondas_expiradas(cursor)
 
-        cursor.execute("""
-            SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
-                   f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
-                   f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
-                   f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
-                   f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
-                   EXISTS (
-                       SELECT 1 FROM sentir_agir_visitas v
-                       WHERE v.nr_atendimento = f.nr_atendimento
-                         AND v.avaliacao_final != 'impossibilitada'
-                         AND v.criado_em >= CURRENT_DATE
-                   ) AS ja_visitado_hoje,
-                   (
-                       SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
-                       FROM sentir_agir_visitas v
-                       WHERE v.nr_atendimento = f.nr_atendimento
-                         AND v.avaliacao_final != 'impossibilitada'
-                         AND v.criado_em >= CURRENT_DATE
-                       ORDER BY v.criado_em DESC LIMIT 1
-                   ) AS horas_desde_visita_hoje,
-                   (
-                       SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
-                       FROM sentir_agir_visitas v2
-                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                       WHERE v2.nr_atendimento = f.nr_atendimento
-                         AND r2.status = 'em_andamento'
-                         AND v2.criado_em >= CURRENT_DATE
-                       ORDER BY v2.criado_em DESC LIMIT 1
-                   ) AS dupla_em_visita,
-                   (
-                       SELECT d2.id
-                       FROM sentir_agir_visitas v2
-                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                       WHERE v2.nr_atendimento = f.nr_atendimento
-                         AND r2.status = 'em_andamento'
-                         AND v2.criado_em >= CURRENT_DATE
-                       ORDER BY v2.criado_em DESC LIMIT 1
-                   ) AS dupla_id_em_visita
-            FROM vw_sentir_agir_fila_pacientes f
-            WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
-              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
-              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
-              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
-              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
-              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
-              AND NOT EXISTS (
-                  SELECT 1 FROM sentir_agir_precaucao_contato pc
-                  WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
-              )
-            ORDER BY
-                CASE
-                    WHEN EXISTS (
-                        SELECT 1 FROM sentir_agir_visitas v
-                        WHERE v.nr_atendimento = f.nr_atendimento
-                          AND v.avaliacao_final NOT IN ('impossibilitada')
-                          AND v.criado_em >= CURRENT_DATE
-                    ) THEN 2
-                    WHEN EXISTS (
-                        SELECT 1 FROM sentir_agir_visitas v
-                        WHERE v.nr_atendimento = f.nr_atendimento
-                          AND v.avaliacao_final = 'impossibilitada'
-                          AND v.criado_em >= CURRENT_DATE
-                    ) THEN 1
-                    ELSE 0
-                END ASC,
-                COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
-            LIMIT %s
-        """, (limite,))
-        pacientes = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
+            cursor.execute("""
+                SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
+                       f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
+                       f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
+                       f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
+                       f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
+                       EXISTS (
+                           SELECT 1 FROM sentir_agir_visitas v
+                           WHERE v.nr_atendimento = f.nr_atendimento
+                             AND v.avaliacao_final != 'impossibilitada'
+                             AND v.criado_em >= CURRENT_DATE
+                       ) AS ja_visitado_hoje,
+                       (
+                           SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
+                           FROM sentir_agir_visitas v
+                           WHERE v.nr_atendimento = f.nr_atendimento
+                             AND v.avaliacao_final != 'impossibilitada'
+                             AND v.criado_em >= CURRENT_DATE
+                           ORDER BY v.criado_em DESC LIMIT 1
+                       ) AS horas_desde_visita_hoje,
+                       (
+                           SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
+                           FROM sentir_agir_visitas v2
+                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                           WHERE v2.nr_atendimento = f.nr_atendimento
+                             AND r2.status = 'em_andamento'
+                             AND v2.criado_em >= CURRENT_DATE
+                           ORDER BY v2.criado_em DESC LIMIT 1
+                       ) AS dupla_em_visita,
+                       (
+                           SELECT d2.id
+                           FROM sentir_agir_visitas v2
+                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                           WHERE v2.nr_atendimento = f.nr_atendimento
+                             AND r2.status = 'em_andamento'
+                             AND v2.criado_em >= CURRENT_DATE
+                           ORDER BY v2.criado_em DESC LIMIT 1
+                       ) AS dupla_id_em_visita
+                FROM vw_sentir_agir_fila_pacientes f
+                WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
+                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
+                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
+                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
+                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
+                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM sentir_agir_precaucao_contato pc
+                      WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
+                  )
+                ORDER BY
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1 FROM sentir_agir_visitas v
+                            WHERE v.nr_atendimento = f.nr_atendimento
+                              AND v.avaliacao_final NOT IN ('impossibilitada')
+                              AND v.criado_em >= CURRENT_DATE
+                        ) THEN 2
+                        WHEN EXISTS (
+                            SELECT 1 FROM sentir_agir_visitas v
+                            WHERE v.nr_atendimento = f.nr_atendimento
+                              AND v.avaliacao_final = 'impossibilitada'
+                              AND v.criado_em >= CURRENT_DATE
+                        ) THEN 1
+                        ELSE 0
+                    END ASC,
+                    COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
+                LIMIT %s
+            """, (limite,))
+            pacientes = cursor.fetchall()
 
-        resultado = []
-        for pac in pacientes:
-            item = dict(pac)
+            resultado = []
+            for pac in pacientes:
+                item = dict(pac)
+                for campo in ('dt_entrada_unidade', 'ultima_ronda_em'):
+                    if item.get(campo):
+                        item[campo] = item[campo].isoformat()
+                if item.get('horas_desde_ultima_ronda') is not None:
+                    item['horas_desde_ultima_ronda'] = round(float(item['horas_desde_ultima_ronda']), 1)
+                if item.get('horas_desde_visita_hoje') is not None:
+                    item['horas_desde_visita_hoje'] = round(float(item['horas_desde_visita_hoje']), 1)
+                if item.get('qt_dia_permanencia') is not None:
+                    item['qt_dia_permanencia'] = int(item['qt_dia_permanencia'])
+                resultado.append(item)
+
+            # Obter pacientes sendo visitados neste exato momento (lock em memoria)
+            em_visita_dict = _get_em_visita_agora_dict()
+            for p in resultado:
+                nr = str(p['nr_atendimento'])
+                if nr in em_visita_dict:
+                    # Sobrescrever o dupla_em_visita (que era do SQL) com a informação mais recente da RAM
+                    p['dupla_em_visita'] = em_visita_dict[nr].get('nome_dupla', 'Dupla em visita')
+                    p['dupla_id_em_visita'] = em_visita_dict[nr].get('dupla_id')
+
+            return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
+    except Exception as e:
+        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
+
+
+@painel28_bp.route('/api/paineis/painel28/proximo-paciente', methods=['GET'])
+@login_required
+@panel_permission_required('painel28')
+def proximo_paciente():
+    try:
+        with get_db_cursor() as cursor:
+
+            # Finaliza rondas esquecidas antes de calcular a fila
+            _auto_finalizar_rondas_expiradas(cursor)
+
+            cursor.execute("""
+                SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
+                       f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
+                       f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
+                       f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
+                       f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
+                       EXISTS (
+                           SELECT 1 FROM sentir_agir_visitas v
+                           WHERE v.nr_atendimento = f.nr_atendimento
+                             AND v.avaliacao_final != 'impossibilitada'
+                             AND v.criado_em >= CURRENT_DATE
+                       ) AS ja_visitado_hoje,
+                       (
+                           SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
+                           FROM sentir_agir_visitas v
+                           WHERE v.nr_atendimento = f.nr_atendimento
+                             AND v.avaliacao_final != 'impossibilitada'
+                             AND v.criado_em >= CURRENT_DATE
+                           ORDER BY v.criado_em DESC LIMIT 1
+                       ) AS horas_desde_visita_hoje,
+                       (
+                           SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
+                           FROM sentir_agir_visitas v2
+                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                           WHERE v2.nr_atendimento = f.nr_atendimento
+                             AND r2.status = 'em_andamento'
+                             AND v2.criado_em >= CURRENT_DATE
+                           ORDER BY v2.criado_em DESC LIMIT 1
+                       ) AS dupla_em_visita,
+                       (
+                           SELECT d2.id
+                           FROM sentir_agir_visitas v2
+                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+                           WHERE v2.nr_atendimento = f.nr_atendimento
+                             AND r2.status = 'em_andamento'
+                             AND v2.criado_em >= CURRENT_DATE
+                           ORDER BY v2.criado_em DESC LIMIT 1
+                       ) AS dupla_id_em_visita
+                FROM vw_sentir_agir_fila_pacientes f
+                WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
+                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
+                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
+                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
+                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
+                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM sentir_agir_precaucao_contato pc
+                      WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
+                  )
+                ORDER BY
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1 FROM sentir_agir_visitas v
+                            WHERE v.nr_atendimento = f.nr_atendimento
+                              AND v.avaliacao_final NOT IN ('impossibilitada')
+                              AND v.criado_em >= CURRENT_DATE
+                        ) THEN 2
+                        WHEN EXISTS (
+                            SELECT 1 FROM sentir_agir_visitas v
+                            WHERE v.nr_atendimento = f.nr_atendimento
+                              AND v.avaliacao_final = 'impossibilitada'
+                              AND v.criado_em >= CURRENT_DATE
+                        ) THEN 1
+                        ELSE 0
+                    END ASC,
+                    COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
+                LIMIT 1
+            """)
+            paciente = cursor.fetchone()
+
+            if not paciente:
+                return jsonify({'success': True, 'data': None, 'message': 'Nenhum paciente na fila'})
+
+            # Se o primeiro da fila esta sendo visitado por outra dupla, ignorar
+            em_visita = _get_em_visita_agora()
+            if str(paciente['nr_atendimento']) in em_visita:
+                return jsonify({'success': True, 'data': None, 'message': 'Paciente ja em visita por outra dupla'})
+
+            item = dict(paciente)
             for campo in ('dt_entrada_unidade', 'ultima_ronda_em'):
                 if item.get(campo):
                     item[campo] = item[campo].isoformat()
@@ -618,128 +693,8 @@ def fila_pacientes():
                 item['horas_desde_visita_hoje'] = round(float(item['horas_desde_visita_hoje']), 1)
             if item.get('qt_dia_permanencia') is not None:
                 item['qt_dia_permanencia'] = int(item['qt_dia_permanencia'])
-            resultado.append(item)
 
-        # Obter pacientes sendo visitados neste exato momento (lock em memoria)
-        em_visita_dict = _get_em_visita_agora_dict()
-        for p in resultado:
-            nr = str(p['nr_atendimento'])
-            if nr in em_visita_dict:
-                # Sobrescrever o dupla_em_visita (que era do SQL) com a informação mais recente da RAM
-                p['dupla_em_visita'] = em_visita_dict[nr].get('nome_dupla', 'Dupla em visita')
-                p['dupla_id_em_visita'] = em_visita_dict[nr].get('dupla_id')
-
-        return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
-    except Exception as e:
-        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
-
-
-@painel28_bp.route('/proximo-paciente', methods=['GET'])
-@login_required
-def proximo_paciente():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        # Finaliza rondas esquecidas antes de calcular a fila
-        _auto_finalizar_rondas_expiradas(cursor)
-        conn.commit()
-
-        cursor.execute("""
-            SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
-                   f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
-                   f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
-                   f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
-                   f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
-                   EXISTS (
-                       SELECT 1 FROM sentir_agir_visitas v
-                       WHERE v.nr_atendimento = f.nr_atendimento
-                         AND v.avaliacao_final != 'impossibilitada'
-                         AND v.criado_em >= CURRENT_DATE
-                   ) AS ja_visitado_hoje,
-                   (
-                       SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
-                       FROM sentir_agir_visitas v
-                       WHERE v.nr_atendimento = f.nr_atendimento
-                         AND v.avaliacao_final != 'impossibilitada'
-                         AND v.criado_em >= CURRENT_DATE
-                       ORDER BY v.criado_em DESC LIMIT 1
-                   ) AS horas_desde_visita_hoje,
-                   (
-                       SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
-                       FROM sentir_agir_visitas v2
-                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                       WHERE v2.nr_atendimento = f.nr_atendimento
-                         AND r2.status = 'em_andamento'
-                         AND v2.criado_em >= CURRENT_DATE
-                       ORDER BY v2.criado_em DESC LIMIT 1
-                   ) AS dupla_em_visita,
-                   (
-                       SELECT d2.id
-                       FROM sentir_agir_visitas v2
-                       JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                       JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                       WHERE v2.nr_atendimento = f.nr_atendimento
-                         AND r2.status = 'em_andamento'
-                         AND v2.criado_em >= CURRENT_DATE
-                       ORDER BY v2.criado_em DESC LIMIT 1
-                   ) AS dupla_id_em_visita
-            FROM vw_sentir_agir_fila_pacientes f
-            WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
-              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
-              AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
-              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
-              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
-              AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
-              AND NOT EXISTS (
-                  SELECT 1 FROM sentir_agir_precaucao_contato pc
-                  WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
-              )
-            ORDER BY
-                CASE
-                    WHEN EXISTS (
-                        SELECT 1 FROM sentir_agir_visitas v
-                        WHERE v.nr_atendimento = f.nr_atendimento
-                          AND v.avaliacao_final NOT IN ('impossibilitada')
-                          AND v.criado_em >= CURRENT_DATE
-                    ) THEN 2
-                    WHEN EXISTS (
-                        SELECT 1 FROM sentir_agir_visitas v
-                        WHERE v.nr_atendimento = f.nr_atendimento
-                          AND v.avaliacao_final = 'impossibilitada'
-                          AND v.criado_em >= CURRENT_DATE
-                    ) THEN 1
-                    ELSE 0
-                END ASC,
-                COALESCE(f.horas_desde_ultima_ronda, EXTRACT(EPOCH FROM (NOW() - f.dt_entrada_unidade))/3600) DESC
-            LIMIT 1
-        """)
-        paciente = cursor.fetchone()
-        cursor.close()
-        release_connection(conn)
-
-        if not paciente:
-            return jsonify({'success': True, 'data': None, 'message': 'Nenhum paciente na fila'})
-
-        # Se o primeiro da fila esta sendo visitado por outra dupla, ignorar
-        em_visita = _get_em_visita_agora()
-        if str(paciente['nr_atendimento']) in em_visita:
-            return jsonify({'success': True, 'data': None, 'message': 'Paciente ja em visita por outra dupla'})
-
-        item = dict(paciente)
-        for campo in ('dt_entrada_unidade', 'ultima_ronda_em'):
-            if item.get(campo):
-                item[campo] = item[campo].isoformat()
-        if item.get('horas_desde_ultima_ronda') is not None:
-            item['horas_desde_ultima_ronda'] = round(float(item['horas_desde_ultima_ronda']), 1)
-        if item.get('horas_desde_visita_hoje') is not None:
-            item['horas_desde_visita_hoje'] = round(float(item['horas_desde_visita_hoje']), 1)
-        if item.get('qt_dia_permanencia') is not None:
-            item['qt_dia_permanencia'] = int(item['qt_dia_permanencia'])
-
-        return jsonify({'success': True, 'data': item})
+            return jsonify({'success': True, 'data': item})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -749,8 +704,9 @@ def proximo_paciente():
 # API: RESERVA TEMPORARIA DE PACIENTE (anti-duplicacao de fila)
 # ============================================================
 
-@painel28_bp.route('/reservar-paciente', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/reservar-paciente', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def reservar_paciente():
     """Marca que a dupla esta preenchendo o formulario para este paciente."""
     dados = request.get_json() or {}
@@ -764,15 +720,12 @@ def reservar_paciente():
     if dupla_id and not nome_dupla:
         # Tenta buscar o nome caso o frontend não mande
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT nome_visitante_1 || ' e ' || nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s",
-                           (dupla_id,))
-            row = cursor.fetchone()
-            if row:
-                nome_dupla = row[0]
-            cursor.close()
-            release_connection(conn)
+            with get_db_cursor(use_dict_cursor=False) as cursor:
+                cursor.execute("SELECT nome_visitante_1 || ' e ' || nome_visitante_2 FROM sentir_agir_duplas WHERE id = %s",
+                               (dupla_id,))
+                row = cursor.fetchone()
+                if row:
+                    nome_dupla = row[0]
         except Exception:
             pass
 
@@ -792,8 +745,9 @@ def reservar_paciente():
     return jsonify({'success': True})
 
 
-@painel28_bp.route('/liberar-paciente', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/liberar-paciente', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def liberar_paciente():
     """Remove a reserva de um paciente (visita salva, pulada ou cancelada)."""
     dados = request.get_json() or {}
@@ -809,36 +763,35 @@ def liberar_paciente():
 # API: PRECAUÇÃO DE CONTATO
 # ============================================================
 
-@painel28_bp.route('/precaucao-contato', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/precaucao-contato', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def listar_precaucao_contato():
     """Lista pacientes em precaução de contato (somente internados na fila)."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT pc.nr_atendimento, pc.nm_paciente, pc.leito,
-                   pc.marcado_por, pc.marcado_em
-            FROM sentir_agir_precaucao_contato pc
-            ORDER BY pc.marcado_em DESC
-        """)
-        rows = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
-        resultado = []
-        for r in rows:
-            item = dict(r)
-            if item.get('marcado_em'):
-                item['marcado_em'] = item['marcado_em'].isoformat()
-            resultado.append(item)
-        return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT pc.nr_atendimento, pc.nm_paciente, pc.leito,
+                       pc.marcado_por, pc.marcado_em
+                FROM sentir_agir_precaucao_contato pc
+                ORDER BY pc.marcado_em DESC
+            """)
+            rows = cursor.fetchall()
+            resultado = []
+            for r in rows:
+                item = dict(r)
+                if item.get('marcado_em'):
+                    item['marcado_em'] = item['marcado_em'].isoformat()
+                resultado.append(item)
+            return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/precaucao-contato', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/precaucao-contato', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def marcar_precaucao_contato():
     """Marca paciente em precaução de contato, removendo-o da fila de visitas."""
     dados = request.get_json() or {}
@@ -850,50 +803,43 @@ def marcar_precaucao_contato():
 
     usuario = _get_usuario()
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            INSERT INTO sentir_agir_precaucao_contato
-                (nr_atendimento, nm_paciente, leito, marcado_por)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (nr_atendimento) DO UPDATE
-                SET nm_paciente = EXCLUDED.nm_paciente,
-                    leito       = EXCLUDED.leito,
-                    marcado_por = EXCLUDED.marcado_por,
-                    marcado_em  = NOW()
-        """, (nr, nm_paciente, leito, usuario))
-        # Liberar lock de visita caso exista
-        with _visita_lock:
-            _em_visita.pop(nr, None)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Paciente marcado em precaução de contato. Removido da fila.'})
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO sentir_agir_precaucao_contato
+                    (nr_atendimento, nm_paciente, leito, marcado_por)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (nr_atendimento) DO UPDATE
+                    SET nm_paciente = EXCLUDED.nm_paciente,
+                        leito       = EXCLUDED.leito,
+                        marcado_por = EXCLUDED.marcado_por,
+                        marcado_em  = NOW()
+            """, (nr, nm_paciente, leito, usuario))
+            # Liberar lock de visita caso exista
+            with _visita_lock:
+                _em_visita.pop(nr, None)
+            return jsonify({'success': True, 'message': 'Paciente marcado em precaução de contato. Removido da fila.'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/precaucao-contato/<nr_atendimento>', methods=['DELETE'])
+@painel28_bp.route('/api/paineis/painel28/precaucao-contato/<nr_atendimento>', methods=['DELETE'])
 @login_required
+@panel_permission_required('painel28')
 def remover_precaucao_contato(nr_atendimento):
     """Remove a marcação de precaução de contato, devolvendo o paciente à fila."""
     nr = str(nr_atendimento).strip()
     if not nr:
         return jsonify({'success': False, 'error': 'nr_atendimento obrigatorio'}), 400
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM sentir_agir_precaucao_contato WHERE nr_atendimento = %s", (nr,)
-        )
-        removido = cursor.rowcount > 0
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        if not removido:
-            return jsonify({'success': False, 'error': 'Paciente não encontrado em precaução de contato'}), 404
-        return jsonify({'success': True, 'message': 'Precaução de contato removida. Paciente voltou à fila.'})
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            cursor.execute(
+                "DELETE FROM sentir_agir_precaucao_contato WHERE nr_atendimento = %s", (nr,)
+            )
+            removido = cursor.rowcount > 0
+            if not removido:
+                return jsonify({'success': False, 'error': 'Paciente não encontrado em precaução de contato'}), 404
+            return jsonify({'success': True, 'message': 'Precaução de contato removida. Paciente voltou à fila.'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -903,8 +849,9 @@ def remover_precaucao_contato(nr_atendimento):
 # API: RONDAS - CRUD
 # ============================================================
 
-@painel28_bp.route('/rondas', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/rondas', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def criar_ronda():
     try:
         dados = request.get_json()
@@ -922,72 +869,57 @@ def criar_ronda():
 
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        cursor.execute("SELECT id FROM sentir_agir_duplas WHERE id = %s AND ativo = TRUE", (dupla_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Dupla nao encontrada ou inativa'}), 404
+            cursor.execute("SELECT id FROM sentir_agir_duplas WHERE id = %s AND ativo = TRUE", (dupla_id,))
+            if not cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Dupla nao encontrada ou inativa'}), 404
 
-        cursor.execute("""
-            SELECT id FROM sentir_agir_rondas
-            WHERE dupla_id = %s AND data_ronda = %s AND status != 'cancelada'
-        """, (dupla_id, data_ronda))
-        ronda_existente = cursor.fetchone()
+            cursor.execute("""
+                SELECT id FROM sentir_agir_rondas
+                WHERE dupla_id = %s AND data_ronda = %s AND status != 'cancelada'
+            """, (dupla_id, data_ronda))
+            ronda_existente = cursor.fetchone()
 
-        if ronda_existente:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({
-                'success': True,
-                'data': {'id': ronda_existente['id'], 'existente': True},
-                'message': 'Ronda ja existe. Continuando...'
-            })
+            if ronda_existente:
+                return jsonify({
+                    'success': True,
+                    'data': {'id': ronda_existente['id'], 'existente': True},
+                    'message': 'Ronda ja existe. Continuando...'
+                })
 
-        cursor.execute("""
-            INSERT INTO sentir_agir_rondas (data_ronda, dupla_id, criado_por, status)
-            VALUES (%s, %s, %s, 'em_andamento') RETURNING id
-        """, (data_ronda, dupla_id, usuario))
-        ronda_id = cursor.fetchone()['id']
-        _registrar_log(cursor, 'ronda', ronda_id, 'criacao', usuario, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': {'id': ronda_id, 'existente': False}, 'message': 'Ronda criada'}), 201
+            cursor.execute("""
+                INSERT INTO sentir_agir_rondas (data_ronda, dupla_id, criado_por, status)
+                VALUES (%s, %s, %s, 'em_andamento') RETURNING id
+            """, (data_ronda, dupla_id, usuario))
+            ronda_id = cursor.fetchone()['id']
+            _registrar_log(cursor, 'ronda', ronda_id, 'criacao', usuario, ip_origem=ip)
+            return jsonify({'success': True, 'data': {'id': ronda_id, 'existente': False}, 'message': 'Ronda criada'}), 201
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/rondas/<int:ronda_id>/concluir', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/rondas/<int:ronda_id>/concluir', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def concluir_ronda(ronda_id):
     try:
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, status FROM sentir_agir_rondas WHERE id = %s", (ronda_id,))
-        ronda = cursor.fetchone()
-        if not ronda:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
-        if ronda['status'] == 'concluida':
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': True, 'message': 'Ronda ja esta concluida'})
-        cursor.execute("UPDATE sentir_agir_rondas SET status = 'concluida', atualizado_em = NOW() WHERE id = %s",
-                       (ronda_id,))
-        _registrar_log(cursor, 'ronda', ronda_id, 'alteracao_status', usuario,
-                       campo_alterado='status', valor_anterior=ronda['status'],
-                       valor_novo='concluida', ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Ronda concluida com sucesso'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, status FROM sentir_agir_rondas WHERE id = %s", (ronda_id,))
+            ronda = cursor.fetchone()
+            if not ronda:
+                return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
+            if ronda['status'] == 'concluida':
+                return jsonify({'success': True, 'message': 'Ronda ja esta concluida'})
+            cursor.execute("UPDATE sentir_agir_rondas SET status = 'concluida', atualizado_em = NOW() WHERE id = %s",
+                           (ronda_id,))
+            _registrar_log(cursor, 'ronda', ronda_id, 'alteracao_status', usuario,
+                           campo_alterado='status', valor_anterior=ronda['status'],
+                           valor_novo='concluida', ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Ronda concluida com sucesso'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -998,8 +930,9 @@ def concluir_ronda(ronda_id):
 # ============================================================
 
 
-@painel28_bp.route('/visitas', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/visitas', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def registrar_visita():
     try:
         dados = request.get_json()
@@ -1043,178 +976,166 @@ def registrar_visita():
 
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        # Verificar ronda
-        cursor.execute("SELECT id, status FROM sentir_agir_rondas WHERE id = %s", (ronda_id,))
-        ronda = cursor.fetchone()
-        if not ronda:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
-        if ronda['status'] == 'cancelada':
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Ronda esta cancelada'}), 400
+            # Verificar ronda
+            cursor.execute("SELECT id, status FROM sentir_agir_rondas WHERE id = %s", (ronda_id,))
+            ronda = cursor.fetchone()
+            if not ronda:
+                return jsonify({'success': False, 'error': 'Ronda nao encontrada'}), 404
+            if ronda['status'] == 'cancelada':
+                return jsonify({'success': False, 'error': 'Ronda esta cancelada'}), 400
 
-        # Verificar duplicidade: paciente já visitado hoje por outra ronda
-        if nr_atendimento and avaliacao_final != 'impossibilitada':
+            # Verificar duplicidade: paciente já visitado hoje por outra ronda
+            if nr_atendimento and avaliacao_final != 'impossibilitada':
+                cursor.execute("""
+                    SELECT v.id, d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
+                    FROM sentir_agir_visitas v
+                    JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                    JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+                    WHERE v.nr_atendimento = %s
+                      AND v.avaliacao_final != 'impossibilitada'
+                      AND v.criado_em >= CURRENT_DATE
+                      AND v.ronda_id != %s
+                    LIMIT 1
+                """, (nr_atendimento, ronda_id))
+                visita_duplicada = cursor.fetchone()
+                if visita_duplicada:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Este paciente ja foi visitado hoje pela dupla: %s. '
+                                 'Selecione o proximo paciente da fila.' % visita_duplicada['dupla_nome'],
+                        'duplicado': True
+                    }), 409
+
+            # Verificar setor
+            cursor.execute("SELECT id FROM sentir_agir_setores WHERE id = %s AND ativo = TRUE", (setor_id,))
+            if not cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Setor nao encontrado ou inativo'}), 404
+
+            # Inserir visita
             cursor.execute("""
-                SELECT v.id, d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
-                FROM sentir_agir_visitas v
-                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-                JOIN sentir_agir_duplas d ON d.id = r.dupla_id
-                WHERE v.nr_atendimento = %s
-                  AND v.avaliacao_final != 'impossibilitada'
-                  AND v.criado_em >= CURRENT_DATE
-                  AND v.ronda_id != %s
-                LIMIT 1
-            """, (nr_atendimento, ronda_id))
-            visita_duplicada = cursor.fetchone()
-            if visita_duplicada:
-                cursor.close()
-                release_connection(conn)
-                return jsonify({
-                    'success': False,
-                    'error': 'Este paciente ja foi visitado hoje pela dupla: %s. '
-                             'Selecione o proximo paciente da fila.' % visita_duplicada['dupla_nome'],
-                    'duplicado': True
-                }), 409
-
-        # Verificar setor
-        cursor.execute("SELECT id FROM sentir_agir_setores WHERE id = %s AND ativo = TRUE", (setor_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Setor nao encontrado ou inativo'}), 404
-
-        # Inserir visita
-        cursor.execute("""
-            INSERT INTO sentir_agir_visitas
-                (ronda_id, setor_id, leito, nr_atendimento,
-                 nm_paciente, setor_ocupacao, qt_dias_internacao,
-                 observacoes, avaliacao_final, status_tratativa)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'sem_pendencia')
-            RETURNING id
-        """, (ronda_id, setor_id, leito, nr_atendimento,
-              nm_paciente, setor_ocupacao, qt_dias_internacao,
-              observacoes, avaliacao_final))
-        visita_id = cursor.fetchone()['id']
-
-        # Pré-buscar critico_quando dos itens desta visita
-        item_ids = [av['item_id'] for av in avaliacoes if av.get('item_id')]
-        critico_quando_map = {}
-        if item_ids:
-            cursor.execute("""
-                SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
-                       COALESCE(critico_quando, 'nao') AS critico_quando,
-                       COALESCE(gera_critico, TRUE) AS gera_critico
-                FROM sentir_agir_itens WHERE id = ANY(%s)
-            """, (item_ids,))
-            for row in cursor.fetchall():
-                critico_quando_map[row['id']] = row
-
-        # Inserir avaliações e detectar items críticos
-        avaliacoes_criticas = []  # lista de (avaliacao_id, item_id, obs_item)
-
-        for av in avaliacoes:
-            cursor.execute("""
-                INSERT INTO sentir_agir_avaliacoes (visita_id, item_id, resultado)
-                VALUES (%s, %s, %s)
+                INSERT INTO sentir_agir_visitas
+                    (ronda_id, setor_id, leito, nr_atendimento,
+                     nm_paciente, setor_ocupacao, qt_dias_internacao,
+                     observacoes, avaliacao_final, status_tratativa)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'sem_pendencia')
                 RETURNING id
-            """, (visita_id, av['item_id'], av['resultado']))
-            avaliacao_id = cursor.fetchone()['id']
+            """, (ronda_id, setor_id, leito, nr_atendimento,
+                  nm_paciente, setor_ocupacao, qt_dias_internacao,
+                  observacoes, avaliacao_final))
+            visita_id = cursor.fetchone()['id']
 
-            # Detectar se é crítico respeitando critico_quando e gera_critico por item
-            resultado = av['resultado']
-            item_cfg = critico_quando_map.get(av['item_id'], {})
-            eh_critico = (
-                    item_cfg.get('gera_critico', True) and (
-                        resultado == 'critico' or
-                        (item_cfg.get('tipo') == 'sim_nao' and resultado == item_cfg.get('critico_quando', 'nao'))
-                    )
-            )
-            if eh_critico:
-                obs_item = (av.get('obs_item') or '').strip() or None
-                avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
-
-        # Verificar se criação automática está ativa
-        auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
-        tratativas_criadas = 0
-
-        if auto_criar == 'true' and avaliacoes_criticas:
-            for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
-                # Buscar dados do item e categoria
+            # Pré-buscar critico_quando dos itens desta visita
+            item_ids = [av['item_id'] for av in avaliacoes if av.get('item_id')]
+            critico_quando_map = {}
+            if item_ids:
                 cursor.execute("""
-                    SELECT i.id AS item_id, i.descricao AS item_descricao,
-                           c.id AS categoria_id, c.nome AS categoria_nome
-                    FROM sentir_agir_itens i
-                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                    WHERE i.id = %s
-                """, (item_id,))
-                item_info = cursor.fetchone()
+                    SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
+                           COALESCE(critico_quando, 'nao') AS critico_quando,
+                           COALESCE(gera_critico, TRUE) AS gera_critico
+                    FROM sentir_agir_itens WHERE id = ANY(%s)
+                """, (item_ids,))
+                for row in cursor.fetchall():
+                    critico_quando_map[row['id']] = row
 
-                if not item_info:
-                    continue
+            # Inserir avaliações e detectar items críticos
+            avaliacoes_criticas = []  # lista de (avaliacao_id, item_id, obs_item)
 
-                # Auto-atribuir responsavel: categoria + setor (logica de prioridade)
-                responsavel_id = _encontrar_responsavel_auto(cursor, item_info['categoria_id'], setor_id)
-
-                # Montar descricao do problema — prioriza obs específica do item
-                desc = 'Item critico: ' + item_info['item_descricao']
-                desc += ' | Categoria: ' + item_info['categoria_nome']
-                desc += ' | Paciente: ' + (nm_paciente or 'N/I')
-                desc += ' | Leito: ' + leito
-                if obs_item:
-                    desc += ' | Observacao do item: ' + obs_item
-                elif observacoes:
-                    desc += ' | Observacao da visita: ' + observacoes
-
-                # Criar tratativa
+            for av in avaliacoes:
                 cursor.execute("""
-                    INSERT INTO sentir_agir_tratativas
-                        (visita_id, avaliacao_id, item_id, categoria_id,
-                         responsavel_id, descricao_problema, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'pendente')
-                """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'],
-                      responsavel_id, desc))
-                tratativas_criadas += 1
+                    INSERT INTO sentir_agir_avaliacoes (visita_id, item_id, resultado)
+                    VALUES (%s, %s, %s)
+                    RETURNING id
+                """, (visita_id, av['item_id'], av['resultado']))
+                avaliacao_id = cursor.fetchone()['id']
 
-            # Atualizar status_tratativa da visita para 'pendente'
-            cursor.execute("""
-                UPDATE sentir_agir_visitas
-                SET status_tratativa = 'pendente'
-                WHERE id = %s
-            """, (visita_id,))
+                # Detectar se é crítico respeitando critico_quando e gera_critico por item
+                resultado = av['resultado']
+                item_cfg = critico_quando_map.get(av['item_id'], {})
+                eh_critico = (
+                        item_cfg.get('gera_critico', True) and (
+                            resultado == 'critico' or
+                            (item_cfg.get('tipo') == 'sim_nao' and resultado == item_cfg.get('critico_quando', 'nao'))
+                        )
+                )
+                if eh_critico:
+                    obs_item = (av.get('obs_item') or '').strip() or None
+                    avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
 
-        _registrar_log(cursor, 'visita', visita_id, 'criacao', usuario, ip_origem=ip)
+            # Verificar se criação automática está ativa
+            auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
+            tratativas_criadas = 0
 
-        if tratativas_criadas > 0:
-            _registrar_log(
-                cursor, 'visita', visita_id, 'tratativas_criadas', usuario,
-                valor_novo=str(tratativas_criadas), ip_origem=ip
-            )
+            if auto_criar == 'true' and avaliacoes_criticas:
+                for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
+                    # Buscar dados do item e categoria
+                    cursor.execute("""
+                        SELECT i.id AS item_id, i.descricao AS item_descricao,
+                               c.id AS categoria_id, c.nome AS categoria_nome
+                        FROM sentir_agir_itens i
+                        JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                        WHERE i.id = %s
+                    """, (item_id,))
+                    item_info = cursor.fetchone()
 
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
+                    if not item_info:
+                        continue
 
-        if avaliacao_final == 'impossibilitada':
-            msg = 'Visita impossibilitada registrada. Paciente reposicionado na fila.'
-        else:
-            msg = 'Visita registrada'
-        if tratativas_criadas > 0:
-            msg += '. %d tratativa(s) criada(s) para itens criticos.' % tratativas_criadas
+                    # Auto-atribuir responsavel: categoria + setor (logica de prioridade)
+                    responsavel_id = _encontrar_responsavel_auto(cursor, item_info['categoria_id'], setor_id)
 
-        return jsonify({
-            'success': True,
-            'data': {
-                'id': visita_id,
-                'tratativas_criadas': tratativas_criadas
-            },
-            'message': msg
-        }), 201
+                    # Montar descricao do problema — prioriza obs específica do item
+                    desc = 'Item critico: ' + item_info['item_descricao']
+                    desc += ' | Categoria: ' + item_info['categoria_nome']
+                    desc += ' | Paciente: ' + (nm_paciente or 'N/I')
+                    desc += ' | Leito: ' + leito
+                    if obs_item:
+                        desc += ' | Observacao do item: ' + obs_item
+                    elif observacoes:
+                        desc += ' | Observacao da visita: ' + observacoes
+
+                    # Criar tratativa
+                    cursor.execute("""
+                        INSERT INTO sentir_agir_tratativas
+                            (visita_id, avaliacao_id, item_id, categoria_id,
+                             responsavel_id, descricao_problema, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'pendente')
+                    """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'],
+                          responsavel_id, desc))
+                    tratativas_criadas += 1
+
+                # Atualizar status_tratativa da visita para 'pendente'
+                cursor.execute("""
+                    UPDATE sentir_agir_visitas
+                    SET status_tratativa = 'pendente'
+                    WHERE id = %s
+                """, (visita_id,))
+
+            _registrar_log(cursor, 'visita', visita_id, 'criacao', usuario, ip_origem=ip)
+
+            if tratativas_criadas > 0:
+                _registrar_log(
+                    cursor, 'visita', visita_id, 'tratativas_criadas', usuario,
+                    valor_novo=str(tratativas_criadas), ip_origem=ip
+                )
+
+
+            if avaliacao_final == 'impossibilitada':
+                msg = 'Visita impossibilitada registrada. Paciente reposicionado na fila.'
+            else:
+                msg = 'Visita registrada'
+            if tratativas_criadas > 0:
+                msg += '. %d tratativa(s) criada(s) para itens criticos.' % tratativas_criadas
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'id': visita_id,
+                    'tratativas_criadas': tratativas_criadas
+                },
+                'message': msg
+            }), 201
 
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
@@ -1225,8 +1146,9 @@ def registrar_visita():
 # API: IMAGENS - UPLOAD / SERVIR / DELETAR
 # ============================================================
 
-@painel28_bp.route('/imagens', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/imagens', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def upload_imagem():
     try:
         visita_id = request.form.get('visita_id')
@@ -1241,123 +1163,102 @@ def upload_imagem():
 
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        cursor.execute("SELECT id FROM sentir_agir_visitas WHERE id = %s", (visita_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
+            cursor.execute("SELECT id FROM sentir_agir_visitas WHERE id = %s", (visita_id,))
+            if not cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
-        max_imagens = int(_get_config(cursor, 'max_imagens_por_visita', '5'))
-        cursor.execute("SELECT COUNT(*) as total FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
-        if cursor.fetchone()['total'] >= max_imagens:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Limite de %d imagens atingido' % max_imagens}), 400
+            max_imagens = int(_get_config(cursor, 'max_imagens_por_visita', '5'))
+            cursor.execute("SELECT COUNT(*) as total FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
+            if cursor.fetchone()['total'] >= max_imagens:
+                return jsonify({'success': False, 'error': 'Limite de %d imagens atingido' % max_imagens}), 400
 
-        tipos_permitidos = _get_config(cursor, 'tipos_imagem_permitidos', 'image/jpeg,image/png,image/webp')
-        tipos_lista = [t.strip() for t in tipos_permitidos.split(',')]
-        tipo_mime = arquivo.content_type or ''
-        if tipo_mime not in tipos_lista:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Tipo nao permitido. Aceitos: %s' % tipos_permitidos}), 400
+            tipos_permitidos = _get_config(cursor, 'tipos_imagem_permitidos', 'image/jpeg,image/png,image/webp')
+            tipos_lista = [t.strip() for t in tipos_permitidos.split(',')]
+            tipo_mime = arquivo.content_type or ''
+            if tipo_mime not in tipos_lista:
+                return jsonify({'success': False, 'error': 'Tipo nao permitido. Aceitos: %s' % tipos_permitidos}), 400
 
-        max_mb = float(_get_config(cursor, 'tamanho_max_imagem_mb', '10'))
-        arquivo.seek(0, 2)
-        tamanho_bytes = arquivo.tell()
-        arquivo.seek(0)
-        if tamanho_bytes > max_mb * 1024 * 1024:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Arquivo muito grande. Max: %.0f MB' % max_mb}), 400
+            max_mb = float(_get_config(cursor, 'tamanho_max_imagem_mb', '10'))
+            arquivo.seek(0, 2)
+            tamanho_bytes = arquivo.tell()
+            arquivo.seek(0)
+            if tamanho_bytes > max_mb * 1024 * 1024:
+                return jsonify({'success': False, 'error': 'Arquivo muito grande. Max: %.0f MB' % max_mb}), 400
 
-        extensao = os.path.splitext(arquivo.filename)[1].lower() or '.jpg'
-        nome_unico = '%s_%s%s' % (datetime.now().strftime('%Y%m%d_%H%M%S'), uuid.uuid4().hex[:8], extensao)
+            extensao = os.path.splitext(arquivo.filename)[1].lower() or '.jpg'
+            nome_unico = '%s_%s%s' % (datetime.now().strftime('%Y%m%d_%H%M%S'), uuid.uuid4().hex[:8], extensao)
 
-        caminho_base = _get_config(cursor, 'caminho_imagens',
-                                   os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
-        subpasta = datetime.now().strftime('%Y/%m')
-        caminho_completo = os.path.join(caminho_base, subpasta)
-        os.makedirs(caminho_completo, exist_ok=True)
+            caminho_base = _get_config(cursor, 'caminho_imagens',
+                                       os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
+            subpasta = datetime.now().strftime('%Y/%m')
+            caminho_completo = os.path.join(caminho_base, subpasta)
+            os.makedirs(caminho_completo, exist_ok=True)
 
-        caminho_arquivo = os.path.join(caminho_completo, nome_unico)
-        arquivo.save(caminho_arquivo)
-        caminho_relativo = os.path.join(subpasta, nome_unico)
+            caminho_arquivo = os.path.join(caminho_completo, nome_unico)
+            arquivo.save(caminho_arquivo)
+            caminho_relativo = os.path.join(subpasta, nome_unico)
 
-        cursor.execute("""
-            INSERT INTO sentir_agir_imagens (visita_id, caminho_arquivo, nome_original, descricao, tamanho_bytes, tipo_mime)
-            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-        """, (visita_id, caminho_relativo, arquivo.filename, descricao, tamanho_bytes, tipo_mime))
-        imagem_id = cursor.fetchone()['id']
-        _registrar_log(cursor, 'imagem', imagem_id, 'criacao', usuario, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify(
-            {'success': True, 'data': {'id': imagem_id, 'caminho': caminho_relativo}, 'message': 'Imagem enviada'}), 201
+            cursor.execute("""
+                INSERT INTO sentir_agir_imagens (visita_id, caminho_arquivo, nome_original, descricao, tamanho_bytes, tipo_mime)
+                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+            """, (visita_id, caminho_relativo, arquivo.filename, descricao, tamanho_bytes, tipo_mime))
+            imagem_id = cursor.fetchone()['id']
+            _registrar_log(cursor, 'imagem', imagem_id, 'criacao', usuario, ip_origem=ip)
+            return jsonify(
+                {'success': True, 'data': {'id': imagem_id, 'caminho': caminho_relativo}, 'message': 'Imagem enviada'}), 201
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/imagens/<int:imagem_id>', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/imagens/<int:imagem_id>', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def servir_imagem(imagem_id):
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT caminho_arquivo, tipo_mime FROM sentir_agir_imagens WHERE id = %s", (imagem_id,))
-        imagem = cursor.fetchone()
-        if not imagem:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Imagem nao encontrada'}), 404
-        caminho_base = _get_config(cursor, 'caminho_imagens',
-                                   os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
-        cursor.close()
-        release_connection(conn)
-        caminho_completo = os.path.join(caminho_base, imagem['caminho_arquivo'])
-        return send_from_directory(os.path.dirname(caminho_completo), os.path.basename(caminho_completo),
-                                   mimetype=imagem['tipo_mime'])
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT caminho_arquivo, tipo_mime FROM sentir_agir_imagens WHERE id = %s", (imagem_id,))
+            imagem = cursor.fetchone()
+            if not imagem:
+                return jsonify({'success': False, 'error': 'Imagem nao encontrada'}), 404
+            caminho_base = _get_config(cursor, 'caminho_imagens',
+                                       os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
+            caminho_completo = os.path.join(caminho_base, imagem['caminho_arquivo'])
+            return send_from_directory(os.path.dirname(caminho_completo), os.path.basename(caminho_completo),
+                                       mimetype=imagem['tipo_mime'])
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/imagens/<int:imagem_id>', methods=['DELETE'])
+@painel28_bp.route('/api/paineis/painel28/imagens/<int:imagem_id>', methods=['DELETE'])
 @login_required
+@panel_permission_required('painel28')
 def deletar_imagem(imagem_id):
     try:
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, caminho_arquivo, nome_original FROM sentir_agir_imagens WHERE id = %s", (imagem_id,))
-        imagem = cursor.fetchone()
-        if not imagem:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Imagem nao encontrada'}), 404
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, caminho_arquivo, nome_original FROM sentir_agir_imagens WHERE id = %s", (imagem_id,))
+            imagem = cursor.fetchone()
+            if not imagem:
+                return jsonify({'success': False, 'error': 'Imagem nao encontrada'}), 404
 
-        caminho_base = _get_config(cursor, 'caminho_imagens',
-                                   os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
-        caminho_completo = os.path.join(caminho_base, imagem['caminho_arquivo'])
-        try:
-            if os.path.exists(caminho_completo):
-                os.remove(caminho_completo)
-        except Exception as e_file:
-            print('Aviso: nao foi possivel remover arquivo: %s' % str(e_file))
+            caminho_base = _get_config(cursor, 'caminho_imagens',
+                                       os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
+            caminho_completo = os.path.join(caminho_base, imagem['caminho_arquivo'])
+            try:
+                if os.path.exists(caminho_completo):
+                    os.remove(caminho_completo)
+            except Exception as e_file:
+                print('Aviso: nao foi possivel remover arquivo: %s' % str(e_file))
 
-        cursor.execute("DELETE FROM sentir_agir_imagens WHERE id = %s", (imagem_id,))
-        _registrar_log(cursor, 'imagem', imagem_id, 'exclusao', usuario,
-                       valor_anterior=imagem['nome_original'], ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Imagem removida'})
+            cursor.execute("DELETE FROM sentir_agir_imagens WHERE id = %s", (imagem_id,))
+            _registrar_log(cursor, 'imagem', imagem_id, 'exclusao', usuario,
+                           valor_anterior=imagem['nome_original'], ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Imagem removida'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -1367,35 +1268,33 @@ def deletar_imagem(imagem_id):
 # API: VISITAS DE UMA RONDA (resumo)
 # ============================================================
 
-@painel28_bp.route('/rondas/<int:ronda_id>/visitas', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/rondas/<int:ronda_id>/visitas', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def listar_visitas_ronda(ronda_id):
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT v.id, v.leito, v.nr_atendimento, v.nm_paciente,
-                   v.avaliacao_final, v.observacoes, v.criado_em,
-                   s.nome AS setor_nome, s.sigla AS setor_sigla,
-                   (SELECT COUNT(*) FROM sentir_agir_avaliacoes a WHERE a.visita_id = v.id AND a.resultado = 'critico') AS qtd_critico,
-                   (SELECT COUNT(*) FROM sentir_agir_avaliacoes a WHERE a.visita_id = v.id AND a.resultado = 'atencao') AS qtd_atencao,
-                   (SELECT COUNT(*) FROM sentir_agir_avaliacoes a WHERE a.visita_id = v.id AND a.resultado = 'adequado') AS qtd_adequado,
-                   (SELECT COUNT(*) FROM sentir_agir_imagens i WHERE i.visita_id = v.id) AS qtd_imagens
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_setores s ON s.id = v.setor_id
-            WHERE v.ronda_id = %s ORDER BY v.criado_em DESC
-        """, (ronda_id,))
-        visitas = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT v.id, v.leito, v.nr_atendimento, v.nm_paciente,
+                       v.avaliacao_final, v.observacoes, v.criado_em,
+                       s.nome AS setor_nome, s.sigla AS setor_sigla,
+                       (SELECT COUNT(*) FROM sentir_agir_avaliacoes a WHERE a.visita_id = v.id AND a.resultado = 'critico') AS qtd_critico,
+                       (SELECT COUNT(*) FROM sentir_agir_avaliacoes a WHERE a.visita_id = v.id AND a.resultado = 'atencao') AS qtd_atencao,
+                       (SELECT COUNT(*) FROM sentir_agir_avaliacoes a WHERE a.visita_id = v.id AND a.resultado = 'adequado') AS qtd_adequado,
+                       (SELECT COUNT(*) FROM sentir_agir_imagens i WHERE i.visita_id = v.id) AS qtd_imagens
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_setores s ON s.id = v.setor_id
+                WHERE v.ronda_id = %s ORDER BY v.criado_em DESC
+            """, (ronda_id,))
+            visitas = cursor.fetchall()
 
-        resultado = []
-        for vis in visitas:
-            item = dict(vis)
-            if item.get('criado_em'):
-                item['criado_em'] = item['criado_em'].isoformat()
-            resultado.append(item)
-        return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
+            resultado = []
+            for vis in visitas:
+                item = dict(vis)
+                if item.get('criado_em'):
+                    item['criado_em'] = item['criado_em'].isoformat()
+                resultado.append(item)
+            return jsonify({'success': True, 'data': resultado, 'total': len(resultado)})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -1405,89 +1304,85 @@ def listar_visitas_ronda(ronda_id):
 # API: DETALHE DE VISITA
 # ============================================================
 
-@painel28_bp.route('/visitas/<int:visita_id>', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/visitas/<int:visita_id>', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def detalhe_visita(visita_id):
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT v.id, v.ronda_id, v.setor_id, v.leito, v.nr_atendimento,
-                   v.nm_paciente, v.setor_ocupacao, v.qt_dias_internacao,
-                   v.observacoes, v.avaliacao_final, v.criado_em, v.atualizado_em,
-                   s.nome AS setor_nome, s.sigla AS setor_sigla,
-                   r.data_ronda,
-                   d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_setores s ON s.id = v.setor_id
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-            JOIN sentir_agir_duplas d ON d.id = r.dupla_id
-            WHERE v.id = %s
-        """, (visita_id,))
-        visita = cursor.fetchone()
-        if not visita:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT v.id, v.ronda_id, v.setor_id, v.leito, v.nr_atendimento,
+                       v.nm_paciente, v.setor_ocupacao, v.qt_dias_internacao,
+                       v.observacoes, v.avaliacao_final, v.criado_em, v.atualizado_em,
+                       s.nome AS setor_nome, s.sigla AS setor_sigla,
+                       r.data_ronda,
+                       d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_setores s ON s.id = v.setor_id
+                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+                WHERE v.id = %s
+            """, (visita_id,))
+            visita = cursor.fetchone()
+            if not visita:
+                return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
-        cursor.execute("""
-            SELECT a.id AS avaliacao_id, a.item_id, a.resultado,
-                   i.descricao AS item_descricao, i.ordem AS item_ordem,
-                   COALESCE(i.tipo, 'semaforo') AS item_tipo,
-                   c.id AS categoria_id, c.nome AS categoria_nome,
-                   c.icone AS categoria_icone, c.cor AS categoria_cor, c.ordem AS categoria_ordem
-            FROM sentir_agir_avaliacoes a
-            JOIN sentir_agir_itens i ON i.id = a.item_id
-            JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-            WHERE a.visita_id = %s ORDER BY c.ordem, i.ordem
-        """, (visita_id,))
-        avaliacoes = cursor.fetchall()
+            cursor.execute("""
+                SELECT a.id AS avaliacao_id, a.item_id, a.resultado,
+                       i.descricao AS item_descricao, i.ordem AS item_ordem,
+                       COALESCE(i.tipo, 'semaforo') AS item_tipo,
+                       c.id AS categoria_id, c.nome AS categoria_nome,
+                       c.icone AS categoria_icone, c.cor AS categoria_cor, c.ordem AS categoria_ordem
+                FROM sentir_agir_avaliacoes a
+                JOIN sentir_agir_itens i ON i.id = a.item_id
+                JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                WHERE a.visita_id = %s ORDER BY c.ordem, i.ordem
+            """, (visita_id,))
+            avaliacoes = cursor.fetchall()
 
-        cursor.execute("""
-            SELECT id, caminho_arquivo, nome_original, descricao, tamanho_bytes, tipo_mime, criado_em
-            FROM sentir_agir_imagens WHERE visita_id = %s ORDER BY criado_em
-        """, (visita_id,))
-        imagens = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
+            cursor.execute("""
+                SELECT id, caminho_arquivo, nome_original, descricao, tamanho_bytes, tipo_mime, criado_em
+                FROM sentir_agir_imagens WHERE visita_id = %s ORDER BY criado_em
+            """, (visita_id,))
+            imagens = cursor.fetchall()
 
-        visita_dict = dict(visita)
-        for campo in ('criado_em', 'atualizado_em', 'data_ronda'):
-            if visita_dict.get(campo):
-                val = visita_dict[campo]
-                visita_dict[campo] = val.isoformat() if hasattr(val, 'isoformat') else str(val)
+            visita_dict = dict(visita)
+            for campo in ('criado_em', 'atualizado_em', 'data_ronda'):
+                if visita_dict.get(campo):
+                    val = visita_dict[campo]
+                    visita_dict[campo] = val.isoformat() if hasattr(val, 'isoformat') else str(val)
 
-        imagens_lista = []
-        for img in imagens:
-            img_dict = dict(img)
-            if img_dict.get('criado_em'):
-                img_dict['criado_em'] = img_dict['criado_em'].isoformat()
-            img_dict['url'] = '/api/paineis/painel28/imagens/%d' % img_dict['id']
-            imagens_lista.append(img_dict)
+            imagens_lista = []
+            for img in imagens:
+                img_dict = dict(img)
+                if img_dict.get('criado_em'):
+                    img_dict['criado_em'] = img_dict['criado_em'].isoformat()
+                img_dict['url'] = '/api/paineis/painel28/imagens/%d' % img_dict['id']
+                imagens_lista.append(img_dict)
 
-        categorias_agrupadas = []
-        cat_atual = None
-        for av in avaliacoes:
-            if cat_atual is None or cat_atual['id'] != av['categoria_id']:
-                cat_atual = {
-                    'id': av['categoria_id'],
-                    'nome': av['categoria_nome'],
-                    'icone': av['categoria_icone'],
-                    'cor': av['categoria_cor'],
-                    'itens': []
-                }
-                categorias_agrupadas.append(cat_atual)
-            cat_atual['itens'].append({
-                'avaliacao_id': av['avaliacao_id'],
-                'item_id': av['item_id'],
-                'descricao': av['item_descricao'],
-                'resultado': av['resultado'],
-                'tipo': av['item_tipo']
-            })
+            categorias_agrupadas = []
+            cat_atual = None
+            for av in avaliacoes:
+                if cat_atual is None or cat_atual['id'] != av['categoria_id']:
+                    cat_atual = {
+                        'id': av['categoria_id'],
+                        'nome': av['categoria_nome'],
+                        'icone': av['categoria_icone'],
+                        'cor': av['categoria_cor'],
+                        'itens': []
+                    }
+                    categorias_agrupadas.append(cat_atual)
+                cat_atual['itens'].append({
+                    'avaliacao_id': av['avaliacao_id'],
+                    'item_id': av['item_id'],
+                    'descricao': av['item_descricao'],
+                    'resultado': av['resultado'],
+                    'tipo': av['item_tipo']
+                })
 
-        visita_dict['categorias'] = categorias_agrupadas
-        visita_dict['imagens'] = imagens_lista
-        return jsonify({'success': True, 'data': visita_dict})
+            visita_dict['categorias'] = categorias_agrupadas
+            visita_dict['imagens'] = imagens_lista
+            return jsonify({'success': True, 'data': visita_dict})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -1497,8 +1392,9 @@ def detalhe_visita(visita_id):
 # API: ATUALIZAR VISITA (somente rondas em_andamento)
 # ============================================================
 
-@painel28_bp.route('/visitas/<int:visita_id>', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/visitas/<int:visita_id>', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def atualizar_visita(visita_id):
     try:
         dados = request.get_json()
@@ -1528,135 +1424,127 @@ def atualizar_visita(visita_id):
 
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        cursor.execute("""
-            SELECT v.id, v.nm_paciente, v.ronda_id, v.setor_id, r.status
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-            WHERE v.id = %s
-        """, (visita_id,))
-        visita = cursor.fetchone()
-        if not visita:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
-        if visita['status'] != 'em_andamento':
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Ronda ja concluida, edicao nao permitida'}), 400
-
-        # Pré-buscar critico_quando dos itens desta visita
-        item_ids_upd = [av['item_id'] for av in avaliacoes if av.get('item_id')]
-        critico_quando_map_upd = {}
-        if item_ids_upd:
-            cursor.execute("""
-                SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
-                       COALESCE(critico_quando, 'nao') AS critico_quando,
-                       COALESCE(gera_critico, TRUE) AS gera_critico
-                FROM sentir_agir_itens WHERE id = ANY(%s)
-            """, (item_ids_upd,))
-            for row in cursor.fetchall():
-                critico_quando_map_upd[row['id']] = row
-
-        def _eh_critico_upd(av):
-            r = av.get('resultado')
-            cfg = critico_quando_map_upd.get(av['item_id'], {})
-            return (cfg.get('gera_critico', True) and (
-                    r == 'critico' or
-                    (cfg.get('tipo') == 'sim_nao' and r == cfg.get('critico_quando', 'nao'))
-                   ))
-
-        # Cancelar somente tratativas pendentes cujos itens não serão mais críticos
-        itens_criticos_novos = set(
-            av['item_id'] for av in avaliacoes if _eh_critico_upd(av)
-        )
-        cursor.execute("""
-            UPDATE sentir_agir_tratativas
-            SET status = 'cancelado'
-            WHERE visita_id = %s AND status = 'pendente'
-              AND item_id NOT IN %s
-        """, (visita_id, tuple(itens_criticos_novos) if itens_criticos_novos else (0,)))
-
-        # Remover somente avaliações (não carregam dedup, podem ser recriadas)
-        cursor.execute("DELETE FROM sentir_agir_avaliacoes WHERE visita_id = %s", (visita_id,))
-
-        # Atualizar visita
-        cursor.execute("""
-            UPDATE sentir_agir_visitas
-            SET avaliacao_final = %s, observacoes = %s, status_tratativa = 'sem_pendencia', atualizado_em = NOW()
-            WHERE id = %s
-        """, (avaliacao_final, observacoes, visita_id))
-
-        # Inserir novas avaliacoes e detectar criticos
-        avaliacoes_criticas = []
-        for av in avaliacoes:
-            cursor.execute("""
-                INSERT INTO sentir_agir_avaliacoes (visita_id, item_id, resultado)
-                VALUES (%s, %s, %s) RETURNING id
-            """, (visita_id, av['item_id'], av['resultado']))
-            avaliacao_id = cursor.fetchone()['id']
-            if _eh_critico_upd(av):
-                obs_item = (av.get('obs_item') or '').strip() or None
-                avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
-
-        auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
-        tratativas_criadas = 0
-
-        if auto_criar == 'true' and avaliacoes_criticas:
-            for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
-                # Não recriar se já existe tratativa ativa para este item nesta visita
-                cursor.execute("""
-                    SELECT id FROM sentir_agir_tratativas
-                    WHERE visita_id = %s AND item_id = %s
-                      AND status NOT IN ('cancelado')
-                    LIMIT 1
-                """, (visita_id, item_id))
-                if cursor.fetchone():
-                    continue  # Tratativa já existe, não duplicar/renotificar
-
-                cursor.execute("""
-                    SELECT i.id AS item_id, i.descricao AS item_descricao,
-                           c.id AS categoria_id, c.nome AS categoria_nome
-                    FROM sentir_agir_itens i
-                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                    WHERE i.id = %s
-                """, (item_id,))
-                item_info = cursor.fetchone()
-                if not item_info:
-                    continue
-                # Auto-atribuir responsavel: categoria + setor (logica de prioridade)
-                responsavel_id = _encontrar_responsavel_auto(cursor, item_info['categoria_id'], visita['setor_id'])
-
-                desc = 'Item critico: ' + item_info['item_descricao']
-                desc += ' | Categoria: ' + item_info['categoria_nome']
-                desc += ' | Paciente: ' + (visita['nm_paciente'] or 'N/I')
-                if obs_item:
-                    desc += ' | Observacao do item: ' + obs_item
-                elif observacoes:
-                    desc += ' | Observacao da visita: ' + observacoes
-
-                cursor.execute("""
-                    INSERT INTO sentir_agir_tratativas
-                        (visita_id, avaliacao_id, item_id, categoria_id, responsavel_id, descricao_problema, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'pendente')
-                """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'], responsavel_id, desc))
-                tratativas_criadas += 1
+        with get_db_cursor() as cursor:
 
             cursor.execute("""
-                UPDATE sentir_agir_visitas SET status_tratativa = 'pendente' WHERE id = %s
+                SELECT v.id, v.nm_paciente, v.ronda_id, v.setor_id, r.status
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                WHERE v.id = %s
             """, (visita_id,))
+            visita = cursor.fetchone()
+            if not visita:
+                return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
+            if visita['status'] != 'em_andamento':
+                return jsonify({'success': False, 'error': 'Ronda ja concluida, edicao nao permitida'}), 400
 
-        _registrar_log(cursor, 'visita', visita_id, 'edicao', usuario, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
+            # Pré-buscar critico_quando dos itens desta visita
+            item_ids_upd = [av['item_id'] for av in avaliacoes if av.get('item_id')]
+            critico_quando_map_upd = {}
+            if item_ids_upd:
+                cursor.execute("""
+                    SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
+                           COALESCE(critico_quando, 'nao') AS critico_quando,
+                           COALESCE(gera_critico, TRUE) AS gera_critico
+                    FROM sentir_agir_itens WHERE id = ANY(%s)
+                """, (item_ids_upd,))
+                for row in cursor.fetchall():
+                    critico_quando_map_upd[row['id']] = row
 
-        msg = 'Visita atualizada'
-        if tratativas_criadas > 0:
-            msg += '. %d nova(s) tratativa(s) criada(s).' % tratativas_criadas
-        return jsonify({'success': True, 'data': {'id': visita_id}, 'message': msg})
+            def _eh_critico_upd(av):
+                r = av.get('resultado')
+                cfg = critico_quando_map_upd.get(av['item_id'], {})
+                return (cfg.get('gera_critico', True) and (
+                        r == 'critico' or
+                        (cfg.get('tipo') == 'sim_nao' and r == cfg.get('critico_quando', 'nao'))
+                       ))
+
+            # Cancelar somente tratativas pendentes cujos itens não serão mais críticos
+            itens_criticos_novos = set(
+                av['item_id'] for av in avaliacoes if _eh_critico_upd(av)
+            )
+            cursor.execute("""
+                UPDATE sentir_agir_tratativas
+                SET status = 'cancelado'
+                WHERE visita_id = %s AND status = 'pendente'
+                  AND item_id NOT IN %s
+            """, (visita_id, tuple(itens_criticos_novos) if itens_criticos_novos else (0,)))
+
+            # Remover somente avaliações (não carregam dedup, podem ser recriadas)
+            cursor.execute("DELETE FROM sentir_agir_avaliacoes WHERE visita_id = %s", (visita_id,))
+
+            # Atualizar visita
+            cursor.execute("""
+                UPDATE sentir_agir_visitas
+                SET avaliacao_final = %s, observacoes = %s, status_tratativa = 'sem_pendencia', atualizado_em = NOW()
+                WHERE id = %s
+            """, (avaliacao_final, observacoes, visita_id))
+
+            # Inserir novas avaliacoes e detectar criticos
+            avaliacoes_criticas = []
+            for av in avaliacoes:
+                cursor.execute("""
+                    INSERT INTO sentir_agir_avaliacoes (visita_id, item_id, resultado)
+                    VALUES (%s, %s, %s) RETURNING id
+                """, (visita_id, av['item_id'], av['resultado']))
+                avaliacao_id = cursor.fetchone()['id']
+                if _eh_critico_upd(av):
+                    obs_item = (av.get('obs_item') or '').strip() or None
+                    avaliacoes_criticas.append((avaliacao_id, av['item_id'], obs_item))
+
+            auto_criar = _get_config(cursor, 'tratativa_auto_criar', 'true')
+            tratativas_criadas = 0
+
+            if auto_criar == 'true' and avaliacoes_criticas:
+                for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
+                    # Não recriar se já existe tratativa ativa para este item nesta visita
+                    cursor.execute("""
+                        SELECT id FROM sentir_agir_tratativas
+                        WHERE visita_id = %s AND item_id = %s
+                          AND status NOT IN ('cancelado')
+                        LIMIT 1
+                    """, (visita_id, item_id))
+                    if cursor.fetchone():
+                        continue  # Tratativa já existe, não duplicar/renotificar
+
+                    cursor.execute("""
+                        SELECT i.id AS item_id, i.descricao AS item_descricao,
+                               c.id AS categoria_id, c.nome AS categoria_nome
+                        FROM sentir_agir_itens i
+                        JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                        WHERE i.id = %s
+                    """, (item_id,))
+                    item_info = cursor.fetchone()
+                    if not item_info:
+                        continue
+                    # Auto-atribuir responsavel: categoria + setor (logica de prioridade)
+                    responsavel_id = _encontrar_responsavel_auto(cursor, item_info['categoria_id'], visita['setor_id'])
+
+                    desc = 'Item critico: ' + item_info['item_descricao']
+                    desc += ' | Categoria: ' + item_info['categoria_nome']
+                    desc += ' | Paciente: ' + (visita['nm_paciente'] or 'N/I')
+                    if obs_item:
+                        desc += ' | Observacao do item: ' + obs_item
+                    elif observacoes:
+                        desc += ' | Observacao da visita: ' + observacoes
+
+                    cursor.execute("""
+                        INSERT INTO sentir_agir_tratativas
+                            (visita_id, avaliacao_id, item_id, categoria_id, responsavel_id, descricao_problema, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'pendente')
+                    """, (visita_id, avaliacao_id, item_id, item_info['categoria_id'], responsavel_id, desc))
+                    tratativas_criadas += 1
+
+                cursor.execute("""
+                    UPDATE sentir_agir_visitas SET status_tratativa = 'pendente' WHERE id = %s
+                """, (visita_id,))
+
+            _registrar_log(cursor, 'visita', visita_id, 'edicao', usuario, ip_origem=ip)
+
+            msg = 'Visita atualizada'
+            if tratativas_criadas > 0:
+                msg += '. %d nova(s) tratativa(s) criada(s).' % tratativas_criadas
+            return jsonify({'success': True, 'data': {'id': visita_id}, 'message': msg})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -1666,58 +1554,53 @@ def atualizar_visita(visita_id):
 # API: RONDA EM ANDAMENTO POR DUPLA (cross-device cache)
 # ============================================================
 
-@painel28_bp.route('/duplas/<int:dupla_id>/ronda-em-andamento', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/duplas/<int:dupla_id>/ronda-em-andamento', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def ronda_em_andamento(dupla_id):
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        # Finaliza rondas esquecidas antes de consultar
-        _auto_finalizar_rondas_expiradas(cursor)
-        conn.commit()
+            # Finaliza rondas esquecidas antes de consultar
+            _auto_finalizar_rondas_expiradas(cursor)
 
-        cursor.execute("""
-            SELECT r.id, r.data_ronda, r.status, r.criado_em
-            FROM sentir_agir_rondas r
-            WHERE r.dupla_id = %s AND r.status = 'em_andamento'
-            ORDER BY r.criado_em DESC
-            LIMIT 1
-        """, (dupla_id,))
-        ronda = cursor.fetchone()
+            cursor.execute("""
+                SELECT r.id, r.data_ronda, r.status, r.criado_em
+                FROM sentir_agir_rondas r
+                WHERE r.dupla_id = %s AND r.status = 'em_andamento'
+                ORDER BY r.criado_em DESC
+                LIMIT 1
+            """, (dupla_id,))
+            ronda = cursor.fetchone()
 
-        if not ronda:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': True, 'data': None})
+            if not ronda:
+                return jsonify({'success': True, 'data': None})
 
-        cursor.execute("""
-            SELECT v.id, v.leito, v.nm_paciente, v.avaliacao_final, v.criado_em,
-                   s.nome AS setor_nome, s.sigla AS setor_sigla
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_setores s ON s.id = v.setor_id
-            WHERE v.ronda_id = %s ORDER BY v.criado_em ASC
-        """, (ronda['id'],))
-        visitas = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
+            cursor.execute("""
+                SELECT v.id, v.leito, v.nm_paciente, v.avaliacao_final, v.criado_em,
+                       s.nome AS setor_nome, s.sigla AS setor_sigla
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_setores s ON s.id = v.setor_id
+                WHERE v.ronda_id = %s ORDER BY v.criado_em ASC
+            """, (ronda['id'],))
+            visitas = cursor.fetchall()
 
-        ronda_dict = dict(ronda)
-        if ronda_dict.get('data_ronda'):
-            val = ronda_dict['data_ronda']
-            ronda_dict['data_ronda'] = val.isoformat() if hasattr(val, 'isoformat') else str(val)
-        if ronda_dict.get('criado_em'):
-            ronda_dict['criado_em'] = ronda_dict['criado_em'].isoformat()
+            ronda_dict = dict(ronda)
+            if ronda_dict.get('data_ronda'):
+                val = ronda_dict['data_ronda']
+                ronda_dict['data_ronda'] = val.isoformat() if hasattr(val, 'isoformat') else str(val)
+            if ronda_dict.get('criado_em'):
+                ronda_dict['criado_em'] = ronda_dict['criado_em'].isoformat()
 
-        visitas_lista = []
-        for v in visitas:
-            vd = dict(v)
-            if vd.get('criado_em'):
-                vd['criado_em'] = vd['criado_em'].isoformat()
-            visitas_lista.append(vd)
+            visitas_lista = []
+            for v in visitas:
+                vd = dict(v)
+                if vd.get('criado_em'):
+                    vd['criado_em'] = vd['criado_em'].isoformat()
+                visitas_lista.append(vd)
 
-        ronda_dict['visitas'] = visitas_lista
-        return jsonify({'success': True, 'data': ronda_dict})
+            ronda_dict['visitas'] = visitas_lista
+            return jsonify({'success': True, 'data': ronda_dict})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -1727,58 +1610,51 @@ def ronda_em_andamento(dupla_id):
 # API: EXCLUIR VISITA (somente rondas em_andamento)
 # ============================================================
 
-@painel28_bp.route('/visitas/<int:visita_id>', methods=['DELETE'])
+@painel28_bp.route('/api/paineis/painel28/visitas/<int:visita_id>', methods=['DELETE'])
 @login_required
+@panel_permission_required('painel28')
 def excluir_visita(visita_id):
     try:
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        cursor.execute("""
-            SELECT v.id, v.nm_paciente, v.leito, v.ronda_id, r.status
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-            WHERE v.id = %s
-        """, (visita_id,))
-        visita = cursor.fetchone()
+            cursor.execute("""
+                SELECT v.id, v.nm_paciente, v.leito, v.ronda_id, r.status
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                WHERE v.id = %s
+            """, (visita_id,))
+            visita = cursor.fetchone()
 
-        if not visita:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
+            if not visita:
+                return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
-        if visita['status'] != 'em_andamento':
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Nao e possivel excluir visitas de rondas ja concluidas'}), 400
+            if visita['status'] != 'em_andamento':
+                return jsonify({'success': False, 'error': 'Nao e possivel excluir visitas de rondas ja concluidas'}), 400
 
-        # Remover arquivos de imagem do disco
-        cursor.execute("SELECT id, caminho_arquivo FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
-        imagens = cursor.fetchall()
-        caminho_base = _get_config(cursor, 'caminho_imagens',
-                                   os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
-        for img in imagens:
-            try:
-                caminho_completo = os.path.join(caminho_base, img['caminho_arquivo'])
-                if os.path.exists(caminho_completo):
-                    os.remove(caminho_completo)
-            except Exception:
-                pass
+            # Remover arquivos de imagem do disco
+            cursor.execute("SELECT id, caminho_arquivo FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
+            imagens = cursor.fetchall()
+            caminho_base = _get_config(cursor, 'caminho_imagens',
+                                       os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
+            for img in imagens:
+                try:
+                    caminho_completo = os.path.join(caminho_base, img['caminho_arquivo'])
+                    if os.path.exists(caminho_completo):
+                        os.remove(caminho_completo)
+                except Exception:
+                    pass
 
-        cursor.execute("DELETE FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
-        cursor.execute("DELETE FROM sentir_agir_tratativas WHERE visita_id = %s", (visita_id,))
-        cursor.execute("DELETE FROM sentir_agir_avaliacoes WHERE visita_id = %s", (visita_id,))
-        cursor.execute("DELETE FROM sentir_agir_visitas WHERE id = %s", (visita_id,))
+            cursor.execute("DELETE FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
+            cursor.execute("DELETE FROM sentir_agir_tratativas WHERE visita_id = %s", (visita_id,))
+            cursor.execute("DELETE FROM sentir_agir_avaliacoes WHERE visita_id = %s", (visita_id,))
+            cursor.execute("DELETE FROM sentir_agir_visitas WHERE id = %s", (visita_id,))
 
-        _registrar_log(cursor, 'visita', visita_id, 'exclusao', usuario,
-                       valor_anterior='%s - %s' % (visita['nm_paciente'] or '', visita['leito']),
-                       ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Visita removida'})
+            _registrar_log(cursor, 'visita', visita_id, 'exclusao', usuario,
+                           valor_anterior='%s - %s' % (visita['nm_paciente'] or '', visita['leito']),
+                           ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Visita removida'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -1788,20 +1664,19 @@ def excluir_visita(visita_id):
 # CONFIGURAR FORMULÁRIO - PÁGINA ESTÁTICA
 # ============================================================
 
-@painel28_bp.route('/configurar-formulario', endpoint='configurar_formulario_html', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/configurar-formulario', endpoint='configurar_formulario_html', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def servir_configurar_formulario():
-    if not verificar_permissao_painel(session.get('usuario_id'), 'painel28'):
-        return jsonify({'error': 'Sem permissao para este painel'}), 403
     return send_from_directory(PAINEL_DIR, 'formulario_config.html')
 
 
-@painel28_bp.route('/main_config.js', endpoint='main_config_js', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/main_config.js', endpoint='main_config_js', methods=['GET'])
 def servir_main_config():
     return send_from_directory(PAINEL_DIR, 'main_config.js')
 
 
-@painel28_bp.route('/style_config.css', endpoint='style_config_css', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/style_config.css', endpoint='style_config_css', methods=['GET'])
 def servir_style_config():
     return send_from_directory(PAINEL_DIR, 'style_config.css')
 
@@ -1810,51 +1685,50 @@ def servir_style_config():
 # API: CATEGORIAS - CRUD COMPLETO
 # ============================================================
 
-@painel28_bp.route('/categorias', methods=['GET'])
+@painel28_bp.route('/api/paineis/painel28/categorias', methods=['GET'])
 @login_required
+@panel_permission_required('painel28')
 def listar_categorias():
     """Lista todas as categorias (incluindo inativas) com seus itens."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT id, nome, icone, cor, ordem, ativo, permite_nao_aplica
-            FROM sentir_agir_categorias ORDER BY ordem, nome
-        """)
-        categorias = cursor.fetchall()
-        cursor.execute("""
-            SELECT id, categoria_id, descricao, ordem, ativo,
-                   COALESCE(tipo, 'semaforo') AS tipo,
-                   COALESCE(critico_quando, 'nao') AS critico_quando,
-                   COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica,
-                   COALESCE(gera_critico, TRUE) AS gera_critico
-            FROM sentir_agir_itens ORDER BY ordem
-        """)
-        itens = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, nome, icone, cor, ordem, ativo, permite_nao_aplica
+                FROM sentir_agir_categorias ORDER BY ordem, nome
+            """)
+            categorias = cursor.fetchall()
+            cursor.execute("""
+                SELECT id, categoria_id, descricao, ordem, ativo,
+                       COALESCE(tipo, 'semaforo') AS tipo,
+                       COALESCE(critico_quando, 'nao') AS critico_quando,
+                       COALESCE(permite_nao_aplica, FALSE) AS permite_nao_aplica,
+                       COALESCE(gera_critico, TRUE) AS gera_critico
+                FROM sentir_agir_itens ORDER BY ordem
+            """)
+            itens = cursor.fetchall()
 
-        itens_por_cat = {}
-        for item in itens:
-            cid = item['categoria_id']
-            if cid not in itens_por_cat:
-                itens_por_cat[cid] = []
-            itens_por_cat[cid].append(dict(item))
+            itens_por_cat = {}
+            for item in itens:
+                cid = item['categoria_id']
+                if cid not in itens_por_cat:
+                    itens_por_cat[cid] = []
+                itens_por_cat[cid].append(dict(item))
 
-        resultado = []
-        for cat in categorias:
-            d = dict(cat)
-            d['itens'] = itens_por_cat.get(cat['id'], [])
-            resultado.append(d)
+            resultado = []
+            for cat in categorias:
+                d = dict(cat)
+                d['itens'] = itens_por_cat.get(cat['id'], [])
+                resultado.append(d)
 
-        return jsonify({'success': True, 'data': resultado})
+            return jsonify({'success': True, 'data': resultado})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/categorias', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/categorias', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def criar_categoria():
     try:
         dados = request.get_json()
@@ -1868,28 +1742,25 @@ def criar_categoria():
         permite_nao_aplica = bool(dados.get('permite_nao_aplica', True))
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS prox FROM sentir_agir_categorias")
-        prox_ordem = cursor.fetchone()['prox']
-        cursor.execute("""
-            INSERT INTO sentir_agir_categorias (nome, icone, cor, ordem, ativo, permite_nao_aplica)
-            VALUES (%s, %s, %s, %s, TRUE, %s) RETURNING id
-        """, (nome, icone, cor, prox_ordem, permite_nao_aplica))
-        cat_id = cursor.fetchone()['id']
-        _registrar_log(cursor, 'categoria', cat_id, 'criacao', usuario,
-                       valor_novo=nome, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': {'id': cat_id}, 'message': 'Categoria criada'}), 201
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS prox FROM sentir_agir_categorias")
+            prox_ordem = cursor.fetchone()['prox']
+            cursor.execute("""
+                INSERT INTO sentir_agir_categorias (nome, icone, cor, ordem, ativo, permite_nao_aplica)
+                VALUES (%s, %s, %s, %s, TRUE, %s) RETURNING id
+            """, (nome, icone, cor, prox_ordem, permite_nao_aplica))
+            cat_id = cursor.fetchone()['id']
+            _registrar_log(cursor, 'categoria', cat_id, 'criacao', usuario,
+                           valor_novo=nome, ip_origem=ip)
+            return jsonify({'success': True, 'data': {'id': cat_id}, 'message': 'Categoria criada'}), 201
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/categorias/<int:cat_id>', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/categorias/<int:cat_id>', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def editar_categoria(cat_id):
     try:
         dados = request.get_json()
@@ -1903,64 +1774,54 @@ def editar_categoria(cat_id):
         permite_nao_aplica = bool(dados.get('permite_nao_aplica', True))
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
-        cat = cursor.fetchone()
-        if not cat:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
-        cursor.execute("""
-            UPDATE sentir_agir_categorias
-            SET nome = %s, icone = %s, cor = %s, permite_nao_aplica = %s
-            WHERE id = %s
-        """, (nome, icone, cor, permite_nao_aplica, cat_id))
-        _registrar_log(cursor, 'categoria', cat_id, 'edicao', usuario,
-                       campo_alterado='nome', valor_anterior=cat['nome'],
-                       valor_novo=nome, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Categoria atualizada'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, nome FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
+            cat = cursor.fetchone()
+            if not cat:
+                return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+            cursor.execute("""
+                UPDATE sentir_agir_categorias
+                SET nome = %s, icone = %s, cor = %s, permite_nao_aplica = %s
+                WHERE id = %s
+            """, (nome, icone, cor, permite_nao_aplica, cat_id))
+            _registrar_log(cursor, 'categoria', cat_id, 'edicao', usuario,
+                           campo_alterado='nome', valor_anterior=cat['nome'],
+                           valor_novo=nome, ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Categoria atualizada'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/categorias/<int:cat_id>/toggle', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/categorias/<int:cat_id>/toggle', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def toggle_categoria(cat_id):
     try:
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, ativo FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
-        cat = cursor.fetchone()
-        if not cat:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
-        novo_status = not cat['ativo']
-        cursor.execute("""
-            UPDATE sentir_agir_categorias SET ativo = %s WHERE id = %s
-        """, (novo_status, cat_id))
-        _registrar_log(cursor, 'categoria', cat_id, 'alteracao_status', usuario,
-                       campo_alterado='ativo', valor_anterior=str(cat['ativo']),
-                       valor_novo=str(novo_status), ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True,
-                        'message': 'Categoria ativada' if novo_status else 'Categoria desativada'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, ativo FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
+            cat = cursor.fetchone()
+            if not cat:
+                return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+            novo_status = not cat['ativo']
+            cursor.execute("""
+                UPDATE sentir_agir_categorias SET ativo = %s WHERE id = %s
+            """, (novo_status, cat_id))
+            _registrar_log(cursor, 'categoria', cat_id, 'alteracao_status', usuario,
+                           campo_alterado='ativo', valor_anterior=str(cat['ativo']),
+                           valor_novo=str(novo_status), ip_origem=ip)
+            return jsonify({'success': True,
+                            'message': 'Categoria ativada' if novo_status else 'Categoria desativada'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/categorias/<int:cat_id>/reordenar', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/categorias/<int:cat_id>/reordenar', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def reordenar_categoria(cat_id):
     """Recebe {'direcao': 'cima' | 'baixo'} e troca a ordem com a vizinha."""
     try:
@@ -1970,38 +1831,30 @@ def reordenar_categoria(cat_id):
             return jsonify({'success': False, 'error': 'Direcao invalida'}), 400
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, ordem FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
-        cat = cursor.fetchone()
-        if not cat:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
-        if direcao == 'cima':
-            cursor.execute("""
-                SELECT id, ordem FROM sentir_agir_categorias
-                WHERE ordem < %s ORDER BY ordem DESC LIMIT 1
-            """, (cat['ordem'],))
-        else:
-            cursor.execute("""
-                SELECT id, ordem FROM sentir_agir_categorias
-                WHERE ordem > %s ORDER BY ordem ASC LIMIT 1
-            """, (cat['ordem'],))
-        vizinha = cursor.fetchone()
-        if not vizinha:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Ja esta no limite'})
-        cursor.execute("UPDATE sentir_agir_categorias SET ordem = %s WHERE id = %s",
-                       (vizinha['ordem'], cat_id))
-        cursor.execute("UPDATE sentir_agir_categorias SET ordem = %s WHERE id = %s",
-                       (cat['ordem'], vizinha['id']))
-        _registrar_log(cursor, 'categoria', cat_id, 'reordenacao', usuario, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Reordenado'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, ordem FROM sentir_agir_categorias WHERE id = %s", (cat_id,))
+            cat = cursor.fetchone()
+            if not cat:
+                return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+            if direcao == 'cima':
+                cursor.execute("""
+                    SELECT id, ordem FROM sentir_agir_categorias
+                    WHERE ordem < %s ORDER BY ordem DESC LIMIT 1
+                """, (cat['ordem'],))
+            else:
+                cursor.execute("""
+                    SELECT id, ordem FROM sentir_agir_categorias
+                    WHERE ordem > %s ORDER BY ordem ASC LIMIT 1
+                """, (cat['ordem'],))
+            vizinha = cursor.fetchone()
+            if not vizinha:
+                return jsonify({'success': False, 'error': 'Ja esta no limite'})
+            cursor.execute("UPDATE sentir_agir_categorias SET ordem = %s WHERE id = %s",
+                           (vizinha['ordem'], cat_id))
+            cursor.execute("UPDATE sentir_agir_categorias SET ordem = %s WHERE id = %s",
+                           (cat['ordem'], vizinha['id']))
+            _registrar_log(cursor, 'categoria', cat_id, 'reordenacao', usuario, ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Reordenado'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -2011,8 +1864,9 @@ def reordenar_categoria(cat_id):
 # API: ITENS - CRUD COMPLETO
 # ============================================================
 
-@painel28_bp.route('/itens', methods=['POST'])
+@painel28_bp.route('/api/paineis/painel28/itens', methods=['POST'])
 @login_required
+@panel_permission_required('painel28')
 def criar_item():
     try:
         dados = request.get_json()
@@ -2032,36 +1886,31 @@ def criar_item():
         gera_critico = bool(dados.get('gera_critico', True))
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id FROM sentir_agir_categorias WHERE id = %s", (categoria_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
-        cursor.execute("""
-            SELECT COALESCE(MAX(ordem), 0) + 1 AS prox
-            FROM sentir_agir_itens WHERE categoria_id = %s
-        """, (categoria_id,))
-        prox_ordem = cursor.fetchone()['prox']
-        cursor.execute("""
-            INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, ordem, ativo)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id
-        """, (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, prox_ordem))
-        item_id = cursor.fetchone()['id']
-        _registrar_log(cursor, 'item', item_id, 'criacao', usuario,
-                       valor_novo=descricao, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': {'id': item_id}, 'message': 'Item criado'}), 201
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id FROM sentir_agir_categorias WHERE id = %s", (categoria_id,))
+            if not cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Categoria nao encontrada'}), 404
+            cursor.execute("""
+                SELECT COALESCE(MAX(ordem), 0) + 1 AS prox
+                FROM sentir_agir_itens WHERE categoria_id = %s
+            """, (categoria_id,))
+            prox_ordem = cursor.fetchone()['prox']
+            cursor.execute("""
+                INSERT INTO sentir_agir_itens (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, ordem, ativo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id
+            """, (categoria_id, descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, prox_ordem))
+            item_id = cursor.fetchone()['id']
+            _registrar_log(cursor, 'item', item_id, 'criacao', usuario,
+                           valor_novo=descricao, ip_origem=ip)
+            return jsonify({'success': True, 'data': {'id': item_id}, 'message': 'Item criado'}), 201
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/itens/<int:item_id>', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/itens/<int:item_id>', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def editar_item(item_id):
     try:
         dados = request.get_json()
@@ -2080,64 +1929,54 @@ def editar_item(item_id):
         gera_critico = bool(dados.get('gera_critico', True))
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, descricao FROM sentir_agir_itens WHERE id = %s", (item_id,))
-        item = cursor.fetchone()
-        if not item:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
-        cursor.execute("""
-            UPDATE sentir_agir_itens
-            SET descricao = %s, tipo = %s, critico_quando = %s, permite_nao_aplica = %s, gera_critico = %s
-            WHERE id = %s
-        """, (descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, item_id))
-        _registrar_log(cursor, 'item', item_id, 'edicao', usuario,
-                       campo_alterado='descricao', valor_anterior=item['descricao'],
-                       valor_novo=descricao, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Item atualizado'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, descricao FROM sentir_agir_itens WHERE id = %s", (item_id,))
+            item = cursor.fetchone()
+            if not item:
+                return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
+            cursor.execute("""
+                UPDATE sentir_agir_itens
+                SET descricao = %s, tipo = %s, critico_quando = %s, permite_nao_aplica = %s, gera_critico = %s
+                WHERE id = %s
+            """, (descricao, tipo, critico_quando, permite_nao_aplica, gera_critico, item_id))
+            _registrar_log(cursor, 'item', item_id, 'edicao', usuario,
+                           campo_alterado='descricao', valor_anterior=item['descricao'],
+                           valor_novo=descricao, ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Item atualizado'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/itens/<int:item_id>/toggle', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/itens/<int:item_id>/toggle', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def toggle_item(item_id):
     try:
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, ativo FROM sentir_agir_itens WHERE id = %s", (item_id,))
-        item = cursor.fetchone()
-        if not item:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
-        novo_status = not item['ativo']
-        cursor.execute("""
-            UPDATE sentir_agir_itens SET ativo = %s WHERE id = %s
-        """, (novo_status, item_id))
-        _registrar_log(cursor, 'item', item_id, 'alteracao_status', usuario,
-                       campo_alterado='ativo', valor_anterior=str(item['ativo']),
-                       valor_novo=str(novo_status), ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True,
-                        'message': 'Item ativado' if novo_status else 'Item desativado'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, ativo FROM sentir_agir_itens WHERE id = %s", (item_id,))
+            item = cursor.fetchone()
+            if not item:
+                return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
+            novo_status = not item['ativo']
+            cursor.execute("""
+                UPDATE sentir_agir_itens SET ativo = %s WHERE id = %s
+            """, (novo_status, item_id))
+            _registrar_log(cursor, 'item', item_id, 'alteracao_status', usuario,
+                           campo_alterado='ativo', valor_anterior=str(item['ativo']),
+                           valor_novo=str(novo_status), ip_origem=ip)
+            return jsonify({'success': True,
+                            'message': 'Item ativado' if novo_status else 'Item desativado'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
-@painel28_bp.route('/itens/<int:item_id>/reordenar', methods=['PUT'])
+@painel28_bp.route('/api/paineis/painel28/itens/<int:item_id>/reordenar', methods=['PUT'])
 @login_required
+@panel_permission_required('painel28')
 def reordenar_item(item_id):
     """Recebe {'direcao': 'cima' | 'baixo'} e troca ordem com vizinho na mesma categoria."""
     try:
@@ -2147,39 +1986,31 @@ def reordenar_item(item_id):
             return jsonify({'success': False, 'error': 'Direcao invalida'}), 400
         usuario = _get_usuario()
         ip = _get_ip()
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, ordem, categoria_id FROM sentir_agir_itens WHERE id = %s",
-                       (item_id,))
-        item = cursor.fetchone()
-        if not item:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
-        if direcao == 'cima':
-            cursor.execute("""
-                SELECT id, ordem FROM sentir_agir_itens
-                WHERE categoria_id = %s AND ordem < %s ORDER BY ordem DESC LIMIT 1
-            """, (item['categoria_id'], item['ordem']))
-        else:
-            cursor.execute("""
-                SELECT id, ordem FROM sentir_agir_itens
-                WHERE categoria_id = %s AND ordem > %s ORDER BY ordem ASC LIMIT 1
-            """, (item['categoria_id'], item['ordem']))
-        vizinho = cursor.fetchone()
-        if not vizinho:
-            cursor.close()
-            release_connection(conn)
-            return jsonify({'success': False, 'error': 'Ja esta no limite'})
-        cursor.execute("UPDATE sentir_agir_itens SET ordem = %s WHERE id = %s",
-                       (vizinho['ordem'], item_id))
-        cursor.execute("UPDATE sentir_agir_itens SET ordem = %s WHERE id = %s",
-                       (item['ordem'], vizinho['id']))
-        _registrar_log(cursor, 'item', item_id, 'reordenacao', usuario, ip_origem=ip)
-        conn.commit()
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'message': 'Reordenado'})
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, ordem, categoria_id FROM sentir_agir_itens WHERE id = %s",
+                           (item_id,))
+            item = cursor.fetchone()
+            if not item:
+                return jsonify({'success': False, 'error': 'Item nao encontrado'}), 404
+            if direcao == 'cima':
+                cursor.execute("""
+                    SELECT id, ordem FROM sentir_agir_itens
+                    WHERE categoria_id = %s AND ordem < %s ORDER BY ordem DESC LIMIT 1
+                """, (item['categoria_id'], item['ordem']))
+            else:
+                cursor.execute("""
+                    SELECT id, ordem FROM sentir_agir_itens
+                    WHERE categoria_id = %s AND ordem > %s ORDER BY ordem ASC LIMIT 1
+                """, (item['categoria_id'], item['ordem']))
+            vizinho = cursor.fetchone()
+            if not vizinho:
+                return jsonify({'success': False, 'error': 'Ja esta no limite'})
+            cursor.execute("UPDATE sentir_agir_itens SET ordem = %s WHERE id = %s",
+                           (vizinho['ordem'], item_id))
+            cursor.execute("UPDATE sentir_agir_itens SET ordem = %s WHERE id = %s",
+                           (item['ordem'], vizinho['id']))
+            _registrar_log(cursor, 'item', item_id, 'reordenacao', usuario, ip_origem=ip)
+            return jsonify({'success': True, 'message': 'Reordenado'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

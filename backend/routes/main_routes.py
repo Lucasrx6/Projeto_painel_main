@@ -97,12 +97,10 @@ def painel(painel_nome):
 
     if not is_admin:
         tem_acesso = verificar_permissao_painel(usuario_id, painel_nome)
-        # Hub de Serviços: permite acesso se usuário tem qualquer sub-painel do hub.
-        # Usa cache de sessão — não requer permissão explícita a painel28.
+        # Hub de Serviços: acessível a qualquer usuário autenticado.
+        # A filtragem dos serviços visíveis é feita dentro do próprio hub.
         if not tem_acesso and painel_nome == 'painel28':
-            _HUB_PAINEIS = frozenset(['painel34', 'painel35', 'painel36'])
-            permissoes_session = set(session.get('permissoes') or [])
-            tem_acesso = bool(permissoes_session & _HUB_PAINEIS)
+            tem_acesso = True
         if not tem_acesso:
             current_app.logger.warning(f'Acesso negado ao painel {painel_nome}: {session.get("usuario")}')
             return send_from_directory('frontend', 'acesso-negado.html')

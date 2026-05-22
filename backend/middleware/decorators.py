@@ -127,6 +127,9 @@ def panel_permission_required(panel_name):
                 current_app.logger.warning(
                     f'Acesso negado ao {panel_name}: {session.get("usuario")}'
                 )
+                if _e_requisicao_de_pagina():
+                    from flask import send_from_directory
+                    return send_from_directory('frontend', 'acesso-negado.html')
                 return jsonify({
                     'success': False,
                     'error': f'Sem permissão para acessar {panel_name}'

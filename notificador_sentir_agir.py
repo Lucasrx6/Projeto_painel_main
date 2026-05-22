@@ -32,9 +32,9 @@ from psycopg2.extras import RealDictCursor
 import apprise
 import schedule
 import time
-import logging
-import logging.handlers
+import threading
 import os
+from backend.notificador_utils import setup_notificador_logging, get_db_config, get_smtp_config
 import sys
 import json
 from datetime import datetime
@@ -48,51 +48,22 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 # CONFIGURACAO DE LOGGING
 # =========================================================
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
-
-logger = logging.getLogger('notificador_sentir_agir')
-logger.setLevel(logging.INFO)
-
-file_handler = logging.handlers.RotatingFileHandler(
-    os.path.join(LOG_DIR, 'notificador_sentir_agir.log'),
-    maxBytes=5 * 1024 * 1024,
-    backupCount=5,
-    encoding='utf-8'
-)
-file_handler.setFormatter(logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-))
-logger.addHandler(file_handler)
-
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setFormatter(logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%H:%M:%S'
-))
-logger.addHandler(console_handler)
+logger = setup_notificador_logging('notificador_sentir_agir', 'notificador_sentir_agir.log')
 
 
 # =========================================================
 # CONFIGURACOES (sem credenciais hardcoded)
 # =========================================================
 
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'postgres'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'port': os.getenv('DB_PORT', '5432')
-}
+DB_CONFIG = get_db_config()
 
 # SMTP - lidos exclusivamente do .env
-SMTP_HOST = os.getenv('SMTP_HOST', '')
-SMTP_PORT = os.getenv('SMTP_PORT', '587')
-SMTP_USER = os.getenv('SMTP_USER', '')
-SMTP_PASS = os.getenv('SMTP_PASS', '')
-SMTP_FROM = os.getenv('SMTP_FROM', '')
+_smtp = get_smtp_config()
+SMTP_HOST = _smtp['host']
+SMTP_PORT = _smtp['port']
+SMTP_USER = _smtp['user']
+SMTP_PASS = _smtp['password']
+SMTP_FROM = _smtp['sender']
 
 # Intervalo de verificacao
 INTERVALO_VERIFICACAO = int(os.getenv('NOTIF_SENTIR_AGIR_INTERVALO_MIN', '5'))
@@ -372,6 +343,15 @@ def montar_email_html(t):
 
             {bloco_link}
 
+            <div style="margin-top:20px;padding:14px 16px;background:#e8f4fd;border-radius:6px;border-left:5px solid #0d6efd;">
+                <p style="margin:0;font-size:13px;color:#0d6efd;font-weight:bold;">Responda este email para registrar que esta em tratativa</p>
+                <p style="margin:6px 0 0;font-size:13px;color:#333;line-height:1.5;">
+                    Ao responder, sua mensagem sera automaticamente registrada no sistema
+                    com o status <strong>Em Tratativa</strong>.<br>
+                    A finalizacao deve ser feita diretamente no sistema (Painel 30 &mdash; Central de Tratativas).
+                </p>
+            </div>
+
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
                 Notificacao automatica - Sistema de Paineis HAC<br>
@@ -491,6 +471,15 @@ def montar_email_html_atencao(v):
             </table>
 
             {bloco_obs}
+
+            <div style="margin-top:20px;padding:14px 16px;background:#fff8e1;border-radius:6px;border-left:5px solid #fd7e14;">
+                <p style="margin:0;font-size:13px;color:#fd7e14;font-weight:bold;">Como registrar o acompanhamento?</p>
+                <p style="margin:6px 0 0;font-size:13px;color:#333;line-height:1.5;">
+                    Acesse o sistema (Painel 29 &mdash; Gestao Sentir e Agir) para registrar
+                    as tratativas desta visita com o status <strong>Em Tratativa</strong>
+                    e finalize quando resolvido.
+                </p>
+            </div>
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
@@ -832,6 +821,11 @@ def main():
 # =========================================================
 
 _background_started = False
+_stop_event = threading.Event()
+
+
+def stop():
+    _stop_event.set()
 
 
 def start_in_background():
@@ -863,8 +857,7 @@ def start_in_background():
         return
 
     _background_started = True
-
-    import threading
+    _stop_event.clear()
 
     def _run():
         try:
@@ -877,9 +870,9 @@ def start_in_background():
             verificar_tratativas()
             _scheduler.every(INTERVALO_VERIFICACAO).minutes.do(verificar_tratativas)
 
-            while True:
+            while not _stop_event.is_set():
                 _scheduler.run_pending()
-                time.sleep(30)
+                _stop_event.wait(30)
 
         except Exception as e:
             logger.error('[notificador_sentir_agir] Erro fatal na thread daemon: %s', e, exc_info=True)
@@ -887,6 +880,7 @@ def start_in_background():
     t = threading.Thread(target=_run, name='notificador_sentir_agir', daemon=True)
     t.start()
     logger.info('[notificador_sentir_agir] Thread daemon registrada')
+    return _stop_event
 
 
 if __name__ == '__main__':

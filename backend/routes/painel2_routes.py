@@ -4,47 +4,30 @@ Endpoints para acompanhamento de evoluções médicas por turno
 """
 from flask import Blueprint, jsonify, request, session, current_app
 from datetime import datetime
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 
 # Cria o Blueprint
-painel2_bp = Blueprint('painel2', __name__, url_prefix='/api/paineis/painel2')
+painel2_bp = Blueprint('painel2', __name__)
 
 
-@painel2_bp.route('/evolucoes', methods=['GET'])
+@painel2_bp.route('/api/paineis/painel2/evolucoes', methods=['GET'])
 @login_required
+@panel_permission_required('painel2')
 @cache_route(ttl=60, key_prefix='painel2:evolucoes')
 def get_evolucoes():
     """
     Retorna lista de evoluções de turno
     GET /api/paineis/painel2/evolucoes
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel2'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
-
     try:
-        cursor = conn.cursor()
+        with get_db_cursor(use_dict_cursor=False) as cursor:
 
-        hora = datetime.now().hour
-        turno_prioritario = 'DIURNO' if 7 <= hora < 19 else 'NOTURNO'
+            hora = datetime.now().hour
+            turno_prioritario = 'DIURNO' if 7 <= hora < 19 else 'NOTURNO'
 
-        query = """
+            query = """
 SELECT
     e.nr_atendimento,
     e.ds_convenio,
@@ -72,27 +55,23 @@ ORDER BY
     CASE WHEN e.turno = %s THEN 0 ELSE 1 END ASC,
     e.turno ASC,
     e.nr_atendimento ASC
-        """
+            """
 
-        cursor.execute(query, (turno_prioritario,))
-        colunas = [desc[0] for desc in cursor.description]
+            cursor.execute(query, (turno_prioritario,))
+            colunas = [desc[0] for desc in cursor.description]
 
-        evolucoes = [dict(zip(colunas, row)) for row in cursor.fetchall()]
+            evolucoes = [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
-        cursor.close()
-        release_connection(conn)
 
-        return jsonify({
+            return jsonify({
             'success': True,
             'data': evolucoes,
             'total': len(evolucoes),
             'timestamp': datetime.now().isoformat()
-        })
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar evolucoes: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
