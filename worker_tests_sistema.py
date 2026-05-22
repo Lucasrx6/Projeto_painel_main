@@ -32,9 +32,8 @@ import time
 import socket
 import json
 import glob as _glob
-import logging
-import logging.handlers
 import threading
+from backend.notificador_utils import setup_notificador_logging, get_db_config, get_smtp_config
 from datetime import datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,43 +46,22 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # LOGGING
 # ─────────────────────────────────────────────────────────
 
-LOG_DIR = os.path.join(BASE_DIR, 'logs')
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
-
-logger = logging.getLogger('worker_tests_sistema')
-logger.setLevel(logging.INFO)
-
-_fh = logging.handlers.RotatingFileHandler(
-    os.path.join(LOG_DIR, 'worker_tests_sistema.log'),
-    maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8'
-)
-_fh.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', '%Y-%m-%d %H:%M:%S'))
-logger.addHandler(_fh)
-
-_ch = logging.StreamHandler(sys.stdout)
-_ch.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', '%H:%M:%S'))
-logger.addHandler(_ch)
+logger = setup_notificador_logging('worker_tests_sistema', 'worker_tests_sistema.log')
 
 
 # ─────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────
 
-DB_CONFIG = {
-    'host':     os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'postgres'),
-    'user':     os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'port':     os.getenv('DB_PORT', '5432'),
-}
+DB_CONFIG = get_db_config()
 REDIS_URL       = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 REDIS_MAXMEMORY = os.getenv('REDIS_MAXMEMORY', '256mb')
-SMTP_HOST       = os.getenv('SMTP_HOST', '')
-SMTP_PORT       = os.getenv('SMTP_PORT', '587')
-SMTP_USER       = os.getenv('SMTP_USER', '')
-SMTP_PASS       = os.getenv('SMTP_PASS', '')
-SMTP_FROM       = os.getenv('SMTP_FROM', '')
+_smtp           = get_smtp_config()
+SMTP_HOST       = _smtp['host']
+SMTP_PORT       = _smtp['port']
+SMTP_USER       = _smtp['user']
+SMTP_PASS       = _smtp['password']
+SMTP_FROM       = _smtp['sender']
 GCHAT_WEBHOOK   = os.getenv('GCHAT_WEBHOOK_PACIENTE_PS', '')
 
 # Apache HOP (ETL Tasy → PostgreSQL)
@@ -1394,6 +1372,11 @@ def ciclo_automatico():
 # ─────────────────────────────────────────────────────────
 
 _background_started = False
+_stop_event = threading.Event()
+
+
+def stop():
+    _stop_event.set()
 
 
 def start_in_background():
@@ -1411,6 +1394,7 @@ def start_in_background():
         return
 
     _background_started = True
+    _stop_event.clear()
 
     def _run():
         import schedule as _sched
@@ -1420,12 +1404,13 @@ def start_in_background():
 
         _scheduler.every(INTERVALO_HORAS).hours.do(ciclo_automatico)
 
-        while True:
+        while not _stop_event.is_set():
             _scheduler.run_pending()
-            time.sleep(60)
+            _stop_event.wait(60)
 
     t = threading.Thread(target=_run, name='worker_tests_sistema', daemon=True)
     t.start()
+    return _stop_event
     logger.info('[tests_sistema] Thread daemon registrada (ciclo a cada %sh)', INTERVALO_HORAS)
 
 

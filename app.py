@@ -6,6 +6,8 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
+import atexit
+import logging as _logging
 import sys
 import io
 import os
@@ -127,7 +129,6 @@ init_db()
 init_redis(app)
 
 # ── Rastreamento de acessos (suprime log do werkzeug no terminal) ──────────
-import logging as _logging
 _logging.getLogger('werkzeug').setLevel(_logging.WARNING)  # Remove linhas "GET /api/... 200 -"
 
 from backend.access_tracker import init_access_tracker
@@ -155,7 +156,7 @@ paineis = [
     painel22_bp, painel23_bp, painel24_bp, painel25_bp,
     painel26_bp, painel27_bp, painel28_bp, painel29_bp,
     painel30_bp, painel31_bp, painel32_bp,
-    #painel33_bp,
+    painel33_bp,
     painel34_bp, painel35_bp, painel36_bp,
     painel37_bp, painel38_bp,
     painel39_bp, painel40_bp
@@ -184,11 +185,30 @@ def health_pool():
     return jsonify(pool_health())
 
 
+# =========================================================
+# LIFECYCLE DAS THREADS DAEMON — graceful shutdown
+# =========================================================
+
+_worker_stop_events = []
+
+
+def _shutdown_all_workers():
+    """Sinaliza parada graceful a todos os workers ao encerrar o servidor."""
+    for event in _worker_stop_events:
+        event.set()
+    app.logger.info(f'[shutdown] {len(_worker_stop_events)} workers sinalizados para parar')
+
+
+atexit.register(_shutdown_all_workers)
+
+
 # Notificador de pareceres — integrado como thread daemon
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_PARECERES_AUTO=false no .env
 try:
     from notificador_pareceres import start_in_background as _start_notificador
-    _start_notificador()
+    _evt = _start_notificador()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
 except Exception as e:
     app.logger.warning(f'[notificador_pareceres] Nao iniciado automaticamente: {e}')
 
@@ -196,7 +216,9 @@ except Exception as e:
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_SENTIR_AGIR_AUTO=false no .env
 try:
     from notificador_sentir_agir import start_in_background as _start_sentir_agir
-    _start_sentir_agir()
+    _evt = _start_sentir_agir()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
 except Exception as e:
     app.logger.warning(f'[notificador_sentir_agir] Nao iniciado automaticamente: {e}')
 
@@ -204,7 +226,9 @@ except Exception as e:
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina WORKER_SENTIR_AGIR_AUTO=false no .env
 try:
     from worker_sentir_agir_analise import start_in_background as _start_worker_analise
-    _start_worker_analise()
+    _evt = _start_worker_analise()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
 except Exception as e:
     app.logger.warning(f'[worker_sentir_agir_analise] Nao iniciado automaticamente: {e}')
 
@@ -212,7 +236,9 @@ except Exception as e:
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina WORKER_IMAP_TRATATIVAS_AUTO=false no .env
 try:
     from worker_imap_tratativas import start_in_background as _start_imap_worker
-    _start_imap_worker()
+    _evt = _start_imap_worker()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
 except Exception as e:
     app.logger.warning(f'[worker_imap_tratativas] Nao iniciado automaticamente: {e}')
 
@@ -220,7 +246,9 @@ except Exception as e:
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_PACIENTE_PS_AUTO=false no .env
 try:
     from notificador_paciente_ps import start_in_background as _start_paciente_ps
-    _start_paciente_ps()
+    _evt = _start_paciente_ps()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
 except Exception as e:
     app.logger.warning(f'[notificador_paciente_ps] Nao iniciado automaticamente: {e}')
 
@@ -228,7 +256,9 @@ except Exception as e:
 # OFF SWITCH: comente as 3 linhas abaixo para desativar
 try:
     from worker_tests_sistema import start_in_background as _start_tests_sistema
-    _start_tests_sistema()
+    _evt = _start_tests_sistema()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
 except Exception as e:
     app.logger.warning(f'[worker_tests_sistema] Nao iniciado automaticamente: {e}')
 
@@ -236,7 +266,9 @@ except Exception as e:
 # OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_OCUPACAO_AUTO=false no .env
 try:
     from backend.notificador_ocupacao_hospitalar import start_in_background as _start_notif_ocupacao
-    _start_notif_ocupacao()
+    _evt = _start_notif_ocupacao()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
 except Exception as e:
     app.logger.warning(f'[notificador_ocupacao] Nao iniciado automaticamente: {e}')
 
@@ -304,20 +336,9 @@ if __name__ == '__main__':
         print("   • /debug/routes - Ver rotas registradas")
         print("   • /debug/check-files - Verificar arquivos")
 
-    print("Painéis disponíveis:")
-    print("   • Evolução de Turno      → /painel/painel2")
-    print("   • Médicos PS             → /painel/painel3")
-    print("   • Ocupação Hospitalar    → /painel/painel4")
-    print("   • Cirurgias do Dia       → /painel/painel5")
-    print("   • Priorização IA         → /painel/painel6")
-    print("   • Detecção Sepse         → /painel/painel7")
-    print("   • Situação Pacientes     → /painel/painel8")
-    print("   • Lab Pendentes          → /painel/painel9")
-    print("   • Análise PS             → /painel/painel10")
-    print("   • Internação PS          → /painel/painel11")
-    print("   • Ocupação e Produção    → /painel/painel12")
-    print("   • Mapa de Nutrição       → /painel/painel13")
-    print("   • Score Farmacêutico     → /painel/painel38")
+    print(f"Painéis registrados ({len(paineis)}):")
+    for bp in paineis:
+        print(f"   • {bp.name} → /painel/{bp.name}")
 
     print(" URLs de Acesso:")
     print(f"   • Local:                 http://localhost:5000")

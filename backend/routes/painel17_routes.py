@@ -5,9 +5,8 @@ Endpoints para exibicao de tempo estimado de espera por clinica
 from flask import Blueprint, jsonify, send_from_directory, session, current_app
 from datetime import datetime, timedelta
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 import statistics
 
@@ -122,18 +121,9 @@ def _calcular_metricas_clinica(atendimentos_recentes, atendimentos_1h_atras, cam
 
 @painel17_bp.route('/painel/painel17')
 @login_required
+@panel_permission_required('painel17')
 def painel17():
     """Pagina principal do Painel 17"""
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel17'):
-            current_app.logger.warning(
-                f'Acesso negado ao painel17: {session.get("usuario")}'
-            )
-            return send_from_directory('frontend', 'acesso-negado.html')
-
     return send_from_directory('paineis/painel17', 'index.html')
 
 
@@ -143,118 +133,170 @@ def painel17():
 
 @painel17_bp.route('/api/paineis/painel17/tempos', methods=['GET'])
 @login_required
+@panel_permission_required('painel17')
 @cache_route(ttl=120, key_prefix='painel17:tempos', vary_by_query=True)
 def api_painel17_tempos():
     """
     Retorna tempo estimado de espera por clinica + card de Acolhimento.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel17'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissao'
-            }), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexao com o banco'
-        }), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        agora = datetime.now()
-        uma_hora_atras = agora - timedelta(hours=1)
-        duas_horas_atras = agora - timedelta(hours=2)
+        with get_db_cursor() as cursor:
+            agora = datetime.now()
+            uma_hora_atras = agora - timedelta(hours=1)
+            duas_horas_atras = agora - timedelta(hours=2)
 
-        # =====================================================================
-        # CLINICAS
-        # =====================================================================
+            # =====================================================================
+            # CLINICAS
+            # =====================================================================
 
-        cursor.execute("""
-            SELECT DISTINCT cd_clinica, clinica
-            FROM painel17_atendimentos_ps
-            WHERE dt_entrada >= NOW() - INTERVAL '7 days'
-            ORDER BY clinica
-        """)
-        clinicas = cursor.fetchall()
-
-        resultado = []
-
-        for clin in clinicas:
-            cd = clin['cd_clinica']
-            nome = clin['clinica']
-
-            # Filtrar clinicas excluidas (ex: Emergencista)
-            if nome and nome.strip().lower() in CLINICAS_EXCLUIR:
-                continue
-
-            # Ultimos N atendidos
             cursor.execute("""
-                SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
+                SELECT DISTINCT cd_clinica, clinica
                 FROM painel17_atendimentos_ps
-                WHERE cd_clinica = %s
-                  AND dt_inicio_atendimento_med IS NOT NULL
-                ORDER BY dt_inicio_atendimento_med DESC
-                LIMIT %s
-            """, (cd, JANELA_RECENTES))
-            recentes = cursor.fetchall()
+                WHERE dt_entrada >= NOW() - INTERVAL '7 days'
+                ORDER BY clinica
+            """)
+            clinicas = cursor.fetchall()
 
-            # Atendidos 1-2h atras (tendencia)
+            resultado = []
+
+            for clin in clinicas:
+                cd = clin['cd_clinica']
+                nome = clin['clinica']
+
+                # Filtrar clinicas excluidas (ex: Emergencista)
+                if nome and nome.strip().lower() in CLINICAS_EXCLUIR:
+                    continue
+
+                # Ultimos N atendidos
+                cursor.execute("""
+                    SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
+                    FROM painel17_atendimentos_ps
+                    WHERE cd_clinica = %s
+                      AND dt_inicio_atendimento_med IS NOT NULL
+                    ORDER BY dt_inicio_atendimento_med DESC
+                    LIMIT %s
+                """, (cd, JANELA_RECENTES))
+                recentes = cursor.fetchall()
+
+                # Atendidos 1-2h atras (tendencia)
+                cursor.execute("""
+                    SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
+                    FROM painel17_atendimentos_ps
+                    WHERE cd_clinica = %s
+                      AND dt_inicio_atendimento_med IS NOT NULL
+                      AND dt_inicio_atendimento_med BETWEEN %s AND %s
+                    ORDER BY dt_inicio_atendimento_med DESC
+                    LIMIT %s
+                """, (cd, duas_horas_atras, uma_hora_atras, JANELA_RECENTES))
+                recentes_1h = cursor.fetchall()
+
+                # Fila
+                cursor.execute("""
+                    SELECT COUNT(*) AS total
+                    FROM painel17_atendimentos_ps
+                    WHERE cd_clinica = %s
+                      AND dt_inicio_atendimento_med IS NULL
+                      AND dt_alta IS NULL
+                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                """, (cd,))
+                fila_row = cursor.fetchone()
+                fila = fila_row['total'] if fila_row else 0
+
+                # Medicos atendendo
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT nm_medico) AS total
+                    FROM painel17_atendimentos_ps
+                    WHERE cd_clinica = %s
+                      AND dt_inicio_atendimento_med IS NOT NULL
+                      AND dt_fim_atendimento IS NULL
+                      AND dt_alta IS NULL
+                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                """, (cd,))
+                medicos_row = cursor.fetchone()
+                medicos = medicos_row['total'] if medicos_row else 0
+
+                # Metricas
+                metricas = _calcular_metricas_clinica(recentes, recentes_1h)
+
+                clinica_data = {
+                    'cd_clinica': cd,
+                    'clinica': nome,
+                    'fila': fila,
+                    'medicos_atendendo': medicos
+                }
+
+                if metricas:
+                    clinica_data.update(metricas)
+                else:
+                    clinica_data.update({
+                        'mediana': None,
+                        'faixa_min': None,
+                        'faixa_max': None,
+                        'tendencia': 'sem_dados',
+                        'amostra': 0
+                    })
+
+                resultado.append(clinica_data)
+
+            # =====================================================================
+            # ACOLHIMENTO (card virtual)
+            # Tempo: retirada_senha/dt_entrada -> dt_inicio_atendimento
+            # Filtro: apenas onde dt_inicio_atendimento < dt_inicio_atendimento_med
+            # =====================================================================
+
+            # Recentes para Acolhimento
             cursor.execute("""
-                SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
+                SELECT dt_entrada, retirada_senha, dt_inicio_atendimento
                 FROM painel17_atendimentos_ps
-                WHERE cd_clinica = %s
+                WHERE dt_inicio_atendimento IS NOT NULL
                   AND dt_inicio_atendimento_med IS NOT NULL
-                  AND dt_inicio_atendimento_med BETWEEN %s AND %s
-                ORDER BY dt_inicio_atendimento_med DESC
+                  AND dt_inicio_atendimento < dt_inicio_atendimento_med
+                ORDER BY dt_inicio_atendimento DESC
                 LIMIT %s
-            """, (cd, duas_horas_atras, uma_hora_atras, JANELA_RECENTES))
-            recentes_1h = cursor.fetchall()
+            """, (JANELA_RECENTES,))
+            acolhimento_recentes = cursor.fetchall()
 
-            # Fila
+            # Tendencia Acolhimento (1-2h atras)
+            cursor.execute("""
+                SELECT dt_entrada, retirada_senha, dt_inicio_atendimento
+                FROM painel17_atendimentos_ps
+                WHERE dt_inicio_atendimento IS NOT NULL
+                  AND dt_inicio_atendimento_med IS NOT NULL
+                  AND dt_inicio_atendimento < dt_inicio_atendimento_med
+                  AND dt_inicio_atendimento BETWEEN %s AND %s
+                ORDER BY dt_inicio_atendimento DESC
+                LIMIT %s
+            """, (duas_horas_atras, uma_hora_atras, JANELA_RECENTES))
+            acolhimento_1h = cursor.fetchall()
+
+            # Fila Acolhimento: pacientes que chegaram mas ainda nao iniciaram acolhimento
             cursor.execute("""
                 SELECT COUNT(*) AS total
                 FROM painel17_atendimentos_ps
-                WHERE cd_clinica = %s
+                WHERE dt_inicio_atendimento IS NULL
                   AND dt_inicio_atendimento_med IS NULL
                   AND dt_alta IS NULL
                   AND dt_entrada >= NOW() - INTERVAL '24 hours'
-            """, (cd,))
-            fila_row = cursor.fetchone()
-            fila = fila_row['total'] if fila_row else 0
+            """)
+            fila_acolhimento_row = cursor.fetchone()
+            fila_acolhimento = fila_acolhimento_row['total'] if fila_acolhimento_row else 0
 
-            # Medicos atendendo
-            cursor.execute("""
-                SELECT COUNT(DISTINCT nm_medico) AS total
-                FROM painel17_atendimentos_ps
-                WHERE cd_clinica = %s
-                  AND dt_inicio_atendimento_med IS NOT NULL
-                  AND dt_fim_atendimento IS NULL
-                  AND dt_alta IS NULL
-                  AND dt_entrada >= NOW() - INTERVAL '24 hours'
-            """, (cd,))
-            medicos_row = cursor.fetchone()
-            medicos = medicos_row['total'] if medicos_row else 0
+            metricas_acolhimento = _calcular_metricas_clinica(
+                acolhimento_recentes, acolhimento_1h,
+                campo_fim='dt_inicio_atendimento'
+            )
 
-            # Metricas
-            metricas = _calcular_metricas_clinica(recentes, recentes_1h)
-
-            clinica_data = {
-                'cd_clinica': cd,
-                'clinica': nome,
-                'fila': fila,
-                'medicos_atendendo': medicos
+            acolhimento_data = {
+                'cd_clinica': None,
+                'clinica': 'Acolhimento',
+                'fila': fila_acolhimento,
+                'medicos_atendendo': 0
             }
 
-            if metricas:
-                clinica_data.update(metricas)
+            if metricas_acolhimento:
+                acolhimento_data.update(metricas_acolhimento)
             else:
-                clinica_data.update({
+                acolhimento_data.update({
                     'mediana': None,
                     'faixa_min': None,
                     'faixa_max': None,
@@ -262,126 +304,54 @@ def api_painel17_tempos():
                     'amostra': 0
                 })
 
-            resultado.append(clinica_data)
+            resultado.append(acolhimento_data)
 
-        # =====================================================================
-        # ACOLHIMENTO (card virtual)
-        # Tempo: retirada_senha/dt_entrada -> dt_inicio_atendimento
-        # Filtro: apenas onde dt_inicio_atendimento < dt_inicio_atendimento_med
-        # =====================================================================
+            # =====================================================================
+            # ORDENACAO ALFABETICA
+            # =====================================================================
+            resultado.sort(key=lambda x: (x.get('clinica') or '').strip().lower())
 
-        # Recentes para Acolhimento
-        cursor.execute("""
-            SELECT dt_entrada, retirada_senha, dt_inicio_atendimento
-            FROM painel17_atendimentos_ps
-            WHERE dt_inicio_atendimento IS NOT NULL
-              AND dt_inicio_atendimento_med IS NOT NULL
-              AND dt_inicio_atendimento < dt_inicio_atendimento_med
-            ORDER BY dt_inicio_atendimento DESC
-            LIMIT %s
-        """, (JANELA_RECENTES,))
-        acolhimento_recentes = cursor.fetchall()
+            # =====================================================================
+            # TOTAIS
+            # =====================================================================
 
-        # Tendencia Acolhimento (1-2h atras)
-        cursor.execute("""
-            SELECT dt_entrada, retirada_senha, dt_inicio_atendimento
-            FROM painel17_atendimentos_ps
-            WHERE dt_inicio_atendimento IS NOT NULL
-              AND dt_inicio_atendimento_med IS NOT NULL
-              AND dt_inicio_atendimento < dt_inicio_atendimento_med
-              AND dt_inicio_atendimento BETWEEN %s AND %s
-            ORDER BY dt_inicio_atendimento DESC
-            LIMIT %s
-        """, (duas_horas_atras, uma_hora_atras, JANELA_RECENTES))
-        acolhimento_1h = cursor.fetchall()
+            cursor.execute("""
+                SELECT
+                    COUNT(*) FILTER (
+                        WHERE dt_inicio_atendimento_med IS NULL
+                          AND dt_alta IS NULL
+                          AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                    ) AS fila_total,
+                    COUNT(*) FILTER (
+                        WHERE dt_inicio_atendimento_med IS NOT NULL
+                          AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                    ) AS atendidos_hoje,
+                    COUNT(DISTINCT nm_medico) FILTER (
+                        WHERE dt_inicio_atendimento_med IS NOT NULL
+                          AND dt_fim_atendimento IS NULL
+                          AND dt_alta IS NULL
+                          AND dt_entrada >= NOW() - INTERVAL '24 hours'
+                    ) AS medicos_total
+                FROM painel17_atendimentos_ps
+            """)
+            totais = cursor.fetchone()
 
-        # Fila Acolhimento: pacientes que chegaram mas ainda nao iniciaram acolhimento
-        cursor.execute("""
-            SELECT COUNT(*) AS total
-            FROM painel17_atendimentos_ps
-            WHERE dt_inicio_atendimento IS NULL
-              AND dt_inicio_atendimento_med IS NULL
-              AND dt_alta IS NULL
-              AND dt_entrada >= NOW() - INTERVAL '24 hours'
-        """)
-        fila_acolhimento_row = cursor.fetchone()
-        fila_acolhimento = fila_acolhimento_row['total'] if fila_acolhimento_row else 0
 
-        metricas_acolhimento = _calcular_metricas_clinica(
-            acolhimento_recentes, acolhimento_1h,
-            campo_fim='dt_inicio_atendimento'
-        )
-
-        acolhimento_data = {
-            'cd_clinica': None,
-            'clinica': 'Acolhimento',
-            'fila': fila_acolhimento,
-            'medicos_atendendo': 0
-        }
-
-        if metricas_acolhimento:
-            acolhimento_data.update(metricas_acolhimento)
-        else:
-            acolhimento_data.update({
-                'mediana': None,
-                'faixa_min': None,
-                'faixa_max': None,
-                'tendencia': 'sem_dados',
-                'amostra': 0
+            return jsonify({
+                'success': True,
+                'clinicas': resultado,
+                'totais': {
+                    'fila_total': totais['fila_total'] if totais else 0,
+                    'atendidos_hoje': totais['atendidos_hoje'] if totais else 0,
+                    'medicos_total': totais['medicos_total'] if totais else 0
+                },
+                'timestamp': agora.isoformat()
             })
-
-        resultado.append(acolhimento_data)
-
-        # =====================================================================
-        # ORDENACAO ALFABETICA
-        # =====================================================================
-        resultado.sort(key=lambda x: (x.get('clinica') or '').strip().lower())
-
-        # =====================================================================
-        # TOTAIS
-        # =====================================================================
-
-        cursor.execute("""
-            SELECT
-                COUNT(*) FILTER (
-                    WHERE dt_inicio_atendimento_med IS NULL
-                      AND dt_alta IS NULL
-                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                ) AS fila_total,
-                COUNT(*) FILTER (
-                    WHERE dt_inicio_atendimento_med IS NOT NULL
-                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                ) AS atendidos_hoje,
-                COUNT(DISTINCT nm_medico) FILTER (
-                    WHERE dt_inicio_atendimento_med IS NOT NULL
-                      AND dt_fim_atendimento IS NULL
-                      AND dt_alta IS NULL
-                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                ) AS medicos_total
-            FROM painel17_atendimentos_ps
-        """)
-        totais = cursor.fetchone()
-
-        cursor.close()
-        release_connection(conn)
-
-        return jsonify({
-            'success': True,
-            'clinicas': resultado,
-            'totais': {
-                'fila_total': totais['fila_total'] if totais else 0,
-                'atendidos_hoje': totais['atendidos_hoje'] if totais else 0,
-                'medicos_total': totais['medicos_total'] if totais else 0
-            },
-            'timestamp': agora.isoformat()
-        })
 
     except Exception as e:
         current_app.logger.error(
             f'Erro ao buscar tempos do painel17: {e}', exc_info=True
         )
-        if conn:
-            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'

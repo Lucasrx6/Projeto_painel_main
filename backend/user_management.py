@@ -887,7 +887,7 @@ def verificar_acesso_hub(usuario_id: Union[int, str]) -> bool:
     if not usuario_id:
         return False
     try:
-        with get_db_cursor() as (cursor, conn):
+        with get_db_cursor() as cursor:
             # Extrai o nome do painel da URL (ex: /painel/painel34 → painel34)
             # e verifica se o usuário tem aquele painel liberado
             cursor.execute("""

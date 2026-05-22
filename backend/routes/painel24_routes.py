@@ -13,9 +13,8 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime
 from decimal import Decimal
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 
 # Cria o Blueprint
@@ -28,21 +27,15 @@ painel24_bp = Blueprint('painel24', __name__)
 
 @painel24_bp.route('/painel/painel24')
 @login_required
+@panel_permission_required('painel24')
 def painel24():
     """Pagina principal do Painel 24"""
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel24'):
-            current_app.logger.warning(f'Acesso negado ao painel24: {session.get("usuario")}')
-            return send_from_directory('frontend', 'acesso-negado.html')
-
     return send_from_directory('paineis/painel24', 'index.html')
 
 
 @painel24_bp.route('/paineis/painel24/<path:filename>')
 @login_required
+@panel_permission_required('painel24')
 def painel24_static(filename):
     """Serve arquivos estaticos do painel (CSS, JS)"""
     return send_from_directory('paineis/painel24', filename)
@@ -177,97 +170,83 @@ def _build_common_filters():
 
 @painel24_bp.route('/api/paineis/painel24/dashboard', methods=['GET'])
 @login_required
+@panel_permission_required('painel24')
 @cache_route(ttl=180, key_prefix='painel24:dashboard', vary_by_query=True)
 def api_painel24_dashboard():
     """
     KPIs agregados para os cards do dashboard.
     Recebe TODOS os filtros para refletir exatamente o que esta na tabela.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel24'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        condicoes, params = _build_common_filters()
+            condicoes, params = _build_common_filters()
 
-        filtro_where = ''
-        if condicoes:
-            filtro_where = 'WHERE ' + ' AND '.join(condicoes)
+            filtro_where = ''
+            if condicoes:
+                filtro_where = 'WHERE ' + ' AND '.join(condicoes)
 
-        query = f"""
-            SELECT
-                COUNT(*)::INTEGER                                               AS total_itens,
-                COUNT(DISTINCT codigo_material)::INTEGER                        AS total_materiais,
-                COUNT(DISTINCT cd_local_estoque)::INTEGER                       AS total_locais,
+            query = f"""
+                SELECT
+                    COUNT(*)::INTEGER                                               AS total_itens,
+                    COUNT(DISTINCT codigo_material)::INTEGER                        AS total_materiais,
+                    COUNT(DISTINCT cd_local_estoque)::INTEGER                       AS total_locais,
 
-                COUNT(*) FILTER (WHERE classificacao = 'DEVEDOR')::INTEGER      AS qt_devedor,
-                COUNT(*) FILTER (WHERE classificacao = 'ZERADO')::INTEGER       AS qt_zerado,
-                COUNT(*) FILTER (WHERE classificacao = 'CRITICO')::INTEGER      AS qt_critico,
-                COUNT(*) FILTER (WHERE classificacao = 'URGENTE')::INTEGER      AS qt_urgente,
-                COUNT(*) FILTER (WHERE classificacao = 'ATENCAO')::INTEGER      AS qt_atencao,
-                COUNT(*) FILTER (WHERE classificacao = 'ADEQUADO')::INTEGER     AS qt_adequado,
-                COUNT(*) FILTER (WHERE classificacao = 'CONFORTAVEL')::INTEGER  AS qt_confortavel,
-                COUNT(*) FILTER (WHERE classificacao = 'EXCESSO')::INTEGER      AS qt_excesso,
-                COUNT(*) FILTER (WHERE classificacao = 'SEM CONSUMO')::INTEGER  AS qt_sem_consumo,
+                    COUNT(*) FILTER (WHERE classificacao = 'DEVEDOR')::INTEGER      AS qt_devedor,
+                    COUNT(*) FILTER (WHERE classificacao = 'ZERADO')::INTEGER       AS qt_zerado,
+                    COUNT(*) FILTER (WHERE classificacao = 'CRITICO')::INTEGER      AS qt_critico,
+                    COUNT(*) FILTER (WHERE classificacao = 'URGENTE')::INTEGER      AS qt_urgente,
+                    COUNT(*) FILTER (WHERE classificacao = 'ATENCAO')::INTEGER      AS qt_atencao,
+                    COUNT(*) FILTER (WHERE classificacao = 'ADEQUADO')::INTEGER     AS qt_adequado,
+                    COUNT(*) FILTER (WHERE classificacao = 'CONFORTAVEL')::INTEGER  AS qt_confortavel,
+                    COUNT(*) FILTER (WHERE classificacao = 'EXCESSO')::INTEGER      AS qt_excesso,
+                    COUNT(*) FILTER (WHERE classificacao = 'SEM CONSUMO')::INTEGER  AS qt_sem_consumo,
 
-                COUNT(*) FILTER (
-                    WHERE classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE','ATENCAO')
-                )::INTEGER                                                      AS qt_abaixo_3d,
+                    COUNT(*) FILTER (
+                        WHERE classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE','ATENCAO')
+                    )::INTEGER                                                      AS qt_abaixo_3d,
 
-                COUNT(*) FILTER (WHERE saldo_disponivel < 0)::INTEGER           AS qt_saldo_negativo,
+                    COUNT(*) FILTER (WHERE saldo_disponivel < 0)::INTEGER           AS qt_saldo_negativo,
 
-                COUNT(*) FILTER (WHERE tem_origem = TRUE)::INTEGER              AS qt_com_origem,
+                    COUNT(*) FILTER (WHERE tem_origem = TRUE)::INTEGER              AS qt_com_origem,
 
-                COUNT(*) FILTER (
-                    WHERE classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE','ATENCAO')
-                      AND tem_origem = FALSE
-                )::INTEGER                                                      AS qt_sem_origem_critico,
+                    COUNT(*) FILTER (
+                        WHERE classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE','ATENCAO')
+                          AND tem_origem = FALSE
+                    )::INTEGER                                                      AS qt_sem_origem_critico,
 
-                COALESCE(SUM(qt_ressuprimento_3d) FILTER (
-                    WHERE qt_ressuprimento_3d > 0
-                ), 0)                                                           AS qt_total_ressuprimento,
+                    COALESCE(SUM(qt_ressuprimento_3d) FILTER (
+                        WHERE qt_ressuprimento_3d > 0
+                    ), 0)                                                           AS qt_total_ressuprimento,
 
-                COUNT(DISTINCT cd_local_estoque) FILTER (
-                    WHERE classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE')
-                )::INTEGER                                                      AS qt_locais_criticos,
+                    COUNT(DISTINCT cd_local_estoque) FILTER (
+                        WHERE classificacao IN ('DEVEDOR','ZERADO','CRITICO','URGENTE')
+                    )::INTEGER                                                      AS qt_locais_criticos,
 
-                MAX(dt_carga)                                                   AS ultima_atualizacao
+                    MAX(dt_carga)                                                   AS ultima_atualizacao
 
-            FROM public.vw_painel24_detalhe
-            {filtro_where}
-        """
+                FROM public.vw_painel24_detalhe
+                {filtro_where}
+            """
 
-        cursor.execute(query, params)
-        result = cursor.fetchone()
+            cursor.execute(query, params)
+            result = cursor.fetchone()
 
-        cursor.close()
-        release_connection(conn)
 
-        if not result:
-            result = {
-                'total_itens': 0, 'total_materiais': 0, 'total_locais': 0,
-                'qt_abaixo_3d': 0, 'qt_saldo_negativo': 0
-            }
+            if not result:
+                result = {
+                    'total_itens': 0, 'total_materiais': 0, 'total_locais': 0,
+                    'qt_abaixo_3d': 0, 'qt_saldo_negativo': 0
+                }
 
-        return jsonify({
-            'success': True,
-            'data': serializar_linha(dict(result)),
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'data': serializar_linha(dict(result)),
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro dashboard painel24: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -277,77 +256,63 @@ def api_painel24_dashboard():
 
 @painel24_bp.route('/api/paineis/painel24/dados', methods=['GET'])
 @login_required
+@panel_permission_required('painel24')
 @cache_route(ttl=180, key_prefix='painel24:dados', vary_by_query=True)
 def api_painel24_dados():
     """
     Retorna itens de estoque com filtros server-side.
     Todos os filtros multi-valor sao separados por virgula.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel24'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        condicoes, params = _build_common_filters()
+            condicoes, params = _build_common_filters()
 
-        filtro_sql = ''
-        if condicoes:
-            filtro_sql = 'WHERE ' + ' AND '.join(condicoes)
+            filtro_sql = ''
+            if condicoes:
+                filtro_sql = 'WHERE ' + ' AND '.join(condicoes)
 
-        query = f"""
-            SELECT
-                id,
-                mes_estoque,
-                cd_local_estoque,
-                local_estoque,
-                tipo_local,
-                grupo,
-                subgrupo,
-                codigo_material,
-                item,
-                consumo_dia,
-                saldo_disponivel,
-                dias_estoque,
-                classificacao,
-                ordem_classificacao,
-                qt_ressuprimento_3d,
-                cd_local_origem,
-                local_origem_sugerido,
-                saldo_origem,
-                dias_estoque_origem,
-                tem_origem
-            FROM public.vw_painel24_detalhe
-            {filtro_sql}
-            ORDER BY ordem_classificacao ASC, dias_estoque ASC NULLS LAST, local_estoque, item
-            LIMIT 10000
-        """
+            query = f"""
+                SELECT
+                    id,
+                    mes_estoque,
+                    cd_local_estoque,
+                    local_estoque,
+                    tipo_local,
+                    grupo,
+                    subgrupo,
+                    codigo_material,
+                    item,
+                    consumo_dia,
+                    saldo_disponivel,
+                    dias_estoque,
+                    classificacao,
+                    ordem_classificacao,
+                    qt_ressuprimento_3d,
+                    cd_local_origem,
+                    local_origem_sugerido,
+                    saldo_origem,
+                    dias_estoque_origem,
+                    tem_origem
+                FROM public.vw_painel24_detalhe
+                {filtro_sql}
+                ORDER BY ordem_classificacao ASC, dias_estoque ASC NULLS LAST, local_estoque, item
+                LIMIT 10000
+            """
 
-        cursor.execute(query, params)
-        registros = [serializar_linha(dict(row)) for row in cursor.fetchall()]
+            cursor.execute(query, params)
+            registros = [serializar_linha(dict(row)) for row in cursor.fetchall()]
 
-        cursor.close()
-        release_connection(conn)
 
-        return jsonify({
-            'success': True,
-            'data': registros,
-            'total': len(registros),
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'data': registros,
+                'total': len(registros),
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro dados painel24: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -357,66 +322,52 @@ def api_painel24_dados():
 
 @painel24_bp.route('/api/paineis/painel24/filtros', methods=['GET'])
 @login_required
+@panel_permission_required('painel24')
 @cache_route(ttl=600, key_prefix='painel24:filtros')
 def api_painel24_filtros():
     """
     Retorna valores distintos para popular os multi-selects.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel24'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
-
     try:
-        cursor = conn.cursor()
+        with get_db_cursor(use_dict_cursor=False) as cursor:
 
-        filtros = {}
+            filtros = {}
 
-        # Locais de estoque (retorna codigo + nome para o multi-select)
-        cursor.execute("""
-            SELECT DISTINCT cd_local_estoque, local_estoque
-            FROM public.vw_painel24_detalhe
-            WHERE local_estoque IS NOT NULL AND local_estoque != ''
-            ORDER BY local_estoque
-        """)
-        filtros['locais'] = [
-            {'cd': row[0], 'nome': row[1]} for row in cursor.fetchall()
-        ]
-
-        # Campos simples (string)
-        campos_simples = [
-            ('tipos_local', 'tipo_local'),
-            ('grupos', 'grupo'),
-            ('subgrupos', 'subgrupo'),
-            ('classificacoes', 'classificacao')
-        ]
-
-        for nome, coluna in campos_simples:
-            cursor.execute(f"""
-                SELECT DISTINCT {coluna}
+            # Locais de estoque (retorna codigo + nome para o multi-select)
+            cursor.execute("""
+                SELECT DISTINCT cd_local_estoque, local_estoque
                 FROM public.vw_painel24_detalhe
-                WHERE {coluna} IS NOT NULL AND {coluna} != ''
-                ORDER BY {coluna}
+                WHERE local_estoque IS NOT NULL AND local_estoque != ''
+                ORDER BY local_estoque
             """)
-            filtros[nome] = [row[0] for row in cursor.fetchall()]
+            filtros['locais'] = [
+                {'cd': row[0], 'nome': row[1]} for row in cursor.fetchall()
+            ]
 
-        cursor.close()
-        release_connection(conn)
+            # Campos simples (string)
+            campos_simples = [
+                ('tipos_local', 'tipo_local'),
+                ('grupos', 'grupo'),
+                ('subgrupos', 'subgrupo'),
+                ('classificacoes', 'classificacao')
+            ]
 
-        return jsonify({
-            'success': True,
-            'filtros': filtros,
-            'timestamp': datetime.now().isoformat()
-        })
+            for nome, coluna in campos_simples:
+                cursor.execute(f"""
+                    SELECT DISTINCT {coluna}
+                    FROM public.vw_painel24_detalhe
+                    WHERE {coluna} IS NOT NULL AND {coluna} != ''
+                    ORDER BY {coluna}
+                """)
+                filtros[nome] = [row[0] for row in cursor.fetchall()]
+
+
+            return jsonify({
+                'success': True,
+                'filtros': filtros,
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro filtros painel24: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar filtros'}), 500

@@ -213,17 +213,12 @@ def api_resetar_senha(usuario_id):
 
         if resultado['success'] and force_reset:
             try:
-                from backend.database import get_db_connection
-                conn = get_db_connection()
-                if conn:
-                    cur = conn.cursor()
+                from backend.database import get_db_cursor
+                with get_db_cursor(commit=True) as cur:
                     cur.execute(
                         "UPDATE usuarios SET force_reset_senha = TRUE WHERE id = %s",
                         (usuario_id,)
                     )
-                    conn.commit()
-                    cur.close()
-                    conn.close()
             except Exception as e:
                 current_app.logger.error(f'Erro ao definir force_reset: {e}')
 
@@ -252,24 +247,14 @@ def api_force_reset_toggle(usuario_id):
 
         force_reset = bool(dados['force_reset_senha'])
 
-        from backend.database import get_db_connection
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'error': 'Erro de conexão'}), 500
-
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE usuarios SET force_reset_senha = %s WHERE id = %s",
-            (force_reset, usuario_id)
-        )
-
-        if cur.rowcount == 0:
-            conn.close()
-            return jsonify({'success': False, 'error': 'Usuário não encontrado'}), 404
-
-        conn.commit()
-        cur.close()
-        conn.close()
+        from backend.database import get_db_cursor
+        with get_db_cursor(commit=True) as cur:
+            cur.execute(
+                "UPDATE usuarios SET force_reset_senha = %s WHERE id = %s",
+                (force_reset, usuario_id)
+            )
+            if cur.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Usuário não encontrado'}), 404
 
         status = 'ativado' if force_reset else 'desativado'
         return jsonify({

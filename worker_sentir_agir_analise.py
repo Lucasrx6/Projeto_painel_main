@@ -32,10 +32,10 @@ import os
 import sys
 import time
 import json
-import logging
-import logging.handlers
+import threading
 import traceback
 import psycopg2
+from backend.notificador_utils import setup_notificador_logging, get_db_config
 from psycopg2.extras import RealDictCursor
 import schedule
 from datetime import datetime, date, timedelta
@@ -55,34 +55,13 @@ DIAS_RETROATIVOS = 7         # Quantos dias uteis anteriores checar ao iniciar
 HORARIO_SEMANAL = os.getenv('WORKER_SENTIR_AGIR_SEMANAL_HORA', '08:00')
 PERIODO_SEMANAL_DIAS = int(os.getenv('WORKER_SENTIR_AGIR_SEMANAL_DIAS', '7'))
 
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', 5432)),
-    'database': os.getenv('DB_NAME', ''),
-    'user': os.getenv('DB_USER', ''),
-    'password': os.getenv('DB_PASSWORD', ''),
-}
+DB_CONFIG = get_db_config()
 
 # =========================================================
 # LOGGING
 # =========================================================
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
-
-logger = logging.getLogger('worker_sentir_agir_analise')
-logger.setLevel(logging.INFO)
-
-_fh = logging.handlers.RotatingFileHandler(
-    os.path.join(LOG_DIR, 'worker_sentir_agir_analise.log'),
-    maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8'
-)
-_fh.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s'))
-logger.addHandler(_fh)
-
-_sh = logging.StreamHandler(sys.stdout)
-_sh.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s'))
-logger.addHandler(_sh)
+logger = setup_notificador_logging('worker_sentir_agir_analise', 'worker_sentir_agir_analise.log')
 logger.propagate = False  # evita duplicação: mensagem não sobe para o root logger do Flask
 
 
@@ -801,6 +780,11 @@ def main():
 # =========================================================
 
 _background_started = False
+_stop_event = threading.Event()
+
+
+def stop():
+    _stop_event.set()
 
 
 def start_in_background():
@@ -840,8 +824,7 @@ def start_in_background():
         return
 
     _background_started = True
-
-    import threading
+    _stop_event.clear()
 
     def _run():
         try:
@@ -870,9 +853,9 @@ def start_in_background():
             logger.info('[worker_sentir_agir] Agendado: diario as %s | semanal categorias toda segunda as %s',
                         HORARIO_EXECUCAO, HORARIO_SEMANAL)
 
-            while True:
+            while not _stop_event.is_set():
                 _scheduler.run_pending()
-                time.sleep(30)
+                _stop_event.wait(30)
 
         except Exception as e:
             logger.error('[worker_sentir_agir] Erro fatal na thread daemon: %s', e, exc_info=True)
@@ -880,6 +863,7 @@ def start_in_background():
     t = threading.Thread(target=_run, name='worker_sentir_agir_analise', daemon=True)
     t.start()
     logger.info('[worker_sentir_agir] Thread daemon registrada')
+    return _stop_event
 
 
 if __name__ == '__main__':

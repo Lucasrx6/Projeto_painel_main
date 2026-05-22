@@ -28,9 +28,9 @@ import apprise
 import requests
 import schedule
 import time
-import logging
-import logging.handlers
+import threading
 import os
+from backend.notificador_utils import setup_notificador_logging, get_db_config, get_smtp_config
 import sys
 import json
 import unicodedata
@@ -45,50 +45,21 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 # LOGGING
 # =========================================================
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
-
-logger = logging.getLogger('notificador_paciente_ps')
-logger.setLevel(logging.INFO)
-
-file_handler = logging.handlers.RotatingFileHandler(
-    os.path.join(LOG_DIR, 'notificador_paciente_ps.log'),
-    maxBytes=5 * 1024 * 1024,
-    backupCount=5,
-    encoding='utf-8'
-)
-file_handler.setFormatter(logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-))
-logger.addHandler(file_handler)
-
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setFormatter(logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%H:%M:%S'
-))
-logger.addHandler(console_handler)
+logger = setup_notificador_logging('notificador_paciente_ps', 'notificador_paciente_ps.log')
 
 
 # =========================================================
 # CONFIGURACOES
 # =========================================================
 
-DB_CONFIG = {
-    'host':     os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'postgres'),
-    'user':     os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'port':     os.getenv('DB_PORT', '5432')
-}
+DB_CONFIG = get_db_config()
 
-SMTP_HOST = os.getenv('SMTP_HOST', '')
-SMTP_PORT = os.getenv('SMTP_PORT', '587')
-SMTP_USER = os.getenv('SMTP_USER', '')
-SMTP_PASS = os.getenv('SMTP_PASS', '')
-SMTP_FROM = os.getenv('SMTP_FROM', '')
+_smtp = get_smtp_config()
+SMTP_HOST = _smtp['host']
+SMTP_PORT = _smtp['port']
+SMTP_USER = _smtp['user']
+SMTP_PASS = _smtp['password']
+SMTP_FROM = _smtp['sender']
 
 # Intervalo de verificacao e cooldown por clinica (em minutos)
 INTERVALO_MIN   = int(os.getenv('NOTIF_PACIENTE_PS_INTERVALO_MIN', '10'))
@@ -660,6 +631,11 @@ def main():
 # =========================================================
 
 _background_started = False
+_stop_event = threading.Event()
+
+
+def stop():
+    _stop_event.set()
 
 
 def start_in_background():
@@ -684,8 +660,7 @@ def start_in_background():
         return
 
     _background_started = True
-
-    import threading
+    _stop_event.clear()
 
     def _run():
         try:
@@ -698,9 +673,9 @@ def start_in_background():
             verificar_pacientes_ps()
             _scheduler.every(INTERVALO_MIN).minutes.do(verificar_pacientes_ps)
 
-            while True:
+            while not _stop_event.is_set():
                 _scheduler.run_pending()
-                time.sleep(30)
+                _stop_event.wait(30)
 
         except Exception as e:
             logger.error('[notificador_paciente_ps] Erro fatal na thread daemon: %s', e, exc_info=True)
@@ -708,6 +683,7 @@ def start_in_background():
     t = threading.Thread(target=_run, name='notificador_paciente_ps', daemon=True)
     t.start()
     logger.info('[notificador_paciente_ps] Thread daemon registrada')
+    return _stop_event
 
 
 if __name__ == '__main__':

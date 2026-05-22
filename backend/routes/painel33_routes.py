@@ -18,8 +18,7 @@ from decimal import Decimal
 from flask import current_app, Blueprint, request, jsonify, send_from_directory, session, Response
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 
 painel33_bp = Blueprint('painel33', __name__)
@@ -150,11 +149,9 @@ def _build_common_filters():
 
 @painel33_bp.route('/painel/painel33')
 @login_required
+@panel_permission_required('painel33')
 def painel33():
     usuario_id = session.get('usuario_id')
-    if usuario_id:
-        if not verificar_permissao_painel(usuario_id, 'painel33'):
-            return send_from_directory('frontend', 'acesso-negado.html')
     return send_from_directory('paineis/painel33', 'index.html')
 
 
@@ -169,6 +166,7 @@ def painel33_static(filename):
 
 @painel33_bp.route('/api/paineis/painel33/dashboard', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=120, key_prefix='painel33:dashboard')
 def painel33_dashboard():
     try:
@@ -204,6 +202,7 @@ def painel33_dashboard():
 
 @painel33_bp.route('/api/paineis/painel33/dados', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=120, key_prefix='painel33:dados', vary_by_query=True)
 def painel33_dados():
     try:
@@ -263,6 +262,7 @@ def painel33_dados():
 
 @painel33_bp.route('/api/paineis/painel33/paciente', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=60, key_prefix='painel33:paciente', vary_by_query=True)
 def painel33_paciente():
     try:
@@ -334,6 +334,7 @@ def painel33_paciente():
 
 @painel33_bp.route('/api/paineis/painel33/filtros', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=300, key_prefix='painel33:filtros')
 def painel33_filtros():
     try:
@@ -384,6 +385,7 @@ def painel33_filtros():
 
 @painel33_bp.route('/api/paineis/painel33/export', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 def painel33_export():
     try:
         condicoes, params = _build_common_filters()
@@ -456,13 +458,13 @@ def _ensure_responsaveis_table(cur):
 
 @painel33_bp.route('/api/paineis/painel33/responsaveis', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=300, key_prefix='painel33:responsaveis')
 def painel33_responsaveis_listar():
     try:
         with get_db_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 _ensure_responsaveis_table(cur)
-                conn.commit()
                 cur.execute("""
                     SELECT nm_responsavel,
                            ARRAY_AGG(ds_convenio ORDER BY ds_convenio) AS convenios,
@@ -481,6 +483,7 @@ def painel33_responsaveis_listar():
 
 @painel33_bp.route('/api/paineis/painel33/responsaveis/salvar', methods=['POST'])
 @login_required
+@panel_permission_required('painel33')
 def painel33_responsaveis_salvar():
     try:
         dados = request.get_json(force=True) or {}
@@ -499,7 +502,6 @@ def painel33_responsaveis_salvar():
                         "INSERT INTO painel33_responsaveis_convenio (nm_responsavel, ds_convenio) VALUES (%s, %s)",
                         [(nm, c) for c in convs]
                     )
-            conn.commit()
         return jsonify({'ok': True})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
@@ -508,6 +510,7 @@ def painel33_responsaveis_salvar():
 
 @painel33_bp.route('/api/paineis/painel33/responsaveis/excluir', methods=['POST'])
 @login_required
+@panel_permission_required('painel33')
 def painel33_responsaveis_excluir():
     try:
         dados = request.get_json(force=True) or {}
@@ -519,7 +522,6 @@ def painel33_responsaveis_excluir():
                 cur.execute(
                     "DELETE FROM painel33_responsaveis_convenio WHERE nm_responsavel = %s", (nm,)
                 )
-            conn.commit()
         return jsonify({'ok': True})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
@@ -532,6 +534,7 @@ def painel33_responsaveis_excluir():
 
 @painel33_bp.route('/api/paineis/painel33/visao-geral', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=120, key_prefix='painel33:visao-geral', vary_by_query=True)
 def painel33_visao_geral():
     try:
@@ -632,7 +635,6 @@ def painel33_visao_geral():
         with get_db_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 _ensure_responsaveis_table(cur)
-                conn.commit()
                 cur.execute(sql_kpis, params)
                 kpis = cur.fetchone()
                 cur.execute(sql_convenios, params)
@@ -659,6 +661,7 @@ def painel33_visao_geral():
 
 @painel33_bp.route('/api/paineis/painel33/debug/view-colunas', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 def painel33_debug_view_colunas():
     try:
         tabelas = [
@@ -696,6 +699,7 @@ def painel33_debug_view_colunas():
 
 @painel33_bp.route('/api/paineis/painel33/valores/dashboard', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=120, key_prefix='painel33:valores-dashboard', vary_by_query=True)
 def painel33_valores_dashboard():
     try:
@@ -771,6 +775,7 @@ def painel33_valores_dashboard():
 
 @painel33_bp.route('/api/paineis/painel33/valores/lista', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 @cache_route(ttl=120, key_prefix='painel33:valores-lista', vary_by_query=True)
 def painel33_valores_lista():
     try:
@@ -860,6 +865,7 @@ def painel33_valores_lista():
 
 @painel33_bp.route('/api/paineis/painel33/valores/detalhe/<int:nr_sequencia>', methods=['GET'])
 @login_required
+@panel_permission_required('painel33')
 def painel33_valores_detalhe(nr_sequencia):
     try:
         with get_db_connection() as conn:

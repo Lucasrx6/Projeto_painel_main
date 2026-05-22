@@ -16,9 +16,8 @@ from datetime import datetime, date
 from decimal import Decimal
 from flask import current_app, Blueprint, request, jsonify, send_from_directory, session, Response
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 from dotenv import load_dotenv
 
@@ -87,17 +86,14 @@ def _extrair_obs_item(descricao_problema):
 
 @painel32_bp.route('/painel/painel32')
 @login_required
+@panel_permission_required('painel32')
 def painel32():
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel32'):
-            return send_from_directory('frontend', 'acesso-negado.html')
     return send_from_directory('paineis/painel32', 'index.html')
 
 
 @painel32_bp.route('/paineis/painel32/<path:filename>')
 @login_required
+@panel_permission_required('painel32')
 def painel32_static(filename):
     return send_from_directory('paineis/painel32', filename)
 
@@ -108,6 +104,7 @@ def painel32_static(filename):
 
 @painel32_bp.route('/api/paineis/painel32/analise-salva', methods=['GET'])
 @login_required
+@panel_permission_required('painel32')
 @cache_route(ttl=120, key_prefix='painel32:analise-salva')
 def analise_salva():
     """
@@ -116,23 +113,20 @@ def analise_salva():
     """
     data_str = request.args.get('data', date.today().isoformat())
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT analise_texto, total_visitas, total_criticos,
-                   total_atencao, total_setores, modelo,
-                   gerado_em, gerado_por
-            FROM sentir_agir_analises_ia
-            WHERE data_analise = %s
-        """, (data_str,))
-        row = cursor.fetchone()
-        cursor.close()
-        release_connection(conn)
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT analise_texto, total_visitas, total_criticos,
+                       total_atencao, total_setores, modelo,
+                       gerado_em, gerado_por
+                FROM sentir_agir_analises_ia
+                WHERE data_analise = %s
+            """, (data_str,))
+            row = cursor.fetchone()
 
-        if not row:
-            return jsonify({'success': True, 'data': None})
+            if not row:
+                return jsonify({'success': True, 'data': None})
 
-        return jsonify({'success': True, 'data': _serial_row(row)})
+            return jsonify({'success': True, 'data': _serial_row(row)})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -144,6 +138,7 @@ def analise_salva():
 
 @painel32_bp.route('/api/paineis/painel32/historico', methods=['GET'])
 @login_required
+@panel_permission_required('painel32')
 @cache_route(ttl=120, key_prefix='painel32:historico', vary_by_query=True)
 def historico():
     """
@@ -153,29 +148,26 @@ def historico():
     """
     limite = int(request.args.get('limite', 30))
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT
-                TO_CHAR(data_analise, 'YYYY-MM-DD') AS data,
-                TO_CHAR(data_analise, 'DD/MM/YYYY') AS data_fmt,
-                TO_CHAR(data_analise, 'Day') AS dia_semana,
-                total_visitas, total_criticos, total_atencao,
-                total_setores,
-                analise_texto,
-                gerado_em, gerado_por, modelo
-            FROM sentir_agir_analises_ia
-            ORDER BY data_analise DESC
-            LIMIT %s
-        """, (limite,))
-        rows = []
-        for r in cursor.fetchall():
-            row = _serial_row(r)
-            row['sintese'] = _extrair_sintese(row.pop('analise_texto', '') or '')
-            rows.append(row)
-        cursor.close()
-        release_connection(conn)
-        return jsonify({'success': True, 'data': rows})
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    TO_CHAR(data_analise, 'YYYY-MM-DD') AS data,
+                    TO_CHAR(data_analise, 'DD/MM/YYYY') AS data_fmt,
+                    TO_CHAR(data_analise, 'Day') AS dia_semana,
+                    total_visitas, total_criticos, total_atencao,
+                    total_setores,
+                    analise_texto,
+                    gerado_em, gerado_por, modelo
+                FROM sentir_agir_analises_ia
+                ORDER BY data_analise DESC
+                LIMIT %s
+            """, (limite,))
+            rows = []
+            for r in cursor.fetchall():
+                row = _serial_row(r)
+                row['sintese'] = _extrair_sintese(row.pop('analise_texto', '') or '')
+                rows.append(row)
+            return jsonify({'success': True, 'data': rows})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -187,6 +179,7 @@ def historico():
 
 @painel32_bp.route('/api/paineis/painel32/dados', methods=['GET'])
 @login_required
+@panel_permission_required('painel32')
 @cache_route(ttl=120, key_prefix='painel32:dados', vary_by_query=True)
 def dados():
     """
@@ -196,103 +189,100 @@ def dados():
     data_str = request.args.get('data', date.today().isoformat())
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        cursor.execute("""
-            SELECT
-                v.id AS visita_id,
-                v.nm_paciente,
-                v.nr_atendimento,
-                v.leito,
-                v.avaliacao_final,
-                v.observacoes AS obs_geral,
-                s.nome AS setor_nome,
-                s.sigla AS setor_sigla,
-                s.ordem AS setor_ordem,
-                r.data_ronda,
-                d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome,
-                v.criado_em
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-            JOIN sentir_agir_setores s ON s.id = v.setor_id
-            JOIN sentir_agir_duplas d ON d.id = r.dupla_id
-            WHERE DATE(v.criado_em) = %s
-              AND v.avaliacao_final != 'impossibilitada'
-            ORDER BY COALESCE(s.ordem, 999), v.criado_em
-        """, (data_str,))
-        visitas = [_serial_row(r) for r in cursor.fetchall()]
-
-        # Buscar itens criticos/atencao de cada visita
-        for v in visitas:
             cursor.execute("""
                 SELECT
-                    i.descricao AS item_descricao,
-                    c.nome AS categoria_nome,
-                    a.resultado,
-                    t.descricao_problema
-                FROM sentir_agir_avaliacoes a
-                JOIN sentir_agir_itens i ON i.id = a.item_id
-                JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                LEFT JOIN sentir_agir_tratativas t
-                    ON t.visita_id = a.visita_id AND t.item_id = a.item_id
-                WHERE a.visita_id = %s
-                  AND a.resultado IN ('critico', 'atencao')
-                ORDER BY c.ordem, i.ordem
-            """, (v['visita_id'],))
-            itens = []
-            for r in cursor.fetchall():
-                item = _serial_row(r)
-                item['obs_item'] = _extrair_obs_item(item.get('descricao_problema'))
-                itens.append(item)
-            v['itens_problema'] = itens
+                    v.id AS visita_id,
+                    v.nm_paciente,
+                    v.nr_atendimento,
+                    v.leito,
+                    v.avaliacao_final,
+                    v.observacoes AS obs_geral,
+                    s.nome AS setor_nome,
+                    s.sigla AS setor_sigla,
+                    s.ordem AS setor_ordem,
+                    r.data_ronda,
+                    d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla_nome,
+                    v.criado_em
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                JOIN sentir_agir_setores s ON s.id = v.setor_id
+                JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+                WHERE DATE(v.criado_em) = %s
+                  AND v.avaliacao_final != 'impossibilitada'
+                ORDER BY COALESCE(s.ordem, 999), v.criado_em
+            """, (data_str,))
+            visitas = [_serial_row(r) for r in cursor.fetchall()]
 
-        cursor.close()
-        release_connection(conn)
+            # Buscar itens criticos/atencao de cada visita
+            for v in visitas:
+                cursor.execute("""
+                    SELECT
+                        i.descricao AS item_descricao,
+                        c.nome AS categoria_nome,
+                        a.resultado,
+                        t.descricao_problema
+                    FROM sentir_agir_avaliacoes a
+                    JOIN sentir_agir_itens i ON i.id = a.item_id
+                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                    LEFT JOIN sentir_agir_tratativas t
+                        ON t.visita_id = a.visita_id AND t.item_id = a.item_id
+                    WHERE a.visita_id = %s
+                      AND a.resultado IN ('critico', 'atencao')
+                    ORDER BY c.ordem, i.ordem
+                """, (v['visita_id'],))
+                itens = []
+                for r in cursor.fetchall():
+                    item = _serial_row(r)
+                    item['obs_item'] = _extrair_obs_item(item.get('descricao_problema'))
+                    itens.append(item)
+                v['itens_problema'] = itens
 
-        # Agrupar por setor
-        setores = {}
-        for v in visitas:
-            sn = v['setor_nome'] or 'Sem Setor'
-            if sn not in setores:
-                setores[sn] = {
-                    'setor_nome': sn,
-                    'setor_sigla': v['setor_sigla'] or sn[:4],
-                    'setor_ordem': v['setor_ordem'],
-                    'visitas': [],
-                    'total': 0, 'criticos': 0, 'atencao': 0, 'adequados': 0
+
+            # Agrupar por setor
+            setores = {}
+            for v in visitas:
+                sn = v['setor_nome'] or 'Sem Setor'
+                if sn not in setores:
+                    setores[sn] = {
+                        'setor_nome': sn,
+                        'setor_sigla': v['setor_sigla'] or sn[:4],
+                        'setor_ordem': v['setor_ordem'],
+                        'visitas': [],
+                        'total': 0, 'criticos': 0, 'atencao': 0, 'adequados': 0
+                    }
+                setores[sn]['visitas'].append(v)
+                setores[sn]['total'] += 1
+                av = v['avaliacao_final']
+                if av == 'critico':
+                    setores[sn]['criticos'] += 1
+                elif av == 'atencao':
+                    setores[sn]['atencao'] += 1
+                else:
+                    setores[sn]['adequados'] += 1
+
+            setores_lista = sorted(
+                setores.values(),
+                key=lambda x: (x['setor_ordem'] or 999, x['setor_nome'])
+            )
+
+            total = len(visitas)
+            criticos = sum(1 for v in visitas if v['avaliacao_final'] == 'critico')
+            atencao = sum(1 for v in visitas if v['avaliacao_final'] == 'atencao')
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'data': data_str,
+                    'total': total,
+                    'criticos': criticos,
+                    'atencao': atencao,
+                    'adequados': total - criticos - atencao,
+                    'total_setores': len(setores_lista),
+                    'setores': setores_lista
                 }
-            setores[sn]['visitas'].append(v)
-            setores[sn]['total'] += 1
-            av = v['avaliacao_final']
-            if av == 'critico':
-                setores[sn]['criticos'] += 1
-            elif av == 'atencao':
-                setores[sn]['atencao'] += 1
-            else:
-                setores[sn]['adequados'] += 1
-
-        setores_lista = sorted(
-            setores.values(),
-            key=lambda x: (x['setor_ordem'] or 999, x['setor_nome'])
-        )
-
-        total = len(visitas)
-        criticos = sum(1 for v in visitas if v['avaliacao_final'] == 'critico')
-        atencao = sum(1 for v in visitas if v['avaliacao_final'] == 'atencao')
-
-        return jsonify({
-            'success': True,
-            'data': {
-                'data': data_str,
-                'total': total,
-                'criticos': criticos,
-                'atencao': atencao,
-                'adequados': total - criticos - atencao,
-                'total_setores': len(setores_lista),
-                'setores': setores_lista
-            }
-        })
+            })
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
@@ -304,6 +294,7 @@ def dados():
 
 @painel32_bp.route('/api/paineis/painel32/gerar-analise', methods=['POST'])
 @login_required
+@panel_permission_required('painel32')
 def gerar_analise():
     """
     Recebe os dados das visitas do dia e pede ao Groq
@@ -395,32 +386,28 @@ def gerar_analise():
 
         # Persistir no banco para nao precisar regenerar
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            total_visitas = sum(s['total'] for s in setores)
-            total_criticos = sum(s['criticos'] for s in setores)
-            total_atencao = sum(s['atencao'] for s in setores)
-            cursor.execute("""
-                INSERT INTO sentir_agir_analises_ia
-                    (data_analise, analise_texto, total_visitas, total_criticos,
-                     total_atencao, total_setores, modelo, gerado_por)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 'manual')
-                ON CONFLICT (data_analise) DO UPDATE SET
-                    analise_texto  = EXCLUDED.analise_texto,
-                    total_visitas  = EXCLUDED.total_visitas,
-                    total_criticos = EXCLUDED.total_criticos,
-                    total_atencao  = EXCLUDED.total_atencao,
-                    total_setores  = EXCLUDED.total_setores,
-                    modelo         = EXCLUDED.modelo,
-                    gerado_em      = CURRENT_TIMESTAMP,
-                    gerado_por     = 'manual'
-            """, (
-                data_analise, analise, total_visitas, total_criticos,
-                total_atencao, len(setores), GROQ_MODEL
-            ))
-            conn.commit()
-            cursor.close()
-            release_connection(conn)
+            with get_db_cursor(use_dict_cursor=False) as cursor:
+                total_visitas = sum(s['total'] for s in setores)
+                total_criticos = sum(s['criticos'] for s in setores)
+                total_atencao = sum(s['atencao'] for s in setores)
+                cursor.execute("""
+                    INSERT INTO sentir_agir_analises_ia
+                        (data_analise, analise_texto, total_visitas, total_criticos,
+                         total_atencao, total_setores, modelo, gerado_por)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'manual')
+                    ON CONFLICT (data_analise) DO UPDATE SET
+                        analise_texto  = EXCLUDED.analise_texto,
+                        total_visitas  = EXCLUDED.total_visitas,
+                        total_criticos = EXCLUDED.total_criticos,
+                        total_atencao  = EXCLUDED.total_atencao,
+                        total_setores  = EXCLUDED.total_setores,
+                        modelo         = EXCLUDED.modelo,
+                        gerado_em      = CURRENT_TIMESTAMP,
+                        gerado_por     = 'manual'
+                """, (
+                    data_analise, analise, total_visitas, total_criticos,
+                    total_atencao, len(setores), GROQ_MODEL
+                ))
         except Exception as db_err:
             # Nao falha a requisicao por erro ao salvar — apenas loga
             print('Aviso: nao foi possivel salvar analise no banco:', db_err)
@@ -445,6 +432,7 @@ def gerar_analise():
 
 @painel32_bp.route('/api/paineis/painel32/sugestao', methods=['POST'])
 @login_required
+@panel_permission_required('painel32')
 def sugestao_abordagem():
     """
     Recebe um item critico/atencao especifico e retorna
@@ -524,120 +512,118 @@ def sugestao_abordagem():
 
 @painel32_bp.route('/api/paineis/painel32/exportar', methods=['GET'])
 @login_required
+@panel_permission_required('painel32')
 def exportar():
     data_str = request.args.get('data', date.today().isoformat())
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        cursor.execute("""
-            SELECT
-                s.nome AS setor,
-                v.leito,
-                v.nm_paciente AS paciente,
-                v.nr_atendimento AS atendimento,
-                v.avaliacao_final AS avaliacao,
-                d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla,
-                r.data_ronda,
-                v.observacoes AS obs_geral,
-                v.criado_em
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-            JOIN sentir_agir_setores s ON s.id = v.setor_id
-            JOIN sentir_agir_duplas d ON d.id = r.dupla_id
-            WHERE DATE(v.criado_em) = %s
-              AND v.avaliacao_final != 'impossibilitada'
-            ORDER BY COALESCE(s.ordem, 999), s.nome, v.leito
-        """, (data_str,))
-        visitas = cursor.fetchall()
-
-        # Buscar itens criticos por visita para incluir no CSV
-        visitas_com_itens = []
-        for v in visitas:
-            vd = dict(v)
             cursor.execute("""
-                SELECT i.descricao AS item, c.nome AS categoria, a.resultado, t.descricao_problema
-                FROM sentir_agir_avaliacoes a
-                JOIN sentir_agir_itens i ON i.id = a.item_id
-                JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                LEFT JOIN sentir_agir_tratativas t
-                    ON t.visita_id = a.visita_id AND t.item_id = a.item_id
-                WHERE a.visita_id = %s AND a.resultado IN ('critico', 'atencao')
-                ORDER BY c.ordem, i.ordem
-            """, (v['nr_atendimento'],))
-            # na verdade precisa do visita_id — vamos buscar ele
-            visitas_com_itens.append(vd)
+                SELECT
+                    s.nome AS setor,
+                    v.leito,
+                    v.nm_paciente AS paciente,
+                    v.nr_atendimento AS atendimento,
+                    v.avaliacao_final AS avaliacao,
+                    d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla,
+                    r.data_ronda,
+                    v.observacoes AS obs_geral,
+                    v.criado_em
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                JOIN sentir_agir_setores s ON s.id = v.setor_id
+                JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+                WHERE DATE(v.criado_em) = %s
+                  AND v.avaliacao_final != 'impossibilitada'
+                ORDER BY COALESCE(s.ordem, 999), s.nome, v.leito
+            """, (data_str,))
+            visitas = cursor.fetchall()
 
-        # Buscar de novo com visita_id
-        cursor.execute("""
-            SELECT
-                v.id AS visita_id,
-                s.nome AS setor, v.leito,
-                v.nm_paciente AS paciente,
-                v.nr_atendimento AS atendimento,
-                v.avaliacao_final AS avaliacao,
-                d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla,
-                TO_CHAR(r.data_ronda, 'DD/MM/YYYY') AS data_ronda,
-                v.observacoes AS obs_geral
-            FROM sentir_agir_visitas v
-            JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-            JOIN sentir_agir_setores s ON s.id = v.setor_id
-            JOIN sentir_agir_duplas d ON d.id = r.dupla_id
-            WHERE DATE(v.criado_em) = %s
-              AND v.avaliacao_final != 'impossibilitada'
-            ORDER BY COALESCE(s.ordem, 999), s.nome, v.leito
-        """, (data_str,))
-        visitas2 = cursor.fetchall()
+            # Buscar itens criticos por visita para incluir no CSV
+            visitas_com_itens = []
+            for v in visitas:
+                vd = dict(v)
+                cursor.execute("""
+                    SELECT i.descricao AS item, c.nome AS categoria, a.resultado, t.descricao_problema
+                    FROM sentir_agir_avaliacoes a
+                    JOIN sentir_agir_itens i ON i.id = a.item_id
+                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                    LEFT JOIN sentir_agir_tratativas t
+                        ON t.visita_id = a.visita_id AND t.item_id = a.item_id
+                    WHERE a.visita_id = %s AND a.resultado IN ('critico', 'atencao')
+                    ORDER BY c.ordem, i.ordem
+                """, (v['nr_atendimento'],))
+                # na verdade precisa do visita_id — vamos buscar ele
+                visitas_com_itens.append(vd)
 
-        output = io.StringIO()
-        writer = csv.writer(output, delimiter=';')
-        writer.writerow([
-            'Setor', 'Leito', 'Paciente', 'Atendimento', 'Avaliacao',
-            'Dupla', 'Data Ronda', 'Obs Geral',
-            'Itens Criticos/Atencao', 'Criticas'
-        ])
-
-        for v in visitas2:
+            # Buscar de novo com visita_id
             cursor.execute("""
-                SELECT i.descricao AS item, c.nome AS categoria, a.resultado, t.descricao_problema
-                FROM sentir_agir_avaliacoes a
-                JOIN sentir_agir_itens i ON i.id = a.item_id
-                JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                LEFT JOIN sentir_agir_tratativas t
-                    ON t.visita_id = a.visita_id AND t.item_id = a.item_id
-                WHERE a.visita_id = %s AND a.resultado IN ('critico', 'atencao')
-                ORDER BY c.ordem, i.ordem
-            """, (v['visita_id'],))
-            itens = cursor.fetchall()
+                SELECT
+                    v.id AS visita_id,
+                    s.nome AS setor, v.leito,
+                    v.nm_paciente AS paciente,
+                    v.nr_atendimento AS atendimento,
+                    v.avaliacao_final AS avaliacao,
+                    d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla,
+                    TO_CHAR(r.data_ronda, 'DD/MM/YYYY') AS data_ronda,
+                    v.observacoes AS obs_geral
+                FROM sentir_agir_visitas v
+                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
+                JOIN sentir_agir_setores s ON s.id = v.setor_id
+                JOIN sentir_agir_duplas d ON d.id = r.dupla_id
+                WHERE DATE(v.criado_em) = %s
+                  AND v.avaliacao_final != 'impossibilitada'
+                ORDER BY COALESCE(s.ordem, 999), s.nome, v.leito
+            """, (data_str,))
+            visitas2 = cursor.fetchall()
 
-            itens_texto = ' | '.join(
-                '[{}] {}: {}'.format(i['resultado'].upper(), i['categoria'], i['item'])
-                for i in itens
-            )
-            criticas_texto = ' | '.join(
-                _extrair_obs_item(i['descricao_problema']) or ''
-                for i in itens if i.get('descricao_problema')
-            )
-
+            output = io.StringIO()
+            writer = csv.writer(output, delimiter=';')
             writer.writerow([
-                v['setor'], v['leito'], v['paciente'], v['atendimento'],
-                v['avaliacao'], v['dupla'], v['data_ronda'],
-                v['obs_geral'] or '',
-                itens_texto, criticas_texto
+                'Setor', 'Leito', 'Paciente', 'Atendimento', 'Avaliacao',
+                'Dupla', 'Data Ronda', 'Obs Geral',
+                'Itens Criticos/Atencao', 'Criticas'
             ])
 
-        cursor.close()
-        release_connection(conn)
+            for v in visitas2:
+                cursor.execute("""
+                    SELECT i.descricao AS item, c.nome AS categoria, a.resultado, t.descricao_problema
+                    FROM sentir_agir_avaliacoes a
+                    JOIN sentir_agir_itens i ON i.id = a.item_id
+                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                    LEFT JOIN sentir_agir_tratativas t
+                        ON t.visita_id = a.visita_id AND t.item_id = a.item_id
+                    WHERE a.visita_id = %s AND a.resultado IN ('critico', 'atencao')
+                    ORDER BY c.ordem, i.ordem
+                """, (v['visita_id'],))
+                itens = cursor.fetchall()
 
-        output.seek(0)
-        nome_arquivo = 'sentir_agir_{}.csv'.format(data_str)
+                itens_texto = ' | '.join(
+                    '[{}] {}: {}'.format(i['resultado'].upper(), i['categoria'], i['item'])
+                    for i in itens
+                )
+                criticas_texto = ' | '.join(
+                    _extrair_obs_item(i['descricao_problema']) or ''
+                    for i in itens if i.get('descricao_problema')
+                )
 
-        return Response(
-            '\ufeff' + output.getvalue(),  # BOM para Excel reconhecer UTF-8
-            mimetype='text/csv; charset=utf-8',
-            headers={'Content-Disposition': 'attachment; filename=' + nome_arquivo}
-        )
+                writer.writerow([
+                    v['setor'], v['leito'], v['paciente'], v['atendimento'],
+                    v['avaliacao'], v['dupla'], v['data_ronda'],
+                    v['obs_geral'] or '',
+                    itens_texto, criticas_texto
+                ])
+
+
+            output.seek(0)
+            nome_arquivo = 'sentir_agir_{}.csv'.format(data_str)
+
+            return Response(
+                '\ufeff' + output.getvalue(),  # BOM para Excel reconhecer UTF-8
+                mimetype='text/csv; charset=utf-8',
+                headers={'Content-Disposition': 'attachment; filename=' + nome_arquivo}
+            )
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500

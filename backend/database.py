@@ -184,6 +184,13 @@ class _PoolConnectionWrapper:
 
         try:
             if _connection_pool is not None and not conn.closed:
+                # Sempre faz rollback antes de devolver ao pool.
+                # O pool NAO reseta o estado da conexao — sem isso, uma transacao
+                # abortada ou pendente contamina o proximo chamador.
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 _connection_pool.putconn(conn)
                 return
         except Exception:
@@ -233,10 +240,9 @@ def get_db_connection(use_dict_cursor=False, retry_count=3, retry_delay=2):
     if USE_CONNECTION_POOL and _connection_pool is not None:
         try:
             conn = _connection_pool.getconn()
-            if use_dict_cursor:
-                conn.cursor_factory = RealDictCursor
-            # Patcha close() para devolver ao pool automaticamente
-            # (resolve pool exhausted quando rotas chamam conn.close() diretamente)
+            # Sempre redefine cursor_factory — o pool não reseta entre requests,
+            # então conexões reutilizadas podem carregar RealDictCursor de chamadas anteriores.
+            conn.cursor_factory = RealDictCursor if use_dict_cursor else psycopg2.extensions.cursor
             return _make_pool_conn(conn)
         except Exception as e:
             logger.warning(f"Erro ao obter conexao do pool: {e}. Usando conexao direta.")

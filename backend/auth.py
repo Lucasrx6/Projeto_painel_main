@@ -18,13 +18,27 @@ import secrets
 import random
 import os
 import time
+from jinja2 import Environment, FileSystemLoader
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, Tuple, Union
-from collections import defaultdict
 from threading import Lock
 
 from backend.database import get_db_connection
+
+# ==============================================================================
+# TEMPLATE DE EMAIL (Jinja2)
+# ==============================================================================
+
+_email_env = Environment(
+    loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates_email')),
+    autoescape=True
+)
+
+
+def _render_email_template(nome: str, **ctx) -> str:
+    return _email_env.get_template(nome).render(**ctx)
+
 
 # ==============================================================================
 # CONFIGURACAO DE LOGGING
@@ -68,39 +82,48 @@ ERRO_USUARIO_EXISTENTE = 'Usuario ou email ja cadastrado'
 
 class RateLimiter:
     """
-    Controle de rate limiting para tentativas de login.
-    Armazena em memoria (para producao considere usar Redis).
+    Controle de rate limiting para tentativas de login via Redis.
+    Fallback gracioso: se Redis indisponivel, permite acesso sem restricao.
     """
 
     def __init__(self):
-        self._tentativas: Dict[str, list] = defaultdict(list)
-        self._bloqueios: Dict[str, datetime] = {}
-        self._lock = Lock()
+        self._lock = Lock()  # mantido para compatibilidade com _pin_rate_limiter
 
-    def registrar_tentativa(self, identificador: str, sucesso: bool) -> None:
-        """Registra uma tentativa de login."""
-        with self._lock:
-            agora = datetime.now()
+    def _get_redis(self):
+        try:
+            from backend.cache import _redis_client
+            return _redis_client
+        except Exception:
+            return None
 
-            # Remove tentativas antigas
-            self._limpar_tentativas_antigas(identificador, agora)
+    def _chave_tentativas(self, identificador: str) -> str:
+        return f'rl:tentativas:{identificador}'
 
-            if not sucesso:
-                self._tentativas[identificador].append(agora)
+    def _chave_bloqueio(self, identificador: str) -> str:
+        return f'rl:bloqueio:{identificador}'
 
-                # Verifica se deve bloquear
-                if len(self._tentativas[identificador]) >= MAX_TENTATIVAS_LOGIN:
-                    self._bloqueios[identificador] = agora + timedelta(
-                        seconds=BLOQUEIO_TEMPORARIO_SEGUNDOS
-                    )
+    def registrar_tentativa(self, identificador: str, sucesso: bool = False) -> None:
+        """Registra tentativa de login (sucesso ou falha)."""
+        r = self._get_redis()
+        if r is None:
+            return
+        try:
+            if sucesso:
+                r.delete(self._chave_tentativas(identificador))
+                r.delete(self._chave_bloqueio(identificador))
+            else:
+                chave = self._chave_tentativas(identificador)
+                tentativas = r.incr(chave)
+                if tentativas == 1:
+                    r.expire(chave, JANELA_TENTATIVAS_SEGUNDOS)
+                if tentativas >= MAX_TENTATIVAS_LOGIN:
+                    r.setex(self._chave_bloqueio(identificador), BLOQUEIO_TEMPORARIO_SEGUNDOS, '1')
+                    r.delete(chave)
                     security_logger.warning(
                         f'Conta bloqueada por excesso de tentativas: {identificador}'
                     )
-            else:
-                # Login bem sucedido, limpa tentativas
-                self._tentativas[identificador] = []
-                if identificador in self._bloqueios:
-                    del self._bloqueios[identificador]
+        except Exception:
+            pass
 
     def esta_bloqueado(self, identificador: str) -> Tuple[bool, Optional[int]]:
         """
@@ -109,37 +132,39 @@ class RateLimiter:
         Returns:
             tuple: (bloqueado: bool, segundos_restantes: int ou None)
         """
-        with self._lock:
-            if identificador not in self._bloqueios:
-                return False, None
-
-            agora = datetime.now()
-            fim_bloqueio = self._bloqueios[identificador]
-
-            if agora >= fim_bloqueio:
-                # Bloqueio expirou
-                del self._bloqueios[identificador]
-                self._tentativas[identificador] = []
-                return False, None
-
-            segundos_restantes = int((fim_bloqueio - agora).total_seconds())
-            return True, segundos_restantes
+        r = self._get_redis()
+        if r is None:
+            return False, None
+        try:
+            ttl = r.ttl(self._chave_bloqueio(identificador))
+            if ttl > 0:
+                return True, ttl
+            return False, None
+        except Exception:
+            return False, None
 
     def tentativas_restantes(self, identificador: str) -> int:
-        """Retorna o numero de tentativas restantes."""
-        with self._lock:
-            agora = datetime.now()
-            self._limpar_tentativas_antigas(identificador, agora)
-            tentativas_usadas = len(self._tentativas[identificador])
-            return max(0, MAX_TENTATIVAS_LOGIN - tentativas_usadas)
+        """Retorna o numero de tentativas restantes antes do bloqueio."""
+        r = self._get_redis()
+        if r is None:
+            return MAX_TENTATIVAS_LOGIN
+        try:
+            val = r.get(self._chave_tentativas(identificador))
+            usadas = int(val) if val else 0
+            return max(0, MAX_TENTATIVAS_LOGIN - usadas)
+        except Exception:
+            return MAX_TENTATIVAS_LOGIN
 
-    def _limpar_tentativas_antigas(self, identificador: str, agora: datetime) -> None:
-        """Remove tentativas fora da janela de tempo."""
-        limite = agora - timedelta(seconds=JANELA_TENTATIVAS_SEGUNDOS)
-        self._tentativas[identificador] = [
-            t for t in self._tentativas[identificador]
-            if t > limite
-        ]
+    def limpar_bloqueio(self, identificador: str) -> None:
+        """Remove bloqueio e tentativas do identificador."""
+        r = self._get_redis()
+        if r is None:
+            return
+        try:
+            r.delete(self._chave_tentativas(identificador))
+            r.delete(self._chave_bloqueio(identificador))
+        except Exception:
+            pass
 
 
 # Instancia global do rate limiter
@@ -787,11 +812,7 @@ def limpar_bloqueio(usuario: str, admin_confirmado: bool = False) -> bool:
 
     usuario = usuario.strip().lower()
 
-    with _rate_limiter._lock:
-        if usuario in _rate_limiter._bloqueios:
-            del _rate_limiter._bloqueios[usuario]
-        if usuario in _rate_limiter._tentativas:
-            _rate_limiter._tentativas[usuario] = []
+    _rate_limiter.limpar_bloqueio(usuario)
 
     security_logger.info(f'Bloqueio removido manualmente para usuario: {usuario}')
     return True
@@ -1135,37 +1156,13 @@ def _enviar_email_pin(email_destino: str, usuario: str, pin: str) -> Tuple[bool,
             return False, 'Credenciais de email nao configuradas no servidor'
 
         # Monta corpo HTML do email
-        corpo_html = f"""
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 20px 25px; border-radius: 12px 12px 0 0; text-align: center;">
-                <h2 style="margin: 0; font-size: 20px;">Codigo de Verificacao</h2>
-                <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Sistema de Paineis - Hospital Anchieta</p>
-            </div>
-
-            <div style="border: 1px solid #dee2e6; border-top: none; padding: 30px 25px; border-radius: 0 0 12px 12px; text-align: center;">
-
-                <p style="font-size: 15px; color: #333; margin-bottom: 5px;">Ola, <strong>{usuario}</strong></p>
-                <p style="font-size: 14px; color: #666; margin-bottom: 25px;">Use o codigo abaixo para redefinir sua senha:</p>
-
-                <div style="background: #f8f9fa; border: 2px dashed #dc3545; border-radius: 12px; padding: 20px; margin: 0 auto; max-width: 220px;">
-                    <span style="font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #dc3545; font-family: 'Courier New', monospace;">{pin}</span>
-                </div>
-
-                <p style="font-size: 13px; color: #999; margin-top: 20px;">
-                    Este codigo expira em <strong>{PIN_EXPIRATION_MINUTES} minutos</strong>.
-                </p>
-                <p style="font-size: 12px; color: #bbb; margin-top: 10px;">
-                    Se voce nao solicitou esta redefinicao, ignore este email.
-                </p>
-
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 11px; color: #999; margin: 0;">
-                    Notificacao automatica - Sistema de Paineis HAC<br>
-                    {datetime.now().strftime('%d/%m/%Y %H:%M')}
-                </p>
-            </div>
-        </div>
-        """
+        corpo_html = _render_email_template(
+            'reset_senha.html',
+            usuario=usuario,
+            pin=pin,
+            expira_min=PIN_EXPIRATION_MINUTES,
+            gerado_em=datetime.now().strftime('%d/%m/%Y %H:%M')
+        )
 
         msg = MIMEMultipart('alternative')
         msg['Subject'] = 'Codigo de Verificacao - Sistema de Paineis HAC'

@@ -5,9 +5,8 @@ Exames de Radiologia e Laboratório
 
 from flask import Blueprint, jsonify, request, session, current_app, send_from_directory
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 from datetime import datetime, timedelta
 import logging
@@ -43,26 +42,19 @@ def _parse_datetime(val):
 
 
 def _buscar_dashboard():
-    conn = get_db_connection()
-    if not conn:
-        return None, 'Erro de conexão'
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM vw_painel22_dashboard")
-        row = cursor.fetchone()
-        cursor.close()
-        release_connection(conn)
-        if not row:
-            return {
-                'total_pacientes': 0, 'total_exames': 0,
-                'qt_radiologia': 0, 'qt_laboratorio': 0,
-                'qt_pendentes': 0, 'qt_em_andamento': 0, 'qt_concluidos': 0
-            }, None
-        return serializar_dict(row), None
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT * FROM vw_painel22_dashboard")
+            row = cursor.fetchone()
+            if not row:
+                return {
+                    'total_pacientes': 0, 'total_exames': 0,
+                    'qt_radiologia': 0, 'qt_laboratorio': 0,
+                    'qt_pendentes': 0, 'qt_em_andamento': 0, 'qt_concluidos': 0
+                }, None
+            return serializar_dict(row), None
     except Exception as e:
         logger.error(f'[P22] Erro dashboard: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return None, str(e)
 
 
@@ -120,109 +112,102 @@ def _calcular_tempos_exame(exame, agora):
 
 
 def _buscar_dados():
-    conn = get_db_connection()
-    if not conn:
-        return None, 'Erro de conexão'
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
-            SELECT
-                d.*,
-                ROUND(EXTRACT(EPOCH FROM (NOW() - d.dt_entrada)) / 3600.0, 1) AS horas_no_ps_atual
-            FROM vw_painel22_detalhe d
-            ORDER BY d.nr_atendimento, d.prioridade_ordem ASC, d.dt_pedido ASC
-        """)
-        rows = cursor.fetchall()
-        cursor.close()
-        release_connection(conn)
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    d.*,
+                    ROUND(EXTRACT(EPOCH FROM (NOW() - d.dt_entrada)) / 3600.0, 1) AS horas_no_ps_atual
+                FROM vw_painel22_detalhe d
+                ORDER BY d.nr_atendimento, d.prioridade_ordem ASC, d.dt_pedido ASC
+            """)
+            rows = cursor.fetchall()
 
-        agora = datetime.now()
-        pacientes = {}
-        ordem = []
+            agora = datetime.now()
+            pacientes = {}
+            ordem = []
 
-        for row in rows:
-            exame = serializar_dict(row)
-            nr_atend = exame['nr_atendimento']
+            for row in rows:
+                exame = serializar_dict(row)
+                nr_atend = exame['nr_atendimento']
 
-            _calcular_tempos_exame(exame, agora)
+                _calcular_tempos_exame(exame, agora)
 
-            if nr_atend not in pacientes:
-                # Aceita nm_medico ou ds_medico (compatibilidade com views diferentes)
-                medico = exame.get('nm_medico') or exame.get('ds_medico')
+                if nr_atend not in pacientes:
+                    # Aceita nm_medico ou ds_medico (compatibilidade com views diferentes)
+                    medico = exame.get('nm_medico') or exame.get('ds_medico')
 
-                pacientes[nr_atend] = {
-                    'nr_atendimento': nr_atend,
-                    'dt_entrada': exame.get('dt_entrada'),
-                    'horas_no_ps': exame.get('horas_no_ps_atual'),
-                    'nm_pessoa_fisica': exame.get('nm_pessoa_fisica'),
-                    'idade': exame.get('idade'),
-                    'ds_convenio': exame.get('ds_convenio'),
-                    'ds_clinica': exame.get('ds_clinica'),
-                    'nm_medico': medico,
-                    'exames_lab': [],
-                    'exames_radio': [],
-                    'qt_total': 0,
-                    'qt_pendentes': 0,
-                    'qt_em_andamento': 0,
-                    'qt_concluidos': 0,
-                    'dt_ultimo_resultado': None
-                }
-                ordem.append(nr_atend)
+                    pacientes[nr_atend] = {
+                        'nr_atendimento': nr_atend,
+                        'dt_entrada': exame.get('dt_entrada'),
+                        'horas_no_ps': exame.get('horas_no_ps_atual'),
+                        'nm_pessoa_fisica': exame.get('nm_pessoa_fisica'),
+                        'idade': exame.get('idade'),
+                        'ds_convenio': exame.get('ds_convenio'),
+                        'ds_clinica': exame.get('ds_clinica'),
+                        'nm_medico': medico,
+                        'exames_lab': [],
+                        'exames_radio': [],
+                        'qt_total': 0,
+                        'qt_pendentes': 0,
+                        'qt_em_andamento': 0,
+                        'qt_concluidos': 0,
+                        'dt_ultimo_resultado': None
+                    }
+                    ordem.append(nr_atend)
 
-            pac = pacientes[nr_atend]
-            pac['qt_total'] += 1
+                pac = pacientes[nr_atend]
+                pac['qt_total'] += 1
 
-            status = exame.get('status_exame', '')
-            if status in ('LAUDADO', 'LIBERADO'):
-                pac['qt_concluidos'] += 1
-                dt_res = exame.get('dt_resultado')
-                if dt_res:
-                    if pac['dt_ultimo_resultado'] is None or dt_res > pac['dt_ultimo_resultado']:
-                        pac['dt_ultimo_resultado'] = dt_res
-            elif status in ('EXECUTADO', 'COLETADO', 'EM_ANALISE', 'RESULTADO_PARCIAL'):
-                pac['qt_em_andamento'] += 1
-            else:
-                pac['qt_pendentes'] += 1
+                status = exame.get('status_exame', '')
+                if status in ('LAUDADO', 'LIBERADO'):
+                    pac['qt_concluidos'] += 1
+                    dt_res = exame.get('dt_resultado')
+                    if dt_res:
+                        if pac['dt_ultimo_resultado'] is None or dt_res > pac['dt_ultimo_resultado']:
+                            pac['dt_ultimo_resultado'] = dt_res
+                elif status in ('EXECUTADO', 'COLETADO', 'EM_ANALISE', 'RESULTADO_PARCIAL'):
+                    pac['qt_em_andamento'] += 1
+                else:
+                    pac['qt_pendentes'] += 1
 
-            tipo = exame.get('tipo_exame', '')
-            if tipo == 'LABORATORIO':
-                pac['exames_lab'].append(exame)
-            else:
-                pac['exames_radio'].append(exame)
+                tipo = exame.get('tipo_exame', '')
+                if tipo == 'LABORATORIO':
+                    pac['exames_lab'].append(exame)
+                else:
+                    pac['exames_radio'].append(exame)
 
-        # Regra de 1h: ocultar 100% concluídos há mais de 1h
-        limite = agora - timedelta(hours=1)
-        resultado = []
+            # Regra de 1h: ocultar 100% concluídos há mais de 1h
+            limite = agora - timedelta(hours=1)
+            resultado = []
 
-        for nr_atend in ordem:
-            pac = pacientes[nr_atend]
+            for nr_atend in ordem:
+                pac = pacientes[nr_atend]
 
-            if pac['qt_total'] > 0 and pac['qt_concluidos'] == pac['qt_total']:
-                dt_ult_parsed = _parse_datetime(pac['dt_ultimo_resultado'])
-                if dt_ult_parsed and dt_ult_parsed < limite:
-                    continue
+                if pac['qt_total'] > 0 and pac['qt_concluidos'] == pac['qt_total']:
+                    dt_ult_parsed = _parse_datetime(pac['dt_ultimo_resultado'])
+                    if dt_ult_parsed and dt_ult_parsed < limite:
+                        continue
 
-            pac['pct_concluido'] = round(
-                (pac['qt_concluidos'] / pac['qt_total'] * 100)
-                if pac['qt_total'] > 0 else 0
-            )
-            pac.pop('dt_ultimo_resultado', None)
-            resultado.append(pac)
+                pac['pct_concluido'] = round(
+                    (pac['qt_concluidos'] / pac['qt_total'] * 100)
+                    if pac['qt_total'] > 0 else 0
+                )
+                pac.pop('dt_ultimo_resultado', None)
+                resultado.append(pac)
 
-        def _ordenar(p):
-            if p['qt_pendentes'] > 0:
-                return (0, -p['qt_pendentes'])
-            if p['qt_em_andamento'] > 0:
-                return (1, -p['qt_em_andamento'])
-            return (2, 0)
+            def _ordenar(p):
+                if p['qt_pendentes'] > 0:
+                    return (0, -p['qt_pendentes'])
+                if p['qt_em_andamento'] > 0:
+                    return (1, -p['qt_em_andamento'])
+                return (2, 0)
 
-        resultado.sort(key=_ordenar)
-        return resultado, None
+            resultado.sort(key=_ordenar)
+            return resultado, None
 
     except Exception as e:
         logger.error(f'[P22] Erro dados: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return None, str(e)
 
 
@@ -232,18 +217,14 @@ def _buscar_dados():
 
 @painel22_bp.route('/painel/painel22')
 @login_required
+@panel_permission_required('painel22')
 def painel22():
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel22'):
-            current_app.logger.warning(f'Acesso negado ao painel22: {session.get("usuario")}')
-            return send_from_directory('frontend', 'acesso-negado.html')
     return send_from_directory('paineis/painel22', 'index.html')
 
 
 @painel22_bp.route('/api/paineis/painel22/dashboard')
 @login_required
+@panel_permission_required('painel22')
 @cache_route(ttl=60, key_prefix='painel22:dashboard')
 def api_painel22_dashboard():
     dados, erro = _buscar_dashboard()
@@ -254,6 +235,7 @@ def api_painel22_dashboard():
 
 @painel22_bp.route('/api/paineis/painel22/dados')
 @login_required
+@panel_permission_required('painel22')
 @cache_route(ttl=60, key_prefix='painel22:dados', vary_by_query=True)
 def api_painel22_dados():
     dados, erro = _buscar_dados()

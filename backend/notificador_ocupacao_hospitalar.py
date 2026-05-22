@@ -19,8 +19,9 @@ O email contém:
 import os
 import sys
 import time
-import logging
+import threading
 import smtplib
+from backend.notificador_utils import setup_notificador_logging, get_db_config
 import tempfile
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -43,18 +44,7 @@ _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(_BASE_DIR, '.env'))
 os.makedirs(os.path.join(_BASE_DIR, 'logs'), exist_ok=True)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-    handlers=[
-        logging.FileHandler(
-            os.path.join(_BASE_DIR, 'logs', 'notificador_ocupacao.log'),
-            encoding='utf-8'
-        ),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = setup_notificador_logging('notificador_ocupacao_hospitalar', 'notificador_ocupacao.log')
 
 
 def _cfg():
@@ -72,14 +62,7 @@ def _cfg():
 # ========================================
 
 def _get_conn():
-    return psycopg2.connect(
-        host=os.getenv('DB_HOST', 'localhost'),
-        dbname=os.getenv('DB_NAME', 'postgres'),
-        user=os.getenv('DB_USER', 'postgres'),
-        password=os.getenv('DB_PASSWORD', ''),
-        port=int(os.getenv('DB_PORT', '5432')),
-        connect_timeout=10
-    )
+    return psycopg2.connect(**get_db_config())
 
 
 def _query(conn, sql):
@@ -571,6 +554,11 @@ def main():
 # ========================================
 
 _background_started = False
+_stop_event = threading.Event()
+
+
+def stop():
+    _stop_event.set()
 
 
 def start_in_background():
@@ -595,7 +583,7 @@ def start_in_background():
         return
 
     _background_started = True
-    import threading
+    _stop_event.clear()
 
     def _run():
         try:
@@ -604,16 +592,17 @@ def start_in_background():
                 '[notificador_ocupacao] Thread daemon iniciada — destinatários: %s | horários: %s | intervalo: %sh',
                 cfg['destinatarios'], cfg['horarios'], cfg['intervalo_h']
             )
-            while True:
+            while not _stop_event.is_set():
                 cfg = _cfg()
                 proximo = _proximo_horario(cfg['horarios']) if cfg['horarios'] else \
                           datetime.now() + timedelta(hours=cfg['intervalo_h'])
                 if proximo is None:
                     proximo = datetime.now() + timedelta(hours=6)
                 logger.info('[notificador_ocupacao] Próximo envio: %s', proximo.strftime('%d/%m/%Y %H:%M'))
-                while datetime.now() < proximo:
-                    time.sleep(30)
-                executar_envio()
+                while not _stop_event.is_set() and datetime.now() < proximo:
+                    _stop_event.wait(30)
+                if not _stop_event.is_set():
+                    executar_envio()
 
         except Exception as e:
             logger.error('[notificador_ocupacao] Erro fatal na thread daemon: %s', e, exc_info=True)
@@ -621,6 +610,7 @@ def start_in_background():
     t = threading.Thread(target=_run, name='notificador_ocupacao', daemon=True)
     t.start()
     logger.info('[notificador_ocupacao] Thread daemon registrada')
+    return _stop_event
 
 
 if __name__ == '__main__':

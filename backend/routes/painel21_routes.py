@@ -13,9 +13,8 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime, timedelta
 from decimal import Decimal
 from psycopg2.extras import RealDictCursor
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 
 # Cria o Blueprint
@@ -28,21 +27,15 @@ painel21_bp = Blueprint('painel21', __name__)
 
 @painel21_bp.route('/painel/painel21')
 @login_required
+@panel_permission_required('painel21')
 def painel21():
     """Pagina principal do Painel 21"""
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel21'):
-            current_app.logger.warning(f'Acesso negado ao painel21: {session.get("usuario")}')
-            return send_from_directory('frontend', 'acesso-negado.html')
-
     return send_from_directory('paineis/painel21', 'index.html')
 
 
 @painel21_bp.route('/paineis/painel21/<path:filename>')
 @login_required
+@panel_permission_required('painel21')
 def painel21_static(filename):
     """Serve arquivos estaticos do painel (CSS, JS)"""
     return send_from_directory('paineis/painel21', filename)
@@ -230,87 +223,73 @@ def _build_common_filters():
 
 @painel21_bp.route('/api/paineis/painel21/dashboard', methods=['GET'])
 @login_required
+@panel_permission_required('painel21')
 @cache_route(ttl=300, key_prefix='painel21:dashboard', vary_by_query=True)
 def api_painel21_dashboard():
     """
     KPIs agregados para os cards do dashboard.
     Recebe TODOS os filtros para refletir exatamente o que esta na tabela.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel21'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        condicoes, params = _build_common_filters()
+            condicoes, params = _build_common_filters()
 
-        filtro_where = ''
-        if condicoes:
-            filtro_where = 'WHERE ' + ' AND '.join(condicoes)
+            filtro_where = ''
+            if condicoes:
+                filtro_where = 'WHERE ' + ' AND '.join(condicoes)
 
-        query = f"""
-            SELECT
-                COUNT(*)::INTEGER                                           AS total_contas,
-                COUNT(DISTINCT nr_atendimento)::INTEGER                     AS total_atendimentos,
-                COALESCE(SUM(vl_conta), 0)                                  AS vl_total,
+            query = f"""
+                SELECT
+                    COUNT(*)::INTEGER                                           AS total_contas,
+                    COUNT(DISTINCT nr_atendimento)::INTEGER                     AS total_atendimentos,
+                    COALESCE(SUM(vl_conta), 0)                                  AS vl_total,
 
-                COUNT(*) FILTER (WHERE status_conta = 'Provisório')::INTEGER    AS qt_provisorio,
-                COUNT(*) FILTER (WHERE status_conta = 'Definitivo')::INTEGER    AS qt_definitivo,
-                COALESCE(SUM(vl_conta) FILTER (WHERE status_conta = 'Provisório'), 0) AS vl_provisorio,
-                COALESCE(SUM(vl_conta) FILTER (WHERE status_conta = 'Definitivo'), 0) AS vl_definitivo,
+                    COUNT(*) FILTER (WHERE status_conta = 'Provisório')::INTEGER    AS qt_provisorio,
+                    COUNT(*) FILTER (WHERE status_conta = 'Definitivo')::INTEGER    AS qt_definitivo,
+                    COALESCE(SUM(vl_conta) FILTER (WHERE status_conta = 'Provisório'), 0) AS vl_provisorio,
+                    COALESCE(SUM(vl_conta) FILTER (WHERE status_conta = 'Definitivo'), 0) AS vl_definitivo,
 
-                COUNT(*) FILTER (WHERE legenda_conta = 'SEM NOTA/TITULO')::INTEGER  AS qt_sem_nf_titulo,
-                COUNT(*) FILTER (WHERE legenda_conta = 'EM PROTOCOLO')::INTEGER     AS qt_em_protocolo,
-                COUNT(*) FILTER (WHERE legenda_conta = 'NOTA FISCAL')::INTEGER      AS qt_nota_fiscal,
-                COUNT(*) FILTER (WHERE legenda_conta = 'TITULO GERADO')::INTEGER    AS qt_titulo_gerado,
-                COUNT(*) FILTER (WHERE legenda_conta = 'PROT.C /NF')::INTEGER       AS qt_prot_nf,
-                COUNT(*) FILTER (WHERE legenda_conta = 'PROT.C /TITULO')::INTEGER   AS qt_prot_titulo,
-                COALESCE(SUM(vl_conta) FILTER (WHERE legenda_conta = 'SEM NOTA/TITULO'), 0) AS vl_sem_nf_titulo,
-                COALESCE(SUM(vl_conta) FILTER (WHERE legenda_conta = 'EM PROTOCOLO'), 0)    AS vl_em_protocolo,
+                    COUNT(*) FILTER (WHERE legenda_conta = 'SEM NOTA/TITULO')::INTEGER  AS qt_sem_nf_titulo,
+                    COUNT(*) FILTER (WHERE legenda_conta = 'EM PROTOCOLO')::INTEGER     AS qt_em_protocolo,
+                    COUNT(*) FILTER (WHERE legenda_conta = 'NOTA FISCAL')::INTEGER      AS qt_nota_fiscal,
+                    COUNT(*) FILTER (WHERE legenda_conta = 'TITULO GERADO')::INTEGER    AS qt_titulo_gerado,
+                    COUNT(*) FILTER (WHERE legenda_conta = 'PROT.C /NF')::INTEGER       AS qt_prot_nf,
+                    COUNT(*) FILTER (WHERE legenda_conta = 'PROT.C /TITULO')::INTEGER   AS qt_prot_titulo,
+                    COALESCE(SUM(vl_conta) FILTER (WHERE legenda_conta = 'SEM NOTA/TITULO'), 0) AS vl_sem_nf_titulo,
+                    COALESCE(SUM(vl_conta) FILTER (WHERE legenda_conta = 'EM PROTOCOLO'), 0)    AS vl_em_protocolo,
 
-                COUNT(*) FILTER (WHERE status_protocolo = 'Fora Remessa')::INTEGER  AS qt_fora_remessa,
+                    COUNT(*) FILTER (WHERE status_protocolo = 'Fora Remessa')::INTEGER  AS qt_fora_remessa,
 
-                COUNT(*) FILTER (WHERE ie_tipo = 1)::INTEGER    AS qt_internacao,
-                COUNT(*) FILTER (WHERE ie_tipo = 3)::INTEGER    AS qt_pronto_socorro,
-                COUNT(*) FILTER (WHERE ie_tipo = 7)::INTEGER    AS qt_externo,
-                COUNT(*) FILTER (WHERE ie_tipo = 8)::INTEGER    AS qt_ambulatorial,
+                    COUNT(*) FILTER (WHERE ie_tipo = 1)::INTEGER    AS qt_internacao,
+                    COUNT(*) FILTER (WHERE ie_tipo = 3)::INTEGER    AS qt_pronto_socorro,
+                    COUNT(*) FILTER (WHERE ie_tipo = 7)::INTEGER    AS qt_externo,
+                    COUNT(*) FILTER (WHERE ie_tipo = 8)::INTEGER    AS qt_ambulatorial,
 
-                MAX(dt_carga) AS ultima_atualizacao
-            FROM public.painel21_contas
-            {filtro_where}
-        """
+                    MAX(dt_carga) AS ultima_atualizacao
+                FROM public.painel21_contas
+                {filtro_where}
+            """
 
-        cursor.execute(query, params)
-        result = cursor.fetchone()
+            cursor.execute(query, params)
+            result = cursor.fetchone()
 
-        cursor.close()
-        release_connection(conn)
 
-        if not result:
-            result = {
-                'total_contas': 0, 'total_atendimentos': 0, 'vl_total': 0,
-                'qt_provisorio': 0, 'qt_definitivo': 0,
-                'qt_sem_nf_titulo': 0, 'qt_em_protocolo': 0
-            }
+            if not result:
+                result = {
+                    'total_contas': 0, 'total_atendimentos': 0, 'vl_total': 0,
+                    'qt_provisorio': 0, 'qt_definitivo': 0,
+                    'qt_sem_nf_titulo': 0, 'qt_em_protocolo': 0
+                }
 
-        return jsonify({
-            'success': True,
-            'data': serializar_linha(dict(result)),
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'data': serializar_linha(dict(result)),
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro dashboard painel21: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -320,64 +299,50 @@ def api_painel21_dashboard():
 
 @painel21_bp.route('/api/paineis/painel21/dados', methods=['GET'])
 @login_required
+@panel_permission_required('painel21')
 @cache_route(ttl=300, key_prefix='painel21:dados', vary_by_query=True)
 def api_painel21_dados():
     """
     Retorna contas com filtros server-side.
     Todos os filtros multi-valor sao separados por virgula.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel21'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        condicoes, params = _build_common_filters()
+            condicoes, params = _build_common_filters()
 
-        filtro_sql = ''
-        if condicoes:
-            filtro_sql = 'WHERE ' + ' AND '.join(condicoes)
+            filtro_sql = ''
+            if condicoes:
+                filtro_sql = 'WHERE ' + ' AND '.join(condicoes)
 
-        query = f"""
-            SELECT
-                id, nr_conta, nr_atendimento, estabelecimento, pessoa_fisica,
-                tipo_atend, ie_tipo, status_conta, legenda_conta,
-                convenio, protocolo, status_protocolo, entrega_convenio,
-                vl_conta, dt_conta, dt_periodo_inicial, dt_periodo_final,
-                dt_mesano_referencia, nr_seq_etapa, etapa_conta,
-                cd_setor_atendimento, setor_atendimento, auditoria,
-                EXTRACT(DAY FROM (CURRENT_TIMESTAMP - dt_periodo_inicial))::INTEGER AS dias_aging
-            FROM public.painel21_contas
-            {filtro_sql}
-            ORDER BY dt_conta DESC, nr_atendimento
-            LIMIT 5000
-        """
+            query = f"""
+                SELECT
+                    id, nr_conta, nr_atendimento, estabelecimento, pessoa_fisica,
+                    tipo_atend, ie_tipo, status_conta, legenda_conta,
+                    convenio, protocolo, status_protocolo, entrega_convenio,
+                    vl_conta, dt_conta, dt_periodo_inicial, dt_periodo_final,
+                    dt_mesano_referencia, nr_seq_etapa, etapa_conta,
+                    cd_setor_atendimento, setor_atendimento, auditoria,
+                    EXTRACT(DAY FROM (CURRENT_TIMESTAMP - dt_periodo_inicial))::INTEGER AS dias_aging
+                FROM public.painel21_contas
+                {filtro_sql}
+                ORDER BY dt_conta DESC, nr_atendimento
+                LIMIT 5000
+            """
 
-        cursor.execute(query, params)
-        registros = [serializar_linha(dict(row)) for row in cursor.fetchall()]
+            cursor.execute(query, params)
+            registros = [serializar_linha(dict(row)) for row in cursor.fetchall()]
 
-        cursor.close()
-        release_connection(conn)
 
-        return jsonify({
-            'success': True,
-            'data': registros,
-            'total': len(registros),
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'data': registros,
+                'total': len(registros),
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro dados painel21: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
 
 
@@ -387,56 +352,42 @@ def api_painel21_dados():
 
 @painel21_bp.route('/api/paineis/painel21/filtros', methods=['GET'])
 @login_required
+@panel_permission_required('painel21')
 @cache_route(ttl=600, key_prefix='painel21:filtros')
 def api_painel21_filtros():
     """
     Retorna valores distintos para popular os multi-selects.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel21'):
-            return jsonify({'success': False, 'error': 'Sem permissao'}), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Erro de conexao com o banco'}), 500
-
     try:
-        cursor = conn.cursor()
+        with get_db_cursor(use_dict_cursor=False) as cursor:
 
-        filtros = {}
+            filtros = {}
 
-        campos = [
-            ('convenios', 'convenio'),
-            ('setores', 'setor_atendimento'),
-            ('etapas', 'etapa_conta'),
-            ('legendas', 'legenda_conta'),
-            ('auditorias', 'auditoria'),
-            ('protocolos', 'status_protocolo')
-        ]
+            campos = [
+                ('convenios', 'convenio'),
+                ('setores', 'setor_atendimento'),
+                ('etapas', 'etapa_conta'),
+                ('legendas', 'legenda_conta'),
+                ('auditorias', 'auditoria'),
+                ('protocolos', 'status_protocolo')
+            ]
 
-        for nome, coluna in campos:
-            cursor.execute(f"""
-                SELECT DISTINCT {coluna}
-                FROM public.painel21_contas
-                WHERE {coluna} IS NOT NULL AND {coluna} != ''
-                ORDER BY {coluna}
-            """)
-            filtros[nome] = [row[0] for row in cursor.fetchall()]
+            for nome, coluna in campos:
+                cursor.execute(f"""
+                    SELECT DISTINCT {coluna}
+                    FROM public.painel21_contas
+                    WHERE {coluna} IS NOT NULL AND {coluna} != ''
+                    ORDER BY {coluna}
+                """)
+                filtros[nome] = [row[0] for row in cursor.fetchall()]
 
-        cursor.close()
-        release_connection(conn)
 
-        return jsonify({
-            'success': True,
-            'filtros': filtros,
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'filtros': filtros,
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro filtros painel21: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({'success': False, 'error': 'Erro ao buscar filtros'}), 500

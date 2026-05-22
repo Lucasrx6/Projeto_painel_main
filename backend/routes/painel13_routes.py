@@ -6,9 +6,8 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
 from psycopg2 import sql
-from backend.database import get_db_connection, release_connection
-from backend.middleware.decorators import login_required
-from backend.user_management import verificar_permissao_painel
+from backend.database import get_db_cursor
+from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 
 # Cria o Blueprint
@@ -21,16 +20,9 @@ painel13_bp = Blueprint('painel13', __name__)
 
 @painel13_bp.route('/painel/painel13')
 @login_required
+@panel_permission_required('painel13')
 def painel13():
     """Página principal do Painel 13"""
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel13'):
-            current_app.logger.warning(f'Acesso negado ao painel13: {session.get("usuario")}')
-            return send_from_directory('frontend', 'acesso-negado.html')
-
     return send_from_directory('paineis/painel13', 'index.html')
 
 
@@ -77,6 +69,7 @@ def _build_setor_filter(setores):
 
 @painel13_bp.route('/api/paineis/painel13/nutricao', methods=['GET'])
 @login_required
+@panel_permission_required('painel13')
 @cache_route(ttl=180, key_prefix='painel13:nutricao', vary_by_query=True)
 def api_painel13_nutricao():
     """
@@ -86,84 +79,63 @@ def api_painel13_nutricao():
     - setor: Filtra por setor(es). Aceita valor unico ou multiplos
              separados por virgula (ex: setor=UTI 1,UTI 2)
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel13'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        setores = _parse_setores_param()
-        where_clause, params = _build_setor_filter(setores)
+            setores = _parse_setores_param()
+            where_clause, params = _build_setor_filter(setores)
 
-        # Define ORDER BY: se filtrado, ordena por leito; senao, por setor + leito
-        order_by = 'ORDER BY leito' if setores else 'ORDER BY setor, leito'
+            # Define ORDER BY: se filtrado, ordena por leito; senao, por setor + leito
+            order_by = 'ORDER BY leito' if setores else 'ORDER BY setor, leito'
 
-        query = f"""
-            SELECT 
-                leito,
-                nr_atendimento,
-                nm_paciente,
-                convenio,
-                idade,
-                nm_prescritor,
-                tipo_prescritor,
-                nm_medico,
-                dieta_limpa,
-                obs_limpa,
-                dt_prescricao,
-                setor,
-                alergia,
-                acompanhante_calculado as acompanhante
-            FROM vw_painel_nutricao
-            {where_clause}
-            {order_by}
-        """
-        cursor.execute(query, params)
-        registros = cursor.fetchall()
+            query = f"""
+                SELECT 
+                    leito,
+                    nr_atendimento,
+                    nm_paciente,
+                    convenio,
+                    idade,
+                    nm_prescritor,
+                    tipo_prescritor,
+                    nm_medico,
+                    dieta_limpa,
+                    obs_limpa,
+                    dt_prescricao,
+                    setor,
+                    alergia,
+                    acompanhante_calculado as acompanhante
+                FROM vw_painel_nutricao
+                {where_clause}
+                {order_by}
+            """
+            cursor.execute(query, params)
+            registros = cursor.fetchall()
 
-        # Formatar datas para ISO
-        resultado = []
-        for reg in registros:
-            item = dict(reg)
+            # Formatar datas para ISO
+            resultado = []
+            for reg in registros:
+                item = dict(reg)
 
-            if item.get('dt_prescricao') and hasattr(item['dt_prescricao'], 'isoformat'):
-                item['dt_prescricao'] = item['dt_prescricao'].isoformat()
+                if item.get('dt_prescricao') and hasattr(item['dt_prescricao'], 'isoformat'):
+                    item['dt_prescricao'] = item['dt_prescricao'].isoformat()
 
-            # Limpar espacos extras
-            if item.get('leito'):
-                item['leito'] = item['leito'].strip()
+                # Limpar espacos extras
+                if item.get('leito'):
+                    item['leito'] = item['leito'].strip()
 
-            resultado.append(item)
+                resultado.append(item)
 
-        cursor.close()
-        release_connection(conn)
 
-        return jsonify({
-            'success': True,
-            'data': resultado,
-            'total': len(resultado),
-            'setor_filtrado': ','.join(setores) if setores else None,
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'data': resultado,
+                'total': len(resultado),
+                'setor_filtrado': ','.join(setores) if setores else None,
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar dados do painel13: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -172,57 +144,37 @@ def api_painel13_nutricao():
 
 @painel13_bp.route('/api/paineis/painel13/setores', methods=['GET'])
 @login_required
+@panel_permission_required('painel13')
 @cache_route(ttl=180, key_prefix='painel13:setores')
 def api_painel13_setores():
     """
     Retorna lista de setores disponíveis
     GET /api/paineis/painel13/setores
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel13'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        query = """
-            SELECT DISTINCT 
-                setor
-            FROM vw_painel_nutricao
-            WHERE setor IS NOT NULL
-            ORDER BY setor
-        """
+            query = """
+                SELECT DISTINCT 
+                    setor
+                FROM vw_painel_nutricao
+                WHERE setor IS NOT NULL
+                ORDER BY setor
+            """
 
-        cursor.execute(query)
-        setores_list = cursor.fetchall()
+            cursor.execute(query)
+            setores_list = cursor.fetchall()
 
-        cursor.close()
-        release_connection(conn)
 
-        return jsonify({
-            'success': True,
-            'setores': setores_list,
-            'total': len(setores_list),
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'setores': setores_list,
+                'total': len(setores_list),
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar setores do painel13: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
@@ -231,6 +183,7 @@ def api_painel13_setores():
 
 @painel13_bp.route('/api/paineis/painel13/stats', methods=['GET'])
 @login_required
+@panel_permission_required('painel13')
 @cache_route(ttl=180, key_prefix='painel13:stats')
 def api_painel13_stats():
     """
@@ -240,65 +193,44 @@ def api_painel13_stats():
     - setor: Calcula stats para setor(es) especificos.
              Aceita multiplos separados por virgula.
     """
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-
-    if not is_admin:
-        if not verificar_permissao_painel(usuario_id, 'painel13'):
-            return jsonify({
-                'success': False,
-                'error': 'Sem permissão para acessar este painel'
-            }), 403
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({
-            'success': False,
-            'error': 'Erro de conexão com o banco'
-        }), 500
-
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        with get_db_cursor() as cursor:
 
-        setores = _parse_setores_param()
-        where_clause, params = _build_setor_filter(setores)
+            setores = _parse_setores_param()
+            where_clause, params = _build_setor_filter(setores)
 
-        query = f"""
-            SELECT 
-                COUNT(*) as total_pacientes,
-                COUNT(*) FILTER (WHERE dieta_limpa IS NOT NULL) as com_prescricao,
-                COUNT(*) FILTER (WHERE dieta_limpa IS NULL) as sem_prescricao,
-                COUNT(*) FILTER (WHERE tipo_prescritor = 'Nutricionista') as prescricoes_nutricionista,
-                COUNT(*) FILTER (WHERE tipo_prescritor = 'Médico') as prescricoes_medico
-            FROM vw_painel_nutricao
-            {where_clause}
-        """
-        cursor.execute(query, params)
-        stats = cursor.fetchone()
+            query = f"""
+                SELECT 
+                    COUNT(*) as total_pacientes,
+                    COUNT(*) FILTER (WHERE dieta_limpa IS NOT NULL) as com_prescricao,
+                    COUNT(*) FILTER (WHERE dieta_limpa IS NULL) as sem_prescricao,
+                    COUNT(*) FILTER (WHERE tipo_prescritor = 'Nutricionista') as prescricoes_nutricionista,
+                    COUNT(*) FILTER (WHERE tipo_prescritor = 'Médico') as prescricoes_medico
+                FROM vw_painel_nutricao
+                {where_clause}
+            """
+            cursor.execute(query, params)
+            stats = cursor.fetchone()
 
-        cursor.close()
-        release_connection(conn)
 
-        if not stats:
-            stats = {
-                'total_pacientes': 0,
-                'com_prescricao': 0,
-                'sem_prescricao': 0,
-                'prescricoes_nutricionista': 0,
-                'prescricoes_medico': 0
-            }
+            if not stats:
+                stats = {
+                    'total_pacientes': 0,
+                    'com_prescricao': 0,
+                    'sem_prescricao': 0,
+                    'prescricoes_nutricionista': 0,
+                    'prescricoes_medico': 0
+                }
 
-        return jsonify({
-            'success': True,
-            'stats': dict(stats),
-            'setor_filtrado': ','.join(setores) if setores else None,
-            'timestamp': datetime.now().isoformat()
-        })
+            return jsonify({
+                'success': True,
+                'stats': dict(stats),
+                'setor_filtrado': ','.join(setores) if setores else None,
+                'timestamp': datetime.now().isoformat()
+            })
 
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar estatísticas do painel13: {e}', exc_info=True)
-        if conn:
-            release_connection(conn)
         return jsonify({
             'success': False,
             'error': 'Erro ao buscar dados'
