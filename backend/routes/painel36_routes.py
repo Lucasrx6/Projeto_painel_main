@@ -48,16 +48,19 @@ def api_painel36_dashboard():
                     COUNT(*) FILTER (WHERE prioridade = 'urgente' AND status = 'aguardando')   AS urgentes_aguardando,
                     ROUND(AVG(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60)
                         FILTER (WHERE status = 'concluido' AND criado_em >= CURRENT_DATE
-                                AND dt_conclusao IS NOT NULL), 1)                              AS tempo_medio_total_hoje,
+                                AND dt_conclusao IS NOT NULL
+                                AND EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300), 1) AS tempo_medio_total_hoje,
                     ROUND(AVG(EXTRACT(EPOCH FROM (dt_aceite - criado_em)) / 60)
-                        FILTER (WHERE dt_aceite IS NOT NULL AND criado_em >= CURRENT_DATE), 1) AS tempo_medio_aceite_hoje,
+                        FILTER (WHERE dt_aceite IS NOT NULL AND criado_em >= CURRENT_DATE
+                                AND EXTRACT(EPOCH FROM (dt_aceite - criado_em)) / 60 <= 300), 1)    AS tempo_medio_aceite_hoje,
                     ROUND(AVG(EXTRACT(EPOCH FROM (dt_inicio_transporte - dt_aceite)) / 60)
                         FILTER (WHERE dt_inicio_transporte IS NOT NULL AND dt_aceite IS NOT NULL
-                                AND criado_em >= CURRENT_DATE), 1)                            AS tempo_medio_deslocamento_hoje,
+                                AND criado_em >= CURRENT_DATE
+                                AND EXTRACT(EPOCH FROM (dt_inicio_transporte - dt_aceite)) / 60 <= 300), 1) AS tempo_medio_deslocamento_hoje,
                     ROUND(AVG(EXTRACT(EPOCH FROM (dt_conclusao - dt_inicio_transporte)) / 60)
                         FILTER (WHERE status = 'concluido' AND dt_inicio_transporte IS NOT NULL
-                                AND dt_conclusao IS NOT NULL
-                                AND criado_em >= CURRENT_DATE), 1)                            AS tempo_medio_transporte_hoje
+                                AND dt_conclusao IS NOT NULL AND criado_em >= CURRENT_DATE
+                                AND EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300), 1) AS tempo_medio_transporte_hoje
                 FROM padioleiro_chamados
             """)
             stats = dict(cursor.fetchone() or {})
@@ -120,7 +123,10 @@ def api_painel36_chamados():
     try:
         with get_db_cursor() as cursor:
 
-            where  = ["criado_em >= NOW() - (%s || ' days')::INTERVAL"]
+            where  = [
+                "criado_em >= NOW() - (%s || ' days')::INTERVAL",
+                "(dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)"
+            ]
             params = [str(dias)]
 
             if setor:
@@ -260,6 +266,7 @@ def api_painel36_por_setor():
                         FILTER (WHERE status = 'concluido' AND dt_conclusao IS NOT NULL), 1)   AS tempo_medio_total_min
                 FROM padioleiro_chamados
                 WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                  AND (dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)
                 GROUP BY setor_origem_nome
                 ORDER BY total DESC
             """, (str(dias),))
@@ -309,6 +316,7 @@ def api_painel36_por_padioleiro():
                 FROM padioleiro_chamados
                 WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
                   AND padioleiro_nome IS NOT NULL
+                  AND (dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)
                 GROUP BY padioleiro_nome
                 ORDER BY concluidos DESC
             """, (str(dias),))
@@ -368,6 +376,7 @@ def api_painel36_exportar():
                     END AS tempo_transporte_min
                 FROM padioleiro_chamados
                 WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                  AND (dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)
                 ORDER BY criado_em DESC
             """, (str(dias),))
             rows = cursor.fetchall()
