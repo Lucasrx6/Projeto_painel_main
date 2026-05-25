@@ -245,6 +245,9 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .btn-sec:hover { background: #f8f9fa; }
 .btn-aceitar-confirmar { background: var(--cor-primaria); color: white; border-color: var(--cor-primaria); }
 .btn-aceitar-confirmar:hover { background: var(--cor-primaria-dark); }
+.btn-cancelar-confirmar-danger { background: #dc3545; color: white; border-color: #dc3545; }
+.btn-cancelar-confirmar-danger:hover { background: #c82333; border-color: #c82333; }
+.btn-cancelar-confirmar-danger:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .modal-chamado-info { display: flex; flex-direction: column; gap: 10px; }
 .modal-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
