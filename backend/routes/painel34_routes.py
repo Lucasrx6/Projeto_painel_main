@@ -42,7 +42,7 @@ def api_painel34_tipos_movimento():
 
 
 # =========================================================
-# API - PACIENTES INTERNADOS (vw_ocupacao_hospitalar)
+# API - PACIENTES INTERNADOS (padioleiro)
 # =========================================================
 
 @painel34_bp.route('/api/paineis/painel34/pacientes', methods=['GET'])
@@ -59,11 +59,10 @@ def api_painel34_pacientes():
                     SELECT nr_atendimento, nm_pessoa_fisica AS paciente,
                            ds_tipo_acomodacao AS leito, setor, ds_clinica AS clinica
                     FROM padioleiro
-                    WHERE ie_status_unidade = 'P'
-                      AND (
+                    WHERE (
                         LOWER(COALESCE(nm_pessoa_fisica, '')) LIKE LOWER(%s)
                         OR COALESCE(nr_atendimento, '') LIKE %s
-                      )
+                    )
                     ORDER BY nm_pessoa_fisica
                     LIMIT 30
                 """, (f'%{q}%', f'%{q}%'))
@@ -72,7 +71,6 @@ def api_painel34_pacientes():
                     SELECT nr_atendimento, nm_pessoa_fisica AS paciente,
                            ds_tipo_acomodacao AS leito, setor, ds_clinica AS clinica
                     FROM padioleiro
-                    WHERE ie_status_unidade = 'P'
                     ORDER BY nm_pessoa_fisica
                     LIMIT 100
                 """)
@@ -84,7 +82,7 @@ def api_painel34_pacientes():
 
 
 # =========================================================
-# API - SETORES DO HOSPITAL (vw_ocupacao_hospitalar)
+# API - SETORES DO HOSPITAL (padioleiro)
 # =========================================================
 
 @painel34_bp.route('/api/paineis/painel34/setores', methods=['GET'])
@@ -107,7 +105,7 @@ def api_painel34_setores():
 
 
 # =========================================================
-# API - SETORES DE DESTINO (vw_ocupacao_hospitalar)
+# API - SETORES DE DESTINO (padioleiro)
 # =========================================================
 
 @painel34_bp.route('/api/paineis/painel34/destinos', methods=['GET'])
