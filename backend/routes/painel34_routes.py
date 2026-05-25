@@ -56,22 +56,24 @@ def api_painel34_pacientes():
         with get_db_cursor() as cursor:
             if q:
                 cursor.execute("""
-                    SELECT nr_atendimento, paciente, leito, setor, clinica
-                    FROM vw_ocupacao_hospitalar
-                    WHERE status_leito = 'P'
+                    SELECT nr_atendimento, nm_pessoa_fisica AS paciente,
+                           ds_tipo_acomodacao AS leito, setor, ds_clinica AS clinica
+                    FROM padioleiro
+                    WHERE ie_status_unidade = 'P'
                       AND (
-                        LOWER(COALESCE(paciente, '')) LIKE LOWER(%s)
+                        LOWER(COALESCE(nm_pessoa_fisica, '')) LIKE LOWER(%s)
                         OR COALESCE(nr_atendimento, '') LIKE %s
                       )
-                    ORDER BY paciente
+                    ORDER BY nm_pessoa_fisica
                     LIMIT 30
                 """, (f'%{q}%', f'%{q}%'))
             else:
                 cursor.execute("""
-                    SELECT nr_atendimento, paciente, leito, setor, clinica
-                    FROM vw_ocupacao_hospitalar
-                    WHERE status_leito = 'P'
-                    ORDER BY paciente
+                    SELECT nr_atendimento, nm_pessoa_fisica AS paciente,
+                           ds_tipo_acomodacao AS leito, setor, ds_clinica AS clinica
+                    FROM padioleiro
+                    WHERE ie_status_unidade = 'P'
+                    ORDER BY nm_pessoa_fisica
                     LIMIT 100
                 """)
             pacientes = [dict(r) for r in cursor.fetchall()]
@@ -93,7 +95,7 @@ def api_painel34_setores():
         with get_db_cursor() as cursor:
             cursor.execute("""
                 SELECT DISTINCT setor AS nome
-                FROM vw_ocupacao_hospitalar
+                FROM padioleiro
                 WHERE setor IS NOT NULL AND TRIM(setor) != ''
                 ORDER BY setor
             """)
@@ -136,7 +138,7 @@ def api_painel34_destinos():
             # Fallback padrão: Retorna os setores de internação
             cursor.execute("""
                 SELECT DISTINCT setor AS nome
-                FROM vw_ocupacao_hospitalar
+                FROM padioleiro
                 WHERE setor IS NOT NULL AND TRIM(setor) != ''
                 ORDER BY setor
             """)
