@@ -222,6 +222,10 @@ def api_painel34_solicitar():
 @panel_permission_required('painel34')
 def api_painel34_meus_chamados():
     try:
+        usuario_id = session.get('usuario_id')
+        if not usuario_id:
+            return jsonify({'success': False, 'error': 'Sessão inválida'}), 401
+
         with get_db_cursor() as cursor:
             cursor.execute("""
                 SELECT
