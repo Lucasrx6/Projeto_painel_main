@@ -82,7 +82,7 @@ def api_painel34_pacientes():
 
 
 # =========================================================
-# API - SETORES DO HOSPITAL (padioleiro)
+# API - SETORES DO HOSPITAL (padioleiro) — mantido para compatibilidade
 # =========================================================
 
 @painel34_bp.route('/api/paineis/painel34/setores', methods=['GET'])
@@ -102,6 +102,42 @@ def api_painel34_setores():
     except Exception as e:
         current_app.logger.error(f'Erro setores painel34: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar setores'}), 500
+
+
+# =========================================================
+# API - ORIGENS (configuráveis via painel36 + fallback ETL)
+# =========================================================
+
+@painel34_bp.route('/api/paineis/painel34/origens', methods=['GET'])
+@login_required
+@panel_permission_required('painel34')
+def api_painel34_origens():
+    try:
+        with get_db_cursor() as cursor:
+            # Origens cadastradas manualmente (ex: Central de Internação)
+            cursor.execute("""
+                SELECT nome FROM padioleiro_origens
+                WHERE ativo = TRUE
+                ORDER BY ordem, nome
+            """)
+            cadastradas = {r['nome'] for r in cursor.fetchall()}
+
+            # Setores do ETL
+            cursor.execute("""
+                SELECT DISTINCT setor AS nome
+                FROM padioleiro
+                WHERE setor IS NOT NULL AND TRIM(setor) != ''
+                ORDER BY setor
+            """)
+            etl = {r['nome'] for r in cursor.fetchall()}
+
+            # União deduplicada: cadastradas primeiro, depois ETL ordenado
+            todos = sorted(cadastradas | etl)
+            origens = [{'nome': n} for n in todos]
+            return jsonify({'success': True, 'origens': origens})
+    except Exception as e:
+        current_app.logger.error(f'Erro origens painel34: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar origens'}), 500
 
 
 # =========================================================

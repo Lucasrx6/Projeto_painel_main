@@ -13,6 +13,7 @@
         cfgPadioleiros: BASE_URL + '/api/paineis/painel36/config/padioleiros',
         cfgTipos:       BASE_URL + '/api/paineis/painel36/config/tipos-movimento',
         cfgDestinos:    BASE_URL + '/api/paineis/painel36/config/destinos',
+        cfgOrigens:     BASE_URL + '/api/paineis/painel36/config/origens',
         intervaloRefresh: 20000
     };
 
@@ -51,6 +52,7 @@
         document.getElementById('btn-novo-padioleiro').addEventListener('click', function () { abrirModalPadioleiro(null); });
         document.getElementById('btn-novo-tipo').addEventListener('click', function () { abrirModalTipo(null); });
         document.getElementById('btn-novo-destino').addEventListener('click', function () { abrirModalDestino(null); });
+        document.getElementById('btn-novo-origem').addEventListener('click', function () { abrirModalOrigem(null); });
         document.getElementById('filtro-tipo-destino').addEventListener('change', carregarDestinos);
 
         carregarDashboard();
@@ -100,6 +102,7 @@
         if (sub === 'padioleiros') carregarCfgPadioleiros();
         else if (sub === 'tipos')  carregarCfgTipos();
         else if (sub === 'destinos') carregarDestinos();
+        else if (sub === 'origens') carregarCfgOrigens();
     }
 
     function getFiltros() {
@@ -534,6 +537,67 @@
         document.getElementById('modal-edicao').style.display = '';
     }
 
+    // ── CONFIG: ORIGENS ───────────────────────────────────────────
+
+    function carregarCfgOrigens() {
+        var lista = document.getElementById('lista-config-origens');
+        lista.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+        fetch(CONFIG.cfgOrigens, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                renderizarCfgOrigens(data.origens);
+            })
+            .catch(function () { lista.innerHTML = '<p style="padding:20px;color:#aaa;">Erro de conexao</p>'; });
+    }
+
+    function renderizarCfgOrigens(lista) {
+        var container = document.getElementById('lista-config-origens');
+        if (!lista || lista.length === 0) {
+            container.innerHTML = '<div class="tabela-vazio"><i class="fas fa-location-dot"></i><p>Nenhuma origem cadastrada — o Painel 34 usa os setores do ETL</p></div>';
+            return;
+        }
+        container.innerHTML = '<div class="config-lista">' +
+            lista.map(function (o) {
+                return '<div class="config-item ' + (o.ativo ? '' : 'inativo') + '">' +
+                    '<i class="fas fa-location-dot" style="font-size:18px;color:' + (o.ativo ? 'var(--cor-primaria)' : '#aaa') + ';flex-shrink:0;"></i>' +
+                    '<div class="config-item-info">' +
+                        '<div class="config-item-nome">' + escHtml(o.nome) + '</div>' +
+                        '<div class="config-item-meta">Ordem: ' + o.ordem + (o.ativo ? '' : ' — Inativo') + '</div>' +
+                    '</div>' +
+                    '<div class="config-item-acoes">' +
+                        '<button class="btn-editar" data-id="' + o.id + '" data-ctx="origem" title="Editar"><i class="fas fa-pencil-alt"></i></button>' +
+                        '<button class="btn-toggle ' + (o.ativo ? 'ativo' : 'inativo') + '" data-id="' + o.id + '" data-ctx="origem" data-ativo="' + o.ativo + '" title="' + (o.ativo ? 'Desativar' : 'Ativar') + '">' +
+                            '<i class="fas fa-' + (o.ativo ? 'check' : 'times') + '"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('') + '</div>';
+
+        container.querySelectorAll('.btn-editar[data-ctx="origem"]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var item = lista.find(function (o) { return String(o.id) === btn.dataset.id; });
+                abrirModalOrigem(item);
+            });
+        });
+        container.querySelectorAll('.btn-toggle[data-ctx="origem"]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                toggleAtivo('origem', btn.dataset.id, btn.dataset.ativo === 'true');
+            });
+        });
+    }
+
+    function abrirModalOrigem(item) {
+        estado.modalContexto = 'origem';
+        estado.modalId = item ? item.id : null;
+        document.getElementById('modal-edicao-titulo').textContent = item ? 'Editar Origem' : 'Nova Origem';
+        document.getElementById('modal-edicao-body').innerHTML =
+            '<div class="form-group"><label>Nome *</label><input type="text" id="mf-nome" placeholder="Ex: Central de Internacao" maxlength="200" value="' + escHtml(item ? item.nome : '') + '"></div>' +
+            '<div class="form-group"><label>Ordem</label><input type="number" id="mf-ordem" value="' + (item ? item.ordem : 0) + '" min="0" max="99"></div>';
+        document.getElementById('modal-edicao').style.display = '';
+        setTimeout(function () { var el = document.getElementById('mf-nome'); if (el) el.focus(); }, 50);
+    }
+
     function atualizarFiltroTiposDestino(tipos) {
         var sel = document.getElementById('filtro-tipo-destino');
         var atualVal = sel.value;
@@ -556,7 +620,7 @@
     // ── TOGGLE ATIVO ──────────────────────────────────────────────
 
     function toggleAtivo(ctx, id, atualAtivo) {
-        var urlMap = { padioleiro: CONFIG.cfgPadioleiros, tipo: CONFIG.cfgTipos, destino: CONFIG.cfgDestinos };
+        var urlMap = { padioleiro: CONFIG.cfgPadioleiros, tipo: CONFIG.cfgTipos, destino: CONFIG.cfgDestinos, origem: CONFIG.cfgOrigens };
         var url = urlMap[ctx] + '/' + id;
         fetch(url, {
             method: 'PUT',
@@ -617,9 +681,16 @@
                 tipo_movimento_id: parseInt(tipoId),
                 ordem: parseInt(document.getElementById('mf-ordem').value) || 0
             };
+        } else if (ctx === 'origem') {
+            var nome4 = (document.getElementById('mf-nome').value || '').trim();
+            if (!nome4) { mostrarToast('Nome e obrigatorio', 'warning'); return; }
+            body = {
+                nome: nome4,
+                ordem: parseInt(document.getElementById('mf-ordem').value) || 0
+            };
         }
 
-        var urlMap = { padioleiro: CONFIG.cfgPadioleiros, tipo: CONFIG.cfgTipos, destino: CONFIG.cfgDestinos };
+        var urlMap = { padioleiro: CONFIG.cfgPadioleiros, tipo: CONFIG.cfgTipos, destino: CONFIG.cfgDestinos, origem: CONFIG.cfgOrigens };
         var url    = urlMap[ctx] + (id ? '/' + id : '');
         var method = id ? 'PUT' : 'POST';
 
