@@ -6,6 +6,7 @@
     var CONFIG = {
         apiTipos:        BASE_URL + '/api/paineis/painel34/tipos-movimento',
         apiSetores:      BASE_URL + '/api/paineis/painel34/setores',
+        apiOrigens:      BASE_URL + '/api/paineis/painel34/origens',
         apiDestinos:     BASE_URL + '/api/paineis/painel34/destinos',
         apiPacientes:    BASE_URL + '/api/paineis/painel34/pacientes',
         apiSolicitar:    BASE_URL + '/api/paineis/painel34/solicitar',
@@ -58,7 +59,7 @@
 
         inicializarBuscaPaciente();
         carregarTipos();
-        carregarSetores();
+        carregarOrigens();
         carregarDestinos();
         carregarBadge();
     }
@@ -128,23 +129,23 @@
         });
     }
 
-    // ── SETORES (ORIGEM) ──────────────────────────────────────────
+    // ── ORIGENS (configuráveis via painel36 + fallback ETL) ───────
 
-    function carregarSetores() {
-        fetch(CONFIG.apiSetores, { credentials: 'same-origin' })
+    function carregarOrigens() {
+        fetch(CONFIG.apiOrigens, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data.success) return;
                 var select = document.getElementById('select-setor');
-                select.innerHTML = '<option value="">Selecione o setor...</option>';
-                data.setores.forEach(function (s) {
+                select.innerHTML = '<option value="">Selecione o setor de origem...</option>';
+                data.origens.forEach(function (s) {
                     var opt = document.createElement('option');
                     opt.value = s.nome;
                     opt.textContent = s.nome;
                     select.appendChild(opt);
                 });
             })
-            .catch(function (e) { console.error('Erro setores:', e); });
+            .catch(function (e) { console.error('Erro origens:', e); });
     }
 
     // ── DESTINOS (SETOR DE DESTINO) ───────────────────────────────

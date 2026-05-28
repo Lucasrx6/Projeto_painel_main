@@ -17,6 +17,7 @@ painel36_bp = Blueprint('painel36', __name__)
 _CAMPOS_PADIOLEIRO     = ('nome', 'matricula', 'turno')
 _CAMPOS_TIPO_MOVIMENTO = ('nome', 'icone', 'cor', 'ordem')
 _CAMPOS_DESTINO        = ('nome', 'tipo_movimento_id', 'ordem')
+_CAMPOS_ORIGEM         = ('nome', 'ordem')
 
 
 @painel36_bp.route('/painel/painel36')
@@ -657,3 +658,73 @@ def api_painel36_cfg_dest_atualizar(destino_id):
     except Exception as e:
         current_app.logger.error(f'Erro atualizar destino painel36: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao atualizar destino'}), 500
+
+
+# =========================================================
+# CONFIG: ORIGENS
+# =========================================================
+
+@painel36_bp.route('/api/paineis/painel36/config/origens', methods=['GET'])
+@login_required
+@panel_permission_required('painel36')
+def api_painel36_cfg_orig_listar():
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, nome, ativo, ordem FROM padioleiro_origens ORDER BY ordem, nome")
+            origens = [dict(r) for r in cursor.fetchall()]
+            return jsonify({'success': True, 'origens': origens})
+    except Exception as e:
+        current_app.logger.error(f'Erro listar origens painel36: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar origens'}), 500
+
+
+@painel36_bp.route('/api/paineis/painel36/config/origens', methods=['POST'])
+@login_required
+@panel_permission_required('painel36')
+def api_painel36_cfg_orig_criar():
+    dados = request.get_json() or {}
+    nome = (dados.get('nome') or '').strip()
+    if not nome:
+        return jsonify({'success': False, 'error': 'Nome e obrigatorio'}), 400
+
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO padioleiro_origens (nome, ativo, ordem)
+                VALUES (%s, TRUE, %s) RETURNING id
+            """, (nome, dados.get('ordem', 0)))
+            row = cursor.fetchone()
+            return jsonify({'success': True, 'id': row['id']}), 201
+    except Exception as e:
+        current_app.logger.error(f'Erro criar origem painel36: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao criar origem'}), 500
+
+
+@painel36_bp.route('/api/paineis/painel36/config/origens/<int:origem_id>', methods=['PUT'])
+@login_required
+@panel_permission_required('painel36')
+def api_painel36_cfg_orig_atualizar(origem_id):
+    dados = request.get_json() or {}
+    try:
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            fields, params = [], []
+            for campo in _CAMPOS_ORIGEM:
+                if campo in dados:
+                    val = (dados[campo] or '').strip() if isinstance(dados[campo], str) else dados[campo]
+                    if campo == 'nome' and not val:
+                        return jsonify({'success': False, 'error': 'Nome nao pode ser vazio'}), 400
+                    fields.append(f'{campo} = %s')
+                    params.append(val)
+            if 'ativo' in dados:
+                fields.append('ativo = %s')
+                params.append(bool(dados['ativo']))
+
+            if not fields:
+                return jsonify({'success': False, 'error': 'Nada para atualizar'}), 400
+
+            params.append(origem_id)
+            cursor.execute(f"UPDATE padioleiro_origens SET {', '.join(fields)} WHERE id = %s", params)
+            return jsonify({'success': True, 'message': 'Origem atualizada'})
+    except Exception as e:
+        current_app.logger.error(f'Erro atualizar origem painel36: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao atualizar origem'}), 500
