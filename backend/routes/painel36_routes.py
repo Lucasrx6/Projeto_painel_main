@@ -344,12 +344,26 @@ def api_painel36_por_padioleiro():
 @login_required
 @panel_permission_required('painel36')
 def api_painel36_exportar():
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-    dias = min(int(request.args.get('dias', 30)), 365)
+    dias      = min(int(request.args.get('dias', 30)), 365)
+    status    = request.args.get('status', '').strip()
+    prioridade = request.args.get('prioridade', '').strip()
+    setor     = request.args.get('setor', '').strip()
     try:
         with get_db_cursor() as cursor:
-            cursor.execute(f"""
+            where  = ["criado_em >= NOW() - (%s || ' days')::INTERVAL"]
+            params = [str(dias)]
+
+            if status:
+                where.append("status = %s")
+                params.append(status)
+            if prioridade:
+                where.append("prioridade = %s")
+                params.append(prioridade)
+            if setor:
+                where.append("setor_origem_nome ILIKE %s")
+                params.append(f'%{setor}%')
+
+            cursor.execute("""
                 SELECT
                     id,
                     tipo_movimento_nome,
@@ -358,47 +372,64 @@ def api_painel36_exportar():
                     leito_origem,
                     setor_origem_nome,
                     destino_nome,
+                    destino_complemento,
                     prioridade,
                     status,
                     solicitante_nome,
                     padioleiro_nome,
                     observacao,
-                    TO_CHAR(criado_em,             'DD/MM/YYYY HH24:MI') AS criado_em,
-                    TO_CHAR(dt_aceite,             'DD/MM/YYYY HH24:MI') AS dt_aceite,
-                    TO_CHAR(dt_inicio_transporte,  'DD/MM/YYYY HH24:MI') AS dt_inicio_transporte,
-                    TO_CHAR(dt_conclusao,          'DD/MM/YYYY HH24:MI') AS dt_conclusao,
+                    TO_CHAR(criado_em,            'DD/MM/YYYY HH24:MI') AS criado_em,
+                    TO_CHAR(dt_aceite,            'DD/MM/YYYY HH24:MI') AS dt_aceite,
+                    TO_CHAR(dt_inicio_transporte, 'DD/MM/YYYY HH24:MI') AS dt_inicio_transporte,
+                    TO_CHAR(dt_conclusao,         'DD/MM/YYYY HH24:MI') AS dt_conclusao,
+                    TO_CHAR(dt_cancelamento,      'DD/MM/YYYY HH24:MI') AS dt_cancelamento,
+                    motivo_cancelamento,
                     CASE
-                        WHEN dt_conclusao IS NOT NULL
-                        THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60, 1)
-                    END AS tempo_total_min,
+                        WHEN dt_aceite IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_aceite - criado_em)) / 60, 1)
+                    END AS tempo_aceite_min,
+                    CASE
+                        WHEN dt_inicio_transporte IS NOT NULL AND dt_aceite IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_inicio_transporte - dt_aceite)) / 60, 1)
+                    END AS tempo_deslocamento_min,
                     CASE
                         WHEN dt_conclusao IS NOT NULL AND dt_inicio_transporte IS NOT NULL
                         THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - dt_inicio_transporte)) / 60, 1)
-                    END AS tempo_transporte_min
+                    END AS tempo_transporte_min,
+                    CASE
+                        WHEN dt_conclusao IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60, 1)
+                        WHEN status = 'cancelado' AND dt_cancelamento IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_cancelamento - criado_em)) / 60, 1)
+                    END AS tempo_total_min
                 FROM padioleiro_chamados
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
-                  AND (dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)
+                WHERE """ + ' AND '.join(where) + """
                 ORDER BY criado_em DESC
-            """, (str(dias),))
+            """, params)
             rows = cursor.fetchall()
 
             output = io.StringIO()
             writer = csv.writer(output, delimiter=';')
             writer.writerow([
                 'ID', 'Tipo Movimento', 'Paciente', 'Atendimento', 'Leito Origem',
-                'Setor Origem', 'Destino', 'Prioridade', 'Status',
+                'Setor Origem', 'Destino', 'Compl. Destino', 'Prioridade', 'Status',
                 'Solicitante', 'Padioleiro', 'Observacao',
-                'Criado Em', 'Aceito Em', 'Inicio Transporte', 'Conclusao',
-                'Tempo Total (min)', 'Tempo Transporte (min)'
+                'Criado Em', 'Aceito Em', 'Inicio Transporte', 'Conclusao', 'Cancelado Em',
+                'Motivo Cancelamento',
+                'T. Aceite (min)', 'T. Deslocamento (min)', 'T. Transporte (min)', 'T. Total (min)'
             ])
             for row in rows:
                 writer.writerow([
                     row.get('id'), row.get('tipo_movimento_nome'), row.get('nm_paciente'),
                     row.get('nr_atendimento'), row.get('leito_origem'), row.get('setor_origem_nome'),
-                    row.get('destino_nome'), row.get('prioridade'), row.get('status'),
+                    row.get('destino_nome'), row.get('destino_complemento'),
+                    row.get('prioridade'), row.get('status'),
                     row.get('solicitante_nome'), row.get('padioleiro_nome'), row.get('observacao'),
                     row.get('criado_em'), row.get('dt_aceite'), row.get('dt_inicio_transporte'),
-                    row.get('dt_conclusao'), row.get('tempo_total_min'), row.get('tempo_transporte_min')
+                    row.get('dt_conclusao'), row.get('dt_cancelamento'),
+                    row.get('motivo_cancelamento'),
+                    row.get('tempo_aceite_min'), row.get('tempo_deslocamento_min'),
+                    row.get('tempo_transporte_min'), row.get('tempo_total_min')
                 ])
 
             output.seek(0)

@@ -325,8 +325,10 @@
     // ── EXPORTAR ──────────────────────────────────────────────────
 
     function exportarCSV() {
-        var dias = document.getElementById('filtro-dias').value;
-        var url = CONFIG.apiExportar + '?dias=' + dias;
+        var f = getFiltros();
+        var url = CONFIG.apiExportar + '?dias=' + f.dias;
+        if (f.status)     url += '&status='     + encodeURIComponent(f.status);
+        if (f.prioridade) url += '&prioridade=' + encodeURIComponent(f.prioridade);
         var link = document.createElement('a');
         link.href = url;
         link.download = '';
