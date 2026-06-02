@@ -55,6 +55,10 @@
         document.getElementById('btn-novo-origem').addEventListener('click', function () { abrirModalOrigem(null); });
         document.getElementById('filtro-tipo-destino').addEventListener('change', carregarDestinos);
 
+        var hoje = _dataHoje();
+        document.getElementById('filtro-data-inicio').value = hoje;
+        document.getElementById('filtro-data-fim').value    = hoje;
+
         carregarDashboard();
         carregarTiposParaFiltro();
         estado.refreshTimer = setInterval(function () { if (estado.abaAtual === 'dashboard') carregarDashboard(); }, CONFIG.intervaloRefresh);
@@ -105,12 +109,25 @@
         else if (sub === 'origens') carregarCfgOrigens();
     }
 
+    function _dataHoje() {
+        var d = new Date();
+        return d.getFullYear() + '-' +
+               ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
+               ('0' + d.getDate()).slice(-2);
+    }
+
     function getFiltros() {
         return {
-            dias:      document.getElementById('filtro-dias').value,
-            status:    document.getElementById('filtro-status').value,
-            prioridade: document.getElementById('filtro-prioridade').value
+            data_inicio: document.getElementById('filtro-data-inicio').value,
+            data_fim:    document.getElementById('filtro-data-fim').value,
+            status:      document.getElementById('filtro-status').value,
+            prioridade:  document.getElementById('filtro-prioridade').value
         };
+    }
+
+    function _periodoQs(f) {
+        return 'data_inicio=' + encodeURIComponent(f.data_inicio) +
+               '&data_fim='    + encodeURIComponent(f.data_fim);
     }
 
     // ── DASHBOARD ─────────────────────────────────────────────────
@@ -192,7 +209,7 @@
         var wrapper = document.getElementById('tabela-setor-wrapper');
         wrapper.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>';
 
-        fetch(CONFIG.apiPorSetor + '?dias=' + f.dias, { credentials: 'same-origin' })
+        fetch(CONFIG.apiPorSetor + '?' + _periodoQs(f), { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data.success) { wrapper.innerHTML = '<p style="padding:20px;color:#aaa;">Erro ao carregar</p>'; return; }
@@ -234,7 +251,7 @@
         var wrapper = document.getElementById('tabela-padioleiro-wrapper');
         wrapper.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>';
 
-        fetch(CONFIG.apiPorPad + '?dias=' + f.dias, { credentials: 'same-origin' })
+        fetch(CONFIG.apiPorPad + '?' + _periodoQs(f), { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data.success) { wrapper.innerHTML = '<p style="padding:20px;color:#aaa;">Erro ao carregar</p>'; return; }
@@ -274,9 +291,9 @@
         var wrapper = document.getElementById('tabela-historico-wrapper');
         wrapper.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>';
 
-        var qs = '?dias=' + f.dias;
-        if (f.status)    qs += '&status=' + f.status;
-        if (f.prioridade) qs += '&prioridade=' + f.prioridade;
+        var qs = '?' + _periodoQs(f);
+        if (f.status)     qs += '&status='     + encodeURIComponent(f.status);
+        if (f.prioridade) qs += '&prioridade=' + encodeURIComponent(f.prioridade);
 
         fetch(CONFIG.apiChamados + qs, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
@@ -326,7 +343,7 @@
 
     function exportarCSV() {
         var f = getFiltros();
-        var url = CONFIG.apiExportar + '?dias=' + f.dias;
+        var url = CONFIG.apiExportar + '?' + _periodoQs(f);
         if (f.status)     url += '&status='     + encodeURIComponent(f.status);
         if (f.prioridade) url += '&prioridade=' + encodeURIComponent(f.prioridade);
         var link = document.createElement('a');

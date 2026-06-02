@@ -71,11 +71,13 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .filtro-bar { background: white; border-bottom: 1px solid var(--borda); padding: 10px 16px; }
 .filtro-content { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
 .filtro-content label { font-size: 13px; font-weight: 600; color: var(--texto-sec); white-space: nowrap; }
-.filtro-content select {
+.filtro-content select,
+.filtro-content input[type=date] {
     border: 2px solid var(--borda); border-radius: 8px; padding: 7px 10px;
     font-size: 13px; color: var(--texto); background: white; min-width: 120px;
 }
-.filtro-content select:focus { outline: none; border-color: var(--cor-primaria); }
+.filtro-content select:focus,
+.filtro-content input[type=date]:focus { outline: none; border-color: var(--cor-primaria); }
 .btn-aplicar-filtro {
     background: var(--cor-primaria); color: white; border: none;
     padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
