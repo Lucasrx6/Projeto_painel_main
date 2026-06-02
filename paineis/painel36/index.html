@@ -49,13 +49,10 @@
         <!-- FILTRO BAR -->
         <div class="filtro-bar" id="filtro-bar">
             <div class="filtro-content">
-                <label>Periodo:</label>
-                <select id="filtro-dias">
-                    <option value="1">Hoje</option>
-                    <option value="7" selected>7 dias</option>
-                    <option value="30">30 dias</option>
-                    <option value="90">90 dias</option>
-                </select>
+                <label>De:</label>
+                <input type="date" id="filtro-data-inicio">
+                <label>Até:</label>
+                <input type="date" id="filtro-data-fim">
                 <select id="filtro-status">
                     <option value="">Todos os status</option>
                     <option value="aguardando">Aguardando</option>

@@ -72,6 +72,25 @@ def _x_cor_tempo(ws, col_letra, row_ini, row_fim):
     )
 
 
+def _periodo_where(req):
+    """
+    Retorna (where_list, params_list) para filtro de período.
+    Aceita data_inicio + data_fim (YYYY-MM-DD) ou cai para dias.
+    """
+    data_inicio = req.args.get('data_inicio', '').strip()
+    data_fim    = req.args.get('data_fim', '').strip()
+    if data_inicio and data_fim:
+        return (
+            ["criado_em >= %s::date", "criado_em < (%s::date + INTERVAL '1 day')"],
+            [data_inicio, data_fim]
+        )
+    dias = min(int(req.args.get('dias', 30)), 365)
+    return (
+        ["criado_em >= NOW() - (%s || ' days')::INTERVAL"],
+        [str(dias)]
+    )
+
+
 @painel36_bp.route('/painel/painel36')
 @login_required
 @panel_permission_required('painel36')
@@ -164,23 +183,16 @@ def api_painel36_dashboard():
 @login_required
 @panel_permission_required('painel36')
 def api_painel36_chamados():
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-    dias         = min(int(request.args.get('dias', 7)), 365)
-    setor        = request.args.get('setor', '').strip()
+    setor         = request.args.get('setor', '').strip()
     padioleiro_id = request.args.get('padioleiro_id', '').strip()
-    tipo_id      = request.args.get('tipo_id', '').strip()
-    status       = request.args.get('status', '').strip()
-    prioridade   = request.args.get('prioridade', '').strip()
+    tipo_id       = request.args.get('tipo_id', '').strip()
+    status        = request.args.get('status', '').strip()
+    prioridade    = request.args.get('prioridade', '').strip()
 
     try:
         with get_db_cursor() as cursor:
 
-            where  = [
-                "criado_em >= NOW() - (%s || ' days')::INTERVAL",
-                "(dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)"
-            ]
-            params = [str(dias)]
+            where, params = _periodo_where(request)
 
             if setor:
                 where.append("setor_origem_nome ILIKE %s")
@@ -299,12 +311,10 @@ def api_painel36_cancelar(chamado_id):
 @login_required
 @panel_permission_required('painel36')
 def api_painel36_por_setor():
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-    dias = min(int(request.args.get('dias', 30)), 365)
     try:
         with get_db_cursor() as cursor:
-            cursor.execute(f"""
+            where, params = _periodo_where(request)
+            cursor.execute("""
                 SELECT
                     setor_origem_nome                                                           AS setor,
                     COUNT(*)                                                                    AS total,
@@ -318,11 +328,10 @@ def api_painel36_por_setor():
                     ROUND(AVG(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60)
                         FILTER (WHERE status = 'concluido' AND dt_conclusao IS NOT NULL), 1)   AS tempo_medio_total_min
                 FROM padioleiro_chamados
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
-                  AND (dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)
+                WHERE """ + ' AND '.join(where) + """
                 GROUP BY setor_origem_nome
                 ORDER BY total DESC
-            """, (str(dias),))
+            """, params)
             setores = []
             for row in cursor.fetchall():
                 s = dict(row)
@@ -345,12 +354,11 @@ def api_painel36_por_setor():
 @login_required
 @panel_permission_required('painel36')
 def api_painel36_por_padioleiro():
-    usuario_id = session.get('usuario_id')
-    is_admin = session.get('is_admin', False)
-    dias = min(int(request.args.get('dias', 30)), 365)
     try:
         with get_db_cursor() as cursor:
-            cursor.execute(f"""
+            where, params = _periodo_where(request)
+            where.append("padioleiro_nome IS NOT NULL")
+            cursor.execute("""
                 SELECT
                     padioleiro_nome                                                             AS padioleiro,
                     COUNT(*)                                                                    AS total,
@@ -367,12 +375,10 @@ def api_painel36_por_padioleiro():
                     ROUND(AVG(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60)
                         FILTER (WHERE status = 'concluido' AND dt_conclusao IS NOT NULL), 1)   AS tempo_medio_total_min
                 FROM padioleiro_chamados
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
-                  AND padioleiro_nome IS NOT NULL
-                  AND (dt_conclusao IS NULL OR EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 <= 300)
+                WHERE """ + ' AND '.join(where) + """
                 GROUP BY padioleiro_nome
                 ORDER BY concluidos DESC
-            """, (str(dias),))
+            """, params)
             padioleiros = []
             for row in cursor.fetchall():
                 p = dict(row)
@@ -396,15 +402,15 @@ def api_painel36_por_padioleiro():
 @login_required
 @panel_permission_required('painel36')
 def api_painel36_exportar():
-    dias       = min(int(request.args.get('dias', 30)), 365)
     status     = request.args.get('status', '').strip()
     prioridade = request.args.get('prioridade', '').strip()
     setor      = request.args.get('setor', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim    = request.args.get('data_fim', '').strip()
 
     try:
         with get_db_cursor() as cursor:
-            where  = ["criado_em >= NOW() - (%s || ' days')::INTERVAL"]
-            params = [str(dias)]
+            where, params = _periodo_where(request)
             if status:
                 where.append("status = %s"); params.append(status)
             if prioridade:
@@ -480,7 +486,13 @@ def api_painel36_exportar():
 
         # ── Gerar Excel ──────────────────────────────────────────
         now = datetime.now()
-        filtros_txt = f"Últimos {dias} dia(s)"
+        if data_inicio and data_fim:
+            di = datetime.strptime(data_inicio, '%Y-%m-%d').strftime('%d/%m/%Y')
+            df = datetime.strptime(data_fim,    '%Y-%m-%d').strftime('%d/%m/%Y')
+            filtros_txt = f"Período: {di} a {df}"
+        else:
+            dias = int(request.args.get('dias', 30))
+            filtros_txt = f"Últimos {dias} dia(s)"
         if status:     filtros_txt += f"  |  Status: {status}"
         if prioridade: filtros_txt += f"  |  Prioridade: {prioridade}"
         if setor:      filtros_txt += f"  |  Setor: {setor}"
