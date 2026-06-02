@@ -272,6 +272,16 @@ try:
 except Exception as e:
     app.logger.warning(f'[notificador_ocupacao] Nao iniciado automaticamente: {e}')
 
+# Notificador de Movimentações Padioleiro — envia Excel + resumo HTML nos horários configurados
+# OFF SWITCH: comente as 3 linhas abaixo para desativar, ou defina NOTIF_PADIOLEIRO_AUTO=false no .env
+try:
+    from backend.notificador_padioleiro import start_in_background as _start_notif_padioleiro
+    _evt = _start_notif_padioleiro()
+    if _evt is not None:
+        _worker_stop_events.append(_evt)
+except Exception as e:
+    app.logger.warning(f'[notificador_padioleiro] Nao iniciado automaticamente: {e}')
+
 # =========================================================
 # ROTAS DE DESENVOLVIMENTO (Remover em produção)
 # =========================================================
