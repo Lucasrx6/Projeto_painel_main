@@ -7,8 +7,12 @@ from datetime import datetime, date
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
-import csv
 import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.chart import BarChart, Reference
+from openpyxl.formatting.rule import ColorScaleRule
 
 painel36_bp = Blueprint('painel36', __name__)
 
@@ -18,6 +22,54 @@ _CAMPOS_PADIOLEIRO     = ('nome', 'matricula', 'turno')
 _CAMPOS_TIPO_MOVIMENTO = ('nome', 'icone', 'cor', 'ordem')
 _CAMPOS_DESTINO        = ('nome', 'tipo_movimento_id', 'ordem')
 _CAMPOS_ORIGEM         = ('nome', 'ordem')
+
+# ── Helpers Excel (exportação) ────────────────────────────────
+_X_HAC      = "9B1C24"
+_X_VERDE    = "28A745"
+_X_VERMELHO = "DC3545"
+_X_LARANJA  = "E67E00"
+_X_AZUL     = "17A2B8"
+_X_BRANCO   = "FFFFFF"
+_X_ZEBRA    = "FEF0F0"
+_X_FUNDO_H  = "F5D0D3"
+_X_STATUS   = {
+    'concluido': _X_VERDE, 'cancelado': _X_VERMELHO,
+    'aguardando': _X_HAC,  'aceito': _X_AZUL, 'em_transporte': _X_LARANJA
+}
+
+def _x_hdr(cell, cor=_X_HAC):
+    cell.font = Font(bold=True, color=_X_BRANCO, size=11)
+    cell.fill = PatternFill("solid", fgColor=cor)
+    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    _x_borda(cell)
+
+def _x_borda(cell):
+    s = Side(style="thin", color="CCCCCC")
+    cell.border = Border(left=s, right=s, top=s, bottom=s)
+
+def _x_autowidth(ws, min_w=10, max_w=45):
+    for col in ws.columns:
+        letra = get_column_letter(col[0].column)
+        w = max((len(str(c.value or '')) for c in col), default=0)
+        ws.column_dimensions[letra].width = min(max(w + 3, min_w), max_w)
+
+def _x_titulo(ws, texto, ncols, row=1):
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=ncols)
+    c = ws.cell(row=row, column=1, value=texto)
+    c.font = Font(bold=True, color=_X_BRANCO, size=13)
+    c.fill = PatternFill("solid", fgColor=_X_HAC)
+    c.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[row].height = 28
+
+def _x_cor_tempo(ws, col_letra, row_ini, row_fim):
+    ws.conditional_formatting.add(
+        f"{col_letra}{row_ini}:{col_letra}{row_fim}",
+        ColorScaleRule(
+            start_type='num', start_value=0,  start_color="63BE7B",
+            mid_type='num',   mid_value=20,   mid_color="FFEB84",
+            end_type='num',   end_value=60,   end_color="F8696B",
+        )
+    )
 
 
 @painel36_bp.route('/painel/painel36')
@@ -344,101 +396,242 @@ def api_painel36_por_padioleiro():
 @login_required
 @panel_permission_required('painel36')
 def api_painel36_exportar():
-    dias      = min(int(request.args.get('dias', 30)), 365)
-    status    = request.args.get('status', '').strip()
+    dias       = min(int(request.args.get('dias', 30)), 365)
+    status     = request.args.get('status', '').strip()
     prioridade = request.args.get('prioridade', '').strip()
-    setor     = request.args.get('setor', '').strip()
+    setor      = request.args.get('setor', '').strip()
+
     try:
         with get_db_cursor() as cursor:
             where  = ["criado_em >= NOW() - (%s || ' days')::INTERVAL"]
             params = [str(dias)]
-
             if status:
-                where.append("status = %s")
-                params.append(status)
+                where.append("status = %s"); params.append(status)
             if prioridade:
-                where.append("prioridade = %s")
-                params.append(prioridade)
+                where.append("prioridade = %s"); params.append(prioridade)
             if setor:
-                where.append("setor_origem_nome ILIKE %s")
-                params.append(f'%{setor}%')
+                where.append("setor_origem_nome ILIKE %s"); params.append(f'%{setor}%')
+            where_sql = ' AND '.join(where)
 
-            cursor.execute("""
+            # ── Chamados detalhados ──────────────────────────────
+            cursor.execute(f"""
                 SELECT
-                    id,
-                    tipo_movimento_nome,
-                    nm_paciente,
-                    nr_atendimento,
-                    leito_origem,
-                    setor_origem_nome,
-                    destino_nome,
-                    destino_complemento,
-                    prioridade,
-                    status,
-                    solicitante_nome,
-                    padioleiro_nome,
-                    observacao,
+                    id, tipo_movimento_nome, nm_paciente, nr_atendimento,
+                    leito_origem, setor_origem_nome, destino_nome, destino_complemento,
+                    prioridade, status, solicitante_nome, padioleiro_nome, observacao,
                     TO_CHAR(criado_em,            'DD/MM/YYYY HH24:MI') AS criado_em,
                     TO_CHAR(dt_aceite,            'DD/MM/YYYY HH24:MI') AS dt_aceite,
                     TO_CHAR(dt_inicio_transporte, 'DD/MM/YYYY HH24:MI') AS dt_inicio_transporte,
                     TO_CHAR(dt_conclusao,         'DD/MM/YYYY HH24:MI') AS dt_conclusao,
                     TO_CHAR(dt_cancelamento,      'DD/MM/YYYY HH24:MI') AS dt_cancelamento,
                     motivo_cancelamento,
-                    CASE
-                        WHEN dt_aceite IS NOT NULL
-                        THEN ROUND(EXTRACT(EPOCH FROM (dt_aceite - criado_em)) / 60, 1)
-                    END AS tempo_aceite_min,
-                    CASE
-                        WHEN dt_inicio_transporte IS NOT NULL AND dt_aceite IS NOT NULL
-                        THEN ROUND(EXTRACT(EPOCH FROM (dt_inicio_transporte - dt_aceite)) / 60, 1)
-                    END AS tempo_deslocamento_min,
-                    CASE
-                        WHEN dt_conclusao IS NOT NULL AND dt_inicio_transporte IS NOT NULL
-                        THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - dt_inicio_transporte)) / 60, 1)
-                    END AS tempo_transporte_min,
-                    CASE
-                        WHEN dt_conclusao IS NOT NULL
-                        THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60, 1)
-                        WHEN status = 'cancelado' AND dt_cancelamento IS NOT NULL
-                        THEN ROUND(EXTRACT(EPOCH FROM (dt_cancelamento - criado_em)) / 60, 1)
-                    END AS tempo_total_min
+                    CASE WHEN dt_aceite IS NOT NULL
+                         THEN ROUND(EXTRACT(EPOCH FROM (dt_aceite - criado_em)) / 60, 1) END AS t_aceite_min,
+                    CASE WHEN dt_inicio_transporte IS NOT NULL AND dt_aceite IS NOT NULL
+                         THEN ROUND(EXTRACT(EPOCH FROM (dt_inicio_transporte - dt_aceite)) / 60, 1) END AS t_deslocamento_min,
+                    CASE WHEN dt_conclusao IS NOT NULL AND dt_inicio_transporte IS NOT NULL
+                         THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - dt_inicio_transporte)) / 60, 1) END AS t_transporte_min,
+                    CASE WHEN dt_conclusao IS NOT NULL
+                         THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60, 1)
+                         WHEN status = 'cancelado' AND dt_cancelamento IS NOT NULL
+                         THEN ROUND(EXTRACT(EPOCH FROM (dt_cancelamento - criado_em)) / 60, 1)
+                    END AS t_total_min
                 FROM padioleiro_chamados
-                WHERE """ + ' AND '.join(where) + """
+                WHERE {where_sql}
                 ORDER BY criado_em DESC
             """, params)
-            rows = cursor.fetchall()
+            chamados = [dict(r) for r in cursor.fetchall()]
 
-            output = io.StringIO()
-            writer = csv.writer(output, delimiter=';')
-            writer.writerow([
-                'ID', 'Tipo Movimento', 'Paciente', 'Atendimento', 'Leito Origem',
-                'Setor Origem', 'Destino', 'Compl. Destino', 'Prioridade', 'Status',
-                'Solicitante', 'Padioleiro', 'Observacao',
-                'Criado Em', 'Aceito Em', 'Inicio Transporte', 'Conclusao', 'Cancelado Em',
-                'Motivo Cancelamento',
-                'T. Aceite (min)', 'T. Deslocamento (min)', 'T. Transporte (min)', 'T. Total (min)'
-            ])
-            for row in rows:
-                writer.writerow([
-                    row.get('id'), row.get('tipo_movimento_nome'), row.get('nm_paciente'),
-                    row.get('nr_atendimento'), row.get('leito_origem'), row.get('setor_origem_nome'),
-                    row.get('destino_nome'), row.get('destino_complemento'),
-                    row.get('prioridade'), row.get('status'),
-                    row.get('solicitante_nome'), row.get('padioleiro_nome'), row.get('observacao'),
-                    row.get('criado_em'), row.get('dt_aceite'), row.get('dt_inicio_transporte'),
-                    row.get('dt_conclusao'), row.get('dt_cancelamento'),
-                    row.get('motivo_cancelamento'),
-                    row.get('tempo_aceite_min'), row.get('tempo_deslocamento_min'),
-                    row.get('tempo_transporte_min'), row.get('tempo_total_min')
-                ])
+            # ── Por padioleiro ───────────────────────────────────
+            cursor.execute(f"""
+                SELECT
+                    COALESCE(padioleiro_nome,'(não atribuído)') AS padioleiro,
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE status='concluido')   AS concluidos,
+                    COUNT(*) FILTER (WHERE status='cancelado')   AS cancelados,
+                    COUNT(*) FILTER (WHERE prioridade='urgente') AS urgentes,
+                    ROUND(AVG(CASE WHEN dt_aceite IS NOT NULL
+                        THEN EXTRACT(EPOCH FROM (dt_aceite - criado_em))/60 END)::numeric,1) AS media_aceite_min,
+                    ROUND(AVG(CASE WHEN dt_inicio_transporte IS NOT NULL AND dt_aceite IS NOT NULL
+                        THEN EXTRACT(EPOCH FROM (dt_inicio_transporte - dt_aceite))/60 END)::numeric,1) AS media_deslocamento_min,
+                    ROUND(AVG(CASE WHEN dt_conclusao IS NOT NULL AND dt_inicio_transporte IS NOT NULL
+                        THEN EXTRACT(EPOCH FROM (dt_conclusao - dt_inicio_transporte))/60 END)::numeric,1) AS media_transporte_min,
+                    ROUND(AVG(CASE WHEN dt_conclusao IS NOT NULL
+                        THEN EXTRACT(EPOCH FROM (dt_conclusao - criado_em))/60 END)::numeric,1) AS media_total_min
+                FROM padioleiro_chamados
+                WHERE {where_sql}
+                GROUP BY padioleiro_nome ORDER BY total DESC
+            """, params)
+            por_padioleiro = [dict(r) for r in cursor.fetchall()]
 
-            output.seek(0)
-            nome_arquivo = f'chamados_padioleiro_{date.today().strftime("%Y%m%d")}.csv'
-            return Response(
-                '﻿' + output.getvalue(),
-                mimetype='text/csv; charset=utf-8-sig',
-                headers={'Content-Disposition': f'attachment; filename={nome_arquivo}'}
-            )
+            # ── Por setor ────────────────────────────────────────
+            cursor.execute(f"""
+                SELECT
+                    COALESCE(setor_origem_nome,'(sem setor)') AS setor,
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE status='concluido')   AS concluidos,
+                    COUNT(*) FILTER (WHERE status='cancelado')   AS cancelados,
+                    COUNT(*) FILTER (WHERE prioridade='urgente') AS urgentes
+                FROM padioleiro_chamados
+                WHERE {where_sql}
+                GROUP BY setor_origem_nome ORDER BY total DESC LIMIT 30
+            """, params)
+            por_setor = [dict(r) for r in cursor.fetchall()]
+
+        # ── Gerar Excel ──────────────────────────────────────────
+        now = datetime.now()
+        filtros_txt = f"Últimos {dias} dia(s)"
+        if status:     filtros_txt += f"  |  Status: {status}"
+        if prioridade: filtros_txt += f"  |  Prioridade: {prioridade}"
+        if setor:      filtros_txt += f"  |  Setor: {setor}"
+
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+
+        # ── Aba 1: Chamados ──────────────────────────────────────
+        ws1 = wb.create_sheet("Chamados")
+        ws1.sheet_view.showGridLines = False
+        ws1.freeze_panes = "A3"
+
+        _x_titulo(ws1, f"CHAMADOS PADIOLEIRO — HAC — {now.strftime('%d/%m/%Y %H:%M')}  |  {filtros_txt}", 22)
+
+        hdrs = [
+            "#", "Tipo Movimento", "Paciente", "Atendimento", "Leito Origem",
+            "Setor Origem", "Destino", "Compl. Destino", "Prioridade", "Status",
+            "Solicitante", "Padioleiro", "Observação",
+            "Criado Em", "Aceito Em", "Ini. Transporte", "Conclusão", "Cancelado Em",
+            "Motivo Cancelamento", "T.Aceite(min)", "T.Desloc.(min)", "T.Transp.(min)"
+        ]
+        # Adiciona T.Total apenas se a versão 22 cols ficar pequena demais — inclui direto
+        hdrs.append("T.Total(min)")
+
+        for j, h in enumerate(hdrs, 1):
+            _x_hdr(ws1.cell(row=2, column=j, value=h))
+        ws1.row_dimensions[2].height = 22
+
+        keys = [
+            'id','tipo_movimento_nome','nm_paciente','nr_atendimento','leito_origem',
+            'setor_origem_nome','destino_nome','destino_complemento',
+            'prioridade','status','solicitante_nome','padioleiro_nome','observacao',
+            'criado_em','dt_aceite','dt_inicio_transporte','dt_conclusao','dt_cancelamento',
+            'motivo_cancelamento','t_aceite_min','t_deslocamento_min','t_transporte_min','t_total_min'
+        ]
+        for i, row in enumerate(chamados, 3):
+            zebra = i % 2 == 0
+            for j, key in enumerate(keys, 1):
+                v = row.get(key)
+                cell = ws1.cell(row=i, column=j, value=v)
+                _x_borda(cell)
+                cell.alignment = Alignment(vertical="center", wrap_text=(j in (13, 19)))
+                if zebra and key not in ('prioridade', 'status'):
+                    cell.fill = PatternFill("solid", fgColor=_X_ZEBRA)
+                if key == 'status' and v in _X_STATUS:
+                    cell.font = Font(bold=True, color=_X_BRANCO)
+                    cell.fill = PatternFill("solid", fgColor=_X_STATUS[v])
+                elif key == 'prioridade' and v == 'urgente':
+                    cell.font = Font(bold=True, color=_X_BRANCO)
+                    cell.fill = PatternFill("solid", fgColor=_X_LARANJA)
+
+        last_row = 2 + len(chamados)
+        if chamados:
+            # Formatação condicional nos tempos (colunas 20-23)
+            for col_n in range(20, 24):
+                _x_cor_tempo(ws1, get_column_letter(col_n), 3, last_row)
+
+        _x_autowidth(ws1)
+
+        # ── Aba 2: Por Padioleiro ────────────────────────────────
+        ws2 = wb.create_sheet("Por Padioleiro")
+        ws2.sheet_view.showGridLines = False
+
+        hv = ["Padioleiro", "Total", "Concluídos", "Cancelados", "Urgentes",
+              "T.Aceite(min)", "T.Desloc.(min)", "T.Transp.(min)", "T.Total(min)"]
+        _x_titulo(ws2, f"POR PADIOLEIRO — {filtros_txt}", len(hv))
+        for j, h in enumerate(hv, 1):
+            _x_hdr(ws2.cell(row=2, column=j, value=h))
+
+        pad_keys_cor = [
+            ('padioleiro', None), ('total', None), ('concluidos', _X_VERDE),
+            ('cancelados', _X_VERMELHO), ('urgentes', _X_LARANJA),
+            ('media_aceite_min', None), ('media_deslocamento_min', None),
+            ('media_transporte_min', None), ('media_total_min', None),
+        ]
+        for i, p in enumerate(por_padioleiro, 3):
+            zebra = i % 2 == 0
+            for j, (key, cor_txt) in enumerate(pad_keys_cor, 1):
+                v = p.get(key)
+                cell = ws2.cell(row=i, column=j, value=float(v) if v is not None and j > 5 else v)
+                _x_borda(cell)
+                if zebra: cell.fill = PatternFill("solid", fgColor=_X_ZEBRA)
+                if j == 1: cell.font = Font(bold=True)
+                elif cor_txt: cell.font = Font(bold=True, color=cor_txt)
+
+        last_pad = 2 + len(por_padioleiro)
+        if por_padioleiro:
+            for col_l in ['F', 'G', 'H', 'I']:
+                _x_cor_tempo(ws2, col_l, 3, last_pad)
+            c = BarChart()
+            c.type = "bar"; c.grouping = "clustered"
+            c.title = "Movimentos por Padioleiro"
+            c.style = 10; c.height = 12; c.width = 22
+            c.x_axis.title = "Quantidade"
+            c.add_data(Reference(ws2, min_col=2, max_col=5, min_row=2, max_row=last_pad), titles_from_data=True)
+            c.set_categories(Reference(ws2, min_col=1, min_row=3, max_row=last_pad))
+            for idx, cor in enumerate([_X_HAC, _X_VERDE, _X_VERMELHO, _X_LARANJA]):
+                if idx < len(c.series):
+                    c.series[idx].graphicalProperties.solidFill = cor
+            ws2.add_chart(c, f"A{last_pad + 3}")
+
+        _x_autowidth(ws2)
+
+        # ── Aba 3: Por Setor ─────────────────────────────────────
+        ws3 = wb.create_sheet("Por Setor")
+        ws3.sheet_view.showGridLines = False
+
+        hs = ["Setor", "Total", "Concluídos", "Cancelados", "Urgentes"]
+        _x_titulo(ws3, f"POR SETOR — {filtros_txt}", len(hs))
+        for j, h in enumerate(hs, 1):
+            _x_hdr(ws3.cell(row=2, column=j, value=h))
+
+        for i, s in enumerate(por_setor, 3):
+            zebra = i % 2 == 0
+            for j, (key, cor_txt) in enumerate([
+                ('setor', None), ('total', None), ('concluidos', _X_VERDE),
+                ('cancelados', _X_VERMELHO), ('urgentes', _X_LARANJA)
+            ], 1):
+                cell = ws3.cell(row=i, column=j, value=s.get(key))
+                _x_borda(cell)
+                if zebra: cell.fill = PatternFill("solid", fgColor=_X_ZEBRA)
+                if j == 1: cell.font = Font(bold=True)
+                elif cor_txt: cell.font = Font(bold=True, color=cor_txt)
+
+        last_set = 2 + len(por_setor)
+        if por_setor:
+            c2 = BarChart()
+            c2.type = "bar"; c2.grouping = "clustered"
+            c2.title = "Chamados por Setor"
+            c2.style = 10; c2.height = max(12, len(por_setor) * 0.9); c2.width = 22
+            c2.x_axis.title = "Quantidade"
+            c2.add_data(Reference(ws3, min_col=2, max_col=5, min_row=2, max_row=last_set), titles_from_data=True)
+            c2.set_categories(Reference(ws3, min_col=1, min_row=3, max_row=last_set))
+            for idx, cor in enumerate([_X_HAC, _X_VERDE, _X_VERMELHO, _X_LARANJA]):
+                if idx < len(c2.series):
+                    c2.series[idx].graphicalProperties.solidFill = cor
+            ws3.add_chart(c2, f"A{last_set + 3}")
+
+        _x_autowidth(ws3)
+
+        # ── Retornar arquivo ─────────────────────────────────────
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        nome_arquivo = f'chamados_padioleiro_{date.today().strftime("%Y%m%d")}.xlsx'
+        return Response(
+            buf.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename={nome_arquivo}'}
+        )
 
     except Exception as e:
         current_app.logger.error(f'Erro exportar painel36: {e}', exc_info=True)
