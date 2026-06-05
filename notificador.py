@@ -243,7 +243,7 @@ def enviar_ntfy_topicos(topicos, titulo, mensagem, prioridade='3'):
 # =========================================================
 
 def montar_mensagem(template, dados):
-    """Substitui {setor}, {leito}, {paciente}, {atendimento}."""
+    """Substitui {setor}, {leito}, {paciente}, {atendimento}. Uso interno apenas."""
     if not template:
         return ''
     resultado = template
@@ -251,6 +251,23 @@ def montar_mensagem(template, dados):
     resultado = resultado.replace('{leito}', str(dados.get('cd_unidade', '-')))
     resultado = resultado.replace('{paciente}', str(dados.get('nm_pessoa_fisica', '-')))
     resultado = resultado.replace('{atendimento}', str(dados.get('nr_atendimento', '-')))
+    return resultado
+
+
+def montar_mensagem_ntfy(template, dados):
+    """
+    Monta mensagem para canal publico (ntfy) — LGPD Art. 6, principio da minimizacao.
+    Substitui apenas {setor} e {leito}: dados operacionais nao identificadores.
+    {paciente} e {atendimento} sao BLOQUEADOS: ntfy e servico publico sem criptografia
+    ponta-a-ponta e qualquer dado de identificacao de paciente e vedado nesse canal.
+    """
+    if not template:
+        return ''
+    resultado = template
+    resultado = resultado.replace('{setor}', str(dados.get('nm_setor', '-')))
+    resultado = resultado.replace('{leito}', str(dados.get('cd_unidade', '-')))
+    resultado = resultado.replace('{paciente}', '[PROTEGIDO]')
+    resultado = resultado.replace('{atendimento}', '[PROTEGIDO]')
     return resultado
 
 
@@ -393,8 +410,9 @@ def verificar_admissao_nova(configs):
             chave = 'admissao_{}'.format(pac['nr_atendimento'])
 
             if not ja_notificado(conn, chave):
-                titulo = montar_mensagem(config['titulo_template'], pac)
-                mensagem = montar_mensagem(config['mensagem_template'], pac)
+                # LGPD: usa montar_mensagem_ntfy — canal publico, sem dados de paciente
+                titulo = montar_mensagem_ntfy(config['titulo_template'], pac)
+                mensagem = montar_mensagem_ntfy(config['mensagem_template'], pac)
 
                 sucesso, resposta = enviar_ntfy_topicos(
                     topicos, titulo, mensagem,
@@ -471,8 +489,9 @@ def verificar_parecer_pendente(configs):
             if parecer_atual == 'Sim' and parecer_anterior != 'Sim':
                 chave = 'parecer_{}_{}'.format(nr_atend, datetime.now().strftime('%Y%m%d_%H%M'))
 
-                titulo = montar_mensagem(config['titulo_template'], pac)
-                mensagem = montar_mensagem(config['mensagem_template'], pac)
+                # LGPD: usa montar_mensagem_ntfy — canal publico, sem dados de paciente
+                titulo = montar_mensagem_ntfy(config['titulo_template'], pac)
+                mensagem = montar_mensagem_ntfy(config['mensagem_template'], pac)
 
                 sucesso, resposta = enviar_ntfy_topicos(
                     topicos, titulo, mensagem,
@@ -550,8 +569,9 @@ def verificar_prescricao_pendente(configs):
         for pac in novos_sem:
             chave = 'prescricao_novo_{}_{}'.format(hoje, pac['nr_atendimento'])
             if not ja_notificado(conn, chave):
-                titulo = montar_mensagem(config['titulo_template'], pac)
-                mensagem = montar_mensagem(config['mensagem_template'], pac)
+                # LGPD: usa montar_mensagem_ntfy — canal publico, sem dados de paciente
+                titulo = montar_mensagem_ntfy(config['titulo_template'], pac)
+                mensagem = montar_mensagem_ntfy(config['mensagem_template'], pac)
                 sucesso, resposta = enviar_ntfy_topicos(topicos, titulo, mensagem, str(config.get('prioridade_ntfy', 4)))
                 topicos_str = ','.join(topicos) if topicos else 'nenhum'
                 registrar_notificacao(conn, 'prescricao_pendente', chave, dict(pac), topicos_str, sucesso, resposta)
@@ -577,8 +597,9 @@ def verificar_prescricao_pendente(configs):
 
             for pac in existentes_sem:
                 chave = 'prescricao_dia_{}_{}'.format(hoje, pac['nr_atendimento'])
-                titulo = montar_mensagem(config['titulo_template'], pac)
-                mensagem = montar_mensagem(config['mensagem_template'], pac)
+                # LGPD: usa montar_mensagem_ntfy — canal publico, sem dados de paciente
+                titulo = montar_mensagem_ntfy(config['titulo_template'], pac)
+                mensagem = montar_mensagem_ntfy(config['mensagem_template'], pac)
 
                 if not ja_notificado(conn, chave):
                     sucesso, resposta = enviar_ntfy_topicos(topicos, titulo, mensagem, str(config.get('prioridade_ntfy', 4)))

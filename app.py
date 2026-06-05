@@ -89,8 +89,9 @@ app.config.from_object(config_class)
 # Proxy reverso (nginx → Gunicorn): garante que HTTPS e IP real sejam lidos corretamente
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-# Cookies seguros quando a requisição chegar via HTTPS
-if os.getenv('HTTPS_ENABLED', 'false').lower() == 'true':
+# Cookies seguros apenas quando HTTPS está ativo E não está em modo DEBUG
+# (em DEBUG/dev os painéis acessam via HTTP direto — Secure bloquearia o cookie)
+if os.getenv('HTTPS_ENABLED', 'false').lower() == 'true' and not app.config.get('DEBUG', False):
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
