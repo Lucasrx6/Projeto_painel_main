@@ -38,8 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAdmin = false;
     let userPermissions = [];
 
-    // Painéis que dão acesso ao Hub de Serviços (painel28)
-    const HUB_PAINEIS = ['painel14', 'painel28', 'painel34', 'painel35', 'painel36'];
+    // Painéis que dão acesso ao Hub de Serviços (painel44)
+    // Qualquer usuário com ao menos um destes painéis vê o Hub
+    const HUB_PAINEIS = ['painel14', 'painel15', 'painel28', 'painel34', 'painel35', 'painel36', 'painel41', 'painel42', 'painel43'];
 
     // 3. Filtragem e Busca
     const navItems = document.querySelectorAll('.nav-item');
@@ -72,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Permissão check
             // painel28 (Hub de Serviços) aparece para qualquer usuário com ao menos um serviço do hub liberado
-            const hasHubAccess = painelId === 'painel28' && HUB_PAINEIS.some(p => userPermissions.includes(p));
+            const hasHubAccess = painelId === 'painel44' && HUB_PAINEIS.some(p => userPermissions.includes(p));
             const hasPermission = isAdmin || userPermissions.includes(painelId) || hasHubAccess;
 
             if (hasPermission) {
@@ -179,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     painelCards.forEach(card => {
         card.addEventListener('click', () => {
             const painelId = card.dataset.painel;
-            const hasHubAccess = painelId === 'painel28' && HUB_PAINEIS.some(p => userPermissions.includes(p));
+            const hasHubAccess = painelId === 'painel44' && HUB_PAINEIS.some(p => userPermissions.includes(p));
             if (isAdmin || userPermissions.includes(painelId) || hasHubAccess) {
                 window.location.href = `/painel/${painelId}`;
             }

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tela Nutrição - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel42/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- HEADER -->
+    <div class="painel-header">
+        <div class="header-left">
+            <i class="fa-solid fa-kitchen-set header-icon"></i>
+            <div>
+                <div class="header-titulo">Tela Nutrição</div>
+                <div class="header-subtitulo">Hospital Anchieta Ceilândia</div>
+            </div>
+        </div>
+        <div class="header-center" id="header-contadores">
+            <div class="contador-badge" id="cnt-aguardando" style="background:#6C757D;">
+                <span class="cnt-num">0</span>
+                <span class="cnt-label">Aguardando</span>
+            </div>
+            <div class="contador-badge" id="cnt-aceito" style="background:#17A2B8;">
+                <span class="cnt-num">0</span>
+                <span class="cnt-label">Aceito</span>
+            </div>
+            <div class="contador-badge" id="cnt-em_preparo" style="background:#E67E00;">
+                <span class="cnt-num">0</span>
+                <span class="cnt-label">Preparo</span>
+            </div>
+            <div class="contador-badge" id="cnt-pronto" style="background:#8BC34A;">
+                <span class="cnt-num">0</span>
+                <span class="cnt-label">Pronto</span>
+            </div>
+            <div class="contador-badge" id="cnt-em_entrega" style="background:#6F42C1;">
+                <span class="cnt-num">0</span>
+                <span class="cnt-label">Em Entrega</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="membro-wrapper">
+                <label class="membro-label"><i class="fa-solid fa-user-nurse"></i> Responsável:</label>
+                <select id="sel-membro" class="sel-membro">
+                    <option value="">Carregando...</option>
+                </select>
+            </div>
+            <div id="ultimo-update" class="ultimo-update"></div>
+            <button id="btn-voltar-hub" class="btn-header" title="Voltar ao Hub de Serviços">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- KANBAN -->
+    <div class="kanban-board" id="kanban-board">
+
+        <!-- COL: AGUARDANDO -->
+        <div class="kanban-col">
+            <div class="kanban-col-header" style="background:#6C757D;">
+                <i class="fa-solid fa-clock"></i> Aguardando
+                <span class="col-badge" id="badge-aguardando">0</span>
+            </div>
+            <div class="kanban-col-body" id="col-aguardando">
+                <div class="col-empty">Nenhuma solicitação</div>
+            </div>
+        </div>
+
+        <!-- COL: ACEITO -->
+        <div class="kanban-col">
+            <div class="kanban-col-header" style="background:#17A2B8;">
+                <i class="fa-solid fa-circle-check"></i> Aceito
+                <span class="col-badge" id="badge-aceito">0</span>
+            </div>
+            <div class="kanban-col-body" id="col-aceito">
+                <div class="col-empty">Nenhuma solicitação</div>
+            </div>
+        </div>
+
+        <!-- COL: EM PREPARO -->
+        <div class="kanban-col">
+            <div class="kanban-col-header" style="background:#E67E00;">
+                <i class="fa-solid fa-fire-burner"></i> Em Preparo
+                <span class="col-badge" id="badge-em_preparo">0</span>
+            </div>
+            <div class="kanban-col-body" id="col-em_preparo">
+                <div class="col-empty">Nenhuma solicitação</div>
+            </div>
+        </div>
+
+        <!-- COL: PRONTO -->
+        <div class="kanban-col">
+            <div class="kanban-col-header" style="background:#8BC34A;">
+                <i class="fa-solid fa-bell-concierge"></i> Pronto
+                <span class="col-badge" id="badge-pronto">0</span>
+            </div>
+            <div class="kanban-col-body" id="col-pronto">
+                <div class="col-empty">Nenhuma solicitação</div>
+            </div>
+        </div>
+
+        <!-- COL: EM ENTREGA -->
+        <div class="kanban-col">
+            <div class="kanban-col-header" style="background:#6F42C1;">
+                <i class="fa-solid fa-person-walking"></i> Em Entrega
+                <span class="col-badge" id="badge-em_entrega">0</span>
+            </div>
+            <div class="kanban-col-body" id="col-em_entrega">
+                <div class="col-empty">Nenhuma solicitação</div>
+            </div>
+        </div>
+
+    </div><!-- /kanban -->
+
+    <!-- HISTÓRICO DO DIA (collapsible) -->
+    <div class="secao-historico">
+        <div class="historico-header" id="btn-toggle-historico">
+            <i class="fa-solid fa-history"></i> Histórico do Dia
+            <span id="badge-historico" class="badge-hist">0</span>
+            <i class="fa-solid fa-chevron-down" id="icone-toggle" style="margin-left:auto;"></i>
+        </div>
+        <div id="historico-body" class="historico-body" style="display:none;">
+            <table class="tabela-hist">
+                <thead>
+                    <tr>
+                        <th>Código</th><th>Paciente</th><th>Leito</th>
+                        <th>Dieta</th><th>Refeição</th><th>Responsável</th>
+                        <th>Status</th><th>Criado</th><th>Finalizado</th>
+                        <th>T.Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-historico"></tbody>
+            </table>
+            <div id="hist-empty" class="col-empty" style="padding:16px;">Sem registros hoje.</div>
+        </div>
+    </div>
+
+    <!-- MODAL: ACEITAR -->
+    <div id="modal-aceitar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-titulo"><i class="fa-solid fa-circle-check" style="color:#17A2B8;"></i> Aceitar Solicitação</div>
+            <input type="hidden" id="acc-sid">
+            <p class="modal-desc" id="acc-desc"></p>
+            <div class="form-group-modal" id="acc-membro-group">
+                <label>Responsável pelo preparo:</label>
+                <select id="acc-sel-membro" class="form-select-modal">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            <div id="acc-erro" class="modal-erro" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="btn-acc-confirmar" class="btn-acao" style="background:#17A2B8;">
+                    <i class="fa-solid fa-check"></i> Aceitar
+                </button>
+                <button id="btn-acc-fechar" class="btn-fechar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMAR ENTREGA (validação do código) -->
+    <div id="modal-entregar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-titulo"><i class="fa-solid fa-box-open" style="color:#6F42C1;"></i> Confirmar Entrega</div>
+            <input type="hidden" id="entr-sid">
+            <p class="modal-desc" id="entr-desc"></p>
+            <div class="form-group-modal">
+                <label>Digite o código de entrega:</label>
+                <input type="text" id="inp-codigo-confirm" class="inp-codigo-confirm"
+                    placeholder="NUT-AAMMDD-NNNN" autocomplete="off" spellcheck="false">
+                <div id="codigo-feedback" class="codigo-feedback"></div>
+            </div>
+            <div class="form-group-modal">
+                <label>Observação (opcional):</label>
+                <textarea id="entr-obs" class="form-textarea-modal" rows="2"
+                    placeholder="Observação sobre a entrega..."></textarea>
+            </div>
+            <div id="entr-erro" class="modal-erro" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="btn-entr-confirmar" class="btn-acao" style="background:#6F42C1;" disabled>
+                    <i class="fa-solid fa-check"></i> Confirmar Entrega
+                </button>
+                <button id="btn-entr-fechar" class="btn-fechar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CANCELAR -->
+    <div id="modal-cancelar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-titulo" style="color:#DC3545;"><i class="fa-solid fa-ban"></i> Cancelar Solicitação</div>
+            <input type="hidden" id="canc-sid">
+            <p class="modal-desc" id="canc-desc"></p>
+            <div class="form-group-modal">
+                <label>Motivo (mínimo 10 caracteres):</label>
+                <textarea id="canc-motivo" class="form-textarea-modal" rows="3"
+                    placeholder="Informe o motivo do cancelamento..."></textarea>
+            </div>
+            <div id="canc-erro" class="modal-erro" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="btn-canc-confirmar" class="btn-acao" style="background:#DC3545;">
+                    <i class="fa-solid fa-ban"></i> Cancelar
+                </button>
+                <button id="btn-canc-fechar" class="btn-fechar">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="sistema-footer">
+        <span id="sistema-versao-footer">Central de Informações V 1.1.4</span>
+    </footer>
+</div>
+
+<audio id="audio-alerta" src="/static/audio/chamado.mp3" preload="auto"></audio>
+
+<script src="/paineis/painel42/main.js"></script>
+<script src="/static/js/versao.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

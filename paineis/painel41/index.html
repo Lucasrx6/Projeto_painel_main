@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solicitar Dieta - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel41/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- HEADER -->
+    <div class="painel-header">
+        <div class="header-left">
+            <i class="fa-solid fa-bowl-food header-icon"></i>
+            <div>
+                <div class="header-titulo">Solicitar Dieta</div>
+                <div class="header-subtitulo">Hospital Anchieta Ceilândia</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <button id="btn-urgente" class="btn-urgente" title="Marcar como urgente">
+                <i class="fa-solid fa-bolt"></i> Urgente
+            </button>
+            <div id="header-status" class="header-status"></div>
+            <button id="btn-voltar-hub" class="btn-header" title="Voltar ao Hub de Serviços">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="main-content">
+
+        <!-- COLUNA ESQUERDA: busca de paciente -->
+        <div class="col-busca">
+            <div class="card-secao">
+                <div class="secao-titulo">
+                    <i class="fa-solid fa-magnifying-glass"></i> Buscar Paciente
+                </div>
+                <div class="busca-wrapper">
+                    <input type="text" id="input-busca" class="input-busca"
+                        placeholder="Nome, prontuário ou leito (mín. 3 caracteres)"
+                        autocomplete="off">
+                    <i class="fa-solid fa-spinner fa-spin" id="spinner-busca" style="display:none;"></i>
+                </div>
+                <div id="lista-pacientes" class="lista-pacientes"></div>
+
+                <!-- Card do paciente selecionado -->
+                <div id="card-paciente" class="card-paciente" style="display:none;">
+                    <div class="card-paciente-nome" id="pac-nome"></div>
+                    <div class="card-paciente-info">
+                        <span><i class="fa-solid fa-bed"></i> <span id="pac-leito">--</span></span>
+                        <span><i class="fa-solid fa-hospital"></i> <span id="pac-setor">--</span></span>
+                    </div>
+                    <div class="card-paciente-info">
+                        <span><i class="fa-solid fa-stethoscope"></i> <span id="pac-clinica">--</span></span>
+                        <span><i class="fa-solid fa-calendar-days"></i> <span id="pac-dias">--</span> dias</span>
+                    </div>
+                    <button class="btn-limpar-paciente" id="btn-limpar-paciente">
+                        <i class="fa-solid fa-xmark"></i> Trocar paciente
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUNA DIREITA: formulário -->
+        <div class="col-form">
+            <div class="card-secao">
+                <div class="secao-titulo">
+                    <i class="fa-solid fa-clipboard-list"></i> Solicitação de Dieta
+                </div>
+
+                <div id="aviso-selecione" class="aviso-selecione">
+                    <i class="fa-solid fa-arrow-left"></i> Selecione um paciente para continuar
+                </div>
+
+                <form id="form-solicitar" style="display:none;">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo de Dieta <span class="obrig">*</span></label>
+                            <select id="sel-tipo-dieta" class="form-select" required>
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Refeição <span class="obrig">*</span></label>
+                            <select id="sel-refeicao" class="form-select" required>
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group form-group-qtd">
+                        <label>Quantidade</label>
+                        <div class="qtd-wrapper">
+                            <button type="button" class="btn-qtd" id="btn-minus">−</button>
+                            <input type="number" id="inp-quantidade" class="inp-qtd" value="1" min="1" max="10" readonly>
+                            <button type="button" class="btn-qtd" id="btn-plus">+</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Restrições Alimentares</label>
+                        <div id="lista-restricoes" class="lista-restricoes">
+                            <span class="carregando-txt">Carregando restrições...</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Observações</label>
+                        <textarea id="inp-obs" class="form-textarea"
+                            placeholder="Informações adicionais para a nutrição..." rows="3"></textarea>
+                    </div>
+
+                    <div id="erro-form" class="erro-form" style="display:none;"></div>
+
+                    <button type="submit" id="btn-solicitar" class="btn-solicitar">
+                        <i class="fa-solid fa-paper-plane"></i> Solicitar Dieta
+                    </button>
+
+                </form>
+            </div>
+        </div>
+
+    </div><!-- /main-content -->
+
+    <!-- MINHAS SOLICITAÇÕES -->
+    <div class="secao-minhas">
+        <div class="secao-minhas-header">
+            <i class="fa-solid fa-list-check"></i> Minhas Solicitações de Hoje
+            <span id="badge-total" class="badge-total" style="display:none;"></span>
+        </div>
+        <div id="tabela-minhas-wrapper">
+            <div id="tabela-minhas-empty" class="tabela-empty">Nenhuma solicitação nas últimas 24 horas.</div>
+            <table id="tabela-minhas" class="tabela-minhas" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Paciente</th>
+                        <th>Leito</th>
+                        <th>Dieta</th>
+                        <th>Refeição</th>
+                        <th>Prioridade</th>
+                        <th>Status</th>
+                        <th>Horário</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-minhas"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL DE SUCESSO -->
+    <div id="modal-sucesso" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-icone-ok"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="modal-titulo">Dieta Solicitada!</div>
+            <div class="modal-subtitulo">Código de entrega:</div>
+            <div id="modal-codigo" class="modal-codigo"></div>
+            <div class="modal-dica">Anote ou informe este código ao paciente para rastreamento</div>
+            <button id="btn-modal-ok" class="btn-modal-ok">
+                <i class="fa-solid fa-check"></i> OK, nova solicitação
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL CANCELAR -->
+    <div id="modal-cancelar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-titulo" style="color:#DC3545;">Cancelar Solicitação</div>
+            <p style="color:#555;margin:8px 0 16px;">Informe o motivo do cancelamento:</p>
+            <input type="hidden" id="modal-canc-id">
+            <textarea id="modal-canc-motivo" class="form-textarea" rows="3"
+                placeholder="Motivo do cancelamento (mínimo 10 caracteres)"></textarea>
+            <div id="modal-canc-erro" class="erro-form" style="display:none;"></div>
+            <div style="display:flex;gap:12px;margin-top:16px;">
+                <button id="btn-canc-confirmar" class="btn-solicitar" style="background:#DC3545;flex:1;">
+                    <i class="fa-solid fa-ban"></i> Cancelar Solicitação
+                </button>
+                <button id="btn-canc-fechar" class="btn-modal-ok" style="flex:1;">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="sistema-footer">
+        <span id="sistema-versao-footer">Central de Informações V 1.1.4</span>
+    </footer>
+</div><!-- /painel-container -->
+
+<script src="/paineis/painel41/main.js"></script>
+<script src="/static/js/versao.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

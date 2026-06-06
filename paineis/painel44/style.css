@@ -1,0 +1,259 @@
+/* =========================================================
+   PAINEL 44 — HUB DE SERVIÇOS
+   ========================================================= */
+
+:root {
+    --cor-primaria: #dc3545;
+    --cor-primaria-dark: #c82333;
+    --cor-primaria-light: #f8d7da;
+    --bg: #f0f2f5;
+    --card-bg: #ffffff;
+    --texto: #333333;
+    --texto-sec: #6c757d;
+    --borda: #dee2e6;
+    --sombra: 0 2px 12px rgba(0,0,0,0.08);
+    --radius: 12px;
+}
+
+.tema-azul {
+    --cor-primaria: #44bbc2;
+    --cor-primaria-dark: #2fa8b0;
+    --cor-primaria-light: #d1ecf1;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--texto); }
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+.painel-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.painel-header {
+    background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    box-shadow: 0 3px 12px rgba(0,0,0,.18);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left      { display: flex; align-items: center; gap: 14px; }
+.header-right     { display: flex; align-items: center; gap: 8px; }
+.header-icon      { font-size: 26px; opacity: .9; }
+.header-titulo    { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+.header-subtitulo { font-size: 12px; opacity: .75; margin-top: 2px; }
+.header-usuario   { font-size: 13px; opacity: .85; }
+
+.btn-header {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+.btn-header:hover { background: rgba(255,255,255,0.35); }
+
+/* =========================================================
+   LAYOUT
+   ========================================================= */
+.main-content {
+    flex: 1;
+    padding: 20px 24px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+.loading-hub {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 60px 20px;
+    color: var(--texto-sec);
+    font-size: 16px;
+}
+.loading-hub i { font-size: 28px; color: var(--cor-primaria); }
+
+/* =========================================================
+   SEÇÕES
+   ========================================================= */
+.secao-titulo {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cor-primaria);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--borda);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+/* =========================================================
+   SUBSISTEMAS GRID
+   ========================================================= */
+#secao-subsistemas { margin-bottom: 28px; }
+
+.subsistemas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+@media (max-width: 700px) {
+    .subsistemas-grid { grid-template-columns: 1fr; }
+    .main-content { padding: 14px 16px; }
+}
+
+.subsistema-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--sombra);
+    border: 1px solid var(--borda);
+    transition: box-shadow .2s, transform .15s;
+}
+.subsistema-card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,.13);
+    transform: translateY(-2px);
+}
+
+.subsistema-header {
+    padding: 16px 20px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.sub-icon   { font-size: 22px; opacity: .9; flex-shrink: 0; }
+.sub-titulo { font-size: 15px; font-weight: 700; line-height: 1.2; }
+
+.subsistema-body {
+    padding: 14px 18px 18px;
+}
+
+.sub-descricao {
+    font-size: 13px;
+    color: var(--texto-sec);
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.paineis-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.painel-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    color: var(--texto);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.painel-link:hover {
+    background: var(--cor-primaria-light);
+    border-color: var(--cor-primaria);
+    color: var(--cor-primaria);
+}
+.painel-link-icon {
+    font-size: 13px;
+    width: 16px;
+    text-align: center;
+    color: var(--cor-primaria);
+    opacity: .85;
+    flex-shrink: 0;
+}
+
+/* =========================================================
+   OUTROS SERVIÇOS GRID
+   ========================================================= */
+.servicos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.servico-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid var(--borda);
+    padding: 12px 14px;
+    text-decoration: none;
+    color: var(--texto);
+    box-shadow: var(--sombra);
+    transition: box-shadow .2s, transform .15s;
+}
+.servico-card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    transform: translateY(-2px);
+}
+
+.servico-icone {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.servico-info { flex: 1; min-width: 0; }
+.servico-nome { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.servico-desc { font-size: 12px; color: var(--texto-sec); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.servico-seta { color: var(--borda); font-size: 12px; flex-shrink: 0; }
+
+/* =========================================================
+   ESTADO VAZIO
+   ========================================================= */
+.hub-vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+    gap: 12px;
+}
+.hub-vazio i   { font-size: 48px; color: var(--borda); }
+.hub-vazio p   { font-size: 16px; color: var(--texto-sec); }
+.hub-vazio-sub { font-size: 13px !important; color: #bbb !important; }

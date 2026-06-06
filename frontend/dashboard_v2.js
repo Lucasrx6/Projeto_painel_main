@@ -37,6 +37,10 @@ var CONFIG = {
 // ESTADO DA APLICACAO
 // ==============================================================================
 
+// Paineis que dão acesso ao Hub de Serviços (painel44):
+// painel44 aparece no dashboard se o usuário tiver ao menos um desses
+var HUB_PAINEIS = ['painel14', 'painel15', 'painel28', 'painel34', 'painel35', 'painel36', 'painel41', 'painel42', 'painel43'];
+
 var Estado = {
     usuarioAtual: null,
     permissoes: [],
@@ -48,7 +52,9 @@ var Estado = {
         'painel20', 'painel21', 'painel22', 'painel23', 'painel24', 'painel25',
         'painel26', 'painel27', 'painel28', 'painel29', 'painel30',
         'painel31', 'painel32', 'painel33',
-        'painel36', 'painel39', 'painel40'
+        'painel34', 'painel35', 'painel36',
+        'painel37', 'painel38', 'painel39', 'painel40',
+        'painel41', 'painel42', 'painel43', 'painel44'
     ]
 };
 
@@ -242,6 +248,13 @@ function filtrarPaineisVisiveis() {
 
         var temPermissao = Estado.permissoes.indexOf(painelNome) !== -1;
 
+        // painel44 aparece se o usuário tiver ao menos um dos serviços do Hub liberado
+        if (painelNome === 'painel44' && !temPermissao) {
+            temPermissao = HUB_PAINEIS.some(function(p) {
+                return Estado.permissoes.indexOf(p) !== -1;
+            });
+        }
+
         if (temPermissao) {
             card.style.display = 'flex';
             card.classList.remove('painel-disabled');
@@ -307,7 +320,18 @@ function abrirPainel(nomePainel) {
         return;
     }
 
-    // Verifica permissao
+    // painel44 é acessível se o usuário tiver ao menos um dos serviços do Hub
+    if (nomePainel === 'painel44') {
+        var temHubAccess = HUB_PAINEIS.some(function(p) {
+            return Estado.permissoes.indexOf(p) !== -1;
+        });
+        if (temHubAccess) {
+            navegarParaPainel(nomePainel);
+            return;
+        }
+    }
+
+    // Verifica permissao direta
     if (Estado.permissoes.indexOf(nomePainel) === -1) {
         alert(CONFIG.mensagens.acessoNegado);
         return;
