@@ -75,12 +75,24 @@
         DOM.inputBusca       = document.getElementById('input-busca');
         DOM.spinnerBusca     = document.getElementById('spinner-busca');
         DOM.listaPacientes   = document.getElementById('lista-pacientes');
+        DOM.linkManualWrapper= document.getElementById('link-manual-wrapper');
+        DOM.btnAbrirManual   = document.getElementById('btn-abrir-manual');
+        DOM.formManual       = document.getElementById('form-manual');
+        DOM.manualNome       = document.getElementById('manual-nome');
+        DOM.manualAtend      = document.getElementById('manual-atendimento');
+        DOM.manualLeito      = document.getElementById('manual-leito');
+        DOM.manualSetor      = document.getElementById('manual-setor');
+        DOM.manualErro       = document.getElementById('manual-erro');
+        DOM.btnManualConf    = document.getElementById('btn-manual-confirmar');
+        DOM.btnManualCanc    = document.getElementById('btn-manual-cancelar');
         DOM.cardPaciente     = document.getElementById('card-paciente');
-        DOM.pacNome          = document.getElementById('pac-nome');
+        DOM.pacNome          = document.getElementById('pac-nome-texto');
         DOM.pacLeito         = document.getElementById('pac-leito');
         DOM.pacSetor         = document.getElementById('pac-setor');
         DOM.pacClinica       = document.getElementById('pac-clinica');
         DOM.pacDias          = document.getElementById('pac-dias');
+        DOM.badgeManual      = document.getElementById('badge-manual');
+        DOM.cardInfoExtra    = document.getElementById('card-info-extra');
         DOM.btnLimpar        = document.getElementById('btn-limpar-paciente');
         DOM.avisoSelecione   = document.getElementById('aviso-selecione');
         DOM.formSolicitar    = document.getElementById('form-solicitar');
@@ -112,6 +124,9 @@
         // Eventos
         DOM.inputBusca.addEventListener('input', debounce(buscarPaciente, CONFIG.debounceMs));
         DOM.btnLimpar.addEventListener('click', limparPaciente);
+        DOM.btnAbrirManual.addEventListener('click', abrirFormManual);
+        DOM.btnManualCanc.addEventListener('click', fecharFormManual);
+        DOM.btnManualConf.addEventListener('click', confirmarManual);
         DOM.btnUrgente.addEventListener('click', toggleUrgente);
         DOM.btnMinus.addEventListener('click', function () { alterarQtd(-1); });
         DOM.btnPlus.addEventListener('click', function () { alterarQtd(1); });
@@ -237,8 +252,10 @@
     function renderListaPacientes(lista) {
         if (!lista.length) {
             DOM.listaPacientes.innerHTML = '<div class="pac-nenhum">Nenhum paciente encontrado.</div>';
+            DOM.linkManualWrapper.style.display = 'block';
             return;
         }
+        DOM.linkManualWrapper.style.display = 'block';
         var html = '';
         for (var i = 0; i < lista.length; i++) {
             var p = lista[i];
@@ -262,16 +279,71 @@
         }
     }
 
+    function abrirFormManual() {
+        DOM.formManual.style.display     = 'block';
+        DOM.linkManualWrapper.style.display = 'none';
+        DOM.listaPacientes.innerHTML     = '';
+        DOM.manualNome.value   = '';
+        DOM.manualAtend.value  = '';
+        DOM.manualLeito.value  = '';
+        DOM.manualSetor.value  = '';
+        DOM.manualErro.style.display = 'none';
+        DOM.manualNome.focus();
+    }
+
+    function fecharFormManual() {
+        DOM.formManual.style.display        = 'none';
+        DOM.linkManualWrapper.style.display = 'none';
+    }
+
+    function confirmarManual() {
+        var nome  = DOM.manualNome.value.trim();
+        var setor = DOM.manualSetor.value.trim();
+        if (!nome) {
+            DOM.manualErro.textContent = 'Nome do paciente é obrigatório.';
+            DOM.manualErro.style.display = 'block';
+            DOM.manualNome.focus();
+            return;
+        }
+        if (!setor) {
+            DOM.manualErro.textContent = 'Setor é obrigatório.';
+            DOM.manualErro.style.display = 'block';
+            DOM.manualSetor.focus();
+            return;
+        }
+        DOM.formManual.style.display = 'none';
+        selecionarPaciente({
+            nm_paciente:    nome,
+            nr_atendimento: DOM.manualAtend.value.trim() || 'MANUAL',
+            leito:          DOM.manualLeito.value.trim() || '--',
+            setor_nome:     setor,
+            cd_unidade:     null,
+            ds_clinica:     null,
+            dias_internado: null,
+            _manual:        true
+        });
+    }
+
     function selecionarPaciente(p) {
         Estado.paciente = p;
         DOM.listaPacientes.innerHTML = '';
         DOM.inputBusca.value = '';
+        DOM.linkManualWrapper.style.display = 'none';
+        DOM.formManual.style.display = 'none';
 
         DOM.pacNome.textContent    = p.nm_paciente || '--';
         DOM.pacLeito.textContent   = p.leito       || '--';
         DOM.pacSetor.textContent   = p.setor_nome  || '--';
-        DOM.pacClinica.textContent = p.ds_clinica  || '--';
-        DOM.pacDias.textContent    = p.dias_internado != null ? p.dias_internado : '--';
+
+        if (p._manual) {
+            DOM.badgeManual.style.display  = 'inline-block';
+            DOM.cardInfoExtra.style.display = 'none';
+        } else {
+            DOM.badgeManual.style.display   = 'none';
+            DOM.cardInfoExtra.style.display = '';
+            DOM.pacClinica.textContent = p.ds_clinica  || '--';
+            DOM.pacDias.textContent    = p.dias_internado != null ? p.dias_internado : '--';
+        }
 
         DOM.cardPaciente.style.display   = 'block';
         DOM.avisoSelecione.style.display = 'none';
@@ -283,6 +355,10 @@
         DOM.cardPaciente.style.display   = 'none';
         DOM.avisoSelecione.style.display = 'block';
         DOM.formSolicitar.style.display  = 'none';
+        DOM.badgeManual.style.display    = 'none';
+        DOM.cardInfoExtra.style.display  = '';
+        DOM.linkManualWrapper.style.display = 'none';
+        DOM.formManual.style.display     = 'none';
         DOM.inputBusca.value = '';
         DOM.listaPacientes.innerHTML = '';
         resetarForm();

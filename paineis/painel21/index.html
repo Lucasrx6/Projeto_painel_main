@@ -241,6 +241,38 @@
             </button>
         </div>
 
+        <!-- Filtros Visão Geral -->
+        <div class="filtros-vg-bar" id="filtros-vg-bar">
+            <div class="filtros-vg-content">
+                <span class="filtros-vg-label"><i class="fas fa-sliders-h"></i> Filtros Visão Geral</span>
+                <select id="vg-tipo" class="filtros-vg-select" title="Tipo de Atendimento">
+                    <option value="">Todos os Tipos</option>
+                    <option value="1">Internado</option>
+                    <option value="3">Pronto Socorro</option>
+                    <option value="7">Externo</option>
+                    <option value="8">Ambulatorial</option>
+                </select>
+                <select id="vg-etapa" class="filtros-vg-select" title="Etapa da Conta">
+                    <option value="">Todas as Etapas</option>
+                </select>
+                <select id="vg-periodo" class="filtros-vg-select" title="Período">
+                    <option value="">Todos os Períodos</option>
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="14">Últimos 14 dias</option>
+                    <option value="30" selected>Último mês</option>
+                    <option value="90">Últimos 3 meses</option>
+                    <option value="180">Últimos 6 meses</option>
+                    <option value="365">Último ano</option>
+                </select>
+                <button id="vg-limpar" class="btn-vg-limpar" title="Limpar filtros da Visão Geral">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+                <span id="vg-filtro-ativo" class="vg-filtro-ativo" style="display:none;">
+                    <i class="fas fa-circle"></i> Filtro ativo
+                </span>
+            </div>
+        </div>
+
         <div class="tab-panels">
 
             <!-- ABA 1: Visão Geral (BI) -->

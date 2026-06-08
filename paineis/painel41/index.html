@@ -50,14 +50,58 @@
                 </div>
                 <div id="lista-pacientes" class="lista-pacientes"></div>
 
+                <!-- Link para entrada manual -->
+                <div id="link-manual-wrapper" class="link-manual-wrapper" style="display:none;">
+                    <button type="button" id="btn-abrir-manual" class="btn-manual-link">
+                        <i class="fas fa-user-plus"></i> Paciente não encontrado? Informar manualmente
+                    </button>
+                </div>
+
+                <!-- Formulário de entrada manual -->
+                <div id="form-manual" class="form-manual" style="display:none;">
+                    <div class="form-manual-titulo">
+                        <i class="fas fa-user-plus"></i> Paciente Manual
+                    </div>
+                    <div class="form-group-m">
+                        <label>Nome do Paciente <span class="obrig">*</span></label>
+                        <input type="text" id="manual-nome" class="form-input-m" placeholder="Nome completo do paciente">
+                    </div>
+                    <div class="form-row-m">
+                        <div class="form-group-m">
+                            <label>Nº Atendimento</label>
+                            <input type="text" id="manual-atendimento" class="form-input-m" placeholder="Opcional">
+                        </div>
+                        <div class="form-group-m">
+                            <label>Leito</label>
+                            <input type="text" id="manual-leito" class="form-input-m" placeholder="Ex: A101">
+                        </div>
+                    </div>
+                    <div class="form-group-m">
+                        <label>Setor <span class="obrig">*</span></label>
+                        <input type="text" id="manual-setor" class="form-input-m" placeholder="Nome do setor ou unidade">
+                    </div>
+                    <div id="manual-erro" class="erro-form" style="display:none;"></div>
+                    <div class="form-manual-acoes">
+                        <button type="button" id="btn-manual-confirmar" class="btn-manual-confirmar">
+                            <i class="fas fa-check"></i> Confirmar
+                        </button>
+                        <button type="button" id="btn-manual-cancelar" class="btn-manual-cancelar">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Card do paciente selecionado -->
                 <div id="card-paciente" class="card-paciente" style="display:none;">
-                    <div class="card-paciente-nome" id="pac-nome"></div>
+                    <div class="card-paciente-nome" id="pac-nome">
+                        <span id="badge-manual" class="badge-manual" style="display:none;">Manual</span>
+                        <span id="pac-nome-texto"></span>
+                    </div>
                     <div class="card-paciente-info">
                         <span><i class="fa-solid fa-bed"></i> <span id="pac-leito">--</span></span>
                         <span><i class="fa-solid fa-hospital"></i> <span id="pac-setor">--</span></span>
                     </div>
-                    <div class="card-paciente-info">
+                    <div class="card-paciente-info" id="card-info-extra">
                         <span><i class="fa-solid fa-stethoscope"></i> <span id="pac-clinica">--</span></span>
                         <span><i class="fa-solid fa-calendar-days"></i> <span id="pac-dias">--</span> dias</span>
                     </div>

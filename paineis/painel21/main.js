@@ -77,6 +77,7 @@
         multiConvenio: [],
         multiSetor: [],
         multiEtapa: [],
+        filtrosVG: { tipo: '', etapa: '', periodo: '30' },
         excluirZerados: false,
         filtrosRecolhidos: false,
         modoScroll: 'rolar',
@@ -142,6 +143,14 @@
         DOM.contadorEtapas       = document.getElementById('contador-etapas');
         DOM.tipoGrid             = document.getElementById('tipo-grid');
         DOM.periodoGrafico       = document.getElementById('periodo-grafico-container');
+
+        // Filtros Visão Geral
+        DOM.vgTipo        = document.getElementById('vg-tipo');
+        DOM.vgEtapa       = document.getElementById('vg-etapa');
+        DOM.vgPeriodo     = document.getElementById('vg-periodo');
+        DOM.vgLimpar      = document.getElementById('vg-limpar');
+        DOM.filtrosVgBar  = document.getElementById('filtros-vg-bar');
+        DOM.vgFiltroAtivo = document.getElementById('vg-filtro-ativo');
 
         // Exportacao
         DOM.btnExportar = document.getElementById('btn-exportar');
@@ -826,6 +835,7 @@
         }
         if (DOM.tabVisaoGeral) DOM.tabVisaoGeral.classList.toggle('active', aba === 'visao-geral');
         if (DOM.tabListagem)   DOM.tabListagem.classList.toggle('active',   aba === 'listagem');
+        if (DOM.filtrosVgBar)  DOM.filtrosVgBar.style.display = (aba === 'visao-geral') ? '' : 'none';
 
         var resumo = document.querySelector('.dashboard-resumo');
         if (resumo) resumo.style.display = aba === 'listagem' ? '' : 'none';
@@ -844,7 +854,11 @@
     // =========================================================
 
     function construirUrlVisaoGeral() {
-        var params = construirParams();
+        var params = [];
+        var f = Estado.filtrosVG;
+        if (f.periodo) params.push('dias='  + encodeURIComponent(f.periodo));
+        if (f.tipo)    params.push('tipo='  + encodeURIComponent(f.tipo));
+        if (f.etapa)   params.push('etapa=' + encodeURIComponent(f.etapa));
         return CONFIG.api.visaoGeral + (params.length > 0 ? '?' + params.join('&') : '');
     }
 
@@ -1098,9 +1112,32 @@
                 if (f.protocolos) popularMultiSelectDinamico('ms-protocolo', f.protocolos);
                 if (f.convenios)  popularMultiSelectDinamico('ms-convenio', f.convenios);
                 if (f.setores)    popularMultiSelectDinamico('ms-setor', f.setores);
-                if (f.etapas)     popularMultiSelectDinamico('ms-etapa', f.etapas);
+                if (f.etapas) {
+                    popularMultiSelectDinamico('ms-etapa', f.etapas);
+                    popularSelectVGEtapa(f.etapas);
+                }
             })
             .catch(function(err) { console.warn('[P21] Erro filtros:', err); });
+    }
+
+    function popularSelectVGEtapa(etapas) {
+        if (!DOM.vgEtapa) return;
+        var atual = DOM.vgEtapa.value;
+        DOM.vgEtapa.innerHTML = '<option value="">Todas as Etapas</option>';
+        for (var i = 0; i < etapas.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = etapas[i];
+            opt.textContent = etapas[i];
+            DOM.vgEtapa.appendChild(opt);
+        }
+        if (atual) DOM.vgEtapa.value = atual;
+    }
+
+    function atualizarIndicadorFiltroVG() {
+        if (!DOM.vgFiltroAtivo) return;
+        var f = Estado.filtrosVG;
+        var ativo = f.tipo || f.etapa || (f.periodo && f.periodo !== '30' && f.periodo !== '');
+        DOM.vgFiltroAtivo.style.display = ativo ? '' : 'none';
     }
 
     function popularSelect(el, vals, placeholder) {
@@ -1187,6 +1224,33 @@
                 carregarDados();
             });
         }
+
+        // Filtros Visão Geral
+        if (DOM.vgTipo) DOM.vgTipo.addEventListener('change', function() {
+            Estado.filtrosVG.tipo = this.value;
+            atualizarIndicadorFiltroVG();
+            carregarVisaoGeral();
+        });
+        if (DOM.vgEtapa) DOM.vgEtapa.addEventListener('change', function() {
+            Estado.filtrosVG.etapa = this.value;
+            atualizarIndicadorFiltroVG();
+            carregarVisaoGeral();
+        });
+        if (DOM.vgPeriodo) DOM.vgPeriodo.addEventListener('change', function() {
+            Estado.filtrosVG.periodo = this.value;
+            atualizarIndicadorFiltroVG();
+            carregarVisaoGeral();
+        });
+        if (DOM.vgLimpar) DOM.vgLimpar.addEventListener('click', function() {
+            Estado.filtrosVG.tipo    = '';
+            Estado.filtrosVG.etapa   = '';
+            Estado.filtrosVG.periodo = '30';
+            if (DOM.vgTipo)    DOM.vgTipo.value    = '';
+            if (DOM.vgEtapa)   DOM.vgEtapa.value   = '';
+            if (DOM.vgPeriodo) DOM.vgPeriodo.value  = '30';
+            atualizarIndicadorFiltroVG();
+            carregarVisaoGeral();
+        });
 
         // Botoes
         if (DOM.btnVoltar) DOM.btnVoltar.addEventListener('click', function() { window.location.href = '/frontend/dashboard.html'; });
