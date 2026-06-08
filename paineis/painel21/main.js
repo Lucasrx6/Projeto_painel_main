@@ -949,7 +949,7 @@
         var html = '<div class="vencimento-coluna">';
         html += '<div class="vencimento-coluna-header vencimento-coluna-header-vencida">';
         html += '<div class="vencimento-coluna-titulo titulo-vencida"><i class="fas fa-times-circle"></i>Vencidas</div>';
-        html += '<div class="vencimento-coluna-stats"><span class="venc-qt venc-qt-vencida">' + formatarNumero(vencidas.qt) + '</span><span class="venc-vl">' + formatarMoedaCurta(vencidas.vl_total) + '</span></div>';
+        html += '<div class="vencimento-coluna-stats"><span class="venc-qt venc-qt-vencida">' + formatarNumero(vencidas.qt) + '</span><span class="venc-vl">' + formatarMoeda(vencidas.vl_total) + '</span></div>';
         html += '</div>';
         html += '<div class="vencimento-lista">' + listaConv(vencidas.por_convenio, 'vencida') + '</div>';
         html += '</div>';
@@ -957,7 +957,7 @@
         html += '<div class="vencimento-coluna">';
         html += '<div class="vencimento-coluna-header vencimento-coluna-header-atencao">';
         html += '<div class="vencimento-coluna-titulo titulo-atencao"><i class="fas fa-exclamation-triangle"></i>Em Atenção (≤3 dias)</div>';
-        html += '<div class="vencimento-coluna-stats"><span class="venc-qt venc-qt-atencao">' + formatarNumero(atencao.qt) + '</span><span class="venc-vl">' + formatarMoedaCurta(atencao.vl_total) + '</span></div>';
+        html += '<div class="vencimento-coluna-stats"><span class="venc-qt venc-qt-atencao">' + formatarNumero(atencao.qt) + '</span><span class="venc-vl">' + formatarMoeda(atencao.vl_total) + '</span></div>';
         html += '</div>';
         html += '<div class="vencimento-lista">' + listaConv(atencao.por_convenio, 'atencao') + '</div>';
         html += '</div>';
