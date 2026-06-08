@@ -24,9 +24,10 @@
 
     var CONFIG = {
         api: {
-            dashboard: '/api/paineis/painel21/dashboard',
-            dados: '/api/paineis/painel21/dados',
-            filtros: '/api/paineis/painel21/filtros'
+            dashboard:  '/api/paineis/painel21/dashboard',
+            dados:      '/api/paineis/painel21/dados',
+            filtros:    '/api/paineis/painel21/filtros',
+            visaoGeral: '/api/paineis/painel21/visao-geral'
         },
         intervaloRefresh: 120000,
         velocidadeScroll: 0.6,
@@ -50,7 +51,10 @@
 
     var Estado = {
         dados: [],
+        dadosVisaoGeral: null,
         carregando: false,
+        carregandoVG: false,
+        abaAtiva: 'visao-geral',
         errosConsecutivos: 0,
         autoScrollAtivo: false,
         autoScrollIniciado: false,
@@ -121,6 +125,23 @@
         DOM.btnModoScroll = document.getElementById('btn-modo-scroll');
         DOM.btnToggleFiltros = document.getElementById('btn-toggle-filtros');
         DOM.headerControls = document.getElementById('header-controls');
+
+        // Abas
+        DOM.tabVisaoGeralBtn  = document.querySelector('[data-tab="visao-geral"]');
+        DOM.tabListagemBtn    = document.querySelector('[data-tab="listagem"]');
+        DOM.tabVisaoGeral     = document.getElementById('tab-visao-geral');
+        DOM.tabListagem       = document.getElementById('tab-listagem');
+        DOM.scrollVisaoGeral  = document.getElementById('scroll-visao-geral');
+
+        // BI: containers
+        DOM.conveniosRank        = document.getElementById('convenios-rank-container');
+        DOM.contadorConvenios    = document.getElementById('contador-convenios');
+        DOM.vencimentoGrid       = document.getElementById('vencimento-grid');
+        DOM.vencimentoTotaisHdr  = document.getElementById('vencimento-totais-header');
+        DOM.etapaGrid            = document.getElementById('etapa-grid');
+        DOM.contadorEtapas       = document.getElementById('contador-etapas');
+        DOM.tipoGrid             = document.getElementById('tipo-grid');
+        DOM.periodoGrafico       = document.getElementById('periodo-grafico-container');
 
         // Exportacao
         DOM.btnExportar = document.getElementById('btn-exportar');
@@ -387,16 +408,29 @@
 
         return Promise.all([
             fetchComRetry(construirUrl()),
-            fetchComRetry(construirUrlDashboard())
+            fetchComRetry(construirUrlDashboard()),
+            fetchComRetry(construirUrlVisaoGeral())
         ])
         .then(function(r) {
             var dadosResp = r[0];
-            var dashResp = r[1];
+            var dashResp  = r[1];
+            var vgResp    = r[2];
+
             if (!dadosResp.success) { mostrarErro('Erro ao carregar dados'); return; }
             Estado.dados = dadosResp.data || [];
             atualizarKPIs(dashResp.success ? dashResp.data : null);
             renderizarTabela();
             atualizarContadores();
+
+            if (vgResp && vgResp.success) {
+                Estado.dadosVisaoGeral = vgResp;
+                renderizarConvenios(vgResp.por_convenio || []);
+                renderizarVencimento(vgResp.vencimento  || {});
+                renderizarEtapas(vgResp.por_etapa       || []);
+                renderizarTipos(vgResp.por_tipo         || []);
+                renderizarPeriodo(vgResp.por_periodo    || []);
+            }
+
             atualizarHorario();
             atualizarStatus('online');
             Estado.errosConsecutivos = 0;
@@ -556,7 +590,10 @@
     // AUTO-SCROLL ROLAGEM
     // =========================================================
 
-    function getElementoScroll() { return document.getElementById('tabela-body'); }
+    function getElementoScroll() {
+        if (Estado.abaAtiva === 'visao-geral') return DOM.scrollVisaoGeral || document.getElementById('scroll-visao-geral');
+        return document.getElementById('tabela-body');
+    }
 
     function iniciarAutoScroll() {
         pararScrollInterno();
@@ -776,6 +813,266 @@
     }
 
     // =========================================================
+    // ABAS
+    // =========================================================
+
+    function mudarAba(aba) {
+        if (Estado.abaAtiva === aba) return;
+        Estado.abaAtiva = aba;
+
+        var btns = document.querySelectorAll('.tab-nav-btn');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === aba);
+        }
+        if (DOM.tabVisaoGeral) DOM.tabVisaoGeral.classList.toggle('active', aba === 'visao-geral');
+        if (DOM.tabListagem)   DOM.tabListagem.classList.toggle('active',   aba === 'listagem');
+
+        var resumo = document.querySelector('.dashboard-resumo');
+        if (resumo) resumo.style.display = aba === 'listagem' ? '' : 'none';
+
+        if (Estado.autoScrollAtivo) {
+            pararAutoScroll();
+            Estado.autoScrollAtivo = true;
+            atualizarBotaoScroll();
+            setTimeout(function() { if (Estado.autoScrollAtivo) iniciarAutoScrollModo(); }, 400);
+        }
+    }
+
+
+    // =========================================================
+    // VISAO GERAL — FETCH
+    // =========================================================
+
+    function construirUrlVisaoGeral() {
+        var params = construirParams();
+        return CONFIG.api.visaoGeral + (params.length > 0 ? '?' + params.join('&') : '');
+    }
+
+    function carregarVisaoGeral() {
+        if (Estado.carregandoVG) return Promise.resolve();
+        Estado.carregandoVG = true;
+        return fetchComRetry(construirUrlVisaoGeral())
+            .then(function(resp) {
+                if (!resp.success) return;
+                Estado.dadosVisaoGeral = resp;
+                renderizarConvenios(resp.por_convenio || []);
+                renderizarVencimento(resp.vencimento || {});
+                renderizarEtapas(resp.por_etapa || []);
+                renderizarTipos(resp.por_tipo || []);
+                renderizarPeriodo(resp.por_periodo || []);
+            })
+            .catch(function(err) { console.warn('[P21-VG] Erro:', err); })
+            .then(function() { Estado.carregandoVG = false; });
+    }
+
+    // =========================================================
+    // VISAO GERAL — RENDERIZACAO: CONVENIOS
+    // =========================================================
+
+    function renderizarConvenios(lista) {
+        if (!DOM.conveniosRank) return;
+        if (!lista || lista.length === 0) {
+            DOM.conveniosRank.innerHTML = '<p class="vencimento-vazia">Sem dados</p>';
+            return;
+        }
+        var maximo = lista[0] ? (lista[0].qt || 1) : 1;
+        var html = '<table class="convenios-rank-tabela">';
+        html += '<thead><tr><th>#</th><th>Convênio</th><th style="text-align:right">Contas</th><th>Participação</th><th style="text-align:right">Valor Total</th></tr></thead>';
+        html += '<tbody>';
+        for (var i = 0; i < lista.length; i++) {
+            var r = lista[i];
+            var pct = r.pct || 0;
+            var largura = maximo > 0 ? Math.round((r.qt / maximo) * 100) : 0;
+            var posClass = i < 3 ? ' rank-pos-top' : '';
+            html += '<tr>';
+            html += '<td class="rank-pos' + posClass + '">' + (i + 1) + '</td>';
+            html += '<td class="rank-nome" title="' + escapeHtml(r.convenio) + '">' + escapeHtml(abreviar(r.convenio, 30)) + '</td>';
+            html += '<td class="rank-qt">' + formatarNumero(r.qt) + '</td>';
+            html += '<td class="rank-barra-cell"><div class="rank-barra-row"><div class="rank-barra-track"><div class="rank-barra-fill" style="width:' + largura + '%"></div></div><span class="rank-pct">' + pct + '%</span></div></td>';
+            html += '<td class="rank-valor">' + formatarMoedaCurta(r.vl_total) + '</td>';
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        DOM.conveniosRank.innerHTML = html;
+        if (DOM.contadorConvenios) DOM.contadorConvenios.textContent = lista.length + ' convênio(s)';
+    }
+
+    // =========================================================
+    // VISAO GERAL — RENDERIZACAO: VENCIMENTO
+    // =========================================================
+
+    function renderizarVencimento(venc) {
+        if (!DOM.vencimentoGrid) return;
+        var vencidas = venc.vencidas || { qt: 0, vl_total: 0, por_convenio: [] };
+        var atencao  = venc.atencao  || { qt: 0, vl_total: 0, por_convenio: [] };
+
+        // Totais no cabeçalho da seção
+        if (DOM.vencimentoTotaisHdr) {
+            DOM.vencimentoTotaisHdr.innerHTML =
+                '<div class="venc-badge-totais venc-badge-vencida"><i class="fas fa-times-circle"></i>' + formatarNumero(vencidas.qt) + ' vencidas</div>' +
+                '<div class="venc-badge-totais venc-badge-atencao"><i class="fas fa-exclamation-triangle"></i>' + formatarNumero(atencao.qt) + ' em atenção</div>';
+        }
+
+        function listaConv(lista, tipo) {
+            if (!lista || lista.length === 0) return '<p class="vencimento-vazia"><i class="fas fa-check-circle"></i> Nenhum registro</p>';
+            var h = '';
+            for (var i = 0; i < lista.length; i++) {
+                var r = lista[i];
+                var diasHtml = '';
+                if (tipo === 'atencao' && r.dias_min !== null && r.dias_min !== undefined) {
+                    var dc = r.dias_min <= 1 ? 'dias-critico' : 'dias-atencao';
+                    diasHtml = '<span class="vencimento-item-dias ' + dc + '">' + r.dias_min + 'd</span>';
+                }
+                h += '<div class="vencimento-item">';
+                h += '<span class="vencimento-item-nome" title="' + escapeHtml(r.convenio) + '">' + escapeHtml(abreviar(r.convenio, 28)) + '</span>';
+                h += '<span class="vencimento-item-qt">' + formatarNumero(r.qt) + '</span>';
+                h += diasHtml;
+                h += '</div>';
+            }
+            return h;
+        }
+
+        var html = '<div class="vencimento-coluna">';
+        html += '<div class="vencimento-coluna-header vencimento-coluna-header-vencida">';
+        html += '<div class="vencimento-coluna-titulo titulo-vencida"><i class="fas fa-times-circle"></i>Vencidas</div>';
+        html += '<div class="vencimento-coluna-stats"><span class="venc-qt venc-qt-vencida">' + formatarNumero(vencidas.qt) + '</span><span class="venc-vl">' + formatarMoedaCurta(vencidas.vl_total) + '</span></div>';
+        html += '</div>';
+        html += '<div class="vencimento-lista">' + listaConv(vencidas.por_convenio, 'vencida') + '</div>';
+        html += '</div>';
+
+        html += '<div class="vencimento-coluna">';
+        html += '<div class="vencimento-coluna-header vencimento-coluna-header-atencao">';
+        html += '<div class="vencimento-coluna-titulo titulo-atencao"><i class="fas fa-exclamation-triangle"></i>Em Atenção (≤3 dias)</div>';
+        html += '<div class="vencimento-coluna-stats"><span class="venc-qt venc-qt-atencao">' + formatarNumero(atencao.qt) + '</span><span class="venc-vl">' + formatarMoedaCurta(atencao.vl_total) + '</span></div>';
+        html += '</div>';
+        html += '<div class="vencimento-lista">' + listaConv(atencao.por_convenio, 'atencao') + '</div>';
+        html += '</div>';
+
+        DOM.vencimentoGrid.innerHTML = html;
+    }
+
+    // =========================================================
+    // VISAO GERAL — RENDERIZACAO: ETAPAS
+    // =========================================================
+
+    var _ETAPA_MAP = {
+        'conta em aberto':          { cls: 'etapa-aberta',    icon: 'fa-folder-open' },
+        'recebimento de guias':     { cls: 'etapa-recebendo', icon: 'fa-inbox' },
+        'envio de guias':           { cls: 'etapa-enviando',  icon: 'fa-paper-plane' },
+        'pendencia':                { cls: 'etapa-pendencia', icon: 'fa-exclamation-circle' },
+        'critica':                  { cls: 'etapa-pendencia', icon: 'fa-exclamation-circle' },
+        'devolucao':                { cls: 'etapa-devolvendo',icon: 'fa-undo' },
+        'finalizado':               { cls: 'etapa-finalizado',icon: 'fa-check-double' },
+        'auditoria':                { cls: 'etapa-auditoria', icon: 'fa-search' },
+        'montagem':                 { cls: 'etapa-recebendo', icon: 'fa-archive' },
+        'lacre':                    { cls: 'etapa-enviando',  icon: 'fa-lock' },
+        'faturamento':              { cls: 'etapa-enviando',  icon: 'fa-file-invoice-dollar' },
+        'sem etapa':                { cls: 'etapa-outros',    icon: 'fa-question-circle' }
+    };
+
+    function obterEstiloEtapa(etapa) {
+        var chave = (etapa || '').toLowerCase();
+        for (var k in _ETAPA_MAP) {
+            if (chave.indexOf(k) !== -1) return _ETAPA_MAP[k];
+        }
+        return { cls: 'etapa-outros', icon: 'fa-tag' };
+    }
+
+    function renderizarEtapas(lista) {
+        if (!DOM.etapaGrid) return;
+        if (!lista || lista.length === 0) {
+            DOM.etapaGrid.innerHTML = '<p class="vencimento-vazia">Sem dados de etapa</p>';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < lista.length; i++) {
+            var r = lista[i];
+            var est = obterEstiloEtapa(r.etapa);
+            html += '<div class="etapa-card ' + est.cls + '">';
+            html += '<div class="etapa-card-header"><i class="fas ' + est.icon + '"></i><span class="etapa-nome" title="' + escapeHtml(r.etapa) + '">' + escapeHtml(abreviar(r.etapa, 22)) + '</span></div>';
+            html += '<span class="etapa-qt">' + formatarNumero(r.qt) + '</span>';
+            html += '<span class="etapa-label">contas</span>';
+            html += '<span class="etapa-valor">' + formatarMoedaCurta(r.vl_total) + '</span>';
+            html += '</div>';
+        }
+        DOM.etapaGrid.innerHTML = html;
+        if (DOM.contadorEtapas) DOM.contadorEtapas.textContent = lista.length + ' etapa(s)';
+    }
+
+    // =========================================================
+    // VISAO GERAL — RENDERIZACAO: TIPOS
+    // =========================================================
+
+    var _TIPO_CONFIG = {
+        3: { cls: 'tipo-ps',       icon: 'fa-ambulance',    nome: 'Pronto Socorro' },
+        1: { cls: 'tipo-internado',icon: 'fa-bed',          nome: 'Internado' },
+        8: { cls: 'tipo-ambul',    icon: 'fa-stethoscope',  nome: 'Ambulatorial' },
+        7: { cls: 'tipo-externo',  icon: 'fa-user-friends', nome: 'Externo' }
+    };
+
+    function renderizarTipos(lista) {
+        if (!DOM.tipoGrid) return;
+        if (!lista || lista.length === 0) {
+            DOM.tipoGrid.innerHTML = '<p class="vencimento-vazia">Sem dados de tipo</p>';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < lista.length; i++) {
+            var r = lista[i];
+            var cfg = _TIPO_CONFIG[r.ie_tipo] || { cls: 'tipo-outros', icon: 'fa-file-alt', nome: r.tipo_atend || 'Outros' };
+            html += '<div class="tipo-card ' + cfg.cls + '">';
+            html += '<div class="tipo-card-icone"><i class="fas ' + cfg.icon + '"></i></div>';
+            html += '<div class="tipo-card-info">';
+            html += '<span class="tipo-card-qt">' + formatarNumero(r.qt) + '</span>';
+            html += '<span class="tipo-card-nome">' + escapeHtml(cfg.nome) + '</span>';
+            html += '<span class="tipo-card-valor">' + formatarMoedaCurta(r.vl_total) + '</span>';
+            html += '</div></div>';
+        }
+        DOM.tipoGrid.innerHTML = html;
+    }
+
+    // =========================================================
+    // VISAO GERAL — RENDERIZACAO: PERIODO (GRAFICO DE BARRAS)
+    // =========================================================
+
+    var _MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+    function formatarMesAno(mesAno) {
+        if (!mesAno) return '';
+        var parts = mesAno.split('-');
+        if (parts.length < 2) return mesAno;
+        var mes = parseInt(parts[1], 10) - 1;
+        var ano = parts[0].slice(-2);
+        return (_MESES_ABREV[mes] || parts[1]) + '/' + ano;
+    }
+
+    function renderizarPeriodo(lista) {
+        if (!DOM.periodoGrafico) return;
+        if (!lista || lista.length === 0) {
+            DOM.periodoGrafico.innerHTML = '<p class="vencimento-vazia">Sem dados de período</p>';
+            return;
+        }
+        var maximo = 0;
+        for (var i = 0; i < lista.length; i++) { if (lista[i].qt > maximo) maximo = lista[i].qt; }
+        if (maximo === 0) maximo = 1;
+
+        var barras = '';
+        for (var j = 0; j < lista.length; j++) {
+            var r = lista[j];
+            var altura = Math.max(4, Math.round((r.qt / maximo) * 100));
+            barras += '<div class="periodo-barra-grupo">';
+            barras += '<div class="periodo-barra-container">';
+            barras += '<span class="periodo-barra-valor">' + formatarNumero(r.qt) + '</span>';
+            barras += '<div class="periodo-barra-fill" style="height:' + altura + '%"></div>';
+            barras += '</div>';
+            barras += '<span class="periodo-barra-label">' + escapeHtml(formatarMesAno(r.mes_ano)) + '</span>';
+            barras += '</div>';
+        }
+
+        DOM.periodoGrafico.innerHTML = '<div class="periodo-chart-wrap"><div class="periodo-barras">' + barras + '</div></div>';
+    }
+
+    // =========================================================
     // TOGGLE FILTROS (RECOLHER/EXPANDIR)
     // =========================================================
 
@@ -819,6 +1116,16 @@
     // =========================================================
 
     function configurarEventos() {
+        // Cliques nas abas
+        var tabBtns = document.querySelectorAll('.tab-nav-btn');
+        for (var tb = 0; tb < tabBtns.length; tb++) {
+            (function(btn) {
+                btn.addEventListener('click', function() {
+                    mudarAba(btn.getAttribute('data-tab'));
+                });
+            })(tabBtns[tb]);
+        }
+
         configurarToggleMultiSelects();
         vincularCheckboxesMultiSelect('ms-status-conta');
         vincularCheckboxesMultiSelect('ms-tipo');
@@ -939,6 +1246,10 @@
         if (DOM.filtroDtFim) DOM.filtroDtFim.value = Estado.filtros.dt_fim;
         if (DOM.filtroVlMin) DOM.filtroVlMin.value = Estado.filtros.vl_min;
         if (DOM.filtroVlMax) DOM.filtroVlMax.value = Estado.filtros.vl_max;
+
+        // Forcar estado inicial correto das abas (sem guard de "mesma aba")
+        Estado.abaAtiva = null;
+        mudarAba('visao-geral');
 
         configurarEventos();
         carregarFiltrosDinamicos();

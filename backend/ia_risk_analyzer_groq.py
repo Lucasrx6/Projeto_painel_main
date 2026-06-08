@@ -167,7 +167,12 @@ class ClinicalAIAnalyzer:
             return []
 
     def formatar_contexto_clinico(self, paciente: Dict) -> str:
-        """Formata dados do paciente para análise IA"""
+        """
+        Formata dados clínicos anonimizados para análise IA.
+        LGPD: nm_pessoa_fisica, nr_atendimento e cd_unidade (leito) são OMITIDOS —
+        identificam o paciente diretamente e não devem trafegar para serviços externos.
+        Apenas indicadores clínicos numéricos e o setor (dado operacional) são enviados.
+        """
 
         # Helper para formatar valores
         def fmt(valor, unidade=''):
@@ -176,10 +181,7 @@ class ClinicalAIAnalyzer:
             return f"{valor} {unidade}".strip()
 
         return f"""
-PACIENTE: {paciente.get('nm_pessoa_fisica', 'N/A')}
-ATENDIMENTO: {paciente.get('nr_atendimento')}
 SETOR: {paciente.get('nm_setor', 'N/A')}
-LEITO: {paciente.get('cd_unidade', 'N/A')}
 
 🫀 SINAIS VITAIS:
 - Pressão Arterial: {fmt(paciente.get('qt_pa_sistolica'))}/{fmt(paciente.get('qt_pa_diastolica'))} mmHg
@@ -461,9 +463,8 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
 
         for idx, paciente in enumerate(pacientes, 1):
             nr = paciente['nr_atendimento']
-            nome = paciente['nm_pessoa_fisica']
 
-            print(f"\n[{idx}/{len(pacientes)}] 🤖 Analisando {nr} - {nome}...")
+            print(f"\n[{idx}/{len(pacientes)}] 🤖 Analisando atend={nr}...")
 
             analise = self.analisar_paciente(paciente)
 

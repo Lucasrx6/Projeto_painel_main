@@ -225,13 +225,13 @@ def gerar_prompt_sepse(paciente: Dict) -> str:
     criterios_text = "\n".join(criterios_ativos) if criterios_ativos else "Nenhum critério principal ativo"
     adicionais_text = "\n".join(criterios_adicionais) if criterios_adicionais else "Nenhum"
 
+    # LGPD: apenas dados clínicos anonimizados são enviados ao modelo externo (Groq).
+    # nr_atendimento, nome_paciente e leito são VETADOS — identificam o paciente diretamente.
+    # Setor, especialidade, sexo e dias de internação são dados clínicos sem identificação.
     prompt = f"""Você é um médico especialista em medicina intensiva e sepse. Analise o seguinte caso clínico:
 
-DADOS DO PACIENTE:
-- Atendimento: {paciente['nr_atendimento']}
-- Paciente: {paciente['nome_paciente']}
+DADOS CLÍNICOS DO PACIENTE:
 - Sexo: {paciente.get('sexo', 'N/A')}
-- Leito: {paciente['leito']}
 - Setor: {paciente['setor']}
 - Dias de internação: {paciente.get('dias_internacao', 'N/A')}
 - Especialidade: {paciente.get('especialidade', 'N/A')}
@@ -463,10 +463,9 @@ def processar_paciente(paciente: Dict) -> bool:
     Processa análise de IA para um paciente específico
     """
     nr_atend = paciente['nr_atendimento']
-    nome = paciente['nome_paciente']
     risco = paciente['nivel_risco_sepse']
 
-    logger.info(f"🔍 Processando: {nr_atend} - {nome} ({risco})")
+    logger.info(f"🔍 Processando: atend={nr_atend} | risco={risco}")
 
     inicio = time.time()
 

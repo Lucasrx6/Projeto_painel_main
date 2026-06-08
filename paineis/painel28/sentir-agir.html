@@ -275,11 +275,13 @@
                     </div>
                 </a>
 
-                <!-- Card 4: Configurar Formulario -->
+                <!-- Card 4: Configurar Formulario — visível apenas para admins -->
                 <a class="projeto-card card-config"
+                   id="card-config-formulario"
                    href="/paineis/painel28/formulario_config.html"
                    role="button"
                    tabindex="0"
+                   style="display:none;"
                    aria-label="Configurar categorias e itens do formulario">
                     <div class="projeto-card-icone">
                         <i class="fas fa-sliders"></i>
@@ -316,7 +318,7 @@
                 var btnVoltar = document.getElementById('btn-voltar');
                 if (btnVoltar) {
                     btnVoltar.addEventListener('click', function () {
-                        window.location.href = '/painel/painel28';
+                        window.location.href = '/painel/painel44';
                     });
                 }
 
@@ -326,8 +328,9 @@
                     .then(function(data) {
                         var isAdmin = data.is_admin || false;
                         var permissoes = data.permissoes || [];
-                        var cards = document.querySelectorAll('.projeto-card[data-painel]');
 
+                        // Cards condicionais por painel específico
+                        var cards = document.querySelectorAll('.projeto-card[data-painel]');
                         cards.forEach(function(card) {
                             var painelId = card.getAttribute('data-painel');
                             if (isAdmin || permissoes.includes(painelId)) {
@@ -336,10 +339,15 @@
                                 card.style.display = 'none';
                             }
                         });
+
+                        // Configurar Formulário — somente admins
+                        var cardConfig = document.getElementById('card-config-formulario');
+                        if (cardConfig && isAdmin) {
+                            cardConfig.style.display = 'flex';
+                        }
                     })
                     .catch(function(err) {
                         console.error('Erro ao buscar permissões:', err);
-                        // Em caso de erro de rede, mantém escondido por segurança
                     });
             });
         })();

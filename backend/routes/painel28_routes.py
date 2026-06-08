@@ -18,6 +18,17 @@ painel28_bp = Blueprint(
     'painel28',
     __name__)
 
+
+# ============================================================
+# ROTA PRINCIPAL — Formulário Sentir e Agir
+# ============================================================
+
+@painel28_bp.route('/painel/painel28')
+@login_required
+@panel_permission_required('painel28')
+def painel28():
+    return send_from_directory('paineis/painel28', 'formulario.html')
+
 @painel28_bp.after_request
 def invalidate_cache_on_write(response):
     """
@@ -172,89 +183,20 @@ def _auto_finalizar_rondas_expiradas(cursor):
 
 
 # ============================================================
-# ROTAS DE ARQUIVOS ESTÁTICOS (HTML, CSS, JS)
+# ROTAS DE ARQUIVOS ESTÁTICOS — Formulário e Configuração
 # ============================================================
-
-@painel28_bp.route('/api/paineis/painel28/index', endpoint='index_html', methods=['GET'])
-@login_required
-@panel_permission_required('painel28')
-def servir_hub():
-    return send_from_directory(PAINEL_DIR, 'index.html')
-
 
 @painel28_bp.route('/api/paineis/painel28/formulario', endpoint='formulario_html', methods=['GET'])
 @login_required
 @panel_permission_required('painel28')
 def servir_formulario():
-    return send_from_directory(PAINEL_DIR, 'formulario.html')
-
-
-@painel28_bp.route('/api/paineis/painel28/style_hub.css', endpoint='style_hub_css', methods=['GET'])
-def servir_style_hub():
-    return send_from_directory(PAINEL_DIR, 'style_hub.css')
+    """Alias de compatibilidade — preferir /painel/painel28."""
+    return send_from_directory('paineis/painel28', 'formulario.html')
 
 
 @painel28_bp.route('/api/paineis/painel28/style_form.css', endpoint='style_form_css', methods=['GET'])
 def servir_style_form():
-    return send_from_directory(PAINEL_DIR, 'style_form.css')
-
-
-@painel28_bp.route('/api/paineis/painel28/main_hub.js', endpoint='main_hub_js', methods=['GET'])
-def servir_main_hub():
-    return send_from_directory(PAINEL_DIR, 'main_hub.js')
-
-
-@painel28_bp.route('/api/paineis/painel28/main_form.js', endpoint='main_form_js', methods=['GET'])
-def servir_main_form():
-    return send_from_directory(PAINEL_DIR, 'main_form.js')
-
-
-# ============================================================
-# API: HUB - SERVIÇOS
-# ============================================================
-
-@painel28_bp.route('/api/paineis/painel28/servicos', methods=['GET'])
-@login_required
-def listar_servicos():
-    try:
-        is_admin = session.get('is_admin', False)
-        usuario_id = session.get('usuario_id')
-        with get_db_cursor() as cursor:
-
-            if is_admin:
-                cursor.execute("""
-                    SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem, permissao_requerida
-                    FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
-                """)
-                servicos = cursor.fetchall()
-            else:
-                # Busca todas as permissões do usuário
-                cursor.execute(
-                    "SELECT painel_nome FROM permissoes_paineis WHERE usuario_id = %s",
-                    (usuario_id,)
-                )
-                perms_set = {row['painel_nome'] for row in cursor.fetchall()}
-
-                # Busca todos os serviços ativos com a permissão explícita de cada um
-                cursor.execute("""
-                    SELECT id, nome, descricao, icone, cor, url_destino, tipo, ordem, permissao_requerida
-                    FROM hub_servicos WHERE ativo = TRUE ORDER BY ordem, nome
-                """)
-                todos = cursor.fetchall()
-
-                # Filtra pela coluna permissao_requerida:
-                # - NULL → visível a qualquer usuário autenticado (link externo, etc.)
-                # - 'painel35' → exige que o usuário tenha painel35 liberado
-                servicos = []
-                for srv in todos:
-                    req = srv.get('permissao_requerida')
-                    if req is None or req in perms_set:
-                        servicos.append(srv)
-
-            return jsonify({'success': True, 'data': servicos})
-    except Exception as e:
-        current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
+    return send_from_directory('paineis/painel28', 'style_form.css')
 
 
 # ============================================================

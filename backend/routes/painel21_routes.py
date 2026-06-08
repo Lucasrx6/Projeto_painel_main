@@ -391,3 +391,167 @@ def api_painel21_filtros():
     except Exception as e:
         current_app.logger.error(f'Erro filtros painel21: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar filtros'}), 500
+
+
+# =========================================================
+# API - VISAO GERAL (BI agregado)
+# =========================================================
+
+@painel21_bp.route('/api/paineis/painel21/visao-geral', methods=['GET'])
+@login_required
+@panel_permission_required('painel21')
+@cache_route(ttl=300, key_prefix='painel21:visao_geral', vary_by_query=True)
+def api_painel21_visao_geral():
+    """
+    Dados agregados para a aba Visao Geral (BI).
+    Retorna: por_convenio, vencimento (vencidas + atencao), por_etapa, por_tipo, por_periodo.
+    Vencimento: deadline = dt_periodo_final + 7 dias.
+      - vencidas: deadline < hoje
+      - atencao:  deadline entre hoje e hoje+3
+    """
+    try:
+        with get_db_cursor() as cursor:
+            condicoes, params = _build_common_filters()
+
+            def _w(extra=None):
+                c = list(condicoes) + (list(extra) if extra else [])
+                return ('WHERE ' + ' AND '.join(c)) if c else ''
+
+            # --- 1. Por convenio (top 15 por volume) ---
+            cursor.execute("""
+                SELECT
+                    COALESCE(convenio, 'Nao informado') AS convenio,
+                    COUNT(*)::INTEGER                   AS qt,
+                    COALESCE(SUM(vl_conta), 0)          AS vl_total
+                FROM public.painel21_contas
+                {w}
+                GROUP BY COALESCE(convenio, 'Nao informado')
+                ORDER BY qt DESC
+                LIMIT 15
+            """.format(w=_w()), params)
+            por_convenio = [serializar_linha(dict(r)) for r in cursor.fetchall()]
+
+            cursor.execute("""
+                SELECT COUNT(*)::INTEGER AS total FROM public.painel21_contas {w}
+            """.format(w=_w()), params)
+            row_total = cursor.fetchone()
+            total_geral = int(row_total['total']) if row_total and row_total['total'] else 0
+            for r in por_convenio:
+                r['pct'] = round(r['qt'] * 100.0 / total_geral, 1) if total_geral > 0 else 0.0
+
+            # --- 2. Vencimento ---
+            _c_dt = ["dt_periodo_final IS NOT NULL"]
+            w_venc = _w(_c_dt + ["(dt_periodo_final + INTERVAL '7 days') < CURRENT_DATE"])
+            w_atenc = _w(_c_dt + [
+                "(dt_periodo_final + INTERVAL '7 days') >= CURRENT_DATE",
+                "(dt_periodo_final + INTERVAL '7 days') <= CURRENT_DATE + INTERVAL '3 days'"
+            ])
+
+            cursor.execute("""
+                SELECT COUNT(*)::INTEGER AS qt, COALESCE(SUM(vl_conta), 0) AS vl_total
+                FROM public.painel21_contas {w}
+            """.format(w=w_venc), params)
+            row = cursor.fetchone()
+            tot_venc = serializar_linha(dict(row)) if row else {'qt': 0, 'vl_total': 0}
+
+            cursor.execute("""
+                SELECT
+                    COALESCE(convenio, 'Nao informado') AS convenio,
+                    COUNT(*)::INTEGER                   AS qt,
+                    COALESCE(SUM(vl_conta), 0)          AS vl_total
+                FROM public.painel21_contas {w}
+                GROUP BY COALESCE(convenio, 'Nao informado')
+                ORDER BY qt DESC
+                LIMIT 10
+            """.format(w=w_venc), params)
+            conv_venc = [serializar_linha(dict(r)) for r in cursor.fetchall()]
+
+            cursor.execute("""
+                SELECT COUNT(*)::INTEGER AS qt, COALESCE(SUM(vl_conta), 0) AS vl_total
+                FROM public.painel21_contas {w}
+            """.format(w=w_atenc), params)
+            row = cursor.fetchone()
+            tot_atenc = serializar_linha(dict(row)) if row else {'qt': 0, 'vl_total': 0}
+
+            cursor.execute("""
+                SELECT
+                    COALESCE(convenio, 'Nao informado') AS convenio,
+                    COUNT(*)::INTEGER                   AS qt,
+                    COALESCE(SUM(vl_conta), 0)          AS vl_total,
+                    MIN(EXTRACT(DAY FROM
+                        (dt_periodo_final + INTERVAL '7 days' - CURRENT_DATE)
+                    ))::INTEGER AS dias_min
+                FROM public.painel21_contas {w}
+                GROUP BY COALESCE(convenio, 'Nao informado')
+                ORDER BY dias_min ASC, qt DESC
+                LIMIT 10
+            """.format(w=w_atenc), params)
+            conv_atenc = [serializar_linha(dict(r)) for r in cursor.fetchall()]
+
+            # --- 3. Por etapa ---
+            cursor.execute("""
+                SELECT
+                    COALESCE(etapa_conta, 'Sem etapa') AS etapa,
+                    COUNT(*)::INTEGER                  AS qt,
+                    COALESCE(SUM(vl_conta), 0)         AS vl_total
+                FROM public.painel21_contas
+                {w}
+                GROUP BY COALESCE(etapa_conta, 'Sem etapa')
+                ORDER BY qt DESC
+            """.format(w=_w()), params)
+            por_etapa = [serializar_linha(dict(r)) for r in cursor.fetchall()]
+
+            # --- 4. Por tipo de atendimento ---
+            cursor.execute("""
+                SELECT
+                    ie_tipo,
+                    COALESCE(tipo_atend, 'Nao informado') AS tipo_atend,
+                    COUNT(*)::INTEGER                     AS qt,
+                    COALESCE(SUM(vl_conta), 0)            AS vl_total
+                FROM public.painel21_contas
+                {w}
+                GROUP BY ie_tipo, COALESCE(tipo_atend, 'Nao informado')
+                ORDER BY qt DESC
+            """.format(w=_w()), params)
+            por_tipo = [serializar_linha(dict(r)) for r in cursor.fetchall()]
+
+            # --- 5. Por periodo: ultimos 12 meses (dt_periodo_inicial) ---
+            cursor.execute("""
+                SELECT
+                    TO_CHAR(DATE_TRUNC('month', dt_periodo_inicial), 'YYYY-MM') AS mes_ano,
+                    COUNT(*)::INTEGER                                            AS qt,
+                    COALESCE(SUM(vl_conta), 0)                                  AS vl_total
+                FROM public.painel21_contas
+                {w}
+                GROUP BY DATE_TRUNC('month', dt_periodo_inicial)
+                ORDER BY DATE_TRUNC('month', dt_periodo_inicial) ASC
+            """.format(w=_w([
+                "dt_periodo_inicial IS NOT NULL",
+                "dt_periodo_inicial >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'"
+            ])), params)
+            por_periodo = [serializar_linha(dict(r)) for r in cursor.fetchall()]
+
+            return jsonify({
+                'success': True,
+                'por_convenio': por_convenio,
+                'vencimento': {
+                    'vencidas': {
+                        'qt': tot_venc['qt'],
+                        'vl_total': tot_venc['vl_total'],
+                        'por_convenio': conv_venc
+                    },
+                    'atencao': {
+                        'qt': tot_atenc['qt'],
+                        'vl_total': tot_atenc['vl_total'],
+                        'por_convenio': conv_atenc
+                    }
+                },
+                'por_etapa': por_etapa,
+                'por_tipo': por_tipo,
+                'por_periodo': por_periodo,
+                'timestamp': datetime.now().isoformat()
+            })
+
+    except Exception as e:
+        current_app.logger.error(f'Erro visao-geral painel21: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500

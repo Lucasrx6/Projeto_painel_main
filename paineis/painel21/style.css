@@ -393,3 +393,601 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
 @supports (padding: env(safe-area-inset-top)) { .painel-header { padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); } .painel-main { padding-bottom: max(8px, env(safe-area-inset-bottom)); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } .tabela-contas tbody { scroll-behavior: auto; } }
 @media print { .painel-header, .btn-header, .header-actions, .paginacao-indicator { display: none; } .painel-container { height: auto; overflow: visible; } .painel-main { overflow: visible; } .tabela-contas tbody { overflow: visible; height: auto; } }
+
+/* =========================================================
+   16. NAVEGACAO DE ABAS (port do painel10)
+   ========================================================= */
+
+.tabs-nav {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--cor-borda);
+    padding: 0 var(--espacamento-md);
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.tabs-nav::-webkit-scrollbar { height: 3px; }
+.tabs-nav::-webkit-scrollbar-track { background: transparent; }
+.tabs-nav::-webkit-scrollbar-thumb { background: var(--cor-borda); border-radius: var(--raio-sm); }
+
+.tab-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 18px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    color: var(--cor-texto-secundario);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+    font-family: var(--fonte-principal);
+    white-space: nowrap;
+}
+
+.tab-nav-btn:hover {
+    color: var(--cor-primaria);
+    background: rgba(220, 53, 69, 0.04);
+}
+
+.tab-nav-btn.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+.tab-nav-btn i { font-size: 0.85rem; }
+
+.tab-panels {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.tab-panel {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    min-height: 0;
+}
+
+.tab-panel.active {
+    display: flex;
+}
+
+/* =========================================================
+   17. VISAO GERAL — LAYOUT
+   ========================================================= */
+
+/* O container de conteúdo ocupa toda a aba e permite scroll nativo */
+#scroll-visao-geral {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* =========================================================
+   17B. VISAO GERAL — SECOES BI (port do painel10)
+   ========================================================= */
+
+.secao-analise {
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-lg);
+    margin-bottom: var(--espacamento-md);
+    box-shadow: var(--sombra-card);
+    overflow: hidden;
+}
+
+.secao-analise:last-child { margin-bottom: 0; }
+
+.secao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--espacamento-md);
+    background: linear-gradient(180deg, #fafafa 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.secao-titulo {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+}
+
+.secao-titulo i { font-size: 1rem; color: var(--cor-primaria); }
+
+.secao-titulo h2 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+    margin: 0;
+}
+
+.secao-contador {
+    font-size: 0.72rem;
+    color: var(--cor-texto-secundario);
+    background: var(--cor-fundo);
+    padding: 3px 10px;
+    border-radius: var(--raio-sm);
+    font-weight: 500;
+}
+
+.secao-content { padding: var(--espacamento-md); }
+
+/* =========================================================
+   18. CONVENIO RANK TABLE
+   ========================================================= */
+
+.convenios-rank-tabela {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.convenios-rank-tabela thead th {
+    background: var(--cor-fundo);
+    padding: 6px 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--cor-texto-secundario);
+    border-bottom: 2px solid var(--cor-borda);
+    white-space: nowrap;
+}
+
+.convenios-rank-tabela tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--cor-borda-light);
+    font-size: 0.82rem;
+    vertical-align: middle;
+}
+
+.convenios-rank-tabela tbody tr:last-child td { border-bottom: none; }
+.convenios-rank-tabela tbody tr:hover { background: rgba(220, 53, 69, 0.03); }
+
+.rank-pos {
+    font-weight: 700;
+    color: var(--cor-texto-muted);
+    font-size: 0.75rem;
+    width: 30px;
+    text-align: center;
+}
+
+.rank-pos-top { color: var(--cor-primaria); }
+
+.rank-nome {
+    font-weight: 600;
+    color: var(--cor-texto);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rank-qt {
+    text-align: right;
+    font-weight: 700;
+    color: var(--cor-texto);
+    white-space: nowrap;
+    padding-right: 6px;
+}
+
+.rank-barra-cell {
+    width: 40%;
+    min-width: 120px;
+}
+
+.rank-barra-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rank-barra-track {
+    flex: 1;
+    height: 8px;
+    background: var(--cor-borda);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.rank-barra-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cor-primaria), #e06c75);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.rank-pct {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--cor-texto-muted);
+    white-space: nowrap;
+    min-width: 36px;
+    text-align: right;
+}
+
+.rank-valor {
+    text-align: right;
+    font-size: 0.78rem;
+    color: var(--cor-texto-secundario);
+    white-space: nowrap;
+}
+
+/* =========================================================
+   19. VENCIMENTO (Para Vencer / Vencidas)
+   ========================================================= */
+
+.vencimento-totais-header {
+    display: flex;
+    gap: 10px;
+}
+
+.venc-badge-totais {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--raio-sm);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.venc-badge-vencida {
+    background: #fde8e8;
+    color: #c0392b;
+    border: 1px solid #f5b7b1;
+}
+
+.venc-badge-atencao {
+    background: #fef9e7;
+    color: #b7770d;
+    border: 1px solid #fdebd0;
+}
+
+.vencimento-colunas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--espacamento-md);
+}
+
+.vencimento-coluna {
+    background: var(--cor-fundo);
+    border-radius: var(--raio-md);
+    overflow: hidden;
+    border: 1px solid var(--cor-borda);
+}
+
+.vencimento-coluna-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.vencimento-coluna-header-vencida { background: linear-gradient(135deg, #fde8e8, #fdf0f0); }
+.vencimento-coluna-header-atencao { background: linear-gradient(135deg, #fef9e7, #fefdf4); }
+
+.vencimento-coluna-titulo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.titulo-vencida { color: #c0392b; }
+.titulo-atencao { color: #b7770d; }
+
+.vencimento-coluna-stats {
+    text-align: right;
+}
+
+.venc-qt {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.venc-qt-vencida { color: #c0392b; }
+.venc-qt-atencao { color: #b7770d; }
+
+.venc-vl {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--cor-texto-muted);
+    margin-top: 2px;
+}
+
+.vencimento-lista {
+    padding: 4px 0;
+}
+
+.vencimento-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--cor-borda-light);
+    gap: 8px;
+}
+
+.vencimento-item:last-child { border-bottom: none; }
+
+.vencimento-item-nome {
+    flex: 1;
+    font-size: 0.78rem;
+    color: var(--cor-texto);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vencimento-item-qt {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    white-space: nowrap;
+}
+
+.vencimento-item-dias {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dias-critico { background: #fde8e8; color: #c0392b; }
+.dias-atencao { background: #fef9e7; color: #b7770d; }
+
+.vencimento-vazia {
+    padding: 16px;
+    text-align: center;
+    color: var(--cor-texto-muted);
+    font-size: 0.8rem;
+}
+
+/* =========================================================
+   20. ETAPA GRID (Card Board)
+   ========================================================= */
+
+.etapa-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--espacamento-md);
+}
+
+.etapa-card {
+    background: var(--cor-fundo-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 14px;
+    border-top: 3px solid var(--cor-borda);
+    transition: var(--transicao-rapida);
+}
+
+.etapa-card:hover { transform: translateY(-2px); box-shadow: var(--sombra-card-hover); }
+
+.etapa-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.etapa-card-header i { font-size: 0.9rem; }
+.etapa-nome {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cor-texto-secundario);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.etapa-qt {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.2;
+}
+
+.etapa-label { font-size: 0.65rem; color: var(--cor-texto-muted); text-transform: uppercase; }
+
+.etapa-valor {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--cor-texto-muted);
+    margin-top: 4px;
+}
+
+/* Cores por tipo de etapa */
+.etapa-aberta    { border-top-color: #6c757d; }
+.etapa-aberta i  { color: #6c757d; }
+.etapa-recebendo { border-top-color: #007bff; }
+.etapa-recebendo i { color: #007bff; }
+.etapa-enviando  { border-top-color: #6f42c1; }
+.etapa-enviando i { color: #6f42c1; }
+.etapa-pendencia { border-top-color: var(--cor-primaria); }
+.etapa-pendencia i { color: var(--cor-primaria); }
+.etapa-devolvendo { border-top-color: #fd7e14; }
+.etapa-devolvendo i { color: #fd7e14; }
+.etapa-finalizado { border-top-color: #28a745; }
+.etapa-finalizado i { color: #28a745; }
+.etapa-auditoria  { border-top-color: #17a2b8; }
+.etapa-auditoria i { color: #17a2b8; }
+.etapa-outros     { border-top-color: #adb5bd; }
+.etapa-outros i   { color: #adb5bd; }
+
+/* =========================================================
+   21. TIPO DE ATENDIMENTO (4 Cards)
+   ========================================================= */
+
+.tipo-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--espacamento-md);
+}
+
+.tipo-card {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-md);
+    padding: var(--espacamento-md);
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    border: 1px solid var(--cor-borda);
+    border-left: 4px solid transparent;
+    box-shadow: var(--sombra-card);
+    transition: var(--transicao-rapida);
+}
+
+.tipo-card:hover { transform: translateY(-2px); box-shadow: var(--sombra-card-hover); }
+
+.tipo-card-icone {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--raio-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tipo-card-icone i { font-size: 1.1rem; color: white; }
+
+.tipo-card-info { display: flex; flex-direction: column; min-width: 0; }
+
+.tipo-card-qt {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.1;
+}
+
+.tipo-card-nome {
+    font-size: 0.68rem;
+    color: var(--cor-texto-secundario);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.tipo-card-valor {
+    font-size: 0.72rem;
+    color: var(--cor-texto-muted);
+    margin-top: 3px;
+}
+
+.tipo-ps          { border-left-color: #dc3545; }
+.tipo-ps .tipo-card-icone  { background: linear-gradient(135deg, #dc3545, #c82333); }
+.tipo-internado   { border-left-color: #007bff; }
+.tipo-internado .tipo-card-icone { background: linear-gradient(135deg, #007bff, #0056b3); }
+.tipo-ambul       { border-left-color: #28a745; }
+.tipo-ambul .tipo-card-icone { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.tipo-externo     { border-left-color: #6f42c1; }
+.tipo-externo .tipo-card-icone { background: linear-gradient(135deg, #6f42c1, #59359a); }
+.tipo-outros      { border-left-color: #adb5bd; }
+.tipo-outros .tipo-card-icone { background: linear-gradient(135deg, #adb5bd, #868e96); }
+
+/* =========================================================
+   22. GRAFICO DE PERIODO (Barras CSS, vertical)
+   ========================================================= */
+
+.periodo-chart-wrap {
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.periodo-barras {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    height: 200px;
+    gap: 6px;
+    padding: 16px 8px 0;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-md);
+    min-width: max-content;
+}
+
+.periodo-barra-grupo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    width: 64px;
+    flex-shrink: 0;
+}
+
+.periodo-barra-container {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.periodo-barra-valor {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    margin-bottom: 3px;
+    background: white;
+    padding: 1px 5px;
+    border-radius: var(--raio-sm);
+    box-shadow: var(--sombra-sm);
+    white-space: nowrap;
+}
+
+.periodo-barra-fill {
+    width: 80%;
+    min-height: 4px;
+    background: linear-gradient(180deg, var(--cor-primaria), #e06c75);
+    border-radius: 3px 3px 0 0;
+    transition: height 0.5s ease;
+}
+
+.periodo-barra-label {
+    font-size: 0.65rem;
+    color: var(--cor-texto-muted);
+    text-align: center;
+    margin-top: 5px;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   23. RESPONSIVIDADE — ABA VISAO GERAL
+   ========================================================= */
+
+@media (max-width: 1200px) {
+    .etapa-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 992px) {
+    .etapa-grid { grid-template-columns: repeat(2, 1fr); }
+    .tipo-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    .vencimento-colunas { grid-template-columns: 1fr; }
+    .rank-barra-cell { display: none; }
+
+}
+
+@media (max-width: 768px) {
+    .etapa-grid { grid-template-columns: repeat(2, 1fr); }
+    .tipo-cards-grid { grid-template-columns: 1fr 1fr; }
+}

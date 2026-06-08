@@ -46,7 +46,8 @@ def api_minhas_permissoes():
                     'painel26', 'painel27', 'painel28', 'painel29',
                     'painel30', 'painel31', 'painel32', 'painel33',
                     'painel34', 'painel35', 'painel36', 'painel37', 'painel38', 'painel39',
-                    'painel40'
+                    'painel40',
+                    'painel41', 'painel42', 'painel43', 'painel44'
                 ],
                 'is_admin': True
             })
@@ -420,8 +421,8 @@ def api_listar_paineis():
              'descricao': 'Gerencia de Notificações', 'ativo': True},
             {'nome': 'painel27', 'titulo': 'Deteriorização Pacientes',
              'descricao': 'Deteriorização Pacientes', 'ativo': True},
-            {'nome': 'painel28', 'titulo': 'Hub de Solicitações',
-             'descricao': 'Hub de Solicitações', 'ativo': True},
+            {'nome': 'painel28', 'titulo': 'Sentir e Agir - Formulário',
+             'descricao': 'Formulário de visita e avaliação de qualidade assistencial — Projeto Sentir e Agir', 'ativo': True},
             {'nome': 'painel29', 'titulo': 'Gestão de Formulários',
              'descricao': 'Gestão de Formulários', 'ativo': True},
             {'nome': 'painel30', 'titulo': 'Gestão de Criticos',
@@ -446,6 +447,14 @@ def api_listar_paineis():
              'descricao': 'Interacoes farmaco x dieta ativas no hospital em tempo real', 'ativo': True},
             {'nome': 'painel40', 'titulo': 'Requisicoes Urgentes',
              'descricao': 'Requisicoes urgentes de materiais e medicamentos para Central de Abastecimento', 'ativo': True},
+            {'nome': 'painel41', 'titulo': 'Nutrição - Solicitar Dieta',
+             'descricao': '[Sistema Auxiliar] Solicitacao de dietas e refeicoes para pacientes internados', 'ativo': True},
+            {'nome': 'painel42', 'titulo': 'Nutrição - Tela Operacional',
+             'descricao': '[Sistema Auxiliar] Tela da equipe de nutricao para gerenciar fila de dietas', 'ativo': True},
+            {'nome': 'painel43', 'titulo': 'Nutrição - Gestão',
+             'descricao': '[Sistema Auxiliar] Gestao, relatorios e configuracoes do sistema de nutricao', 'ativo': True},
+            {'nome': 'painel44', 'titulo': 'Hub de Serviços',
+             'descricao': 'Central de navegacao para todos os subsistemas e paineis auxiliares do HAC', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

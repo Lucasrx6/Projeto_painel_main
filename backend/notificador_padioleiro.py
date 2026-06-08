@@ -68,7 +68,8 @@ def _get_conn():
     return psycopg2.connect(**get_db_config())
 
 
-def buscar_dados():
+def buscar_dados(inicio, fim):
+    """Busca todos os dados do período [inicio, fim)."""
     conn = _get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -84,8 +85,8 @@ def buscar_dados():
                         THEN EXTRACT(EPOCH FROM (dt_aceite - criado_em)) / 60 END)::numeric, 1) AS media_aceite_min,
                     ROUND(AVG(CASE WHEN dt_conclusao IS NOT NULL
                         THEN EXTRACT(EPOCH FROM (dt_conclusao - criado_em)) / 60 END)::numeric, 1) AS media_total_min
-                FROM padioleiro_chamados WHERE DATE(criado_em) = CURRENT_DATE
-            """)
+                FROM padioleiro_chamados WHERE criado_em >= %s AND criado_em < %s
+            """, (inicio, fim))
             resumo = dict(cur.fetchone() or {})
 
             cur.execute("""
@@ -103,9 +104,9 @@ def buscar_dados():
                         THEN EXTRACT(EPOCH FROM (dt_conclusao - dt_inicio_transporte))/60 END)::numeric,1) AS media_transporte_min,
                     ROUND(AVG(CASE WHEN dt_conclusao IS NOT NULL
                         THEN EXTRACT(EPOCH FROM (dt_conclusao - criado_em))/60 END)::numeric,1) AS media_total_min
-                FROM padioleiro_chamados WHERE DATE(criado_em) = CURRENT_DATE
+                FROM padioleiro_chamados WHERE criado_em >= %s AND criado_em < %s
                 GROUP BY padioleiro_nome ORDER BY total DESC
-            """)
+            """, (inicio, fim))
             por_padioleiro = [dict(r) for r in cur.fetchall()]
 
             cur.execute("""
@@ -115,9 +116,9 @@ def buscar_dados():
                     COUNT(*) FILTER (WHERE status='concluido')   AS concluidos,
                     COUNT(*) FILTER (WHERE status='cancelado')   AS cancelados,
                     COUNT(*) FILTER (WHERE prioridade='urgente') AS urgentes
-                FROM padioleiro_chamados WHERE DATE(criado_em) = CURRENT_DATE
+                FROM padioleiro_chamados WHERE criado_em >= %s AND criado_em < %s
                 GROUP BY setor_origem_nome ORDER BY total DESC LIMIT 20
-            """)
+            """, (inicio, fim))
             por_setor = [dict(r) for r in cur.fetchall()]
 
             cur.execute("""
@@ -126,11 +127,12 @@ def buscar_dados():
                     COUNT(*) AS total,
                     COUNT(*) FILTER (WHERE status='concluido')   AS concluidos,
                     COUNT(*) FILTER (WHERE prioridade='urgente') AS urgentes
-                FROM padioleiro_chamados WHERE DATE(criado_em) = CURRENT_DATE
+                FROM padioleiro_chamados WHERE criado_em >= %s AND criado_em < %s
                 GROUP BY 1 ORDER BY 1
-            """)
+            """, (inicio, fim))
             por_hora = [dict(r) for r in cur.fetchall()]
 
+            # Tendência: 7 dias completos encerrados em fim.date()
             cur.execute("""
                 SELECT
                     DATE(criado_em) AS data,
@@ -140,9 +142,9 @@ def buscar_dados():
                     ROUND(AVG(CASE WHEN dt_conclusao IS NOT NULL
                         THEN EXTRACT(EPOCH FROM (dt_conclusao - criado_em))/60 END)::numeric,1) AS media_total_min
                 FROM padioleiro_chamados
-                WHERE criado_em >= CURRENT_DATE - INTERVAL '6 days'
+                WHERE DATE(criado_em) >= %s - INTERVAL '6 days' AND DATE(criado_em) <= %s
                 GROUP BY DATE(criado_em) ORDER BY 1
-            """)
+            """, (fim.date(), fim.date()))
             tendencia_7d = [dict(r) for r in cur.fetchall()]
 
             cur.execute("""
@@ -167,9 +169,9 @@ def buscar_dados():
                          THEN ROUND(EXTRACT(EPOCH FROM (dt_conclusao - criado_em))/60)::int
                          WHEN status='cancelado' AND dt_cancelamento IS NOT NULL
                          THEN ROUND(EXTRACT(EPOCH FROM (dt_cancelamento - criado_em))/60)::int END AS t_total_min
-                FROM padioleiro_chamados WHERE DATE(criado_em) = CURRENT_DATE
+                FROM padioleiro_chamados WHERE criado_em >= %s AND criado_em < %s
                 ORDER BY criado_em DESC
-            """)
+            """, (inicio, fim))
             todos_hoje = [dict(r) for r in cur.fetchall()]
 
             cur.execute("""
@@ -179,14 +181,67 @@ def buscar_dados():
                     TO_CHAR(dt_cancelamento,'HH24:MI') AS hora_cancelamento,
                     motivo_cancelamento
                 FROM padioleiro_chamados
-                WHERE DATE(criado_em) = CURRENT_DATE AND status = 'cancelado'
+                WHERE criado_em >= %s AND criado_em < %s AND status = 'cancelado'
                 ORDER BY dt_cancelamento DESC
-            """)
+            """, (inicio, fim))
             cancelados = [dict(r) for r in cur.fetchall()]
 
         return resumo, por_padioleiro, por_setor, por_hora, tendencia_7d, todos_hoje, cancelados
     finally:
         conn.close()
+
+
+# ========================================
+# INTERNACIONALIZAÇÃO — PORTUGUÊS
+# ========================================
+
+_MESES_PT = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+]
+_DIAS_SEMANA_PT = [
+    'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira',
+    'sexta-feira', 'sábado', 'domingo'
+]
+
+
+def _data_pt(dt):
+    """Retorna '05 de junho de 2026'."""
+    return f"{dt.day:02d} de {_MESES_PT[dt.month - 1]} de {dt.year}"
+
+
+def _data_hora_pt(dt):
+    """Retorna 'quinta-feira, 05 de junho de 2026 — 06:00'."""
+    dia_sem = _DIAS_SEMANA_PT[dt.weekday()].capitalize()
+    return f"{dia_sem}, {_data_pt(dt)} — {dt.strftime('%H:%M')}"
+
+
+# ========================================
+# PERÍODO DE RELATÓRIO
+# ========================================
+
+def _calcular_periodo(now):
+    """
+    Determina o período do relatório com base na hora atual:
+      - Antes das 12h  → Noturno: 18h do dia anterior até 06h de hoje
+      - A partir das 12h → Diurno: 06h até 18h de hoje
+    Retorna: (inicio, fim, horas_periodo, nome_periodo, turno)
+    """
+    hoje = now.date()
+    if now.hour < 12:
+        ontem = hoje - timedelta(days=1)
+        inicio = datetime(ontem.year, ontem.month, ontem.day, 18, 0, 0)
+        fim    = datetime(hoje.year,  hoje.month,  hoje.day,   6, 0, 0)
+        horas  = list(range(18, 24)) + list(range(0, 6))
+        nome   = "Noturno (18h → 06h)"
+        turno  = "noite"
+    else:
+        inicio = datetime(hoje.year, hoje.month, hoje.day,  6, 0, 0)
+        fim    = datetime(hoje.year, hoje.month, hoje.day, 18, 0, 0)
+        horas  = list(range(6, 18))
+        nome   = "Diurno (06h → 18h)"
+        turno  = "dia"
+    return inicio, fim, horas, nome, turno
 
 
 # ========================================
@@ -252,10 +307,10 @@ def _cor_tempo(ws, col_letra, row_ini, row_fim):
 # EXCEL — ABAS
 # ========================================
 
-def _aba_resumo(wb, resumo, now):
+def _aba_resumo(wb, resumo, now, nome_periodo):
     ws = wb.create_sheet("Resumo do Dia")
     ws.sheet_view.showGridLines = False
-    _titulo(ws, f"MOVIMENTAÇÕES DO PADIOLEIRO — HAC — {now.strftime('%d/%m/%Y %H:%M')}", 5)
+    _titulo(ws, f"MOVIMENTAÇÕES DO PADIOLEIRO — HAC — {_data_pt(now)} — {nome_periodo}", 5)
 
     total      = int(resumo.get('total') or 0)
     concluidos = int(resumo.get('concluidos') or 0)
@@ -309,7 +364,7 @@ def _aba_resumo(wb, resumo, now):
             pt = DataPoint(idx=idx)
             pt.graphicalProperties.solidFill = cor
             pie.series[0].dPt.append(pt)
-        ws.add_chart(pie, "D6")
+        ws.add_chart(pie, "D8")
 
 
 def _aba_por_padioleiro(wb, por_padioleiro):
@@ -346,7 +401,7 @@ def _aba_por_padioleiro(wb, por_padioleiro):
         for idx, cor in enumerate([_HAC, _VERDE, _VERMELHO, _LARANJA]):
             if idx < len(c.series): _serie_cor(c.series[idx], cor)
         ws.add_chart(c, f"A{last_vol + 3}")
-        prox = last_vol + 20
+        prox = last_vol + 30
     else:
         prox = last_vol + 3
 
@@ -416,31 +471,32 @@ def _aba_por_setor(wb, por_setor):
     _autowidth(ws)
 
 
-def _aba_por_hora(wb, por_hora):
+def _aba_por_hora(wb, por_hora, horas_periodo, nome_periodo):
     ws = wb.create_sheet("Distribuição por Hora")
     ws.sheet_view.showGridLines = False
     headers = ["Hora", "Total", "Concluídos", "Urgentes"]
-    _titulo(ws, "CHAMADOS POR HORA DO DIA", len(headers))
+    _titulo(ws, f"CHAMADOS POR HORA — {nome_periodo}", len(headers))
     for j, h in enumerate(headers, 1):
         _hdr(ws.cell(row=2, column=j, value=h))
 
     hora_dict = {r['hora']: r for r in por_hora}
-    for hora in range(24):
+    for idx, hora in enumerate(horas_periodo):
         r = hora_dict.get(hora, {})
-        row_n = hora + 3
-        zebra = hora % 2 == 0
+        row_n = idx + 3
+        zebra = idx % 2 == 0
         for j, v in enumerate([f"{hora:02d}h", int(r.get('total',0)), int(r.get('concluidos',0)), int(r.get('urgentes',0))], 1):
             cell = ws.cell(row=row_n, column=j, value=v)
             _borda(cell)
             if zebra: cell.fill = PatternFill("solid", fgColor=_ZEBRA)
 
+    max_row_dados = 2 + len(horas_periodo)
     c = BarChart()
     c.type = "col"; c.grouping = "clustered"
-    c.title = "Distribuição de Chamados por Hora"
+    c.title = f"Distribuição de Chamados — {nome_periodo}"
     c.style = 10; c.height = 14; c.width = 26
     c.y_axis.title = "Chamados"; c.x_axis.title = "Hora"
-    c.add_data(Reference(ws, min_col=2, max_col=4, min_row=2, max_row=26), titles_from_data=True)
-    c.set_categories(Reference(ws, min_col=1, min_row=3, max_row=26))
+    c.add_data(Reference(ws, min_col=2, max_col=4, min_row=2, max_row=max_row_dados), titles_from_data=True)
+    c.set_categories(Reference(ws, min_col=1, min_row=3, max_row=max_row_dados))
     for idx, cor in enumerate([_HAC, _VERDE, _LARANJA]):
         if idx < len(c.series): _serie_cor(c.series[idx], cor)
     ws.add_chart(c, "F2")
@@ -479,7 +535,7 @@ def _aba_tendencia(wb, tendencia_7d):
     _autowidth(ws)
 
 
-def _aba_todos_chamados(wb, todos_hoje, now):
+def _aba_todos_chamados(wb, todos_hoje, now, nome_periodo):
     ws = wb.create_sheet("Todos os Chamados")
     ws.sheet_view.showGridLines = False
     ws.freeze_panes = "A3"
@@ -491,7 +547,7 @@ def _aba_todos_chamados(wb, todos_hoje, now):
         "T.Aceite(min)", "T.Desloc.(min)", "T.Transp.(min)", "T.Total(min)",
         "Motivo Cancelamento", "Obs."
     ]
-    _titulo(ws, f"TODOS OS CHAMADOS — {now.strftime('%d/%m/%Y')}", len(headers))
+    _titulo(ws, f"TODOS OS CHAMADOS — {nome_periodo} — {_data_pt(now)}", len(headers))
     for j, h in enumerate(headers, 1):
         _hdr(ws.cell(row=2, column=j, value=h))
     ws.row_dimensions[2].height = 22
@@ -557,15 +613,16 @@ def _aba_cancelamentos(wb, cancelados):
 # EXCEL — GERAÇÃO
 # ========================================
 
-def gerar_excel(resumo, por_padioleiro, por_setor, por_hora, tendencia_7d, todos_hoje, cancelados, now):
+def gerar_excel(resumo, por_padioleiro, por_setor, por_hora, tendencia_7d, todos_hoje, cancelados,
+                now, horas_periodo, nome_periodo):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
-    _aba_resumo(wb, resumo, now)
+    _aba_resumo(wb, resumo, now, nome_periodo)
     _aba_por_padioleiro(wb, por_padioleiro)
     _aba_por_setor(wb, por_setor)
-    _aba_por_hora(wb, por_hora)
+    _aba_por_hora(wb, por_hora, horas_periodo, nome_periodo)
     _aba_tendencia(wb, tendencia_7d)
-    _aba_todos_chamados(wb, todos_hoje, now)
+    _aba_todos_chamados(wb, todos_hoje, now, nome_periodo)
     if cancelados:
         _aba_cancelamentos(wb, cancelados)
     tmp = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
@@ -584,7 +641,7 @@ def _fmt(val, sufixo=''):
     return f'{val}{sufixo}'
 
 
-def gerar_html(resumo, por_padioleiro, por_setor, cancelados, now):
+def gerar_html(resumo, por_padioleiro, por_setor, cancelados, now, nome_periodo):
     total        = resumo.get('total', 0) or 0
     concluidos   = resumo.get('concluidos', 0) or 0
     cancelados_n = resumo.get('cancelados', 0) or 0
@@ -659,7 +716,7 @@ def gerar_html(resumo, por_padioleiro, por_setor, cancelados, now):
   <div style="background:#9B1C24;padding:28px 32px;border-radius:8px 8px 0 0;">
     <div style="color:#fff;font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:.8;">Hospital Anchieta Ceilândia</div>
     <div style="color:#fff;font-size:22px;font-weight:700;margin-top:4px;">Movimentações do Padioleiro</div>
-    <div style="color:#fff;font-size:13px;opacity:.85;margin-top:4px;">{now.strftime('%A, %d de %B de %Y — %H:%M').capitalize()}</div>
+    <div style="color:#fff;font-size:13px;opacity:.85;margin-top:4px;">{_data_hora_pt(now)} — {nome_periodo}</div>
   </div>
 
   <div style="background:#fff;padding:24px 32px;">
@@ -756,7 +813,7 @@ def gerar_html(resumo, por_padioleiro, por_setor, cancelados, now):
 # ENVIO DE EMAIL
 # ========================================
 
-def enviar_email(destinatarios, html, excel_path, now):
+def enviar_email(destinatarios, html, excel_path, now, nome_periodo, turno):
     smtp_host = os.getenv('SMTP_HOST', '')
     smtp_port = int(os.getenv('SMTP_PORT', '587'))
     smtp_user = os.getenv('SMTP_USER', '')
@@ -767,9 +824,9 @@ def enviar_email(destinatarios, html, excel_path, now):
         logger.error("SMTP não configurado no .env")
         return False
 
-    nome_excel = f"Padioleiro_HAC_{now.strftime('%d-%m-%Y_%H%M')}.xlsx"
+    nome_excel = f"Padioleiro_HAC_{now.strftime('%d-%m-%Y')}_{turno}.xlsx"
     msg = MIMEMultipart('mixed')
-    msg['Subject'] = f"Movimentações Padioleiro HAC — {now.strftime('%d/%m/%Y %H:%M')}"
+    msg['Subject'] = f"Movimentações Padioleiro HAC — {nome_periodo} — {_data_pt(now)}"
     msg['From']    = f"Painel HAC <{smtp_from}>"
     msg['To']      = ', '.join(destinatarios)
     msg.attach(MIMEText(html, 'html', 'utf-8'))
@@ -805,10 +862,14 @@ def executar_envio():
         return
 
     now = datetime.now()
-    logger.info("Iniciando coleta de dados — %s", now.strftime('%d/%m/%Y %H:%M'))
+    inicio, fim, horas_periodo, nome_periodo, turno = _calcular_periodo(now)
+
+    logger.info("Iniciando coleta — %s — %s (%s → %s)",
+                now.strftime('%d/%m/%Y %H:%M'), nome_periodo,
+                inicio.strftime('%d/%m %H:%M'), fim.strftime('%d/%m %H:%M'))
 
     try:
-        resumo, por_padioleiro, por_setor, por_hora, tendencia_7d, todos_hoje, cancelados = buscar_dados()
+        resumo, por_padioleiro, por_setor, por_hora, tendencia_7d, todos_hoje, cancelados = buscar_dados(inicio, fim)
     except Exception as e:
         logger.error("Erro ao buscar dados do banco: %s", e)
         return
@@ -819,9 +880,10 @@ def executar_envio():
 
     excel_path = None
     try:
-        excel_path = gerar_excel(resumo, por_padioleiro, por_setor, por_hora, tendencia_7d, todos_hoje, cancelados, now)
-        html = gerar_html(resumo, por_padioleiro, por_setor, cancelados, now)
-        enviar_email(cfg['destinatarios'], html, excel_path, now)
+        excel_path = gerar_excel(resumo, por_padioleiro, por_setor, por_hora, tendencia_7d, todos_hoje, cancelados,
+                                 now, horas_periodo, nome_periodo)
+        html = gerar_html(resumo, por_padioleiro, por_setor, cancelados, now, nome_periodo)
+        enviar_email(cfg['destinatarios'], html, excel_path, now, nome_periodo, turno)
     except Exception as e:
         logger.error("Erro ao gerar/enviar relatório: %s", e)
     finally:

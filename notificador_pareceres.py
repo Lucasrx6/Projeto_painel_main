@@ -148,16 +148,35 @@ def buscar_topicos_ntfy(conn):
 
 
 # =========================================================
+# ANONIMIZACAO LGPD
+# =========================================================
+
+def _anonimizar(nome):
+    """
+    LGPD: reduz nome completo a iniciais + sobrenome.
+    'Lucas Fernandes de Oliveira' -> 'L F D Oliveira'
+    """
+    if not nome:
+        return nome
+    partes = str(nome).strip().split()
+    if len(partes) == 1:
+        return partes[0][0].upper() + '.'
+    iniciais = [p[0].upper() for p in partes[:-1]]
+    return ' '.join(iniciais) + ' ' + partes[-1].capitalize()
+
+
+# =========================================================
 # MONTAR EMAIL HTML
 # =========================================================
 
 def montar_email_html(parecer):
     """
-    Monta corpo do email em HTML com dados do parecer.
-    Motivo da consulta ja vem limpo do PostgreSQL (funcao limpar_rtf).
+    Monta corpo do email HTML com dados do parecer.
+    LGPD:
+      - nm_paciente anonimizado via _anonimizar() (iniciais + sobrenome)
+      - ds_motivo_consulta removido — dado clinico sensivel, nao transmitido por email
     """
-    motivo = parecer.get('ds_motivo_consulta', '') or 'Nao informado'
-    motivo_html = motivo.replace('\n', '<br>')
+    nm_paciente_anon = _anonimizar(parecer.get('nm_paciente', '')) or '-'
 
     html = """
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -203,11 +222,6 @@ def montar_email_html(parecer):
                 </tr>
             </table>
 
-            <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #dc3545;">
-                <p style="margin: 0; font-size: 12px; color: #6c757d; font-weight: bold;">Motivo da consulta:</p>
-                <p style="margin: 5px 0 0; font-size: 14px; color: #333;">%s</p>
-            </div>
-
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
                 Notificacao automatica - Sistema de Paineis HAC<br>
@@ -217,14 +231,13 @@ def montar_email_html(parecer):
     </div>
     """ % (
         parecer.get('especialidade_destino', '-'),
-        parecer.get('nm_paciente', '-'),
+        nm_paciente_anon,
         parecer.get('nm_setor', '-'),
         parecer.get('cd_leito', '-'),
         parecer.get('nr_atendimento', '-'),
         parecer.get('ds_convenio', '-'),
         parecer.get('nm_medico_solicitante', '-'),
         parecer.get('dt_solicitacao', '-'),
-        motivo_html,
         datetime.now().strftime('%d/%m/%Y %H:%M')
     )
 
@@ -425,11 +438,11 @@ def verificar_pareceres():
         # Busca topicos ntfy do banco (uma vez por ciclo)
         topicos_ntfy = buscar_topicos_ntfy(conn)
 
-        # Busca pareceres atuais (motivo limpo via funcao PostgreSQL)
+        # LGPD: ds_motivo_consulta removido do SELECT — dado clinico sensivel,
+        # nao mais exibido no email (canal externo ao hospital).
         cursor.execute("""
             SELECT nr_parecer, nr_atendimento, nm_paciente,
                    nm_medico_solicitante, especialidade_destino,
-                   limpar_rtf(ds_motivo_consulta) AS ds_motivo_consulta,
                    dt_solicitacao, horas_pendente,
                    ds_convenio, nm_setor, cd_leito,
                    ds_tipo_atendimento, status_parecer
@@ -504,12 +517,11 @@ def verificar_pareceres():
             else:
                 logger.info('[pareceres] Sem destinatarios email para: %s', especialidade)
 
-            # Envia ntfy para TODOS os topicos (sem dados de paciente)
-            mensagem_ntfy = 'Novo parecer: {} | Setor: {} | Leito: {} | Atend: {}'.format(
+            # LGPD: ntfy e servico publico — mensagem contem apenas especialidade e setor.
+            # nr_atendimento, cd_leito e nm_paciente sao VETADOS neste canal.
+            mensagem_ntfy = 'Novo parecer pendente: {} | Setor: {}'.format(
                 especialidade or '-',
-                parecer.get('nm_setor', '-'),
-                parecer.get('cd_leito', '-'),
-                parecer.get('nr_atendimento', '-')
+                parecer.get('nm_setor', '-')
             )
             enviar_ntfy_topicos(topicos_ntfy, titulo, mensagem_ntfy)
 

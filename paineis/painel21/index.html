@@ -231,17 +231,122 @@
             </div>
         </section>
 
-        <div class="paginacao-indicator" id="paginacao-indicator" style="display: none;">
-            <span class="paginacao-texto" id="paginacao-texto">Pagina 1 de 1</span>
-            <div class="paginacao-dots" id="paginacao-dots"></div>
+        <!-- NAVEGACAO POR ABAS -->
+        <div class="tabs-nav">
+            <button class="tab-nav-btn active" data-tab="visao-geral">
+                <i class="fas fa-chart-pie" aria-hidden="true"></i> <span>Visão Geral</span>
+            </button>
+            <button class="tab-nav-btn" data-tab="listagem">
+                <i class="fas fa-table" aria-hidden="true"></i> <span>Listagem</span>
+            </button>
         </div>
 
-        <main class="painel-main" id="painel-main" role="main">
-            <div class="loading-container" id="loading-container">
-                <div class="loading-spinner"></div>
-                <p>Carregando dados de faturamento...</p>
+        <div class="tab-panels">
+
+            <!-- ABA 1: Visão Geral (BI) -->
+            <div class="tab-panel active" id="tab-visao-geral">
+
+                    <!-- Conteúdo scrollável -->
+                    <div class="painel-main content-scroll" id="scroll-visao-geral">
+
+                        <!-- Seção 1: Vencimento -->
+                        <section class="secao-analise" id="secao-vencimento">
+                            <header class="secao-header">
+                                <div class="secao-titulo">
+                                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                    <h2>Prazo de Faturamento</h2>
+                                </div>
+                                <div class="vencimento-totais-header" id="vencimento-totais-header"></div>
+                            </header>
+                            <div class="secao-content">
+                                <div class="vencimento-colunas" id="vencimento-grid">
+                                    <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Seção 2: Por Convênio -->
+                        <section class="secao-analise" id="secao-convenios">
+                            <header class="secao-header">
+                                <div class="secao-titulo">
+                                    <i class="fas fa-handshake" aria-hidden="true"></i>
+                                    <h2>Contas por Convênio</h2>
+                                </div>
+                                <span class="secao-contador" id="contador-convenios">-</span>
+                            </header>
+                            <div class="secao-content">
+                                <div id="convenios-rank-container">
+                                    <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Seção 3: Por Etapa -->
+                        <section class="secao-analise" id="secao-etapas">
+                            <header class="secao-header">
+                                <div class="secao-titulo">
+                                    <i class="fas fa-tasks" aria-hidden="true"></i>
+                                    <h2>Por Etapa</h2>
+                                </div>
+                                <span class="secao-contador" id="contador-etapas">-</span>
+                            </header>
+                            <div class="secao-content">
+                                <div class="etapa-grid" id="etapa-grid">
+                                    <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Seção 4: Por Tipo de Atendimento -->
+                        <section class="secao-analise" id="secao-tipos">
+                            <header class="secao-header">
+                                <div class="secao-titulo">
+                                    <i class="fas fa-hospital-user" aria-hidden="true"></i>
+                                    <h2>Por Tipo de Atendimento</h2>
+                                </div>
+                            </header>
+                            <div class="secao-content">
+                                <div class="tipo-cards-grid" id="tipo-grid">
+                                    <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Seção 5: Por Período -->
+                        <section class="secao-analise" id="secao-periodo">
+                            <header class="secao-header">
+                                <div class="secao-titulo">
+                                    <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                                    <h2>Contas por Período</h2>
+                                </div>
+                                <span class="secao-contador" id="contador-periodo">últimos 12 meses</span>
+                            </header>
+                            <div class="secao-content">
+                                <div id="periodo-grafico-container">
+                                    <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                                </div>
+                            </div>
+                        </section>
+
+                    </div>
+
             </div>
-        </main>
+
+            <!-- ABA 2: Listagem -->
+            <div class="tab-panel" id="tab-listagem">
+                <div class="paginacao-indicator" id="paginacao-indicator" style="display: none;">
+                    <span class="paginacao-texto" id="paginacao-texto">Pagina 1 de 1</span>
+                    <div class="paginacao-dots" id="paginacao-dots"></div>
+                </div>
+                <main class="painel-main" id="painel-main" role="main">
+                    <div class="loading-container" id="loading-container">
+                        <div class="loading-spinner"></div>
+                        <p>Carregando dados de faturamento...</p>
+                    </div>
+                </main>
+            </div>
+
+        </div>
     </div>
 
     <!-- Modal Exportar -->
