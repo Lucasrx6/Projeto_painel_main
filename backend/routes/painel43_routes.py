@@ -656,3 +656,61 @@ def api_p43_restricoes_update(rid):
     except Exception as e:
         current_app.logger.error('Erro config/restricoes PUT p43 id=%s: %s', rid, e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao atualizar'}), 500
+
+
+# =========================================================
+# CONFIG — DELETE / TOGGLE ATIVO
+# =========================================================
+
+@painel43_bp.route('/api/paineis/painel43/config/tipos-dieta/<int:tid>', methods=['DELETE'])
+@login_required
+def api_p43_tipos_dieta_delete(tid):
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) AS c FROM nutricao_solicitacoes WHERE tipo_dieta_id = %s", (tid,)
+            )
+            uso = cursor.fetchone()['c']
+            if uso > 0:
+                return jsonify({
+                    'success': False, 'tem_uso': True,
+                    'error': 'Em uso em {} solicitação(ões). Inative para ocultar.'.format(uso)
+                }), 409
+            cursor.execute("DELETE FROM nutricao_tipos_dieta WHERE id = %s", (tid,))
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Não encontrado'}), 404
+        cache_delete_pattern('p41:*')
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro config/tipos-dieta DELETE p43 id=%s: %s', tid, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao deletar'}), 500
+
+
+@painel43_bp.route('/api/paineis/painel43/config/refeicoes/<int:rid>', methods=['DELETE'])
+@login_required
+def api_p43_refeicoes_delete(rid):
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("DELETE FROM nutricao_refeicoes WHERE id = %s", (rid,))
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Não encontrado'}), 404
+        cache_delete_pattern('p41:*')
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro config/refeicoes DELETE p43 id=%s: %s', rid, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao deletar'}), 500
+
+
+@painel43_bp.route('/api/paineis/painel43/config/restricoes/<int:rid>', methods=['DELETE'])
+@login_required
+def api_p43_restricoes_delete(rid):
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("DELETE FROM nutricao_restricoes WHERE id = %s", (rid,))
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Não encontrado'}), 404
+        cache_delete_pattern('p41:*')
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro config/restricoes DELETE p43 id=%s: %s', rid, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao deletar'}), 500
