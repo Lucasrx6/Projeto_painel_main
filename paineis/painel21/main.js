@@ -77,7 +77,9 @@
         multiConvenio: [],
         multiSetor: [],
         multiEtapa: [],
-        filtrosVG: { tipo: '', etapa: '', periodo: '30' },
+        filtrosVG: { periodo: '30' },
+        vgTipo: [],
+        vgEtapa: [],
         excluirZerados: false,
         filtrosRecolhidos: false,
         modoScroll: 'rolar',
@@ -145,8 +147,6 @@
         DOM.periodoGrafico       = document.getElementById('periodo-grafico-container');
 
         // Filtros Visão Geral
-        DOM.vgTipo        = document.getElementById('vg-tipo');
-        DOM.vgEtapa       = document.getElementById('vg-etapa');
         DOM.vgPeriodo     = document.getElementById('vg-periodo');
         DOM.vgLimpar      = document.getElementById('vg-limpar');
         DOM.filtrosVgBar  = document.getElementById('filtros-vg-bar');
@@ -856,9 +856,9 @@
     function construirUrlVisaoGeral() {
         var params = [];
         var f = Estado.filtrosVG;
-        if (f.periodo) params.push('dias='  + encodeURIComponent(f.periodo));
-        if (f.tipo)    params.push('tipo='  + encodeURIComponent(f.tipo));
-        if (f.etapa)   params.push('etapa=' + encodeURIComponent(f.etapa));
+        if (f.periodo)              params.push('dias='  + encodeURIComponent(f.periodo));
+        if (Estado.vgTipo.length)   params.push('tipo='  + encodeURIComponent(Estado.vgTipo.join(',')));
+        if (Estado.vgEtapa.length)  params.push('etapa=' + encodeURIComponent(Estado.vgEtapa.join(',')));
         return CONFIG.api.visaoGeral + (params.length > 0 ? '?' + params.join('&') : '');
     }
 
@@ -1114,29 +1114,56 @@
                 if (f.setores)    popularMultiSelectDinamico('ms-setor', f.setores);
                 if (f.etapas) {
                     popularMultiSelectDinamico('ms-etapa', f.etapas);
-                    popularSelectVGEtapa(f.etapas);
+                    popularMultiSelectDinamicoVG('ms-vg-etapa', f.etapas);
                 }
             })
             .catch(function(err) { console.warn('[P21] Erro filtros:', err); });
     }
 
-    function popularSelectVGEtapa(etapas) {
-        if (!DOM.vgEtapa) return;
-        var atual = DOM.vgEtapa.value;
-        DOM.vgEtapa.innerHTML = '<option value="">Todas as Etapas</option>';
-        for (var i = 0; i < etapas.length; i++) {
-            var opt = document.createElement('option');
-            opt.value = etapas[i];
-            opt.textContent = etapas[i];
-            DOM.vgEtapa.appendChild(opt);
+    function vincularCheckboxesMultiSelectVG(containerId) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var stateKey = container.getAttribute('data-state-key');
+
+        var checkboxes = container.querySelectorAll('.multi-select-checkbox');
+        for (var i = 0; i < checkboxes.length; i++) {
+            var oldCb = checkboxes[i];
+            var newCb = oldCb.cloneNode(true);
+            oldCb.parentNode.replaceChild(newCb, oldCb);
+            newCb.addEventListener('change', function() {
+                syncEstado(containerId);
+                atualizarLabel(containerId);
+                atualizarIndicadorFiltroVG();
+                carregarVisaoGeral();
+            });
         }
-        if (atual) DOM.vgEtapa.value = atual;
+        var btnAll = container.querySelector('.btn-ms-all');
+        var btnNone = container.querySelector('.btn-ms-none');
+        if (btnAll) { var na = btnAll.cloneNode(true); btnAll.parentNode.replaceChild(na, btnAll); na.addEventListener('click', function(e) { e.stopPropagation(); var cbs = container.querySelectorAll('.multi-select-checkbox'); for (var j = 0; j < cbs.length; j++) cbs[j].checked = true; syncEstado(containerId); atualizarLabel(containerId); atualizarIndicadorFiltroVG(); carregarVisaoGeral(); }); }
+        if (btnNone) { var nn = btnNone.cloneNode(true); btnNone.parentNode.replaceChild(nn, btnNone); nn.addEventListener('click', function(e) { e.stopPropagation(); var cbs = container.querySelectorAll('.multi-select-checkbox'); for (var j = 0; j < cbs.length; j++) cbs[j].checked = false; syncEstado(containerId); atualizarLabel(containerId); atualizarIndicadorFiltroVG(); carregarVisaoGeral(); }); }
+        restaurarEstado(containerId);
+        atualizarLabel(containerId);
+    }
+
+    function popularMultiSelectDinamicoVG(containerId, valores) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var optionsDiv = container.querySelector('.multi-select-options');
+        if (!optionsDiv) return;
+        optionsDiv.innerHTML = '';
+        for (var i = 0; i < valores.length; i++) {
+            var label = document.createElement('label'); label.className = 'multi-select-item';
+            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'multi-select-checkbox'; cb.value = valores[i];
+            var span = document.createElement('span'); span.className = 'multi-select-item-text'; span.textContent = valores[i];
+            label.appendChild(cb); label.appendChild(span); optionsDiv.appendChild(label);
+        }
+        vincularCheckboxesMultiSelectVG(containerId);
     }
 
     function atualizarIndicadorFiltroVG() {
         if (!DOM.vgFiltroAtivo) return;
         var f = Estado.filtrosVG;
-        var ativo = f.tipo || f.etapa || (f.periodo && f.periodo !== '30' && f.periodo !== '');
+        var ativo = Estado.vgTipo.length > 0 || Estado.vgEtapa.length > 0 || (f.periodo && f.periodo !== '30' && f.periodo !== '');
         DOM.vgFiltroAtivo.style.display = ativo ? '' : 'none';
     }
 
@@ -1217,6 +1244,7 @@
                 if (DOM.filtroVlMin) DOM.filtroVlMin.value = '';
                 if (DOM.filtroVlMax) DOM.filtroVlMax.value = '';
                 resetarTodosMultiSelects();
+                atualizarIndicadorFiltroVG();
                 atualizarBotaoExcluirZerados();
                 var keys = Object.keys(Estado.filtros);
                 for (var k = 0; k < keys.length; k++) salvar(keys[k], '');
@@ -1225,29 +1253,30 @@
             });
         }
 
-        // Filtros Visão Geral
-        if (DOM.vgTipo) DOM.vgTipo.addEventListener('change', function() {
-            Estado.filtrosVG.tipo = this.value;
-            atualizarIndicadorFiltroVG();
-            carregarVisaoGeral();
-        });
-        if (DOM.vgEtapa) DOM.vgEtapa.addEventListener('change', function() {
-            Estado.filtrosVG.etapa = this.value;
-            atualizarIndicadorFiltroVG();
-            carregarVisaoGeral();
-        });
+        // Filtros Visão Geral — multi-selects
+        vincularCheckboxesMultiSelectVG('ms-vg-tipo');
+        // ms-vg-etapa é populado dinamicamente em carregarFiltrosDinamicos
+
         if (DOM.vgPeriodo) DOM.vgPeriodo.addEventListener('change', function() {
             Estado.filtrosVG.periodo = this.value;
             atualizarIndicadorFiltroVG();
             carregarVisaoGeral();
         });
         if (DOM.vgLimpar) DOM.vgLimpar.addEventListener('click', function() {
-            Estado.filtrosVG.tipo    = '';
-            Estado.filtrosVG.etapa   = '';
             Estado.filtrosVG.periodo = '30';
-            if (DOM.vgTipo)    DOM.vgTipo.value    = '';
-            if (DOM.vgEtapa)   DOM.vgEtapa.value   = '';
-            if (DOM.vgPeriodo) DOM.vgPeriodo.value  = '30';
+            if (DOM.vgPeriodo) DOM.vgPeriodo.value = '30';
+            var vgMs = ['ms-vg-tipo', 'ms-vg-etapa'];
+            for (var vi = 0; vi < vgMs.length; vi++) {
+                var c = document.getElementById(vgMs[vi]);
+                if (!c) continue;
+                var sk = c.getAttribute('data-state-key');
+                var ph = c.getAttribute('data-placeholder');
+                Estado[sk] = [];
+                var cbs = c.querySelectorAll('.multi-select-checkbox');
+                for (var vj = 0; vj < cbs.length; vj++) { cbs[vj].checked = false; var lbl = cbs[vj].closest('.multi-select-item'); if (lbl) lbl.classList.remove('selecionado'); }
+                var labelEl = c.querySelector('.multi-select-label');
+                if (labelEl) labelEl.textContent = ph;
+            }
             atualizarIndicadorFiltroVG();
             carregarVisaoGeral();
         });

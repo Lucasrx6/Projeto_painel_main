@@ -245,16 +245,37 @@
         <div class="filtros-vg-bar" id="filtros-vg-bar">
             <div class="filtros-vg-content">
                 <span class="filtros-vg-label"><i class="fas fa-sliders-h"></i> Filtros Visão Geral</span>
-                <select id="vg-tipo" class="filtros-vg-select" title="Tipo de Atendimento">
-                    <option value="">Todos os Tipos</option>
-                    <option value="1">Internado</option>
-                    <option value="3">Pronto Socorro</option>
-                    <option value="7">Externo</option>
-                    <option value="8">Ambulatorial</option>
-                </select>
-                <select id="vg-etapa" class="filtros-vg-select" title="Etapa da Conta">
-                    <option value="">Todas as Etapas</option>
-                </select>
+                <div class="multi-select-container" id="ms-vg-tipo" data-state-key="vgTipo" data-placeholder="Tipo Atend.">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Tipo Atend.</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options">
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="1"> <span class="multi-select-item-text">Internado</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="3"> <span class="multi-select-item-text">Pronto Socorro</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="7"> <span class="multi-select-item-text">Externo</span></label>
+                            <label class="multi-select-item"><input type="checkbox" class="multi-select-checkbox" value="8"> <span class="multi-select-item-text">Ambulatorial</span></label>
+                        </div>
+                    </div>
+                </div>
+                <div class="multi-select-container" id="ms-vg-etapa" data-state-key="vgEtapa" data-placeholder="Etapa">
+                    <button type="button" class="multi-select-trigger ms-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="multi-select-label">Etapa</span>
+                        <i class="fas fa-chevron-down multi-select-arrow" aria-hidden="true"></i>
+                    </button>
+                    <div class="multi-select-dropdown" role="listbox">
+                        <div class="multi-select-actions">
+                            <button type="button" class="btn-select-action btn-ms-all"><i class="fas fa-check-double"></i> Todos</button>
+                            <button type="button" class="btn-select-action btn-ms-none"><i class="fas fa-times"></i> Limpar</button>
+                        </div>
+                        <div class="multi-select-options"></div>
+                    </div>
+                </div>
                 <select id="vg-periodo" class="filtros-vg-select" title="Período">
                     <option value="">Todos os Períodos</option>
                     <option value="7">Últimos 7 dias</option>

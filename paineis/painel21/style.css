@@ -404,6 +404,24 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
     animation: slideDown 0.25s ease;
 }
 
+/* Overrides: multi-select no fundo claro da barra VG */
+.filtros-vg-bar .multi-select-trigger {
+    background: #fff;
+    color: #333;
+    border-color: #dee2e6;
+}
+.filtros-vg-bar .multi-select-trigger:hover {
+    background: #f0f0f0;
+    border-color: #adb5bd;
+    color: #333;
+}
+.filtros-vg-bar .multi-select-trigger.aberto {
+    background: #f0f0f0;
+    border-color: var(--cor-primaria);
+    color: #333;
+}
+.filtros-vg-bar .multi-select-arrow { color: #555; }
+
 .filtros-vg-content {
     display: flex;
     align-items: center;
