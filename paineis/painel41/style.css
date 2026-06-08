@@ -567,3 +567,125 @@ body {
     transition: background .2s;
 }
 .btn-modal-ok:hover { background: #218838; }
+
+/* =========================================================
+   ENTRADA MANUAL DE PACIENTE
+   ========================================================= */
+.link-manual-wrapper {
+    padding: 6px 0 2px;
+    text-align: center;
+}
+
+.btn-manual-link {
+    background: none;
+    border: none;
+    color: var(--cor-primaria);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: background .15s;
+}
+.btn-manual-link:hover { background: var(--cor-primaria-light); }
+
+.form-manual {
+    background: #f8f9fa;
+    border: 2px solid var(--cor-primaria);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 8px;
+}
+
+.form-manual-titulo {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cor-primaria);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-group-m {
+    margin-bottom: 10px;
+    flex: 1;
+}
+
+.form-group-m label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+.form-group-m .obrig { color: var(--cor-primaria); }
+
+.form-input-m {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s;
+    background: #fff;
+}
+.form-input-m:focus { border-color: var(--cor-primaria); }
+
+.form-row-m {
+    display: flex;
+    gap: 10px;
+}
+
+.form-manual-acoes {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.btn-manual-confirmar {
+    flex: 1;
+    background: var(--cor-primaria);
+    color: #fff;
+    border: none;
+    padding: 9px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background .15s;
+}
+.btn-manual-confirmar:hover { background: var(--cor-primaria-dark); }
+
+.btn-manual-cancelar {
+    background: #fff;
+    border: 1.5px solid #dee2e6;
+    color: #555;
+    padding: 9px 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s;
+}
+.btn-manual-cancelar:hover { background: #f0f0f0; }
+
+.badge-manual {
+    background: #6c757d;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    vertical-align: middle;
+    margin-right: 5px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
