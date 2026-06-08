@@ -52,7 +52,7 @@
         }
 
         // Abas principais
-        var abaBtns = document.querySelectorAll('.aba-btn');
+        var abaBtns = document.querySelectorAll('.aba');
         for (var i = 0; i < abaBtns.length; i++) {
             abaBtns[i].addEventListener('click', function () {
                 trocarAba(this.getAttribute('data-aba'));
@@ -60,12 +60,16 @@
         }
 
         // Sub-abas config
-        var subabaBtns = document.querySelectorAll('.subaba-btn');
+        var subabaBtns = document.querySelectorAll('.sub-aba');
         for (var j = 0; j < subabaBtns.length; j++) {
             subabaBtns[j].addEventListener('click', function () {
                 trocarSubaba(this.getAttribute('data-subaba'));
             });
         }
+
+        // Header
+        var btnRefresh = document.getElementById('btn-refresh');
+        if (btnRefresh) btnRefresh.addEventListener('click', carregarDashboard);
 
         // Dashboard
         document.getElementById('btn-refresh-dash').addEventListener('click', carregarDashboard);
@@ -94,6 +98,8 @@
         // Modal form
         document.getElementById('btn-form-fechar').addEventListener('click', fecharModalForm);
         document.getElementById('btn-form-salvar').addEventListener('click', salvarForm);
+        var btnFecharX = document.getElementById('btn-fechar-modal-form');
+        if (btnFecharX) btnFecharX.addEventListener('click', fecharModalForm);
         document.getElementById('modal-form').addEventListener('click', function (e) {
             if (e.target === this) fecharModalForm();
         });
@@ -113,13 +119,13 @@
     // =========================================================
     function trocarAba(aba) {
         Estado.abaAtiva = aba;
-        var btns = document.querySelectorAll('.aba-btn');
+        var btns = document.querySelectorAll('.aba');
         for (var i = 0; i < btns.length; i++) {
-            btns[i].className = 'aba-btn' + (btns[i].getAttribute('data-aba') === aba ? ' aba-ativa' : '');
+            btns[i].className = 'aba' + (btns[i].getAttribute('data-aba') === aba ? ' aba-ativa' : '');
         }
-        var conteudos = document.querySelectorAll('.aba-content');
+        var conteudos = document.querySelectorAll('.aba-conteudo');
         for (var j = 0; j < conteudos.length; j++) {
-            conteudos[j].style.display = (conteudos[j].id === 'aba-' + aba) ? 'block' : 'none';
+            conteudos[j].style.display = (conteudos[j].id === 'aba-' + aba) ? 'flex' : 'none';
         }
         if (aba === 'relatorios') carregarRelatorios();
         if (aba === 'configuracoes') carregarConfiguracoes();
@@ -127,14 +133,15 @@
 
     function trocarSubaba(sub) {
         Estado.subabaAtiva = sub;
-        var btns = document.querySelectorAll('.subaba-btn');
+        var btns = document.querySelectorAll('.sub-aba');
         for (var i = 0; i < btns.length; i++) {
-            btns[i].className = 'subaba-btn' + (btns[i].getAttribute('data-subaba') === sub ? ' subaba-ativa' : '');
+            btns[i].className = 'sub-aba' + (btns[i].getAttribute('data-subaba') === sub ? ' sub-aba-ativa' : '');
         }
-        var conteudos = document.querySelectorAll('.subaba-content');
+        var conteudos = document.querySelectorAll('.sub-conteudo');
         for (var j = 0; j < conteudos.length; j++) {
-            conteudos[j].style.display = (conteudos[j].id === 'subaba-' + sub) ? 'block' : 'none';
+            conteudos[j].style.display = (conteudos[j].id === 'subaba-' + sub) ? 'flex' : 'none';
         }
+        carregarSubabaAtiva();
     }
 
     // =========================================================
@@ -158,23 +165,24 @@
 
     function renderKPIs(r, ativos) {
         var kpis = [
-            { label: 'Total Hoje',      val: r.total || 0,          cor: '#9B1C24' },
-            { label: 'Entregues',       val: r.entregues || 0,      cor: '#28A745' },
-            { label: 'Cancelados',      val: r.cancelados || 0,     cor: '#DC3545' },
-            { label: 'Em Aberto',       val: r.em_aberto || 0,      cor: '#17A2B8' },
-            { label: 'Urgentes',        val: r.urgentes || 0,       cor: '#FF5722' },
-            { label: 'T.Médio Total',   val: (r.media_min_total  || '--') + (r.media_min_total  ? ' min' : ''), cor: '#6C757D' },
-            { label: 'T.Médio Aceite',  val: (r.media_min_aceite || '--') + (r.media_min_aceite ? ' min' : ''), cor: '#6C757D' }
+            { label: 'Total Hoje',     val: r.total || 0,          cor: '#9B1C24', icone: 'fa-utensils' },
+            { label: 'Entregues',      val: r.entregues || 0,      cor: '#28A745', icone: 'fa-check-circle' },
+            { label: 'Cancelados',     val: r.cancelados || 0,     cor: '#DC3545', icone: 'fa-times-circle' },
+            { label: 'Em Aberto',      val: r.em_aberto || 0,      cor: '#17A2B8', icone: 'fa-clock' },
+            { label: 'Urgentes',       val: r.urgentes || 0,       cor: '#FF5722', icone: 'fa-exclamation-circle' },
+            { label: 'T.Médio Total',  val: (r.media_min_total  || '--') + (r.media_min_total  ? 'min' : ''), cor: '#6C757D', icone: 'fa-stopwatch' },
+            { label: 'T.Médio Aceite', val: (r.media_min_aceite || '--') + (r.media_min_aceite ? 'min' : ''), cor: '#6C757D', icone: 'fa-hourglass-half' }
         ];
         var html = '';
         for (var i = 0; i < kpis.length; i++) {
             var k = kpis[i];
-            html += '<div class="kpi-card">' +
-                '<div class="kpi-valor" style="color:' + k.cor + ';">' + escHtml(String(k.val)) + '</div>' +
-                '<div class="kpi-label">' + escHtml(k.label) + '</div>' +
+            html += '<div class="stat-card" style="border-top:3px solid ' + k.cor + ';">' +
+                '<div class="stat-icone" style="color:' + k.cor + ';"><i class="fas ' + k.icone + '"></i></div>' +
+                '<div class="stat-num" style="color:' + k.cor + ';">' + escHtml(String(k.val)) + '</div>' +
+                '<div class="stat-label">' + escHtml(k.label) + '</div>' +
             '</div>';
         }
-        document.getElementById('kpi-grid').innerHTML = html;
+        document.getElementById('stats-grid').innerHTML = html;
 
         // Tabela ativos
         var tbody = document.getElementById('tbody-ativos');
@@ -386,12 +394,16 @@
                 '<td>' + escHtml(m.funcao) + '</td>' +
                 '<td>' + escHtml(m.turno) + '</td>' +
                 '<td>' + (m.ativo ? '<span class="tag-ativo">Ativo</span>' : '<span class="tag-inativo">Inativo</span>') + '</td>' +
-                '<td><button class="btn-edit" data-recurso="equipe" data-id="' + m.id + '">' +
-                    '<i class="fa-solid fa-pen"></i> Editar</button></td>' +
+                '<td style="white-space:nowrap;">' +
+                    '<button class="btn-edit" data-recurso="equipe" data-id="' + m.id + '" title="Editar"><i class="fas fa-pen"></i></button> ' +
+                    '<button class="btn-toggle-ativo ' + (m.ativo ? 'ativo' : 'inativo') + '" data-recurso="equipe" data-id="' + m.id + '" data-ativo="' + (m.ativo ? '1' : '0') + '" title="' + (m.ativo ? 'Inativar' : 'Ativar') + '">' +
+                        '<i class="fas ' + (m.ativo ? 'fa-eye' : 'fa-eye-slash') + '"></i>' +
+                    '</button>' +
+                '</td>' +
             '</tr>';
         }
-        document.getElementById('tbody-equipe').innerHTML = html || '<tr><td colspan="6" class="tabela-empty">Nenhum membro cadastrado.</td></tr>';
-        bindEditBtns();
+        document.getElementById('tbody-equipe').innerHTML = html || '<tr><td colspan="6" class="tabela-vazio">Nenhum membro cadastrado.</td></tr>';
+        bindActionBtns();
     }
 
     // --- Tipos de Dieta ---
@@ -410,16 +422,21 @@
             var t = Estado.tiposDieta[i];
             html += '<tr>' +
                 '<td>' + escHtml(t.nome) + '</td>' +
-                '<td><i class="fa-solid ' + escHtml(t.icone) + '"></i> <code>' + escHtml(t.icone) + '</code></td>' +
+                '<td><i class="fas ' + escHtml(t.icone) + '"></i> <code>' + escHtml(t.icone) + '</code></td>' +
                 '<td><span class="dot-cor" style="background:' + escHtml(t.cor) + ';"></span> ' + escHtml(t.cor) + '</td>' +
                 '<td>' + escHtml(String(t.ordem)) + '</td>' +
                 '<td>' + (t.ativo ? '<span class="tag-ativo">Ativo</span>' : '<span class="tag-inativo">Inativo</span>') + '</td>' +
-                '<td><button class="btn-edit" data-recurso="tipos-dieta" data-id="' + t.id + '">' +
-                    '<i class="fa-solid fa-pen"></i> Editar</button></td>' +
+                '<td style="white-space:nowrap;">' +
+                    '<button class="btn-edit" data-recurso="tipos-dieta" data-id="' + t.id + '" title="Editar"><i class="fas fa-pen"></i></button> ' +
+                    '<button class="btn-toggle-ativo ' + (t.ativo ? 'ativo' : 'inativo') + '" data-recurso="tipos-dieta" data-id="' + t.id + '" data-ativo="' + (t.ativo ? '1' : '0') + '" title="' + (t.ativo ? 'Inativar' : 'Ativar') + '">' +
+                        '<i class="fas ' + (t.ativo ? 'fa-eye' : 'fa-eye-slash') + '"></i>' +
+                    '</button> ' +
+                    '<button class="btn-deletar" data-recurso="tipos-dieta" data-id="' + t.id + '" data-nome="' + escHtml(t.nome) + '" title="Deletar"><i class="fas fa-trash"></i></button>' +
+                '</td>' +
             '</tr>';
         }
-        document.getElementById('tbody-tipos-dieta').innerHTML = html || '<tr><td colspan="6" class="tabela-empty">Nenhum tipo cadastrado.</td></tr>';
-        bindEditBtns();
+        document.getElementById('tbody-tipos-dieta').innerHTML = html || '<tr><td colspan="6" class="tabela-vazio">Nenhum tipo cadastrado.</td></tr>';
+        bindActionBtns();
     }
 
     // --- Refeições ---
@@ -440,15 +457,20 @@
                 '<td>' + escHtml(r.nome) + '</td>' +
                 '<td>' + escHtml(r.horario_inicio || '--') + '</td>' +
                 '<td>' + escHtml(r.horario_fim    || '--') + '</td>' +
-                '<td><i class="fa-solid ' + escHtml(r.icone) + '"></i></td>' +
+                '<td><i class="fas ' + escHtml(r.icone) + '"></i></td>' +
                 '<td>' + escHtml(String(r.ordem)) + '</td>' +
                 '<td>' + (r.ativo ? '<span class="tag-ativo">Ativo</span>' : '<span class="tag-inativo">Inativo</span>') + '</td>' +
-                '<td><button class="btn-edit" data-recurso="refeicoes" data-id="' + r.id + '">' +
-                    '<i class="fa-solid fa-pen"></i> Editar</button></td>' +
+                '<td style="white-space:nowrap;">' +
+                    '<button class="btn-edit" data-recurso="refeicoes" data-id="' + r.id + '" title="Editar"><i class="fas fa-pen"></i></button> ' +
+                    '<button class="btn-toggle-ativo ' + (r.ativo ? 'ativo' : 'inativo') + '" data-recurso="refeicoes" data-id="' + r.id + '" data-ativo="' + (r.ativo ? '1' : '0') + '" title="' + (r.ativo ? 'Inativar' : 'Ativar') + '">' +
+                        '<i class="fas ' + (r.ativo ? 'fa-eye' : 'fa-eye-slash') + '"></i>' +
+                    '</button> ' +
+                    '<button class="btn-deletar" data-recurso="refeicoes" data-id="' + r.id + '" data-nome="' + escHtml(r.nome) + '" title="Deletar"><i class="fas fa-trash"></i></button>' +
+                '</td>' +
             '</tr>';
         }
-        document.getElementById('tbody-refeicoes').innerHTML = html || '<tr><td colspan="7" class="tabela-empty">Nenhuma refeição cadastrada.</td></tr>';
-        bindEditBtns();
+        document.getElementById('tbody-refeicoes').innerHTML = html || '<tr><td colspan="7" class="tabela-vazio">Nenhuma refeição cadastrada.</td></tr>';
+        bindActionBtns();
     }
 
     // --- Restrições ---
@@ -468,25 +490,94 @@
             html += '<tr>' +
                 '<td>' + escHtml(r.nome) + '</td>' +
                 '<td><code>' + escHtml(r.sigla || '--') + '</code></td>' +
-                '<td><i class="fa-solid ' + escHtml(r.icone) + '"></i></td>' +
+                '<td><i class="fas ' + escHtml(r.icone) + '"></i></td>' +
                 '<td><span class="dot-cor" style="background:' + escHtml(r.cor) + ';"></span></td>' +
                 '<td>' + escHtml(String(r.ordem)) + '</td>' +
                 '<td>' + (r.ativo ? '<span class="tag-ativo">Ativo</span>' : '<span class="tag-inativo">Inativo</span>') + '</td>' +
-                '<td><button class="btn-edit" data-recurso="restricoes" data-id="' + r.id + '">' +
-                    '<i class="fa-solid fa-pen"></i> Editar</button></td>' +
+                '<td style="white-space:nowrap;">' +
+                    '<button class="btn-edit" data-recurso="restricoes" data-id="' + r.id + '" title="Editar"><i class="fas fa-pen"></i></button> ' +
+                    '<button class="btn-toggle-ativo ' + (r.ativo ? 'ativo' : 'inativo') + '" data-recurso="restricoes" data-id="' + r.id + '" data-ativo="' + (r.ativo ? '1' : '0') + '" title="' + (r.ativo ? 'Inativar' : 'Ativar') + '">' +
+                        '<i class="fas ' + (r.ativo ? 'fa-eye' : 'fa-eye-slash') + '"></i>' +
+                    '</button> ' +
+                    '<button class="btn-deletar" data-recurso="restricoes" data-id="' + r.id + '" data-nome="' + escHtml(r.nome) + '" title="Deletar"><i class="fas fa-trash"></i></button>' +
+                '</td>' +
             '</tr>';
         }
-        document.getElementById('tbody-restricoes').innerHTML = html || '<tr><td colspan="7" class="tabela-empty">Nenhuma restrição cadastrada.</td></tr>';
-        bindEditBtns();
+        document.getElementById('tbody-restricoes').innerHTML = html || '<tr><td colspan="7" class="tabela-vazio">Nenhuma restrição cadastrada.</td></tr>';
+        bindActionBtns();
     }
 
-    function bindEditBtns() {
-        var btns = document.querySelectorAll('.btn-edit');
-        for (var i = 0; i < btns.length; i++) {
-            btns[i].addEventListener('click', function () {
+    function bindActionBtns() {
+        var btnsEdit = document.querySelectorAll('.btn-edit');
+        for (var i = 0; i < btnsEdit.length; i++) {
+            btnsEdit[i].addEventListener('click', function () {
                 abrirFormEdicao(this.getAttribute('data-recurso'), this.getAttribute('data-id'));
             });
         }
+        var btnsToggle = document.querySelectorAll('.btn-toggle-ativo');
+        for (var j = 0; j < btnsToggle.length; j++) {
+            btnsToggle[j].addEventListener('click', function () {
+                toggleAtivo(
+                    this.getAttribute('data-recurso'),
+                    this.getAttribute('data-id'),
+                    this.getAttribute('data-ativo') === '1'
+                );
+            });
+        }
+        var btnsDel = document.querySelectorAll('.btn-deletar');
+        for (var k = 0; k < btnsDel.length; k++) {
+            btnsDel[k].addEventListener('click', function () {
+                deletarItem(
+                    this.getAttribute('data-recurso'),
+                    this.getAttribute('data-id'),
+                    this.getAttribute('data-nome')
+                );
+            });
+        }
+    }
+
+    function toggleAtivo(recurso, id, ativoAtual) {
+        var novoAtivo = !ativoAtual;
+        fetch(CONFIG.apiBase + '/config/' + recurso + '/' + id, {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ativo: novoAtivo })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    carregarSubabaAtiva();
+                } else {
+                    alert(data.error || 'Erro ao alterar status.');
+                }
+            })
+            .catch(function () { alert('Falha na conexão.'); });
+    }
+
+    function deletarItem(recurso, id, nome) {
+        if (!window.confirm('Deletar "' + nome + '"?\nEsta ação não pode ser desfeita.')) return;
+        fetch(CONFIG.apiBase + '/config/' + recurso + '/' + id, {
+            method: 'DELETE',
+            credentials: 'same-origin'
+        })
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    return { status: r.status, data: data };
+                });
+            })
+            .then(function (res) {
+                if (res.status === 409 && res.data.tem_uso) {
+                    if (window.confirm(res.data.error + '\n\nDeseja inativar em vez de deletar?')) {
+                        toggleAtivo(recurso, id, true);
+                    }
+                } else if (res.data.success) {
+                    carregarSubabaAtiva();
+                } else {
+                    alert(res.data.error || 'Erro ao deletar.');
+                }
+            })
+            .catch(function () { alert('Falha na conexão.'); });
     }
 
     // =========================================================
