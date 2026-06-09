@@ -560,10 +560,12 @@
 
             // Emails destinatarios — controle visual de envio
             if (h.destinatarios_emails) {
-                var emails = h.destinatarios_emails.split(',');
+                var emails = Array.isArray(h.destinatarios_emails)
+                    ? h.destinatarios_emails
+                    : String(h.destinatarios_emails).split(',');
                 html += '<div class="timeline-emails">';
                 for (var j = 0; j < emails.length; j++) {
-                    var em = emails[j].trim();
+                    var em = String(emails[j]).trim();
                     if (em) {
                         html += '<span class="timeline-email-badge">';
                         html += '<i class="fas fa-at"></i> ' + escapeHtml(em);
