@@ -3,63 +3,71 @@
 
     var CONFIG = {
         urlBase: '/api/paineis/painel26',
-        intervaloAtualizacao: 60000,
-        prefixoStorage: 'painel26_'
+        intervaloAtualizacao: 60000
     };
 
     var Estado = {
         tipos: [],
         especialidades: [],
         destinatarios: [],
-        editandoId: null,
+        gruposArr: [],      // array global indexado; rebuilt em cada carregarDestinatarios
+        editandoGrupo: null,
+        abaAtiva: null,
         timerAtualizacao: null
     };
 
     var DOM = {};
 
+    // =========================================================
+    // DOM
+    // =========================================================
+
     function capturarDOM() {
-        DOM.kpiDestinatarios = document.getElementById('kpi-destinatarios');
-        DOM.kpiTipos = document.getElementById('kpi-tipos');
-        DOM.kpiEnviadosHoje = document.getElementById('kpi-enviados-hoje');
-        DOM.kpiErrosHoje = document.getElementById('kpi-erros-hoje');
-        DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
-        DOM.statusIndicator = document.getElementById('status-indicator');
-        DOM.tabelaDestinatarios = document.getElementById('tabela-destinatarios');
-        DOM.timelineHistorico = document.getElementById('timeline-historico');
-        DOM.contadorHistorico = document.getElementById('contador-historico');
-        DOM.filtroTipo = document.getElementById('filtro-tipo');
-        DOM.filtroEspecialidade = document.getElementById('filtro-especialidade');
-        DOM.filtroAtivo = document.getElementById('filtro-ativo');
-        DOM.btnNovo = document.getElementById('btn-novo');
-        DOM.btnRefresh = document.getElementById('btn-refresh');
-        DOM.btnVoltar = document.getElementById('btn-voltar');
-        DOM.modalOverlay = document.getElementById('modal-overlay');
-        DOM.modalTitulo = document.getElementById('modal-titulo');
-        DOM.modalFechar = document.getElementById('modal-fechar');
-        DOM.btnCancelar = document.getElementById('btn-cancelar');
-        DOM.btnSalvar = document.getElementById('btn-salvar');
-        DOM.campoTipo = document.getElementById('campo-tipo');
-        DOM.campoNome = document.getElementById('campo-nome');
-        DOM.campoEmail = document.getElementById('campo-email');
+        DOM.kpiDestinatarios        = document.getElementById('kpi-destinatarios');
+        DOM.kpiTipos                = document.getElementById('kpi-tipos');
+        DOM.kpiEnviadosHoje         = document.getElementById('kpi-enviados-hoje');
+        DOM.kpiErrosHoje            = document.getElementById('kpi-erros-hoje');
+        DOM.ultimaAtualizacao       = document.getElementById('ultima-atualizacao');
+        DOM.statusIndicator         = document.getElementById('status-indicator');
+        DOM.btnRefresh              = document.getElementById('btn-refresh');
+        DOM.btnVoltar               = document.getElementById('btn-voltar');
+        DOM.tabsNav                 = document.getElementById('tabs-nav');
+        DOM.tabPanels               = document.getElementById('tab-panels');
+        DOM.histKpis                = document.getElementById('hist-kpis');
+        DOM.histPorTipo             = document.getElementById('hist-por-tipo');
+        DOM.timelineHistorico       = document.getElementById('timeline-historico');
+        DOM.contadorHistorico       = document.getElementById('contador-historico');
+        DOM.modalOverlay            = document.getElementById('modal-overlay');
+        DOM.modalTitulo             = document.getElementById('modal-titulo');
+        DOM.modalFechar             = document.getElementById('modal-fechar');
+        DOM.btnCancelar             = document.getElementById('btn-cancelar');
+        DOM.btnSalvar               = document.getElementById('btn-salvar');
+        DOM.campoTipo               = document.getElementById('campo-tipo');
+        DOM.campoNome               = document.getElementById('campo-nome');
+        DOM.campoEmail              = document.getElementById('campo-email');
         DOM.campoEspecialidadeLista = document.getElementById('campo-especialidade-lista');
-        DOM.labelEspecHint = document.getElementById('label-espec-hint');
-        DOM.avisoEditEspec = document.getElementById('aviso-edit-espec');
-        DOM.campoSetor = document.getElementById('campo-setor');
-        DOM.campoCanal = document.getElementById('campo-canal');
-        DOM.campoDescricao = document.getElementById('campo-descricao');
+        DOM.labelEspecHint          = document.getElementById('label-espec-hint');
+        DOM.avisoEditEspec          = document.getElementById('aviso-edit-espec');
+        DOM.campoSetor              = document.getElementById('campo-setor');
+        DOM.campoCanal              = document.getElementById('campo-canal');
+        DOM.campoDescricao          = document.getElementById('campo-descricao');
     }
 
+    // =========================================================
+    // HELPERS
+    // =========================================================
+
     function escapeHtml(texto) {
-        if (!texto) return '-';
+        if (texto === null || texto === undefined) return '';
         var div = document.createElement('div');
-        div.appendChild(document.createTextNode(texto));
+        div.appendChild(document.createTextNode(String(texto)));
         return div.innerHTML;
     }
 
     function atualizarStatus(s) {
         if (!DOM.statusIndicator) return;
         DOM.statusIndicator.className = 'status-indicator';
-        if (s === 'online') DOM.statusIndicator.classList.add('status-online');
+        if (s === 'online')   DOM.statusIndicator.classList.add('status-online');
         else if (s === 'offline') DOM.statusIndicator.classList.add('status-offline');
         else if (s === 'loading') DOM.statusIndicator.classList.add('status-loading');
     }
@@ -73,23 +81,157 @@
         opcoes = opcoes || {};
         opcoes.credentials = 'same-origin';
         opcoes.headers = opcoes.headers || {};
-        if (opcoes.body) {
-            opcoes.headers['Content-Type'] = 'application/json';
-        }
-        return fetch(url, opcoes).then(function(resp) {
-            return resp.json();
-        });
+        if (opcoes.body) opcoes.headers['Content-Type'] = 'application/json';
+        return fetch(url, opcoes).then(function(r) { return r.json(); });
     }
+
+    // =========================================================
+    // ABAS
+    // =========================================================
+
+    function gerarAbas(tipos) {
+        if (!DOM.tabsNav || !DOM.tabPanels) return;
+
+        var navHtml = '';
+        var panelsHtml = '';
+
+        // Historico — PRIMEIRA aba na nav
+        navHtml += '<button class="tab-nav-btn tab-historico-btn" data-tab="historico">';
+        navHtml += '<i class="fas fa-history"></i> <span>Historico</span></button>';
+
+        // Abas por tipo de evento
+        for (var i = 0; i < tipos.length; i++) {
+            var t = tipos[i];
+            var cod = escapeHtml(t.codigo);
+            var icone = escapeHtml(t.icone || 'fa-bell');
+            var nome = escapeHtml(t.nome);
+            var cor = t.cor || '#dc3545';
+
+            navHtml += '<button class="tab-nav-btn" data-tab="tipo-' + cod + '" style="--tab-cor:' + cor + '">';
+            navHtml += '<i class="fas ' + icone + '"></i> <span>' + nome + '</span></button>';
+
+            panelsHtml += '<div class="tab-panel" id="tab-tipo-' + cod + '">';
+            panelsHtml += '<div class="painel-main content-scroll">';
+            panelsHtml += '<div class="tipo-filtros-bar">';
+            panelsHtml += '<select class="filtro-select-interno filtro-espec-tab" data-tipo="' + cod + '">';
+            panelsHtml += '<option value="">Todas especialidades</option></select>';
+            panelsHtml += '<select class="filtro-select-interno filtro-ativo-tab" data-tipo="' + cod + '">';
+            panelsHtml += '<option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select>';
+            panelsHtml += '<button class="btn-acao-primario btn-novo-tipo" data-tipo="' + cod + '">';
+            panelsHtml += '<i class="fas fa-plus"></i> Novo Destinatario</button>';
+            panelsHtml += '</div>';
+            panelsHtml += '<div class="tabela-wrapper tabela-tipo" id="tabela-tipo-' + cod + '">';
+            panelsHtml += '<div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>';
+            panelsHtml += '</div></div></div>';
+        }
+
+        // Aba Em Construção — Exames e Procedimentos
+        navHtml += '<button class="tab-nav-btn tab-construcao-btn" data-tab="em-construcao">';
+        navHtml += '<i class="fas fa-flask"></i> <span>Exames e Procedimentos</span></button>';
+
+        panelsHtml += '<div class="tab-panel" id="tab-em-construcao">';
+        panelsHtml += '<div class="painel-main content-scroll em-construcao-container">';
+        panelsHtml += '<div class="em-construcao-msg">';
+        panelsHtml += '<i class="fas fa-tools"></i>';
+        panelsHtml += '<h2>Em Construcao</h2>';
+        panelsHtml += '<p>Esta aba esta sendo desenvolvida e estara disponivel em breve.</p>';
+        panelsHtml += '</div></div></div>';
+
+        DOM.tabsNav.innerHTML = navHtml;
+        DOM.tabPanels.insertAdjacentHTML('afterbegin', panelsHtml);
+
+        // Bind: botoes de aba
+        var btns = DOM.tabsNav.querySelectorAll('.tab-nav-btn');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].addEventListener('click', function() {
+                mudarAba(this.getAttribute('data-tab'));
+            });
+        }
+
+        // Bind: filtros e botao Novo (delegado no container)
+        DOM.tabPanels.addEventListener('change', function(e) {
+            var el = e.target;
+            if (!el || !el.classList) return;
+            if (el.classList.contains('filtro-espec-tab') || el.classList.contains('filtro-ativo-tab')) {
+                renderizarTodosOsTabs();
+            }
+        });
+
+        DOM.tabPanels.addEventListener('click', function(e) {
+            var el = e.target;
+            while (el && el !== DOM.tabPanels) {
+                if (el.classList && el.classList.contains('btn-novo-tipo')) {
+                    novoParaTipo(el.getAttribute('data-tipo'));
+                    return;
+                }
+                el = el.parentElement;
+            }
+        });
+
+        // Ativa Historico por padrao ao carregar
+        mudarAba('historico');
+
+        // Popula filtros de especialidade se ja carregados
+        if (Estado.especialidades.length > 0) {
+            popularFiltrosEspecTab();
+        }
+    }
+
+    function mudarAba(tabId) {
+        Estado.abaAtiva = tabId;
+
+        var btns = DOM.tabsNav.querySelectorAll('.tab-nav-btn');
+        for (var i = 0; i < btns.length; i++) {
+            if (btns[i].getAttribute('data-tab') === tabId) {
+                btns[i].classList.add('active');
+            } else {
+                btns[i].classList.remove('active');
+            }
+        }
+
+        var panels = DOM.tabPanels.querySelectorAll('.tab-panel');
+        for (var j = 0; j < panels.length; j++) {
+            panels[j].classList.remove('active');
+        }
+
+        var panelId = (tabId === 'historico') ? 'tab-historico' : ('tab-' + tabId);
+        var alvo = document.getElementById(panelId);
+        if (alvo) alvo.classList.add('active');
+
+        if (tabId === 'historico') carregarHistorico();
+    }
+
+    function novoParaTipo(tipoCodigo) {
+        abrirModal();
+        if (DOM.campoTipo) DOM.campoTipo.value = tipoCodigo;
+    }
+
+    function popularFiltrosEspecTab() {
+        if (!DOM.tabPanels) return;
+        var opts = '<option value="">Todas especialidades</option>';
+        for (var i = 0; i < Estado.especialidades.length; i++) {
+            opts += '<option value="' + escapeHtml(Estado.especialidades[i]) + '">' + escapeHtml(Estado.especialidades[i]) + '</option>';
+        }
+        var selects = DOM.tabPanels.querySelectorAll('.filtro-espec-tab');
+        for (var j = 0; j < selects.length; j++) {
+            var cur = selects[j].value;
+            selects[j].innerHTML = opts;
+            selects[j].value = cur; // preserva seleção atual
+        }
+    }
+
+    // =========================================================
+    // DASHBOARD
+    // =========================================================
 
     function carregarDashboard() {
         atualizarStatus('loading');
         fetchJSON(CONFIG.urlBase + '/dashboard').then(function(resp) {
             if (!resp.success) return;
-            DOM.kpiDestinatarios.textContent = resp.total_destinatarios || 0;
-            DOM.kpiTipos.textContent = resp.total_tipos || 0;
-            DOM.kpiEnviadosHoje.textContent = resp.envios_hoje ? resp.envios_hoje.total_hoje : 0;
-            DOM.kpiErrosHoje.textContent = resp.envios_hoje ? resp.envios_hoje.erro_hoje : 0;
-
+            if (DOM.kpiDestinatarios) DOM.kpiDestinatarios.textContent = resp.total_destinatarios || 0;
+            if (DOM.kpiTipos) DOM.kpiTipos.textContent = resp.total_tipos || 0;
+            if (DOM.kpiEnviadosHoje) DOM.kpiEnviadosHoje.textContent = resp.envios_hoje ? resp.envios_hoje.total_hoje : 0;
+            if (DOM.kpiErrosHoje) DOM.kpiErrosHoje.textContent = resp.envios_hoje ? resp.envios_hoje.erro_hoje : 0;
             var cards = document.querySelectorAll('.resumo-card');
             for (var i = 0; i < cards.length; i++) {
                 cards[i].classList.add('atualizando');
@@ -97,42 +239,48 @@
             }
             atualizarStatus('online');
             atualizarHorario();
-        }).catch(function(err) {
-            console.error('Erro dashboard:', err);
-            atualizarStatus('offline');
-        });
+        }).catch(function() { atualizarStatus('offline'); });
     }
+
+    // =========================================================
+    // TIPOS
+    // =========================================================
 
     function carregarTipos() {
         fetchJSON(CONFIG.urlBase + '/tipos').then(function(resp) {
             if (!resp.success) return;
-            Estado.tipos = resp.data;
-            var html = '<option value="">Todos os tipos</option>';
+            // Parecer Médico sempre primeiro
+            var dados = resp.data.slice().sort(function(a, b) {
+                if (a.codigo === 'parecer_pendente') return -1;
+                if (b.codigo === 'parecer_pendente') return 1;
+                return 0;
+            });
+            Estado.tipos = dados;
             var htmlModal = '<option value="">Selecione...</option>';
-            for (var i = 0; i < resp.data.length; i++) {
-                var t = resp.data[i];
-                html += '<option value="' + escapeHtml(t.codigo) + '">' + escapeHtml(t.nome) + '</option>';
+            for (var i = 0; i < dados.length; i++) {
+                var t = dados[i];
                 htmlModal += '<option value="' + escapeHtml(t.codigo) + '">' + escapeHtml(t.nome) + '</option>';
             }
-            DOM.filtroTipo.innerHTML = html;
-            DOM.campoTipo.innerHTML = htmlModal;
+            if (DOM.campoTipo) DOM.campoTipo.innerHTML = htmlModal;
+            gerarAbas(dados);
         });
     }
+
+    // =========================================================
+    // ESPECIALIDADES
+    // =========================================================
 
     function carregarEspecialidades() {
         fetchJSON(CONFIG.urlBase + '/especialidades').then(function(resp) {
             if (!resp.success) return;
             Estado.especialidades = resp.data;
-            var html = '<option value="">Todas especialidades</option>';
-            for (var i = 0; i < resp.data.length; i++) {
-                html += '<option value="' + escapeHtml(resp.data[i]) + '">' + escapeHtml(resp.data[i]) + '</option>';
-            }
-            DOM.filtroEspecialidade.innerHTML = html;
             renderizarCheckboxesEspecialidade(resp.data);
+            popularFiltrosEspecTab();
         });
     }
 
     function renderizarCheckboxesEspecialidade(lista) {
+        if (!DOM.campoEspecialidadeLista) return;
         var html = '<label class="espec-check-item espec-check-todas"><input type="checkbox" class="espec-checkbox" id="espec-todas" value=""><span>Todas (recebe de todas as especialidades)</span></label>';
         for (var i = 0; i < lista.length; i++) {
             html += '<label class="espec-check-item"><input type="checkbox" class="espec-checkbox" value="' + escapeHtml(lista[i]) + '"><span>' + escapeHtml(lista[i]) + '</span></label>';
@@ -167,8 +315,7 @@
         for (var i = 0; i < checkboxes.length; i++) checkboxes[i].checked = false;
     }
 
-    function marcarEspecialidade(valor) {
-        desmarcarTodasEspecialidades();
+    function checkEspecialidade(valor) {
         if (!DOM.campoEspecialidadeLista) return;
         var checkboxes = DOM.campoEspecialidadeLista.querySelectorAll('.espec-checkbox');
         for (var i = 0; i < checkboxes.length; i++) {
@@ -186,79 +333,186 @@
         return result;
     }
 
-    function carregarDestinatarios() {
-        var params = [];
-        var tipo = DOM.filtroTipo.value;
-        var espec = DOM.filtroEspecialidade.value;
-        var ativo = DOM.filtroAtivo.value;
-        if (tipo) params.push('tipo_evento=' + encodeURIComponent(tipo));
-        if (espec) params.push('especialidade=' + encodeURIComponent(espec));
-        if (ativo) params.push('ativo=' + ativo);
-        var url = CONFIG.urlBase + '/destinatarios';
-        if (params.length > 0) url += '?' + params.join('&');
+    // =========================================================
+    // DESTINATÁRIOS
+    // =========================================================
 
-        fetchJSON(url).then(function(resp) {
+    function carregarDestinatarios() {
+        fetchJSON(CONFIG.urlBase + '/destinatarios').then(function(resp) {
             if (!resp.success) return;
             Estado.destinatarios = resp.data;
-            renderizarTabela(resp.data);
-        }).catch(function(err) {
-            console.error('Erro destinatarios:', err);
-            DOM.tabelaDestinatarios.innerHTML = '<p class="texto-vazio">Erro ao carregar</p>';
-        });
+            renderizarTodosOsTabs();
+        }).catch(function(err) { console.error('Erro destinatarios:', err); });
     }
 
-    function renderizarTabela(dados) {
+    function renderizarTodosOsTabs() {
+        Estado.gruposArr = [];
+        for (var i = 0; i < Estado.tipos.length; i++) {
+            renderizarTabPorTipo(Estado.tipos[i].codigo);
+        }
+    }
+
+    function renderizarTabPorTipo(tipoCodigo) {
+        var container = document.getElementById('tabela-tipo-' + tipoCodigo);
+        if (!container) return;
+
+        var espEl   = DOM.tabPanels ? DOM.tabPanels.querySelector('.filtro-espec-tab[data-tipo="' + tipoCodigo + '"]') : null;
+        var ativoEl = DOM.tabPanels ? DOM.tabPanels.querySelector('.filtro-ativo-tab[data-tipo="' + tipoCodigo + '"]') : null;
+        var espVal   = espEl   ? espEl.value   : '';
+        var ativoVal = ativoEl ? ativoEl.value : '';
+
+        var filtrados = [];
+        for (var i = 0; i < Estado.destinatarios.length; i++) {
+            var d = Estado.destinatarios[i];
+            if (d.tipo_evento !== tipoCodigo) continue;
+            if (espVal && d.especialidade !== espVal) continue;
+            if (ativoVal === 'true'  && !d.ativo) continue;
+            if (ativoVal === 'false' &&  d.ativo) continue;
+            filtrados.push(d);
+        }
+
+        renderizarTabela(filtrados, container);
+    }
+
+    function renderizarTabela(dados, container) {
         if (!dados || dados.length === 0) {
-            DOM.tabelaDestinatarios.innerHTML = '<p class="texto-vazio">Nenhum destinatario cadastrado</p>';
+            container.innerHTML = '<p class="texto-vazio">Nenhum destinatario cadastrado</p>';
             return;
         }
-        var html = '<table class="tabela-dest"><thead><tr>';
-        html += '<th></th><th>Tipo</th><th>Nome</th><th>Email</th><th>Especialidade</th><th>Canal</th><th>Acoes</th>';
-        html += '</tr></thead><tbody>';
 
+        // Agrupar por email (o tipo ja esta filtrado pela aba)
+        var mapaGrupos = {};
+        var ordemGrupos = [];
         for (var i = 0; i < dados.length; i++) {
             var d = dados[i];
-            var classeInativo = d.ativo ? '' : ' class="inativo"';
-            html += '<tr' + classeInativo + '>';
-            html += '<td><span class="badge-status' + (d.ativo ? '' : ' inativo') + '"></span></td>';
-            var corTipo = d.tipo_evento_cor || '#dc3545';
-            html += '<td><span class="badge-tipo" style="background:' + corTipo + '20; color:' + corTipo + '; border: 1px solid ' + corTipo + '40;">';
-            html += '<i class="fas ' + escapeHtml(d.tipo_evento_icone || 'fa-bell') + '"></i> ';
-            html += escapeHtml(d.tipo_evento_nome || d.tipo_evento);
-            html += '</span></td>';
-            html += '<td><strong>' + escapeHtml(d.nome) + '</strong>';
-            if (d.descricao) html += '<br><span style="font-size:0.68rem;color:var(--cor-texto-muted);">' + escapeHtml(d.descricao) + '</span>';
-            html += '</td>';
-            html += '<td>' + escapeHtml(d.email) + '</td>';
-            if (d.especialidade) {
-                html += '<td><span class="badge-espec">' + escapeHtml(d.especialidade) + '</span></td>';
-            } else {
-                html += '<td><span class="badge-espec badge-espec-geral">Todas</span></td>';
+            if (!mapaGrupos[d.email]) {
+                mapaGrupos[d.email] = { meta: d, items: [] };
+                ordemGrupos.push(d.email);
             }
-            var classeCanal = d.canal === 'ntfy' ? ' badge-canal-ntfy' : '';
-            html += '<td><span class="badge-canal' + classeCanal + '">' + escapeHtml(d.canal || 'email') + '</span></td>';
+            mapaGrupos[d.email].items.push(d);
+        }
+
+        var html = '<table class="tabela-dest"><thead><tr>';
+        html += '<th></th><th>Nome</th><th>Email</th><th>Especialidades</th><th>Canal</th><th>Acoes</th>';
+        html += '</tr></thead><tbody>';
+
+        for (var k = 0; k < ordemGrupos.length; k++) {
+            var grp = mapaGrupos[ordemGrupos[k]];
+            var idx = Estado.gruposArr.length;
+            Estado.gruposArr.push(grp);
+
+            var meta  = grp.meta;
+            var ativo = meta.ativo;
+
+            html += '<tr' + (ativo ? '' : ' class="inativo"') + '>';
+            html += '<td><span class="badge-status' + (ativo ? '' : ' inativo') + '"></span></td>';
+
+            html += '<td><strong>' + escapeHtml(meta.nome) + '</strong>';
+            if (meta.descricao) html += '<br><small class="dest-descricao">' + escapeHtml(meta.descricao) + '</small>';
+            html += '</td>';
+
+            html += '<td class="email-col"><i class="fas fa-envelope email-icon"></i> ' + escapeHtml(meta.email) + '</td>';
+
+            html += '<td><div class="espec-badges">';
+            for (var m = 0; m < grp.items.length; m++) {
+                var it = grp.items[m];
+                if (it.especialidade) {
+                    html += '<span class="badge-espec">' + escapeHtml(it.especialidade) + '</span>';
+                } else {
+                    html += '<span class="badge-espec badge-espec-geral">Todas</span>';
+                }
+            }
+            html += '</div></td>';
+
+            var classeCanal = meta.canal === 'ntfy' ? ' badge-canal-ntfy' : '';
+            html += '<td><span class="badge-canal' + classeCanal + '">' + escapeHtml(meta.canal || 'email') + '</span></td>';
+
             html += '<td><div class="acoes-grupo">';
-            html += '<button class="btn-acao btn-editar" onclick="window.P26.editar(' + d.id + ')" title="Editar"><i class="fas fa-pen"></i></button>';
-            var classeToggle = d.ativo ? '' : ' inativo';
-            var iconeToggle = d.ativo ? 'fa-toggle-on' : 'fa-toggle-off';
-            html += '<button class="btn-acao btn-toggle' + classeToggle + '" onclick="window.P26.toggle(' + d.id + ')" title="Ativar/Desativar"><i class="fas ' + iconeToggle + '"></i></button>';
-            html += '<button class="btn-acao btn-excluir" onclick="window.P26.excluir(' + d.id + ')" title="Excluir"><i class="fas fa-trash"></i></button>';
+            html += '<button class="btn-acao btn-editar" onclick="window.P26.editarGrupo(' + idx + ')" title="Editar"><i class="fas fa-pen"></i></button>';
+            var iconeToggle = ativo ? 'fa-toggle-on' : 'fa-toggle-off';
+            html += '<button class="btn-acao btn-toggle' + (ativo ? '' : ' inativo') + '" onclick="window.P26.toggleGrupo(' + idx + ')" title="Ativar/Desativar"><i class="fas ' + iconeToggle + '"></i></button>';
+            html += '<button class="btn-acao btn-excluir" onclick="window.P26.excluirGrupo(' + idx + ')" title="Excluir"><i class="fas fa-trash"></i></button>';
             html += '</div></td>';
             html += '</tr>';
         }
+
         html += '</tbody></table>';
-        DOM.tabelaDestinatarios.innerHTML = html;
+        container.innerHTML = html;
     }
 
-function carregarHistorico() {
-        fetchJSON(CONFIG.urlBase + '/historico?limite=100').then(function(resp) {
+    // =========================================================
+    // HISTÓRICO
+    // =========================================================
+
+    function carregarHistorico() {
+        fetchJSON(CONFIG.urlBase + '/historico?limite=200').then(function(resp) {
             if (!resp.success) return;
-            DOM.contadorHistorico.textContent = resp.total + ' envios';
+            if (DOM.contadorHistorico) DOM.contadorHistorico.textContent = resp.total + ' envios';
+            renderizarHistoricoStats(resp.data);
             renderizarTimeline(resp.data);
         }).catch(function(err) { console.error('Erro historico:', err); });
     }
 
-function renderizarTimeline(dados) {
+    function renderizarHistoricoStats(dados) {
+        var total   = dados.length;
+        var sucesso = 0;
+        var erro    = 0;
+        var porTipo = {};
+
+        for (var i = 0; i < dados.length; i++) {
+            var h = dados[i];
+            if (h.sucesso) sucesso++; else erro++;
+            var tn = h.tipo_evento_nome || h.tipo_evento;
+            if (!porTipo[tn]) porTipo[tn] = { total: 0, sucesso: 0, cor: h.tipo_evento_cor || '#dc3545' };
+            porTipo[tn].total++;
+            if (h.sucesso) porTipo[tn].sucesso++;
+        }
+
+        // KPIs
+        if (DOM.histKpis) {
+            var taxa = total > 0 ? Math.round(sucesso * 100 / total) : 0;
+            var html = '';
+            html += '<div class="hist-kpi-card"><div class="hist-kpi-icon"><i class="fas fa-paper-plane"></i></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + total + '</span><span class="hist-kpi-label">Envios Hoje</span></div></div>';
+            html += '<div class="hist-kpi-card hist-kpi-sucesso"><div class="hist-kpi-icon"><i class="fas fa-check-circle"></i></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + sucesso + '</span><span class="hist-kpi-label">Com Sucesso</span></div></div>';
+            html += '<div class="hist-kpi-card hist-kpi-erro"><div class="hist-kpi-icon"><i class="fas fa-times-circle"></i></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + erro + '</span><span class="hist-kpi-label">Com Erro</span></div></div>';
+            html += '<div class="hist-kpi-card hist-kpi-taxa"><div class="hist-kpi-icon"><i class="fas fa-percentage"></i></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + taxa + '%</span><span class="hist-kpi-label">Taxa Sucesso</span></div></div>';
+            DOM.histKpis.innerHTML = html;
+        }
+
+        // Por tipo
+        if (DOM.histPorTipo) {
+            var tiposKeys = [];
+            for (var k in porTipo) {
+                if (porTipo.hasOwnProperty(k)) tiposKeys.push(k);
+            }
+            tiposKeys.sort(function(a, b) { return porTipo[b].total - porTipo[a].total; });
+
+            if (tiposKeys.length === 0) {
+                DOM.histPorTipo.innerHTML = '<p class="texto-vazio">Sem envios registrados hoje</p>';
+            } else {
+                var max = porTipo[tiposKeys[0]].total;
+                var htmlTipos = '';
+                for (var t = 0; t < tiposKeys.length; t++) {
+                    var nome = tiposKeys[t];
+                    var info = porTipo[nome];
+                    var pct  = max > 0 ? Math.round(info.total * 100 / max) : 0;
+                    htmlTipos += '<div class="hist-bar-row">';
+                    htmlTipos += '<span class="hist-bar-label">' + escapeHtml(nome) + '</span>';
+                    htmlTipos += '<div class="hist-bar-track"><div class="hist-bar-fill" style="width:' + pct + '%;background:' + info.cor + '"></div></div>';
+                    htmlTipos += '<span class="hist-bar-count">' + info.total + ' <small>(' + info.sucesso + ' ok)</small></span>';
+                    htmlTipos += '</div>';
+                }
+                DOM.histPorTipo.innerHTML = htmlTipos;
+            }
+        }
+    }
+
+    function renderizarTimeline(dados) {
+        if (!DOM.timelineHistorico) return;
         if (!dados || dados.length === 0) {
             DOM.timelineHistorico.innerHTML = '<p class="texto-vazio">Nenhum envio registrado ainda</p>';
             return;
@@ -269,26 +523,38 @@ function renderizarTimeline(dados) {
             var classeIcone = h.sucesso ? 'sucesso' : 'erro';
             var icone = h.sucesso ? 'fa-check' : 'fa-times';
             var canalBadge = h.canal === 'email'
-                ? '<span style="font-size:0.6rem;background:#e3f2fd;color:#1565c0;padding:1px 5px;border-radius:4px;">email</span>'
-                : '<span style="font-size:0.6rem;background:#e8f5e9;color:#2e7d32;padding:1px 5px;border-radius:4px;">ntfy</span>';
+                ? '<span class="canal-badge canal-email"><i class="fas fa-envelope"></i> email</span>'
+                : '<span class="canal-badge canal-ntfy"><i class="fas fa-mobile-alt"></i> ntfy</span>';
 
             html += '<div class="timeline-item">';
             html += '<div class="timeline-icone ' + classeIcone + '"><i class="fas ' + icone + '"></i></div>';
             html += '<div class="timeline-info">';
             html += '<div class="timeline-titulo">' + escapeHtml(h.titulo || 'Notificacao') + '</div>';
             html += '<div class="timeline-detalhe">';
-            html += escapeHtml(h.tipo_evento_nome || h.tipo_evento);
+            html += '<span class="timeline-tipo">' + escapeHtml(h.tipo_evento_nome || h.tipo_evento) + '</span>';
             html += ' ' + canalBadge;
-            if (h.qt_destinatarios) html += ' &middot; ' + h.qt_destinatarios + 'x';
+            if (h.qt_destinatarios) html += ' <span class="timeline-qtd">' + h.qt_destinatarios + 'x</span>';
             html += '</div>';
-            // Erro com detalhe
+
+            // Emails destinatarios — controle visual de envio
+            if (h.destinatarios_emails) {
+                var emails = h.destinatarios_emails.split(',');
+                html += '<div class="timeline-emails">';
+                for (var j = 0; j < emails.length; j++) {
+                    var em = emails[j].trim();
+                    if (em) {
+                        html += '<span class="timeline-email-badge">';
+                        html += '<i class="fas fa-at"></i> ' + escapeHtml(em);
+                        html += '</span>';
+                    }
+                }
+                html += '</div>';
+            }
+
             if (!h.sucesso && h.erro_mensagem) {
                 html += '<div class="timeline-erro-detalhe"><i class="fas fa-exclamation-circle"></i> ' + escapeHtml(h.erro_mensagem) + '</div>';
             }
-            // Resposta do servidor (mesmo sucesso, mostra topicos)
-            if (h.sucesso && h.detalhe_resposta && h.canal === 'ntfy') {
-                html += '<div style="font-size:0.6rem;color:#999;margin-top:2px;">' + escapeHtml(h.detalhe_resposta) + '</div>';
-            }
+
             html += '</div>';
             html += '<div class="timeline-data">' + escapeHtml(h.dt_envio_fmt) + '</div>';
             html += '</div>';
@@ -296,32 +562,38 @@ function renderizarTimeline(dados) {
         DOM.timelineHistorico.innerHTML = html;
     }
 
-    function abrirModal(dados) {
-        Estado.editandoId = null;
-        DOM.campoTipo.value = '';
-        DOM.campoNome.value = '';
-        DOM.campoEmail.value = '';
-        DOM.campoSetor.value = '';
-        DOM.campoCanal.value = 'email';
-        DOM.campoDescricao.value = '';
-        desmarcarTodasEspecialidades();
-        DOM.modalTitulo.innerHTML = '<i class="fas fa-user-plus"></i> Novo Destinatario';
+    // =========================================================
+    // MODAL
+    // =========================================================
 
-        if (dados) {
-            Estado.editandoId = dados.id;
+    function abrirModal(dadosOuGrupo) {
+        Estado.editandoGrupo = null;
+        if (DOM.campoTipo)      DOM.campoTipo.value      = '';
+        if (DOM.campoNome)      DOM.campoNome.value      = '';
+        if (DOM.campoEmail)     DOM.campoEmail.value     = '';
+        if (DOM.campoSetor)     DOM.campoSetor.value     = '';
+        if (DOM.campoCanal)     DOM.campoCanal.value     = 'email';
+        if (DOM.campoDescricao) DOM.campoDescricao.value = '';
+        desmarcarTodasEspecialidades();
+        if (DOM.avisoEditEspec) DOM.avisoEditEspec.style.display = 'none';
+
+        if (dadosOuGrupo && dadosOuGrupo.items) {
+            Estado.editandoGrupo = dadosOuGrupo.items;
+            var meta = dadosOuGrupo.meta;
             DOM.modalTitulo.innerHTML = '<i class="fas fa-user-edit"></i> Editar Destinatario';
-            DOM.campoTipo.value = dados.tipo_evento || '';
-            DOM.campoNome.value = dados.nome || '';
-            DOM.campoEmail.value = dados.email || '';
-            DOM.campoSetor.value = dados.setor || '';
-            DOM.campoCanal.value = dados.canal || 'email';
-            DOM.campoDescricao.value = dados.descricao || '';
-            marcarEspecialidade(dados.especialidade || '');
-            if (DOM.labelEspecHint) DOM.labelEspecHint.textContent = '(especialidade atual)';
-            if (DOM.avisoEditEspec) DOM.avisoEditEspec.style.display = '';
+            if (DOM.campoTipo)      DOM.campoTipo.value      = meta.tipo_evento || '';
+            if (DOM.campoNome)      DOM.campoNome.value      = meta.nome || '';
+            if (DOM.campoEmail)     DOM.campoEmail.value     = meta.email || '';
+            if (DOM.campoSetor)     DOM.campoSetor.value     = meta.setor || '';
+            if (DOM.campoCanal)     DOM.campoCanal.value     = meta.canal || 'email';
+            if (DOM.campoDescricao) DOM.campoDescricao.value = meta.descricao || '';
+            for (var i = 0; i < dadosOuGrupo.items.length; i++) {
+                checkEspecialidade(dadosOuGrupo.items[i].especialidade || '');
+            }
+            if (DOM.labelEspecHint) DOM.labelEspecHint.textContent = '(marque para adicionar, desmarque para remover)';
         } else {
+            DOM.modalTitulo.innerHTML = '<i class="fas fa-user-plus"></i> Novo Destinatario';
             if (DOM.labelEspecHint) DOM.labelEspecHint.textContent = '(selecione uma ou mais)';
-            if (DOM.avisoEditEspec) DOM.avisoEditEspec.style.display = 'none';
         }
 
         DOM.modalOverlay.classList.add('ativo');
@@ -329,67 +601,81 @@ function renderizarTimeline(dados) {
 
     function fecharModal() {
         DOM.modalOverlay.classList.remove('ativo');
-        Estado.editandoId = null;
+        Estado.editandoGrupo = null;
+    }
+
+    // =========================================================
+    // SALVAR / SYNC
+    // =========================================================
+
+    function syncGrupo(tipo, nome, email, setor, canal, descricao, keepItems, addEsps, removeIds) {
+        var fila = [];
+        for (var a = 0; a < keepItems.length; a++) fila.push({ op: 'put',    id: keepItems[a].id, esp: keepItems[a].esp });
+        for (var b = 0; b < addEsps.length;   b++) fila.push({ op: 'post',   esp: addEsps[b] });
+        for (var c = 0; c < removeIds.length;  c++) fila.push({ op: 'delete', id: removeIds[c] });
+
+        var erros = [];
+        function proximo() {
+            if (fila.length === 0) {
+                if (erros.length > 0) alert('Aviso:\n' + erros.join('\n'));
+                fecharModal(); carregarDestinatarios(); carregarDashboard(); return;
+            }
+            var item = fila.shift();
+            var promise;
+            var body = JSON.stringify({ tipo_evento: tipo, nome: nome, email: email, especialidade: item.esp || '', setor: setor, canal: canal, descricao: descricao });
+            if (item.op === 'put') {
+                promise = fetchJSON(CONFIG.urlBase + '/destinatarios/' + item.id, { method: 'PUT', body: body });
+            } else if (item.op === 'post') {
+                promise = fetchJSON(CONFIG.urlBase + '/destinatarios', { method: 'POST', body: body });
+            } else {
+                promise = fetchJSON(CONFIG.urlBase + '/destinatarios/' + item.id, { method: 'DELETE' });
+            }
+            promise.then(function(resp) {
+                if (!resp.success && resp.error && resp.error.indexOf('ja cadastrado') === -1) erros.push(resp.error || 'Erro');
+                proximo();
+            }).catch(function() { erros.push('Erro de conexao'); proximo(); });
+        }
+        proximo();
     }
 
     function salvar() {
-        var tipo = DOM.campoTipo.value;
-        var nome = DOM.campoNome.value;
-        var email = DOM.campoEmail.value;
-        var setor = DOM.campoSetor.value;
-        var canal = DOM.campoCanal.value;
-        var descricao = DOM.campoDescricao.value;
+        var tipo      = DOM.campoTipo      ? DOM.campoTipo.value      : '';
+        var nome      = DOM.campoNome      ? DOM.campoNome.value      : '';
+        var email     = DOM.campoEmail     ? DOM.campoEmail.value     : '';
+        var setor     = DOM.campoSetor     ? DOM.campoSetor.value     : '';
+        var canal     = DOM.campoCanal     ? DOM.campoCanal.value     : 'email';
+        var descricao = DOM.campoDescricao ? DOM.campoDescricao.value : '';
 
         if (!tipo || !nome || !email) {
             alert('Preencha os campos obrigatorios: Tipo, Nome e Email');
             return;
         }
 
-        if (Estado.editandoId) {
-            var esps = obterEspecialidadesSelecionadas();
-            if (esps.length === 0) esps = [''];
-            var espsExtras = esps.slice(1);
+        if (Estado.editandoGrupo) {
+            var newEsps = obterEspecialidadesSelecionadas();
+            if (newEsps.length === 0) newEsps = [''];
 
-            var dadosEdit = {
-                tipo_evento: tipo, nome: nome, email: email,
-                especialidade: esps[0], setor: setor, canal: canal, descricao: descricao
-            };
-            fetchJSON(CONFIG.urlBase + '/destinatarios/' + Estado.editandoId, {
-                method: 'PUT', body: JSON.stringify(dadosEdit)
-            }).then(function(resp) {
-                if (!resp.success) { alert(resp.error || 'Erro ao salvar'); return; }
-                if (espsExtras.length === 0) {
-                    fecharModal(); carregarDestinatarios(); carregarDashboard(); return;
-                }
-                // Especialidades adicionais: criar novas linhas via POST
-                var pendExtras = espsExtras.slice();
-                var errosExtras = [];
-                function enviarExtra() {
-                    if (pendExtras.length === 0) {
-                        if (errosExtras.length > 0) alert('Alguns registros adicionais nao foram salvos:\n' + errosExtras.join('\n'));
-                        fecharModal(); carregarDestinatarios(); carregarDashboard(); return;
-                    }
-                    var espec = pendExtras.shift();
-                    fetchJSON(CONFIG.urlBase + '/destinatarios', {
-                        method: 'POST',
-                        body: JSON.stringify({ tipo_evento: tipo, nome: nome, email: email, especialidade: espec, setor: setor, canal: canal, descricao: descricao })
-                    }).then(function(r) {
-                        // ignora 409 (ja existe) — nao e erro
-                        if (!r.success && r.error && r.error.indexOf('ja cadastrado') === -1) {
-                            errosExtras.push(r.error || ('Erro para ' + (espec || 'Todas')));
-                        }
-                        enviarExtra();
-                    }).catch(function() {
-                        errosExtras.push('Erro de conexao para ' + (espec || 'Todas'));
-                        enviarExtra();
-                    });
-                }
-                enviarExtra();
-            }).catch(function() { alert('Erro de conexao'); });
+            var currentMap = {};
+            for (var i = 0; i < Estado.editandoGrupo.length; i++) {
+                var esp = Estado.editandoGrupo[i].especialidade || '';
+                currentMap[esp] = Estado.editandoGrupo[i].id;
+            }
+
+            var keepItems = [], addEsps = [], removeIds = [];
+            for (var j = 0; j < newEsps.length; j++) {
+                var ne = newEsps[j];
+                if (currentMap.hasOwnProperty(ne)) { keepItems.push({ esp: ne, id: currentMap[ne] }); }
+                else { addEsps.push(ne); }
+            }
+            for (var oldEsp in currentMap) {
+                if (currentMap.hasOwnProperty(oldEsp) && newEsps.indexOf(oldEsp) === -1) removeIds.push(currentMap[oldEsp]);
+            }
+
+            syncGrupo(tipo, nome, email, setor, canal, descricao, keepItems, addEsps, removeIds);
             return;
         }
 
-        // Criacao: uma requisicao por especialidade selecionada
+        // Criacao: um POST por especialidade selecionada
         var especialidades = obterEspecialidadesSelecionadas();
         if (especialidades.length === 0) especialidades = [''];
 
@@ -406,101 +692,93 @@ function renderizarTimeline(dados) {
             var espec = pendentes.shift();
             fetchJSON(CONFIG.urlBase + '/destinatarios', {
                 method: 'POST',
-                body: JSON.stringify({
-                    tipo_evento: tipo,
-                    nome: nome,
-                    email: email,
-                    especialidade: espec,
-                    setor: setor,
-                    canal: canal,
-                    descricao: descricao
-                })
+                body: JSON.stringify({ tipo_evento: tipo, nome: nome, email: email, especialidade: espec, setor: setor, canal: canal, descricao: descricao })
             }).then(function(resp) {
                 if (resp.success) { sucessos++; }
                 else { erros.push(resp.error || ('Erro para ' + (espec || 'Todas'))); }
                 enviarProximo();
-            }).catch(function() {
-                erros.push('Erro de conexao para ' + (espec || 'Todas'));
-                enviarProximo();
-            });
+            }).catch(function() { erros.push('Erro de conexao'); enviarProximo(); });
         }
-
         enviarProximo();
     }
 
-    function toggleAtivo(id) {
-        fetchJSON(CONFIG.urlBase + '/destinatarios/' + id + '/toggle', { method: 'PUT' }).then(function(resp) {
-            if (resp.success) { carregarDestinatarios(); carregarDashboard(); }
-        });
+    // =========================================================
+    // AÇÕES DE GRUPO
+    // =========================================================
+
+    function editarGrupo(idx) {
+        var grp = Estado.gruposArr[idx];
+        if (grp) abrirModal(grp);
     }
 
-    function editar(id) {
-        for (var i = 0; i < Estado.destinatarios.length; i++) {
-            if (Estado.destinatarios[i].id === id) { abrirModal(Estado.destinatarios[i]); break; }
+    function toggleGrupo(idx) {
+        var grp = Estado.gruposArr[idx];
+        if (!grp) return;
+        var pendentes = grp.items.slice();
+        function proxToggle() {
+            if (pendentes.length === 0) { carregarDestinatarios(); carregarDashboard(); return; }
+            var it = pendentes.shift();
+            fetchJSON(CONFIG.urlBase + '/destinatarios/' + it.id + '/toggle', { method: 'PUT' }).then(proxToggle).catch(proxToggle);
         }
+        proxToggle();
     }
 
-    function excluir(id) {
-        if (!confirm('Tem certeza que deseja excluir este destinatario?')) return;
-        fetchJSON(CONFIG.urlBase + '/destinatarios/' + id, { method: 'DELETE' }).then(function(resp) {
-            if (resp.success) { carregarDestinatarios(); carregarDashboard(); }
-            else { alert(resp.error || 'Erro ao excluir'); }
-        });
+    function excluirGrupo(idx) {
+        var grp = Estado.gruposArr[idx];
+        if (!grp) return;
+        var msg = grp.items.length > 1
+            ? 'Excluir este destinatario e todas as ' + grp.items.length + ' especialidades cadastradas?'
+            : 'Tem certeza que deseja excluir este destinatario?';
+        if (!confirm(msg)) return;
+        var pendentes = grp.items.slice();
+        function proxDelete() {
+            if (pendentes.length === 0) { carregarDestinatarios(); carregarDashboard(); return; }
+            var it = pendentes.shift();
+            fetchJSON(CONFIG.urlBase + '/destinatarios/' + it.id, { method: 'DELETE' }).then(proxDelete).catch(proxDelete);
+        }
+        proxDelete();
     }
+
+    // =========================================================
+    // EVENTOS
+    // =========================================================
 
     function registrarEventos() {
-        DOM.btnNovo.addEventListener('click', function() { abrirModal(); });
         DOM.modalFechar.addEventListener('click', fecharModal);
         DOM.btnCancelar.addEventListener('click', fecharModal);
         DOM.btnSalvar.addEventListener('click', salvar);
         DOM.modalOverlay.addEventListener('click', function(e) { if (e.target === DOM.modalOverlay) fecharModal(); });
-        DOM.filtroTipo.addEventListener('change', carregarDestinatarios);
-        DOM.filtroEspecialidade.addEventListener('change', carregarDestinatarios);
-        DOM.filtroAtivo.addEventListener('change', carregarDestinatarios);
 
         if (DOM.btnVoltar) DOM.btnVoltar.addEventListener('click', function() { window.location.href = '/frontend/dashboard.html'; });
         if (DOM.btnRefresh) DOM.btnRefresh.addEventListener('click', function() {
             DOM.btnRefresh.classList.add('girando');
             carregarDashboard();
             carregarDestinatarios();
-            carregarHistorico();
+            if (Estado.abaAtiva === 'historico') carregarHistorico();
             setTimeout(function() { DOM.btnRefresh.classList.remove('girando'); }, 500);
         });
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') fecharModal();
-        });
-
-
-        // Toggle historico
-        var toggleHist = document.getElementById('toggle-historico');
-        if (toggleHist) {
-            toggleHist.addEventListener('click', function() {
-                this.classList.toggle('recolhido');
-                var content = this.closest('.secao-analise').querySelector('.secao-content');
-                if (content) content.classList.toggle('recolhido');
-            });
-        }
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') fecharModal(); });
     }
 
-    window.P26 = { editar: editar, toggle: toggleAtivo, excluir: excluir };
+    window.P26 = { editarGrupo: editarGrupo, toggleGrupo: toggleGrupo, excluirGrupo: excluirGrupo };
+
+    // =========================================================
+    // INIT
+    // =========================================================
 
     function inicializar() {
-        console.log('[P26] Inicializando...');
         capturarDOM();
         registrarEventos();
         carregarTipos();
         carregarEspecialidades();
         carregarDashboard();
         carregarDestinatarios();
-        carregarHistorico();
 
         Estado.timerAtualizacao = setInterval(function() {
             carregarDashboard();
-            carregarHistorico();
+            if (Estado.abaAtiva === 'historico') carregarHistorico();
         }, CONFIG.intervaloAtualizacao);
-
-        console.log('[P26] Inicializado com sucesso');
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);

@@ -45,6 +45,7 @@
             </div>
         </header>
 
+        <!-- KPIs -->
         <section class="dashboard-resumo" aria-label="Resumo de Notificacoes">
             <div class="resumo-grid">
                 <article class="resumo-card card-destinatarios">
@@ -78,65 +79,56 @@
             </div>
         </section>
 
-        <main class="painel-main" id="painel-main" role="main">
+        <!-- ABAS — geradas por JS após carregarTipos() -->
+        <div class="tabs-nav" id="tabs-nav"></div>
 
-            <div class="secao-analise">
-                <div class="secao-header">
-                    <div class="secao-titulo">
-                        <i class="fas fa-address-book"></i>
-                        <h2>Destinatarios</h2>
-                    </div>
-                    <div class="secao-acoes">
-                        <select id="filtro-tipo" class="filtro-select-interno" aria-label="Filtrar tipo">
-                            <option value="">Todos os tipos</option>
-                        </select>
-                        <select id="filtro-especialidade" class="filtro-select-interno" aria-label="Filtrar especialidade">
-                            <option value="">Todas especialidades</option>
-                        </select>
-                        <select id="filtro-ativo" class="filtro-select-interno" aria-label="Filtrar status">
-                            <option value="">Todos</option>
-                            <option value="true">Ativos</option>
-                            <option value="false">Inativos</option>
-                        </select>
-                        <button class="btn-acao-primario" id="btn-novo" title="Novo destinatario">
-                            <i class="fas fa-plus"></i> Novo
-                        </button>
-                    </div>
-                </div>
-                <div class="secao-content">
-                    <div class="tabela-wrapper" id="tabela-destinatarios">
-                        <div class="loading-container">
-                            <div class="loading-spinner"></div>
-                            <p>Carregando destinatarios...</p>
+        <!-- PAINEIS DAS ABAS -->
+        <div class="tab-panels" id="tab-panels">
+
+            <!-- Painéis por tipo de evento: injetados por JS via insertAdjacentHTML -->
+
+            <!-- ABA HISTÓRICO (estática) -->
+            <div class="tab-panel" id="tab-historico">
+                <div class="painel-main content-scroll">
+
+                    <section class="secao-analise">
+                        <div class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-chart-bar"></i><h2>Resumo do Dia</h2></div>
                         </div>
-                    </div>
+                        <div class="secao-content">
+                            <div class="hist-kpis" id="hist-kpis">
+                                <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="secao-analise">
+                        <div class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-chart-pie"></i><h2>Envios por Tipo de Evento</h2></div>
+                        </div>
+                        <div class="secao-content">
+                            <div id="hist-por-tipo"><p class="texto-vazio">Carregando...</p></div>
+                        </div>
+                    </section>
+
+                    <section class="secao-analise">
+                        <div class="secao-header">
+                            <div class="secao-titulo"><i class="fas fa-history"></i><h2>Timeline de Envios</h2></div>
+                            <span class="secao-contador" id="contador-historico">-</span>
+                        </div>
+                        <div class="secao-content">
+                            <div class="timeline-wrapper" id="timeline-historico">
+                                <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                            </div>
+                        </div>
+                    </section>
+
                 </div>
             </div>
 
-            <div class="secao-analise">
-<div class="secao-header secao-toggle" id="toggle-historico">
-    <div class="secao-titulo">
-        <i class="fas fa-history"></i>
-        <h2>Historico de Envios</h2>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-        <span class="secao-contador" id="contador-historico">-</span>
-        <i class="fas fa-chevron-up toggle-icon"></i>
-    </div>
-</div>
-                <div class="secao-content">
-                    <div class="timeline-wrapper" id="timeline-historico">
-                        <div class="loading-container">
-                            <div class="loading-spinner"></div>
-                            <p>Carregando historico...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        </div><!-- /tab-panels -->
 
-        </main>
-
-    </div>
+    </div><!-- /painel-container -->
 
     <!-- Modal -->
     <div class="modal-overlay" id="modal-overlay">
