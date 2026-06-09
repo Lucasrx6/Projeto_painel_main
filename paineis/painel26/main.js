@@ -494,13 +494,13 @@
             var taxa = total > 0 ? Math.round(sucesso * 100 / total) : 0;
             var html = '';
             html += '<div class="hist-kpi-card"><div class="hist-kpi-icon"><i class="fas fa-paper-plane"></i></div>';
-            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + total + '</span><span class="hist-kpi-label">Envios Hoje</span></div></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + total + '</span><span class="hist-kpi-label">Total Hoje</span></div></div>';
             html += '<div class="hist-kpi-card hist-kpi-sucesso"><div class="hist-kpi-icon"><i class="fas fa-check-circle"></i></div>';
-            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + sucesso + '</span><span class="hist-kpi-label">Com Sucesso</span></div></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + sucesso + '</span><span class="hist-kpi-label">Enviados</span></div></div>';
             html += '<div class="hist-kpi-card hist-kpi-erro"><div class="hist-kpi-icon"><i class="fas fa-times-circle"></i></div>';
-            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + erro + '</span><span class="hist-kpi-label">Com Erro</span></div></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + erro + '</span><span class="hist-kpi-label">Nao Enviados</span></div></div>';
             html += '<div class="hist-kpi-card hist-kpi-taxa"><div class="hist-kpi-icon"><i class="fas fa-percentage"></i></div>';
-            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + taxa + '%</span><span class="hist-kpi-label">Taxa Sucesso</span></div></div>';
+            html += '<div class="hist-kpi-info"><span class="hist-kpi-val">' + taxa + '%</span><span class="hist-kpi-label">Taxa de Envio</span></div></div>';
             DOM.histKpis.innerHTML = html;
         }
 
@@ -560,19 +560,29 @@
 
             // Emails destinatarios — controle visual de envio
             if (h.destinatarios_emails) {
-                var emails = Array.isArray(h.destinatarios_emails)
-                    ? h.destinatarios_emails
-                    : String(h.destinatarios_emails).split(',');
-                html += '<div class="timeline-emails">';
-                for (var j = 0; j < emails.length; j++) {
-                    var em = String(emails[j]).trim();
-                    if (em) {
-                        html += '<span class="timeline-email-badge">';
-                        html += '<i class="fas fa-at"></i> ' + escapeHtml(em);
-                        html += '</span>';
-                    }
+                var rawEmails = h.destinatarios_emails;
+                var emails = [];
+                if (Array.isArray(rawEmails)) {
+                    emails = rawEmails;
+                } else if (rawEmails !== null && typeof rawEmails === 'object') {
+                    // dados_extra como objeto — emails dentro da chave destinatarios_email
+                    var inner = rawEmails.destinatarios_email || rawEmails.destinatarios_emails || [];
+                    emails = Array.isArray(inner) ? inner : [];
+                } else if (typeof rawEmails === 'string') {
+                    emails = rawEmails.split(',');
                 }
-                html += '</div>';
+                if (emails.length > 0) {
+                    html += '<div class="timeline-emails">';
+                    for (var j = 0; j < emails.length; j++) {
+                        var em = String(emails[j]).trim();
+                        if (em && em !== 'null') {
+                            html += '<span class="timeline-email-badge">';
+                            html += '<i class="fas fa-at"></i> ' + escapeHtml(em);
+                            html += '</span>';
+                        }
+                    }
+                    html += '</div>';
+                }
             }
 
             if (!h.sucesso && h.erro_mensagem) {
