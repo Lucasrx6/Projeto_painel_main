@@ -446,14 +446,35 @@
 
     function carregarHistorico() {
         fetchJSON(CONFIG.urlBase + '/historico?limite=200').then(function(resp) {
-            if (!resp.success) return;
+            if (!resp.success) {
+                var elErr = document.getElementById('timeline-historico');
+                if (elErr) elErr.innerHTML = '<p class="texto-vazio">Erro ao carregar historico.</p>';
+                return;
+            }
             if (DOM.contadorHistorico) DOM.contadorHistorico.textContent = resp.total + ' envios';
-            renderizarHistoricoStats(resp.data);
-            renderizarTimeline(resp.data);
-        }).catch(function(err) { console.error('Erro historico:', err); });
+            try {
+                renderizarHistoricoStats(resp.data);
+            } catch(eStats) {
+                console.error('[P26] Erro stats historico:', eStats);
+            }
+            try {
+                renderizarTimeline(resp.data);
+            } catch(eTimeline) {
+                console.error('[P26] Erro timeline:', eTimeline);
+                var elT = document.getElementById('timeline-historico');
+                if (elT) elT.innerHTML = '<p class="texto-vazio">Erro: ' + escapeHtml(eTimeline.message) + '</p>';
+            }
+        }).catch(function(errFetch) {
+            console.error('[P26] Erro fetch historico:', errFetch);
+            var elF = document.getElementById('timeline-historico');
+            if (elF) elF.innerHTML = '<p class="texto-vazio">Erro de conexao ao carregar historico.</p>';
+        });
     }
 
     function renderizarHistoricoStats(dados) {
+        if (!DOM.histKpis)    DOM.histKpis    = document.getElementById('hist-kpis');
+        if (!DOM.histPorTipo) DOM.histPorTipo = document.getElementById('hist-por-tipo');
+
         var total   = dados.length;
         var sucesso = 0;
         var erro    = 0;
@@ -461,11 +482,11 @@
 
         for (var i = 0; i < dados.length; i++) {
             var h = dados[i];
-            if (h.sucesso) sucesso++; else erro++;
-            var tn = h.tipo_evento_nome || h.tipo_evento;
-            if (!porTipo[tn]) porTipo[tn] = { total: 0, sucesso: 0, cor: h.tipo_evento_cor || '#dc3545' };
+            if (h && h.sucesso) sucesso++; else if (h) erro++;
+            var tn = (h && (h.tipo_evento_nome || h.tipo_evento)) || 'Desconhecido';
+            if (!porTipo[tn]) porTipo[tn] = { total: 0, sucesso: 0, cor: (h && h.tipo_evento_cor) || '#dc3545' };
             porTipo[tn].total++;
-            if (h.sucesso) porTipo[tn].sucesso++;
+            if (h && h.sucesso) porTipo[tn].sucesso++;
         }
 
         // KPIs
@@ -512,6 +533,7 @@
     }
 
     function renderizarTimeline(dados) {
+        if (!DOM.timelineHistorico) DOM.timelineHistorico = document.getElementById('timeline-historico');
         if (!DOM.timelineHistorico) return;
         if (!dados || dados.length === 0) {
             DOM.timelineHistorico.innerHTML = '<p class="texto-vazio">Nenhum envio registrado ainda</p>';
