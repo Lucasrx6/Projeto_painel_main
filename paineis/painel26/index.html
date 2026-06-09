@@ -158,9 +158,20 @@
                     <label for="campo-email">Email *</label>
                     <input type="email" id="campo-email" class="campo-input" placeholder="email@saofranciscodf.med.br">
                 </div>
-                <div class="campo-grupo">
-                    <label for="campo-especialidade">Especialidade (filtro)</label>
-                    <select id="campo-especialidade" class="campo-input"><option value="">Todas (recebe de todas)</option></select>
+                <div class="campo-grupo" id="grupo-especialidade">
+                    <label id="label-especialidade">
+                        Especialidade
+                        <span class="label-hint" id="label-espec-hint">(selecione uma ou mais)</span>
+                    </label>
+                    <div id="campo-especialidade-lista" class="espec-lista-container">
+                        <label class="espec-check-item espec-check-todas">
+                            <input type="checkbox" class="espec-checkbox" id="espec-todas" value="">
+                            <span>Todas (recebe de todas as especialidades)</span>
+                        </label>
+                    </div>
+                    <div id="aviso-edit-espec" class="aviso-edit-espec" style="display:none;">
+                        <i class="fas fa-info-circle"></i> Editando uma especialidade por vez. Para adicionar outra, cadastre um novo destinatario.
+                    </div>
                 </div>
                 <div class="campo-grupo">
                     <label for="campo-setor">Setor (filtro)</label>

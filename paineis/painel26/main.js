@@ -41,7 +41,9 @@
         DOM.campoTipo = document.getElementById('campo-tipo');
         DOM.campoNome = document.getElementById('campo-nome');
         DOM.campoEmail = document.getElementById('campo-email');
-        DOM.campoEspecialidade = document.getElementById('campo-especialidade');
+        DOM.campoEspecialidadeLista = document.getElementById('campo-especialidade-lista');
+        DOM.labelEspecHint = document.getElementById('label-espec-hint');
+        DOM.avisoEditEspec = document.getElementById('aviso-edit-espec');
         DOM.campoSetor = document.getElementById('campo-setor');
         DOM.campoCanal = document.getElementById('campo-canal');
         DOM.campoDescricao = document.getElementById('campo-descricao');
@@ -122,14 +124,66 @@
             if (!resp.success) return;
             Estado.especialidades = resp.data;
             var html = '<option value="">Todas especialidades</option>';
-            var htmlModal = '<option value="">Todas (recebe de todas)</option>';
             for (var i = 0; i < resp.data.length; i++) {
                 html += '<option value="' + escapeHtml(resp.data[i]) + '">' + escapeHtml(resp.data[i]) + '</option>';
-                htmlModal += '<option value="' + escapeHtml(resp.data[i]) + '">' + escapeHtml(resp.data[i]) + '</option>';
             }
             DOM.filtroEspecialidade.innerHTML = html;
-            DOM.campoEspecialidade.innerHTML = htmlModal;
+            renderizarCheckboxesEspecialidade(resp.data);
         });
+    }
+
+    function renderizarCheckboxesEspecialidade(lista) {
+        var html = '<label class="espec-check-item espec-check-todas"><input type="checkbox" class="espec-checkbox" id="espec-todas" value=""><span>Todas (recebe de todas as especialidades)</span></label>';
+        for (var i = 0; i < lista.length; i++) {
+            html += '<label class="espec-check-item"><input type="checkbox" class="espec-checkbox" value="' + escapeHtml(lista[i]) + '"><span>' + escapeHtml(lista[i]) + '</span></label>';
+        }
+        DOM.campoEspecialidadeLista.innerHTML = html;
+        vincularLogicaTodas();
+    }
+
+    function vincularLogicaTodas() {
+        var todasChk = document.getElementById('espec-todas');
+        if (!todasChk) return;
+        todasChk.addEventListener('change', function() {
+            if (this.checked) {
+                var outros = DOM.campoEspecialidadeLista.querySelectorAll('.espec-checkbox:not(#espec-todas)');
+                for (var i = 0; i < outros.length; i++) outros[i].checked = false;
+            }
+        });
+        var especificos = DOM.campoEspecialidadeLista.querySelectorAll('.espec-checkbox:not(#espec-todas)');
+        for (var i = 0; i < especificos.length; i++) {
+            especificos[i].addEventListener('change', function() {
+                if (this.checked) {
+                    var todas = document.getElementById('espec-todas');
+                    if (todas) todas.checked = false;
+                }
+            });
+        }
+    }
+
+    function desmarcarTodasEspecialidades() {
+        if (!DOM.campoEspecialidadeLista) return;
+        var checkboxes = DOM.campoEspecialidadeLista.querySelectorAll('.espec-checkbox');
+        for (var i = 0; i < checkboxes.length; i++) checkboxes[i].checked = false;
+    }
+
+    function marcarEspecialidade(valor) {
+        desmarcarTodasEspecialidades();
+        if (!DOM.campoEspecialidadeLista) return;
+        var checkboxes = DOM.campoEspecialidadeLista.querySelectorAll('.espec-checkbox');
+        for (var i = 0; i < checkboxes.length; i++) {
+            if (checkboxes[i].value === (valor || '')) { checkboxes[i].checked = true; break; }
+        }
+    }
+
+    function obterEspecialidadesSelecionadas() {
+        var result = [];
+        if (!DOM.campoEspecialidadeLista) return result;
+        var checkboxes = DOM.campoEspecialidadeLista.querySelectorAll('.espec-checkbox');
+        for (var i = 0; i < checkboxes.length; i++) {
+            if (checkboxes[i].checked) result.push(checkboxes[i].value);
+        }
+        return result;
     }
 
     function carregarDestinatarios() {
@@ -247,22 +301,29 @@ function renderizarTimeline(dados) {
         DOM.campoTipo.value = '';
         DOM.campoNome.value = '';
         DOM.campoEmail.value = '';
-        DOM.campoEspecialidade.value = '';
         DOM.campoSetor.value = '';
         DOM.campoCanal.value = 'email';
         DOM.campoDescricao.value = '';
+        desmarcarTodasEspecialidades();
         DOM.modalTitulo.innerHTML = '<i class="fas fa-user-plus"></i> Novo Destinatario';
+
         if (dados) {
             Estado.editandoId = dados.id;
             DOM.modalTitulo.innerHTML = '<i class="fas fa-user-edit"></i> Editar Destinatario';
             DOM.campoTipo.value = dados.tipo_evento || '';
             DOM.campoNome.value = dados.nome || '';
             DOM.campoEmail.value = dados.email || '';
-            DOM.campoEspecialidade.value = dados.especialidade || '';
             DOM.campoSetor.value = dados.setor || '';
             DOM.campoCanal.value = dados.canal || 'email';
             DOM.campoDescricao.value = dados.descricao || '';
+            marcarEspecialidade(dados.especialidade || '');
+            if (DOM.labelEspecHint) DOM.labelEspecHint.textContent = '(especialidade atual)';
+            if (DOM.avisoEditEspec) DOM.avisoEditEspec.style.display = '';
+        } else {
+            if (DOM.labelEspecHint) DOM.labelEspecHint.textContent = '(selecione uma ou mais)';
+            if (DOM.avisoEditEspec) DOM.avisoEditEspec.style.display = 'none';
         }
+
         DOM.modalOverlay.classList.add('ativo');
     }
 
@@ -272,27 +333,76 @@ function renderizarTimeline(dados) {
     }
 
     function salvar() {
-        var dados = {
-            tipo_evento: DOM.campoTipo.value,
-            nome: DOM.campoNome.value,
-            email: DOM.campoEmail.value,
-            especialidade: DOM.campoEspecialidade.value,
-            setor: DOM.campoSetor.value,
-            canal: DOM.campoCanal.value,
-            descricao: DOM.campoDescricao.value
-        };
-        if (!dados.tipo_evento || !dados.nome || !dados.email) {
+        var tipo = DOM.campoTipo.value;
+        var nome = DOM.campoNome.value;
+        var email = DOM.campoEmail.value;
+        var setor = DOM.campoSetor.value;
+        var canal = DOM.campoCanal.value;
+        var descricao = DOM.campoDescricao.value;
+
+        if (!tipo || !nome || !email) {
             alert('Preencha os campos obrigatorios: Tipo, Nome e Email');
             return;
         }
-        var url = CONFIG.urlBase + '/destinatarios';
-        var metodo = 'POST';
-        if (Estado.editandoId) { url += '/' + Estado.editandoId; metodo = 'PUT'; }
 
-        fetchJSON(url, { method: metodo, body: JSON.stringify(dados) }).then(function(resp) {
-            if (resp.success) { fecharModal(); carregarDestinatarios(); carregarDashboard(); }
-            else { alert(resp.error || 'Erro ao salvar'); }
-        }).catch(function() { alert('Erro de conexao'); });
+        if (Estado.editandoId) {
+            var esps = obterEspecialidadesSelecionadas();
+            var dadosEdit = {
+                tipo_evento: tipo,
+                nome: nome,
+                email: email,
+                especialidade: esps.length > 0 ? esps[0] : '',
+                setor: setor,
+                canal: canal,
+                descricao: descricao
+            };
+            fetchJSON(CONFIG.urlBase + '/destinatarios/' + Estado.editandoId, {
+                method: 'PUT',
+                body: JSON.stringify(dadosEdit)
+            }).then(function(resp) {
+                if (resp.success) { fecharModal(); carregarDestinatarios(); carregarDashboard(); }
+                else { alert(resp.error || 'Erro ao salvar'); }
+            }).catch(function() { alert('Erro de conexao'); });
+            return;
+        }
+
+        // Criacao: uma requisicao por especialidade selecionada
+        var especialidades = obterEspecialidadesSelecionadas();
+        if (especialidades.length === 0) especialidades = [''];
+
+        var pendentes = especialidades.slice();
+        var erros = [];
+        var sucessos = 0;
+
+        function enviarProximo() {
+            if (pendentes.length === 0) {
+                if (erros.length > 0) alert('Alguns registros nao foram salvos:\n' + erros.join('\n'));
+                if (sucessos > 0) { fecharModal(); carregarDestinatarios(); carregarDashboard(); }
+                return;
+            }
+            var espec = pendentes.shift();
+            fetchJSON(CONFIG.urlBase + '/destinatarios', {
+                method: 'POST',
+                body: JSON.stringify({
+                    tipo_evento: tipo,
+                    nome: nome,
+                    email: email,
+                    especialidade: espec,
+                    setor: setor,
+                    canal: canal,
+                    descricao: descricao
+                })
+            }).then(function(resp) {
+                if (resp.success) { sucessos++; }
+                else { erros.push(resp.error || ('Erro para ' + (espec || 'Todas'))); }
+                enviarProximo();
+            }).catch(function() {
+                erros.push('Erro de conexao para ' + (espec || 'Todas'));
+                enviarProximo();
+            });
+        }
+
+        enviarProximo();
     }
 
     function toggleAtivo(id) {

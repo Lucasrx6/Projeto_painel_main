@@ -99,11 +99,16 @@ def buscar_destinatarios_email(conn, especialidade=None):
     Busca destinatarios EMAIL da tabela notificacoes_destinatarios.
     Filtra por especialidade quando informada.
     Destinatarios com especialidade NULL recebem de todas.
+
+    ORDEM de preferencia no DISTINCT ON (email):
+      1. Linha com especialidade exata (mais especifica)
+      2. Linha com especialidade NULL (universal)
+    Isso evita duplicatas quando o mesmo email tem varios registros.
     """
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     cursor.execute("""
-        SELECT DISTINCT ON (email) nome, email
+        SELECT DISTINCT ON (email) nome, email, especialidade
         FROM notificacoes_destinatarios
         WHERE tipo_evento = 'parecer_pendente'
           AND canal = 'email'
@@ -112,13 +117,24 @@ def buscar_destinatarios_email(conn, especialidade=None):
               especialidade IS NULL
               OR especialidade = %s
           )
-        ORDER BY email
-    """, (especialidade,))
+        ORDER BY email,
+                 (especialidade = %s) DESC NULLS LAST,
+                 (especialidade IS NULL) ASC
+    """, (especialidade, especialidade))
 
     destinatarios = cursor.fetchall()
     cursor.close()
 
-    return [dict(d) for d in destinatarios]
+    resultado = [dict(d) for d in destinatarios]
+
+    logger.info(
+        '[pareceres] Especialidade do parecer: "%s" -> %s destinatario(s): %s',
+        especialidade or '(sem especialidade)',
+        len(resultado),
+        [(d['email'], 'especifico' if d.get('especialidade') else 'universal') for d in resultado]
+    )
+
+    return resultado
 
 
 # =========================================================
