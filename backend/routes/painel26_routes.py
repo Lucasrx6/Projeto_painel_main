@@ -193,14 +193,21 @@ def api_painel26_destinatarios_criar():
     try:
         with get_db_cursor() as cursor:
 
-            # Verifica duplicata
+            # Verifica duplicata: mesma tripla (tipo_evento, email, especialidade)
+            esp_nova = dados.get('especialidade', '').strip() or None
             cursor.execute("""
                 SELECT id FROM notificacoes_destinatarios
-                WHERE tipo_evento = %s AND email = %s
-            """, (dados['tipo_evento'], dados['email']))
+                WHERE tipo_evento = %s
+                  AND email = %s
+                  AND COALESCE(especialidade, '') = COALESCE(%s, '')
+            """, (dados['tipo_evento'], dados['email'], esp_nova))
 
             if cursor.fetchone():
-                return jsonify({'success': False, 'error': 'Email ja cadastrado para este tipo de evento'}), 409
+                label = esp_nova if esp_nova else 'Todas as especialidades'
+                return jsonify({
+                    'success': False,
+                    'error': 'Email ja cadastrado para este tipo de evento e especialidade: {}'.format(label)
+                }), 409
 
             cursor.execute("""
                         INSERT INTO notificacoes_destinatarios
