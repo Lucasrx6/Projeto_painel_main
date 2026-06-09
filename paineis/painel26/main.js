@@ -347,21 +347,44 @@ function renderizarTimeline(dados) {
 
         if (Estado.editandoId) {
             var esps = obterEspecialidadesSelecionadas();
+            if (esps.length === 0) esps = [''];
+            var espsExtras = esps.slice(1);
+
             var dadosEdit = {
-                tipo_evento: tipo,
-                nome: nome,
-                email: email,
-                especialidade: esps.length > 0 ? esps[0] : '',
-                setor: setor,
-                canal: canal,
-                descricao: descricao
+                tipo_evento: tipo, nome: nome, email: email,
+                especialidade: esps[0], setor: setor, canal: canal, descricao: descricao
             };
             fetchJSON(CONFIG.urlBase + '/destinatarios/' + Estado.editandoId, {
-                method: 'PUT',
-                body: JSON.stringify(dadosEdit)
+                method: 'PUT', body: JSON.stringify(dadosEdit)
             }).then(function(resp) {
-                if (resp.success) { fecharModal(); carregarDestinatarios(); carregarDashboard(); }
-                else { alert(resp.error || 'Erro ao salvar'); }
+                if (!resp.success) { alert(resp.error || 'Erro ao salvar'); return; }
+                if (espsExtras.length === 0) {
+                    fecharModal(); carregarDestinatarios(); carregarDashboard(); return;
+                }
+                // Especialidades adicionais: criar novas linhas via POST
+                var pendExtras = espsExtras.slice();
+                var errosExtras = [];
+                function enviarExtra() {
+                    if (pendExtras.length === 0) {
+                        if (errosExtras.length > 0) alert('Alguns registros adicionais nao foram salvos:\n' + errosExtras.join('\n'));
+                        fecharModal(); carregarDestinatarios(); carregarDashboard(); return;
+                    }
+                    var espec = pendExtras.shift();
+                    fetchJSON(CONFIG.urlBase + '/destinatarios', {
+                        method: 'POST',
+                        body: JSON.stringify({ tipo_evento: tipo, nome: nome, email: email, especialidade: espec, setor: setor, canal: canal, descricao: descricao })
+                    }).then(function(r) {
+                        // ignora 409 (ja existe) — nao e erro
+                        if (!r.success && r.error && r.error.indexOf('ja cadastrado') === -1) {
+                            errosExtras.push(r.error || ('Erro para ' + (espec || 'Todas')));
+                        }
+                        enviarExtra();
+                    }).catch(function() {
+                        errosExtras.push('Erro de conexao para ' + (espec || 'Todas'));
+                        enviarExtra();
+                    });
+                }
+                enviarExtra();
             }).catch(function() { alert('Erro de conexao'); });
             return;
         }
