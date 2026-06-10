@@ -3,6 +3,7 @@
 // Dashboard Principal - JavaScript
 // ========================================
 
+var PAINEL_VERSAO = '1.0.41';
 var BASE_URL = window.location.origin;
 
 var CONFIG = {

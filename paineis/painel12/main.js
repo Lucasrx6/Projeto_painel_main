@@ -2,6 +2,7 @@
 // PAINEL 12 - OCUPAÇÃO E PRODUÇÃO HAC
 // ========================================
 
+var PAINEL_VERSAO = '1.0.73';
 var BASE_URL = window.location.origin;
 
 var CONFIG = {

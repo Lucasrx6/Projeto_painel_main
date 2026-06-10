@@ -50,10 +50,10 @@
                 </div>
                 <div id="lista-pacientes" class="lista-pacientes"></div>
 
-                <!-- Link para entrada manual -->
-                <div id="link-manual-wrapper" class="link-manual-wrapper" style="display:none;">
+                <!-- Link para entrada manual (sempre visível) -->
+                <div id="link-manual-wrapper" class="link-manual-wrapper">
                     <button type="button" id="btn-abrir-manual" class="btn-manual-link">
-                        <i class="fas fa-user-plus"></i> Paciente não encontrado? Informar manualmente
+                        <i class="fas fa-user-plus"></i> Informar paciente manualmente
                     </button>
                 </div>
 
@@ -68,8 +68,8 @@
                     </div>
                     <div class="form-row-m">
                         <div class="form-group-m">
-                            <label>Nº Atendimento</label>
-                            <input type="text" id="manual-atendimento" class="form-input-m" placeholder="Opcional">
+                            <label>Nº Atendimento <span class="obrig">*</span></label>
+                            <input type="text" id="manual-atendimento" class="form-input-m" placeholder="Nº do atendimento">
                         </div>
                         <div class="form-group-m">
                             <label>Leito</label>
@@ -78,7 +78,9 @@
                     </div>
                     <div class="form-group-m">
                         <label>Setor <span class="obrig">*</span></label>
-                        <input type="text" id="manual-setor" class="form-input-m" placeholder="Nome do setor ou unidade">
+                        <select id="manual-setor" class="form-input-m form-select-m">
+                            <option value="">Carregando setores...</option>
+                        </select>
                     </div>
                     <div id="manual-erro" class="erro-form" style="display:none;"></div>
                     <div class="form-manual-acoes">
@@ -236,7 +238,7 @@
     </div>
 
     <footer class="sistema-footer">
-        <span id="sistema-versao-footer">Central de Informações V 1.1.4</span>
+        <span id="sistema-versao-footer">Central de Informações V 1.1.5</span>
     </footer>
 </div><!-- /painel-container -->
 

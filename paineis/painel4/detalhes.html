@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalhes por Setor - Ocupacao Hospitalar</title>
+    <title>Detalhes - Ocupação Hospitalar</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/paineis/painel4/detalhes.css">
     <link rel="icon" href="/static/img/favicon.png">
@@ -17,111 +17,101 @@
         <header class="painel-header">
             <div class="header-content">
                 <div class="header-left">
-                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" class="header-logo" onerror="this.style.display='none'">
+                    <img src="/static/img/logo.png" alt="HAC" class="header-logo" onerror="this.style.display='none'">
                     <button id="btn-voltar-dashboard" class="btn-header" title="Voltar ao dashboard">
                         <i class="fas fa-arrow-left"></i>
                     </button>
-                    <div class="header-title">
-                        <h1><i class="fas fa-table-list"></i> Detalhes por Setor</h1>
-                    </div>
+                    <h1><i class="fas fa-table-list"></i> Detalhes por Setor</h1>
                 </div>
                 <div class="header-right">
-                    <div class="header-clock">
-                        <i class="fas fa-clock"></i>
-                        <span id="ultima-atualizacao">--:--</span>
-                    </div>
-                    <div class="header-actions">
-                        <button id="btn-auto-scroll" class="btn-header" title="Auto Scroll">
-                            <i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>
-                        </button>
-                        <button id="btn-refresh" class="btn-header" title="Atualizar">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                    </div>
+                    <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    <button id="btn-auto-scroll" class="btn-header" title="Auto Scroll">
+                        <i class="fas fa-play"></i> <span class="btn-text">Auto Scroll</span>
+                    </button>
+                    <button id="btn-refresh" class="btn-header" title="Atualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
                 </div>
             </div>
+        </header>
 
-            <!-- Filters Bar -->
-            <div class="filtros-bar">
+        <!-- Barra de Filtros -->
+        <div class="filtros-bar">
+            <div class="filtros-content">
                 <div class="filtro-group">
                     <label for="filtro-setor"><i class="fas fa-hospital"></i> Setor</label>
                     <select id="filtro-setor" class="filtro-control">
                         <option value="">Todos os Setores</option>
                     </select>
                 </div>
-
                 <div class="filtro-group">
                     <label for="filtro-status"><i class="fas fa-circle-dot"></i> Status</label>
                     <select id="filtro-status" class="filtro-control">
                         <option value="">Todos</option>
                         <option value="P">Ocupado</option>
                         <option value="L">Livre</option>
-                        <option value="H">Higienizacao</option>
+                        <option value="H">Higienização</option>
                         <option value="I">Interditado</option>
                     </select>
                 </div>
-
                 <div class="filtro-group filtro-busca-group">
                     <label for="filtro-busca"><i class="fas fa-search"></i> Buscar</label>
-                    <input type="text" id="filtro-busca" class="filtro-control" placeholder="Paciente, leito, medico...">
+                    <input type="text" id="filtro-busca" class="filtro-control" placeholder="Paciente, leito, médico...">
                 </div>
-
                 <button id="btn-limpar-filtros" class="btn-limpar" title="Limpar filtros">
                     <i class="fas fa-xmark"></i>
                 </button>
-
                 <div class="filtro-stats">
                     <span class="stat-chip">
                         <strong id="total-filtrados">0</strong> / <span id="total-registros">0</span>
                     </span>
                 </div>
             </div>
-        </header>
+        </div>
 
-        <!-- Tab Navigation -->
+        <!-- Abas -->
         <nav class="tabs-nav" role="tablist">
-            <button class="tab-btn active" data-tab="leitos-ocupados" role="tab" aria-selected="true">
+            <button class="tab-btn active" data-tab="leitos-ocupados" role="tab">
                 <i class="fas fa-user-injured"></i> Ocupados
                 <span class="tab-badge tab-badge-danger" id="badge-ocupados">0</span>
             </button>
-            <button class="tab-btn" data-tab="leitos-disponiveis" role="tab" aria-selected="false">
-                <i class="fas fa-check-circle"></i> Disponiveis
+            <button class="tab-btn" data-tab="leitos-disponiveis" role="tab">
+                <i class="fas fa-check-circle"></i> Disponíveis
                 <span class="tab-badge tab-badge-success" id="badge-disponiveis">0</span>
             </button>
-            <button class="tab-btn" data-tab="todos-leitos" role="tab" aria-selected="false">
+            <button class="tab-btn" data-tab="todos-leitos" role="tab">
                 <i class="fas fa-th-list"></i> Todos
                 <span class="tab-badge tab-badge-neutral" id="badge-todos">0</span>
             </button>
         </nav>
 
-        <!-- Tab Content -->
+        <!-- Conteúdo das Abas -->
         <div class="tabs-content">
 
-            <!-- Tab: Occupied Beds -->
+            <!-- Aba: Pacientes Ocupando Leitos -->
             <div class="tab-panel active" id="tab-leitos-ocupados" role="tabpanel">
                 <div class="table-wrap" id="scroll-container-ocupados">
                     <table>
                         <thead>
                             <tr>
-                                <th class="col-sortable" data-campo="leito">Leito <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-icon"></th>
                                 <th class="col-sortable" data-campo="paciente">Paciente <i class="fas fa-sort sort-icon"></i></th>
-                                <th class="col-sortable" data-campo="idade">Idade <i class="fas fa-sort sort-icon"></i></th>
-                                <th>Sexo</th>
-                                <th class="col-sortable" data-campo="convenio">Convenio <i class="fas fa-sort sort-icon"></i></th>
-                                <th class="col-sortable" data-campo="medico">Medico <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="leito">Leito <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="clinica">Clínica <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="medico">Médico <i class="fas fa-sort sort-icon"></i></th>
                                 <th class="col-sortable" data-campo="dias_internado">Dias <i class="fas fa-sort sort-icon"></i></th>
-                                <th>Clinica</th>
-                                <th>Acomodacao</th>
+                                <th class="col-sortable" data-campo="convenio">Convênio <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="classificacao">Classif. <i class="fas fa-sort sort-icon"></i></th>
                             </tr>
                         </thead>
                         <tbody id="tbody-ocupados">
-                            <tr><td colspan="9" class="td-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
+                            <tr><td colspan="8" class="td-loading"><div class="loading-spinner"></div> Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Tab: Available Beds -->
+            <!-- Aba: Leitos Disponíveis -->
             <div class="tab-panel" id="tab-leitos-disponiveis" role="tabpanel">
                 <div class="table-wrap" id="scroll-container-disponiveis">
                     <table>
@@ -129,7 +119,7 @@
                             <tr>
                                 <th class="col-sortable" data-campo="leito">Leito <i class="fas fa-sort sort-icon"></i></th>
                                 <th class="col-sortable" data-campo="setor">Setor <i class="fas fa-sort sort-icon"></i></th>
-                                <th class="col-sortable" data-campo="tipo_acomodacao">Acomodacao <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="col-sortable" data-campo="tipo_acomodacao">Acomodação <i class="fas fa-sort sort-icon"></i></th>
                                 <th class="col-sortable" data-campo="status">Status <i class="fas fa-sort sort-icon"></i></th>
                             </tr>
                         </thead>
@@ -140,7 +130,7 @@
                 </div>
             </div>
 
-            <!-- Tab: All Beds -->
+            <!-- Aba: Todos os Leitos -->
             <div class="tab-panel" id="tab-todos-leitos" role="tabpanel">
                 <div class="table-wrap" id="scroll-container-todos">
                     <table>
@@ -151,10 +141,10 @@
                                 <th class="col-sortable" data-campo="status_leito">Status <i class="fas fa-sort sort-icon"></i></th>
                                 <th class="col-sortable" data-campo="paciente">Paciente <i class="fas fa-sort sort-icon"></i></th>
                                 <th>Idade</th>
-                                <th>Convenio</th>
-                                <th>Medico</th>
+                                <th>Convênio</th>
+                                <th>Médico</th>
                                 <th>Dias</th>
-                                <th>Acomodacao</th>
+                                <th>Acomodação</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-todos">
@@ -168,5 +158,7 @@
     </div>
 
     <script src="/paineis/painel4/detalhes.js"></script>
+    <script src="/static/js/versao.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
 </body>
 </html>

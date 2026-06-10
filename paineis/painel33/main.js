@@ -1,4 +1,5 @@
 /* Painel 33 - Autorizacoes de Convenio | ES5 IIFE */
+var PAINEL_VERSAO = '1.0.29';
 (function () {
     'use strict';
 

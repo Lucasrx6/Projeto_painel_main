@@ -15,6 +15,7 @@
  * - Persistencia via localStorage
  */
 
+var PAINEL_VERSAO = '1.0.25';
 (function() {
     'use strict';
 

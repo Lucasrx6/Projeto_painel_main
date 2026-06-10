@@ -2,6 +2,7 @@
 // 📋 PAINEL 5 - CIRURGIAS COM AUTO-SCROLL
 // ========================================
 
+var PAINEL_VERSAO = '1.0.15';
 const BASE_URL = window.location.origin;
 
 const CONFIG = {

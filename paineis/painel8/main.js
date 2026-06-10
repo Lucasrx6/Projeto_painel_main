@@ -3,6 +3,7 @@
 // Versao com Data Internacao + Alerta Sem Prescricao > 1h
 // ========================================
 
+var PAINEL_VERSAO = '1.0.62';
 var BASE_URL = window.location.origin;
 
 var CONFIG = {

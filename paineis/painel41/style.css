@@ -184,7 +184,17 @@ body {
 .pac-item:hover       { background: var(--cor-primaria-light); }
 .pac-item-nome        { font-weight: 600; font-size: 14px; }
 .pac-item-info        { font-size: 12px; color: #666; margin-top: 3px; display: flex; gap: 12px; }
-.pac-nenhum           { padding: 10px; color: #aaa; text-align: center; font-size: 13px; }
+.pac-nenhum {
+    padding: 16px 10px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.pac-nenhum-icon { font-size: 22px; color: #ced4da; margin-bottom: 2px; }
+.pac-nenhum span { color: #888; font-size: 13px; }
+.pac-nenhum-dica { color: var(--cor-primaria) !important; font-size: 12px !important; font-weight: 600; }
 
 /* =========================================================
    CARD PACIENTE SELECIONADO
@@ -572,24 +582,30 @@ body {
    ENTRADA MANUAL DE PACIENTE
    ========================================================= */
 .link-manual-wrapper {
-    padding: 6px 0 2px;
+    padding: 10px 0 2px;
     text-align: center;
+    border-top: 1px dashed var(--borda);
+    margin-top: 6px;
 }
 
 .btn-manual-link {
     background: none;
-    border: none;
+    border: 1.5px solid var(--cor-primaria);
     color: var(--cor-primaria);
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 600;
     cursor: pointer;
-    padding: 6px 10px;
-    border-radius: 6px;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    transition: background .15s;
+    padding: 7px 14px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .15s, color .15s;
 }
-.btn-manual-link:hover { background: var(--cor-primaria-light); }
+.btn-manual-link:hover {
+    background: var(--cor-primaria);
+    color: #fff;
+}
 
 .form-manual {
     background: #f8f9fa;
@@ -635,6 +651,12 @@ body {
     background: #fff;
 }
 .form-input-m:focus { border-color: var(--cor-primaria); }
+
+.form-select-m {
+    cursor: pointer;
+    -webkit-appearance: auto;
+    appearance: auto;
+}
 
 .form-row-m {
     display: flex;

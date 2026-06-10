@@ -6,6 +6,7 @@
  * localStorage, fetchComRetry, status indicator, debounce.
  */
 
+var PAINEL_VERSAO = '1.0.77';
 (function() {
     'use strict';
 

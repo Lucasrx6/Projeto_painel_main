@@ -8,3 +8,5 @@ CLAUDE.md
 .venv/__pycache__/
 *.pyc
 *.pyo
+.mockup_data.sql
+.database_setup.sql

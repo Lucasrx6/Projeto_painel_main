@@ -11,6 +11,7 @@
 //   - Desempenho por medico
 // =============================================================================
 
+var PAINEL_VERSAO = '1.0.54';
 var BASE_URL = window.location.origin;
 
 var CONFIG = {

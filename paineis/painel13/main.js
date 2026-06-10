@@ -13,6 +13,7 @@
  * - Blocos visuais alternados para separacao clara entre pacientes
  */
 
+var PAINEL_VERSAO = '1.0.09';
 (function() {
     'use strict';
 

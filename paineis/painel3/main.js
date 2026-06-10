@@ -10,6 +10,7 @@
  * - Auto-scroll com watchdog robusto
  */
 
+var PAINEL_VERSAO = '1.0.07';
 (function() {
     'use strict';
 

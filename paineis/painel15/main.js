@@ -4,6 +4,7 @@
 // Mobile-First - Selects de Setor/Local/Problema
 // ========================================
 
+var PAINEL_VERSAO = '1.0.31';
 (function () {
     'use strict';
 

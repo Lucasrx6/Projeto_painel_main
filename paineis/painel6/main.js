@@ -3,6 +3,7 @@
 // Versão Corrigida com Debug
 // ========================================
 
+var PAINEL_VERSAO = '1.0.89';
 (function () {
   console.log('🚀 Painel 6 inicializando...');
 

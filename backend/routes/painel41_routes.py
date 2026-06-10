@@ -90,6 +90,29 @@ def api_p41_restricoes():
 
 
 # =========================================================
+# SETORES DO HOSPITAL (distinct da tabela padioleiro)
+# =========================================================
+
+@painel41_bp.route('/api/paineis/painel41/setores', methods=['GET'])
+@login_required
+@cache_route(ttl=180, key_prefix='p41:setores')
+def api_p41_setores():
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT DISTINCT setor AS nome
+                FROM padioleiro
+                WHERE setor IS NOT NULL AND TRIM(setor) != ''
+                ORDER BY setor
+            """)
+            setores = [dict(r) for r in cursor.fetchall()]
+        return jsonify({'success': True, 'setores': setores})
+    except Exception as e:
+        current_app.logger.error('Erro setores p41: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar setores'}), 500
+
+
+# =========================================================
 # BUSCA DE PACIENTES (tabela padioleiro — mesma fonte do P34)
 # =========================================================
 

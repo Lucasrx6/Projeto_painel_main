@@ -7,6 +7,7 @@
      - Detalhe: analitico completo de um dia
    ============================================================ */
 
+var PAINEL_VERSAO = '1.0.47';
 (function () {
     'use strict';
 

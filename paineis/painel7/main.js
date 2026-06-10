@@ -3,6 +3,7 @@
 // Versão Corrigida com Debug
 // ========================================
 
+var PAINEL_VERSAO = '1.0.33';
 (function () {
   console.log('🚀 Painel 7 inicializando...');
 

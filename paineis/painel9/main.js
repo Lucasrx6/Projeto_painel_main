@@ -2,6 +2,7 @@
 // 🧪 PAINEL 9 - LAB PENDENTES
 // ========================================
 
+var PAINEL_VERSAO = '1.0.18';
 const BASE_URL = window.location.origin;
 
 const CONFIG = {

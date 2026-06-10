@@ -3,6 +3,7 @@
 // Hospital Anchieta Ceilandia
 // =============================================================================
 
+var PAINEL_VERSAO = '1.0.58';
 var BASE_URL = window.location.origin;
 
 var CONFIG = {

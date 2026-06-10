@@ -4,6 +4,7 @@
 // ES5 puro — sem const/let, arrow functions ou template literals
 // =============================================================================
 
+var PAINEL_VERSAO = '1.0.21';
 (function () {
     'use strict';
 

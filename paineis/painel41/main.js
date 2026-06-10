@@ -1,3 +1,4 @@
+var PAINEL_VERSAO = '1.1.39';
 (function () {
     'use strict';
 
@@ -13,6 +14,7 @@
         tipos: [],
         refeicoes: [],
         restricoes: [],
+        setores: [],
         minhasSolicitacoes: [],
         urgente: false,
         enviando: false,
@@ -181,6 +183,16 @@
                 }
             })
             .catch(function (e) { console.error('restricoes', e); });
+
+        fetch(CONFIG.apiBase + '/setores', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    Estado.setores = data.setores;
+                    renderSelectSetores();
+                }
+            })
+            .catch(function (e) { console.error('setores', e); });
     }
 
     function renderSelectTipos() {
@@ -200,6 +212,15 @@
             html += '<option value="' + r.id + '">' + escHtml(r.nome) + escHtml(horario) + '</option>';
         }
         DOM.selRefeicao.innerHTML = html;
+    }
+
+    function renderSelectSetores() {
+        var html = '<option value="">Selecione o setor...</option>';
+        for (var i = 0; i < Estado.setores.length; i++) {
+            var nome = Estado.setores[i].nome;
+            html += '<option value="' + escHtml(nome) + '">' + escHtml(nome) + '</option>';
+        }
+        DOM.manualSetor.innerHTML = html;
     }
 
     function renderRestricoes() {
@@ -251,11 +272,14 @@
 
     function renderListaPacientes(lista) {
         if (!lista.length) {
-            DOM.listaPacientes.innerHTML = '<div class="pac-nenhum">Nenhum paciente encontrado.</div>';
-            DOM.linkManualWrapper.style.display = 'block';
+            DOM.listaPacientes.innerHTML =
+                '<div class="pac-nenhum">' +
+                    '<i class="fas fa-circle-xmark pac-nenhum-icon"></i>' +
+                    '<span>Nenhum paciente encontrado para esta busca.</span>' +
+                    '<span class="pac-nenhum-dica">Use o botão abaixo para informar manualmente.</span>' +
+                '</div>';
             return;
         }
-        DOM.linkManualWrapper.style.display = 'block';
         var html = '';
         for (var i = 0; i < lista.length; i++) {
             var p = lista[i];
@@ -280,29 +304,36 @@
     }
 
     function abrirFormManual() {
-        DOM.formManual.style.display     = 'block';
+        DOM.formManual.style.display        = 'block';
         DOM.linkManualWrapper.style.display = 'none';
-        DOM.listaPacientes.innerHTML     = '';
-        DOM.manualNome.value   = '';
-        DOM.manualAtend.value  = '';
-        DOM.manualLeito.value  = '';
-        DOM.manualSetor.value  = '';
+        DOM.listaPacientes.innerHTML        = '';
+        DOM.manualNome.value        = '';
+        DOM.manualAtend.value       = '';
+        DOM.manualLeito.value       = '';
+        DOM.manualSetor.selectedIndex = 0;
         DOM.manualErro.style.display = 'none';
         DOM.manualNome.focus();
     }
 
     function fecharFormManual() {
         DOM.formManual.style.display        = 'none';
-        DOM.linkManualWrapper.style.display = 'none';
+        DOM.linkManualWrapper.style.display = 'block';
     }
 
     function confirmarManual() {
         var nome  = DOM.manualNome.value.trim();
+        var atend = DOM.manualAtend.value.trim();
         var setor = DOM.manualSetor.value.trim();
         if (!nome) {
             DOM.manualErro.textContent = 'Nome do paciente é obrigatório.';
             DOM.manualErro.style.display = 'block';
             DOM.manualNome.focus();
+            return;
+        }
+        if (!atend) {
+            DOM.manualErro.textContent = 'Nº de atendimento é obrigatório.';
+            DOM.manualErro.style.display = 'block';
+            DOM.manualAtend.focus();
             return;
         }
         if (!setor) {
@@ -314,7 +345,7 @@
         DOM.formManual.style.display = 'none';
         selecionarPaciente({
             nm_paciente:    nome,
-            nr_atendimento: DOM.manualAtend.value.trim() || 'MANUAL',
+            nr_atendimento: atend,
             leito:          DOM.manualLeito.value.trim() || '--',
             setor_nome:     setor,
             cd_unidade:     null,
@@ -357,7 +388,7 @@
         DOM.formSolicitar.style.display  = 'none';
         DOM.badgeManual.style.display    = 'none';
         DOM.cardInfoExtra.style.display  = '';
-        DOM.linkManualWrapper.style.display = 'none';
+        DOM.linkManualWrapper.style.display = 'block';
         DOM.formManual.style.display     = 'none';
         DOM.inputBusca.value = '';
         DOM.listaPacientes.innerHTML = '';

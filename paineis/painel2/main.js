@@ -1,3 +1,4 @@
+var PAINEL_VERSAO = '1.0.23';
 const COLUNAS_CONFIG = [
     { campo: 'nr_atendimento', titulo: 'Atend', tipo: 'texto', ordenavel: true },
     { campo: 'nm_paciente', titulo: 'Paciente', tipo: 'texto', ordenavel: true },

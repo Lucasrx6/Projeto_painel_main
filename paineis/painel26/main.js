@@ -1,3 +1,4 @@
+var PAINEL_VERSAO = '1.0.32';
 (function() {
     'use strict';
 

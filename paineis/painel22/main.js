@@ -7,6 +7,7 @@
  * Paciente some 1h apos ultimo exame liberado
  */
 
+var PAINEL_VERSAO = '1.0.51';
 (function() {
     'use strict';
 
