@@ -546,7 +546,7 @@ body {
     }
 
     .tempo-valor {
-        font-size: 2rem;
+        font-size: 10rem;
     }
 
     .tempo-sufixo {
@@ -564,55 +564,94 @@ body {
     }
 }
 
-/* TV (>= 1600px) */
+/* ── TV 32" / 1600px ─────────────────────────────────────── */
 @media (min-width: 1600px) {
-    .header-title h1 {
-        font-size: 1.3rem;
-    }
+    .header-title h1        { font-size: 1.4rem; }
+    .header-subtitle        { font-size: 0.82rem; }
+    .ultima-atualizacao     { font-size: 0.85rem; }
 
-    .painel-main {
-        padding: 24px 32px;
-    }
+    .painel-main            { padding: 24px 32px; }
+    .clinicas-grid          { gap: 24px; }
 
-    .clinicas-grid {
-        gap: 24px;
-    }
+    .clinica-card-header    { padding: 18px 26px; }
+    .clinica-card-body      { padding: 28px; }
+    .clinica-card-footer    { padding: 14px 26px; }
 
-    .clinica-nome {
-        font-size: 1.35rem;
-    }
+    .clinica-nome           { font-size: 1.45rem; }
+    .clinica-medicos        { font-size: 0.88rem; }
 
-    .tempo-valor {
-        font-size: 4rem;
-    }
+    .tempo-valor            { font-size: 6.5rem; }
+    .tempo-sufixo           { font-size: 2.1rem; }
+    .tempo-unidade          { font-size: 0.9rem; }
+    .tempo-tendencia        { font-size: 0.82rem; padding: 4px 14px; }
 
-    .tempo-sufixo {
-        font-size: 1.6rem;
-    }
+    .footer-item            { font-size: 1rem; gap: 6px; }
+    .footer-item i          { font-size: 0.9rem; }
 
-    .tempo-unidade {
-        font-size: 0.85rem;
-    }
+    .painel-footer          { padding: 16px 40px; }
+    .painel-footer p        { font-size: 1.05rem; gap: 10px; }
+    .painel-footer i        { font-size: 1rem; }
+}
 
-    .clinica-card-header {
-        padding: 18px 24px;
-    }
+/* ── TV 40" / Full HD 1920px ─────────────────────────────── */
+@media (min-width: 1920px) {
+    .header-title h1        { font-size: 1.65rem; }
+    .header-subtitle        { font-size: 0.95rem; }
+    .ultima-atualizacao     { font-size: 0.95rem; }
+    .btn-header             { font-size: 0.85rem; padding: 8px 16px; }
 
-    .clinica-card-body {
-        padding: 28px;
-    }
+    .painel-main            { padding: 30px 44px; }
+    .clinicas-grid          { gap: 30px; }
 
-    .clinica-card-footer {
-        padding: 12px 24px;
-    }
+    .clinica-card-header    { padding: 22px 32px; }
+    .clinica-card-body      { padding: 36px; }
+    .clinica-card-footer    { padding: 16px 32px; }
 
-    .footer-item {
-        font-size: 0.82rem;
-    }
+    .clinica-nome           { font-size: 1.75rem; }
+    .clinica-medicos        { font-size: 1rem; gap: 6px; }
+    .clinica-medicos i      { font-size: 0.9rem; }
 
-    .painel-footer p {
-        font-size: 0.95rem;
-    }
+    .tempo-display          { gap: 10px; margin-bottom: 8px; }
+    .tempo-valor            { font-size: 7.5rem; letter-spacing: -2px; }
+    .tempo-sufixo           { font-size: 2.8rem; }
+    .tempo-unidade          { font-size: 1rem; letter-spacing: 1.5px; }
+    .tempo-tendencia        { font-size: 0.9rem; padding: 5px 16px; margin-top: 14px; }
+    .tempo-sem-dados        { font-size: 1.5rem; }
+
+    .footer-item            { font-size: 1.2rem; gap: 7px; }
+    .footer-item i          { font-size: 1.05rem; }
+
+    .painel-footer          { padding: 18px 48px; }
+    .painel-footer p        { font-size: 1.2rem; gap: 12px; }
+    .painel-footer i        { font-size: 1.1rem; }
+}
+
+/* ── TV 4K / 2560px ──────────────────────────────────────── */
+@media (min-width: 2560px) {
+    .header-title h1        { font-size: 2.2rem; }
+    .header-subtitle        { font-size: 1.2rem; }
+    .painel-header          { padding: 18px 40px; }
+
+    .painel-main            { padding: 40px 56px; }
+    .clinicas-grid          { gap: 40px; }
+
+    .clinica-card-header    { padding: 28px 40px; }
+    .clinica-card-body      { padding: 48px; }
+    .clinica-card-footer    { padding: 20px 40px; }
+
+    .clinica-nome           { font-size: 2.4rem; }
+    .clinica-medicos        { font-size: 1.3rem; }
+
+    .tempo-valor            { font-size: 11rem; letter-spacing: -3px; }
+    .tempo-sufixo           { font-size: 4rem; }
+    .tempo-unidade          { font-size: 1.3rem; letter-spacing: 2px; }
+    .tempo-tendencia        { font-size: 1.2rem; padding: 6px 20px; }
+
+    .footer-item            { font-size: 1.6rem; gap: 10px; }
+    .footer-item i          { font-size: 1.4rem; }
+
+    .painel-footer          { padding: 22px 64px; }
+    .painel-footer p        { font-size: 1.5rem; gap: 14px; }
 }
 
 @media print {
