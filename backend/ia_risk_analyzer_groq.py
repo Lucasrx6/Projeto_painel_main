@@ -27,7 +27,7 @@ DB_NAME = os.getenv('DB_NAME', 'postgres')
 DB_USER = os.getenv('DB_USER', 'postgres')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 
-# ✅ CONFIGURAÇÕES
+# CONFIGURAÇÕES
 MAX_CICLOS = 10  # Número de ciclos antes de parar
 INTERVALO_ANALISE = 300000  # 5 minutos entre ciclos
 BATCH_SIZE = 30  # Pacientes por ciclo
@@ -35,7 +35,7 @@ MAX_TOKENS = 2000  # Tokens máximos da resposta IA
 HORAS_VALIDADE_ANALISE = 24  # Análise válida por 24 horas
 
 if not GROQ_API_KEY:
-    print("❌ ERRO: GROQ_API_KEY não configurada no .env")
+    print("ERRO: GROQ_API_KEY não configurada no .env")
     sys.exit(1)
 
 
@@ -51,9 +51,9 @@ class ClinicalAIAnalyzer:
         self.client = Groq(api_key=GROQ_API_KEY)
         self.modelo = "llama-3.3-70b-versatile"
         self.ciclo_atual = 0
-        print(f"✅ Cliente Groq inicializado: {self.modelo}")
-        print(f"⏱️  Limite: {MAX_CICLOS} ciclos")
-        print(f"🔄 Intervalo: {INTERVALO_ANALISE}s")
+        print(f"Cliente Groq inicializado: {self.modelo}")
+        print(f"Limite: {MAX_CICLOS} ciclos")
+        print(f"Intervalo: {INTERVALO_ANALISE}s")
 
     def get_db_connection(self):
         """Cria conexão com PostgreSQL"""
@@ -67,7 +67,7 @@ class ClinicalAIAnalyzer:
             )
             return conn
         except Exception as e:
-            print(f"❌ Erro ao conectar DB: {e}")
+            print(f"Erro ao conectar DB: {e}")
             return None
 
     def calcular_hash_dados(self, dados: Dict) -> str:
@@ -100,7 +100,7 @@ class ClinicalAIAnalyzer:
         2. Dados clínicos mudaram (hash diferente)
         3. Análise tem mais de 24 horas
 
-        ✅ PROTEÇÃO: Só busca pacientes que existem no painel
+        PROTEÇÃO: Só busca pacientes que existem no painel
         """
         conn = self.get_db_connection()
         if not conn:
@@ -112,7 +112,6 @@ class ClinicalAIAnalyzer:
             query = """
                 SELECT 
                     p.nr_atendimento,
-                    p.nm_pessoa_fisica,
                     p.cd_unidade,
                     p.nm_setor,
                     p.qt_pa_sistolica,
@@ -183,14 +182,14 @@ class ClinicalAIAnalyzer:
         return f"""
 SETOR: {paciente.get('nm_setor', 'N/A')}
 
-🫀 SINAIS VITAIS:
+SINAIS VITAIS:
 - Pressão Arterial: {fmt(paciente.get('qt_pa_sistolica'))}/{fmt(paciente.get('qt_pa_diastolica'))} mmHg
 - Frequência Cardíaca: {fmt(paciente.get('qt_freq_cardiaca'), 'bpm')}
 - Frequência Respiratória: {fmt(paciente.get('qt_freq_resp'), 'irpm')}
 - Saturação O2: {fmt(paciente.get('qt_saturacao_o2'), '%')}
 - Temperatura: {fmt(paciente.get('qt_temp'), '°C')}
 
-🧪 EXAMES LABORATORIAIS:
+EXAMES LABORATORIAIS:
 - Creatinina: {fmt(paciente.get('exm_creatinina'), 'mg/dL')}
 - Ureia: {fmt(paciente.get('exm_ureia'), 'mg/dL')}
 - Sódio: {fmt(paciente.get('exm_sodio'), 'mEq/L')}
@@ -274,7 +273,7 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
             }
 
         except Exception as e:
-            print(f"❌ Erro na análise IA: {e}")
+            print(f"Erro na análise IA: {e}")
             return None
 
     def salvar_analise(self, nr_atendimento: int, paciente: Dict, analise: Dict) -> bool:
@@ -292,7 +291,6 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
             query = """
                 INSERT INTO public.painel_clinico_analise_ia (
                     nr_atendimento, 
-                    nm_paciente, 
                     cd_leito, 
                     nm_setor,
                     analise_ia, 
@@ -315,7 +313,6 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
 
             cursor.execute(query, (
                 nr_atendimento,
-                paciente.get('nm_pessoa_fisica'),
                 paciente.get('cd_unidade'),
                 paciente.get('nm_setor'),
                 analise['analise_ia'],
@@ -332,7 +329,7 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
             return True
 
         except Exception as e:
-            print(f"❌ Erro ao salvar análise: {e}")
+            print(f"Erro ao salvar análise: {e}")
             if conn:
                 conn.rollback()
                 conn.close()
@@ -344,8 +341,8 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
         1. NÃO estão mais no painel (saíram)
         2. Análise tem mais de 24 horas
 
-        ✅ PRESERVA o histórico - não apaga, só marca como inativo
-        ✅ PROTEÇÃO: Trabalha sem foreign key, mantém dados históricos
+        PRESERVA o histórico - não apaga, só marca como inativo
+        PROTEÇÃO: Trabalha sem foreign key, mantém dados históricos
         """
         conn = self.get_db_connection()
         if not conn:
@@ -376,7 +373,7 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
             arquivados = cursor.rowcount
 
             if arquivados > 0:
-                print(f"📦 {arquivados} análise(s) arquivada(s) (pacientes saíram há >24h)")
+                print(f"{arquivados} análise(s) arquivada(s) (pacientes saíram há >24h)")
 
             # LIMPEZA OPCIONAL: Remove análises muito antigas (>30 dias inativas)
             # Descomente se quiser limpar histórico antigo
@@ -398,7 +395,7 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
             conn.close()
 
         except Exception as e:
-            print(f"⚠️ Erro ao arquivar análises: {e}")
+            print(f"Erro ao arquivar análises: {e}")
             if conn:
                 conn.rollback()
                 conn.close()
@@ -445,7 +442,7 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
         self.ciclo_atual += 1
 
         print(f"\n{'=' * 60}")
-        print(f"🔄 CICLO {self.ciclo_atual}/{MAX_CICLOS} - {datetime.now().strftime('%H:%M:%S')}")
+        print(f"CICLO {self.ciclo_atual}/{MAX_CICLOS} - {datetime.now().strftime('%H:%M:%S')}")
         print(f"{'=' * 60}")
 
         self.monitorar_analises_orfas()
@@ -456,10 +453,10 @@ Seja conciso e objetivo. Foque nos achados mais relevantes."""
         pacientes = self.buscar_pacientes_para_analise()
 
         if not pacientes:
-            print("✅ Nenhum paciente precisa de análise no momento")
+            print("Nenhum paciente precisa de análise no momento")
             return
 
-        print(f"📋 {len(pacientes)} paciente(s) para analisar")
+        print(f"{len(pacientes)} paciente(s) para analisar")
 
         for idx, paciente in enumerate(pacientes, 1):
             nr = paciente['nr_atendimento']

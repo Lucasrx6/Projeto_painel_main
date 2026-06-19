@@ -2,7 +2,7 @@
 Painel 5 - Cirurgias do Dia
 Endpoints para monitoramento de cirurgias agendadas e em andamento
 """
-from flask import Blueprint, jsonify, send_from_directory, session, current_app
+from flask import Blueprint, jsonify, send_from_directory, session, current_app, request
 from datetime import datetime
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
@@ -31,13 +31,19 @@ def painel5():
 @painel5_bp.route('/api/paineis/painel5/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel5')
-@cache_route(ttl=120, key_prefix='painel5:dashboard')
+@cache_route(ttl=120, key_prefix='painel5:dashboard', vary_by_query=True)
 def api_painel5_dashboard():
     """
     Dashboard de cirurgias
-    GET /api/paineis/painel5/dashboard
+    GET /api/paineis/painel5/dashboard?setor=hemo  (ou omitir para Centro Cirurgico)
     """
     try:
+        setor = request.args.get('setor', 'cc')
+        if setor == 'hemo':
+            where_setor = "WHERE ds_agenda ILIKE '%Hemodinâmica%'"
+        else:
+            where_setor = "WHERE (ds_agenda IS NULL OR ds_agenda NOT ILIKE '%Hemodinâmica%')"
+
         with get_db_cursor(use_dict_cursor=False) as cursor:
             query = """
                 SELECT
@@ -55,7 +61,8 @@ def api_painel5_dashboard():
                         AND nr_cirurgia IS NOT NULL
                     ) as cirurgias_realizadas
                 FROM vw_cirurgias_dia
-            """
+                {where_setor}
+            """.format(where_setor=where_setor)
             cursor.execute(query)
             resultado = cursor.fetchone()
 
@@ -85,9 +92,15 @@ def api_painel5_dashboard():
 def api_painel5_cirurgias():
     """
     Lista de cirurgias
-    GET /api/paineis/painel5/cirurgias
+    GET /api/paineis/painel5/cirurgias?setor=hemo  (ou omitir para Centro Cirurgico)
     """
     try:
+        setor = request.args.get('setor', 'cc')
+        if setor == 'hemo':
+            where_setor = "WHERE ds_agenda ILIKE '%Hemodinâmica%'"
+        else:
+            where_setor = "WHERE (ds_agenda IS NULL OR ds_agenda NOT ILIKE '%Hemodinâmica%')"
+
         with get_db_cursor(use_dict_cursor=False) as cursor:
             query = """
                 SELECT
@@ -134,8 +147,9 @@ def api_painel5_cirurgias():
                     cirurgia_finalizada,
                     cirurgia_em_andamento
                 FROM vw_cirurgias_dia
+                {where_setor}
                 ORDER BY dt_agenda ASC, hr_inicio ASC
-            """
+            """.format(where_setor=where_setor)
             cursor.execute(query)
             colunas = [desc[0] for desc in cursor.description]
             cirurgias = [dict(zip(colunas, row)) for row in cursor.fetchall()]

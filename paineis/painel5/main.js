@@ -24,6 +24,9 @@ let timeoutAutoScrollInicial = null;
 // true = nomes abreviados (LGPD, padrão seguro) | false = nomes completos (uso interno CC)
 let nomesAbreviados = localStorage.getItem('painel5_nomes_abreviados') !== 'false';
 
+// Setor selecionado: 'cc' = Centro Cirúrgico (padrão) | 'hemo' = Hemodinâmica
+let setorSelecionado = localStorage.getItem('painel5_setor_selecionado') || 'cc';
+
 function inicializar() {
     console.log('🚀 Inicializando Painel de Cirurgias...');
     configurarBotoes();
@@ -70,6 +73,7 @@ function configurarBotoes() {
     }
 
     configurarBtnPrivacidade();
+    configurarBtnSetor();
 }
 
 function configurarBtnPrivacidade() {
@@ -92,6 +96,35 @@ function configurarBtnPrivacidade() {
     });
 }
 
+function configurarBtnSetor() {
+    const btn = document.getElementById('btn-setor');
+    if (!btn) return;
+
+    atualizarBotaoSetor(btn);
+
+    btn.addEventListener('click', () => {
+        setorSelecionado = setorSelecionado === 'cc' ? 'hemo' : 'cc';
+        localStorage.setItem('painel5_setor_selecionado', setorSelecionado);
+        atualizarBotaoSetor(btn);
+        carregarDados();
+    });
+}
+
+function atualizarBotaoSetor(btn) {
+    const texto = document.getElementById('btn-setor-texto');
+    if (setorSelecionado === 'hemo') {
+        btn.classList.add('hemo-ativo');
+        btn.querySelector('i').className = 'fas fa-heartbeat';
+        btn.title = 'Exibindo: Hemodinâmica — clique para Centro Cirúrgico';
+        if (texto) texto.textContent = 'Hemodinâmica';
+    } else {
+        btn.classList.remove('hemo-ativo');
+        btn.querySelector('i').className = 'fas fa-procedures';
+        btn.title = 'Exibindo: Centro Cirúrgico — clique para Hemodinâmica';
+        if (texto) texto.textContent = 'Centro Cirúrgico';
+    }
+}
+
 function atualizarBotaoPrivacidade(btn) {
     if (nomesAbreviados) {
         btn.classList.add('active');
@@ -108,9 +141,10 @@ async function carregarDados() {
     try {
         console.log('🔄 Carregando dados...');
 
+        const params = setorSelecionado === 'hemo' ? '?setor=hemo' : '?setor=cc';
         const [dashboardRes, cirurgiasRes] = await Promise.all([
-            fetch(CONFIG.apiDashboard),
-            fetch(CONFIG.apiCirurgias)
+            fetch(CONFIG.apiDashboard + params),
+            fetch(CONFIG.apiCirurgias + params)
         ]);
 
         if (!dashboardRes.ok || !cirurgiasRes.ok) {

@@ -26,6 +26,15 @@ SPREAD_MIN = 3
 # Clinicas a excluir da exibicao
 CLINICAS_EXCLUIR = ['emergencista']
 
+# Apos HORAS_INATIVIDADE sem atendimento, retorna TEMPO_PADRAO_INATIVIDADE em vez dos dados antigos
+TEMPO_PADRAO_INATIVIDADE = 15
+HORAS_INATIVIDADE = 2
+
+# Correcoes de nome de clinica (chave: nome do banco em lowercase, valor: nome exibido)
+RENOMEAR_CLINICAS = {
+    'cirurgica geral': 'Cirurgia Geral'
+}
+
 
 # =============================================================================
 # FUNCOES AUXILIARES
@@ -167,6 +176,10 @@ def api_painel17_tempos():
                 if nome and nome.strip().lower() in CLINICAS_EXCLUIR:
                     continue
 
+                # Corrigir nomes errados vindos do banco
+                if nome:
+                    nome = RENOMEAR_CLINICAS.get(nome.strip().lower(), nome)
+
                 # Ultimos N atendidos
                 cursor.execute("""
                     SELECT dt_entrada, retirada_senha, dt_inicio_atendimento_med
@@ -215,8 +228,27 @@ def api_painel17_tempos():
                 medicos_row = cursor.fetchone()
                 medicos = medicos_row['total'] if medicos_row else 0
 
-                # Metricas
-                metricas = _calcular_metricas_clinica(recentes, recentes_1h)
+                # Verifica se o ultimo atendimento foi ha menos de HORAS_INATIVIDADE horas.
+                # Se a clinica ficou inativa por mais tempo, retorna o tempo padrao
+                # em vez de exibir dados de um pico antigo.
+                dados_frescos = False
+                if recentes:
+                    ultimo = recentes[0].get('dt_inicio_atendimento_med')
+                    if ultimo and (agora - ultimo) < timedelta(hours=HORAS_INATIVIDADE):
+                        dados_frescos = True
+
+                if dados_frescos:
+                    metricas = _calcular_metricas_clinica(recentes, recentes_1h)
+                elif recentes:
+                    metricas = {
+                        'mediana': TEMPO_PADRAO_INATIVIDADE,
+                        'faixa_min': TEMPO_PADRAO_INATIVIDADE,
+                        'faixa_max': TEMPO_PADRAO_INATIVIDADE,
+                        'tendencia': 'sem_dados',
+                        'amostra': 0
+                    }
+                else:
+                    metricas = _calcular_metricas_clinica(recentes, recentes_1h)
 
                 clinica_data = {
                     'cd_clinica': cd,
@@ -281,10 +313,30 @@ def api_painel17_tempos():
             fila_acolhimento_row = cursor.fetchone()
             fila_acolhimento = fila_acolhimento_row['total'] if fila_acolhimento_row else 0
 
-            metricas_acolhimento = _calcular_metricas_clinica(
-                acolhimento_recentes, acolhimento_1h,
-                campo_fim='dt_inicio_atendimento'
-            )
+            dados_frescos_acolhimento = False
+            if acolhimento_recentes:
+                ultimo_acol = acolhimento_recentes[0].get('dt_inicio_atendimento')
+                if ultimo_acol and (agora - ultimo_acol) < timedelta(hours=HORAS_INATIVIDADE):
+                    dados_frescos_acolhimento = True
+
+            if dados_frescos_acolhimento:
+                metricas_acolhimento = _calcular_metricas_clinica(
+                    acolhimento_recentes, acolhimento_1h,
+                    campo_fim='dt_inicio_atendimento'
+                )
+            elif acolhimento_recentes:
+                metricas_acolhimento = {
+                    'mediana': TEMPO_PADRAO_INATIVIDADE,
+                    'faixa_min': TEMPO_PADRAO_INATIVIDADE,
+                    'faixa_max': TEMPO_PADRAO_INATIVIDADE,
+                    'tendencia': 'sem_dados',
+                    'amostra': 0
+                }
+            else:
+                metricas_acolhimento = _calcular_metricas_clinica(
+                    acolhimento_recentes, acolhimento_1h,
+                    campo_fim='dt_inicio_atendimento'
+                )
 
             acolhimento_data = {
                 'cd_clinica': None,
