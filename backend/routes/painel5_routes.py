@@ -39,31 +39,49 @@ def api_painel5_dashboard():
     """
     try:
         setor = request.args.get('setor', 'cc')
-        if setor == 'hemo':
-            where_setor = "WHERE ds_agenda ILIKE '%Hemodinâmica%'"
-        else:
-            where_setor = "WHERE (ds_agenda IS NULL OR ds_agenda NOT ILIKE '%Hemodinâmica%')"
+        # Passa o padrão como parâmetro psycopg2 (%s) para evitar conflito
+        # do driver com o % do ILIKE quando a string está embutida na query.
+        hemo_pattern = '%Hemodinâmica%'
 
         with get_db_cursor(use_dict_cursor=False) as cursor:
-            query = """
-                SELECT
-                    COUNT(*) as total_cirurgias,
-                    COUNT(*) FILTER (
-                        WHERE evento = 'Sem status'
-                        OR nr_cirurgia IS NULL
-                    ) as cirurgias_previstas,
-                    COUNT(*) FILTER (
-                        WHERE evento_codigo IN (12, 13)
-                        AND nr_cirurgia IS NOT NULL
-                    ) as cirurgias_andamento,
-                    COUNT(*) FILTER (
-                        WHERE evento_codigo IN (14, 15, 16)
-                        AND nr_cirurgia IS NOT NULL
-                    ) as cirurgias_realizadas
-                FROM vw_cirurgias_dia
-                {where_setor}
-            """.format(where_setor=where_setor)
-            cursor.execute(query)
+            if setor == 'hemo':
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) as total_cirurgias,
+                        COUNT(*) FILTER (
+                            WHERE evento = 'Sem status'
+                            OR nr_cirurgia IS NULL
+                        ) as cirurgias_previstas,
+                        COUNT(*) FILTER (
+                            WHERE evento_codigo IN (12, 13)
+                            AND nr_cirurgia IS NOT NULL
+                        ) as cirurgias_andamento,
+                        COUNT(*) FILTER (
+                            WHERE evento_codigo IN (14, 15, 16)
+                            AND nr_cirurgia IS NOT NULL
+                        ) as cirurgias_realizadas
+                    FROM vw_cirurgias_dia
+                    WHERE ds_agenda ILIKE %s
+                """, (hemo_pattern,))
+            else:
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) as total_cirurgias,
+                        COUNT(*) FILTER (
+                            WHERE evento = 'Sem status'
+                            OR nr_cirurgia IS NULL
+                        ) as cirurgias_previstas,
+                        COUNT(*) FILTER (
+                            WHERE evento_codigo IN (12, 13)
+                            AND nr_cirurgia IS NOT NULL
+                        ) as cirurgias_andamento,
+                        COUNT(*) FILTER (
+                            WHERE evento_codigo IN (14, 15, 16)
+                            AND nr_cirurgia IS NOT NULL
+                        ) as cirurgias_realizadas
+                    FROM vw_cirurgias_dia
+                    WHERE (ds_agenda IS NULL OR ds_agenda NOT ILIKE %s)
+                """, (hemo_pattern,))
             resultado = cursor.fetchone()
 
             dados = {
@@ -96,13 +114,9 @@ def api_painel5_cirurgias():
     """
     try:
         setor = request.args.get('setor', 'cc')
-        if setor == 'hemo':
-            where_setor = "WHERE ds_agenda ILIKE '%Hemodinâmica%'"
-        else:
-            where_setor = "WHERE (ds_agenda IS NULL OR ds_agenda NOT ILIKE '%Hemodinâmica%')"
+        hemo_pattern = '%Hemodinâmica%'
 
-        with get_db_cursor(use_dict_cursor=False) as cursor:
-            query = """
+        base_select = """
                 SELECT
                     dt_agenda,
                     evento_codigo,
@@ -147,10 +161,19 @@ def api_painel5_cirurgias():
                     cirurgia_finalizada,
                     cirurgia_em_andamento
                 FROM vw_cirurgias_dia
-                {where_setor}
-                ORDER BY dt_agenda ASC, hr_inicio ASC
-            """.format(where_setor=where_setor)
-            cursor.execute(query)
+        """
+
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            if setor == 'hemo':
+                cursor.execute(
+                    base_select + " WHERE ds_agenda ILIKE %s ORDER BY dt_agenda ASC, hr_inicio ASC",
+                    (hemo_pattern,)
+                )
+            else:
+                cursor.execute(
+                    base_select + " WHERE (ds_agenda IS NULL OR ds_agenda NOT ILIKE %s) ORDER BY dt_agenda ASC, hr_inicio ASC",
+                    (hemo_pattern,)
+                )
             colunas = [desc[0] for desc in cursor.description]
             cirurgias = [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
