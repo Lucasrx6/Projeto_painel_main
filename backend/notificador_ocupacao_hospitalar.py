@@ -479,9 +479,12 @@ def enviar_email(destinatarios, corpo_html, caminho_excel, now):
 # ========================================
 
 def executar_envio():
+    global _status
     cfg = _cfg()
     if not cfg['destinatarios']:
         logger.warning("Nenhum destinatário em NOTIF_OCUPACAO_EMAILS. Pulando.")
+        _status['ultimo_envio'] = datetime.now().isoformat()
+        _status['ultimo_resultado'] = 'sem_destinatarios'
         return
 
     now = datetime.now()
@@ -491,15 +494,30 @@ def executar_envio():
         dashboard, cols_setor, setores, cols_pac, pacientes = buscar_dados()
     except Exception as e:
         logger.error("Erro ao buscar dados do banco: %s", e)
+        _status['ultimo_envio'] = now.isoformat()
+        _status['ultimo_resultado'] = 'erro'
+        _status['ultimo_erro'] = str(e)
+        _status['erros_consecutivos'] = _status.get('erros_consecutivos', 0) + 1
         return
 
     caminho = None
     try:
         caminho = gerar_excel(dashboard, cols_setor, setores, cols_pac, pacientes, now)
         html    = gerar_corpo_html(dashboard, setores, now)
-        enviar_email(cfg['destinatarios'], html, caminho, now)
+        ok = enviar_email(cfg['destinatarios'], html, caminho, now)
+        _status['ultimo_envio'] = now.isoformat()
+        _status['ultimo_resultado'] = 'ok' if ok else 'erro_smtp'
+        if ok:
+            _status['erros_consecutivos'] = 0
+            _status['ultimo_erro'] = None
+        else:
+            _status['erros_consecutivos'] = _status.get('erros_consecutivos', 0) + 1
     except Exception as e:
         logger.error("Erro ao gerar/enviar relatório: %s", e)
+        _status['ultimo_envio'] = now.isoformat()
+        _status['ultimo_resultado'] = 'erro'
+        _status['ultimo_erro'] = str(e)
+        _status['erros_consecutivos'] = _status.get('erros_consecutivos', 0) + 1
     finally:
         if caminho and os.path.exists(caminho):
             os.unlink(caminho)
@@ -556,6 +574,35 @@ def main():
 _background_started = False
 _stop_event = threading.Event()
 
+# Estado observável — consultado pelo endpoint /api/health/ocupacao
+_status = {
+    'thread_alive': False,
+    'auto_start': None,
+    'destinatarios_configurados': 0,
+    'horarios_configurados': [],
+    'ultimo_envio': None,
+    'ultimo_resultado': None,   # 'ok' | 'erro' | 'sem_destinatarios'
+    'ultimo_erro': None,
+    'proximo_envio': None,
+    'erros_consecutivos': 0,
+}
+
+
+def get_status():
+    """Retorna estado atual do worker para o endpoint de health check."""
+    cfg = _cfg()
+    alive = any(
+        t.name == 'notificador_ocupacao' and t.is_alive()
+        for t in threading.enumerate()
+    )
+    return {
+        **_status,
+        'thread_alive': alive,
+        'auto_start': os.getenv('NOTIF_OCUPACAO_AUTO', 'true').lower() == 'true',
+        'destinatarios_configurados': len(cfg['destinatarios']),
+        'horarios_configurados': cfg['horarios'],
+    }
+
 
 def stop():
     _stop_event.set()
@@ -586,6 +633,7 @@ def start_in_background():
     _stop_event.clear()
 
     def _run():
+        global _status
         try:
             cfg = _cfg()
             logger.info(
@@ -598,6 +646,7 @@ def start_in_background():
                           datetime.now() + timedelta(hours=cfg['intervalo_h'])
                 if proximo is None:
                     proximo = datetime.now() + timedelta(hours=6)
+                _status['proximo_envio'] = proximo.strftime('%d/%m/%Y %H:%M')
                 logger.info('[notificador_ocupacao] Próximo envio: %s', proximo.strftime('%d/%m/%Y %H:%M'))
                 while not _stop_event.is_set() and datetime.now() < proximo:
                     _stop_event.wait(30)

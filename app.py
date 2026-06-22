@@ -192,6 +192,13 @@ def health_pool():
     return jsonify(pool_health())
 
 
+@app.route('/api/health/ocupacao')
+def health_ocupacao():
+    """Status do worker de ocupação hospitalar: thread viva, último envio, próximo envio."""
+    from backend.notificador_ocupacao_hospitalar import get_status as _get_status
+    return jsonify(_get_status())
+
+
 # =========================================================
 # LIFECYCLE DAS THREADS DAEMON — graceful shutdown
 # =========================================================
