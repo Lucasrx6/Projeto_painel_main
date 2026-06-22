@@ -17,6 +17,7 @@
 # Medicos nos consultorios e stats gerais sempre mostram tudo.
 # =============================================================================
 
+import difflib
 import logging
 import unicodedata
 from datetime import datetime, timedelta
@@ -38,6 +39,25 @@ def _norm_nome(texto):
         return ''
     nfkd = unicodedata.normalize('NFKD', str(texto).upper().strip())
     return ''.join(c for c in nfkd if not unicodedata.combining(c))
+
+
+def _buscar_nome_fuzzy(nome, dicionario, default, threshold=0.85):
+    """
+    Retorna dicionario[nome] (exato) ou o valor da chave mais parecida (>= threshold).
+    Cobre divergências de cadastro como "HAYAKWA" vs "HAYAKAWA" (typo no banco).
+    """
+    if not nome or not dicionario:
+        return default
+    if nome in dicionario:
+        return dicionario[nome]
+    melhor_ratio = 0.0
+    melhor_val = default
+    for chave, val in dicionario.items():
+        ratio = difflib.SequenceMatcher(None, nome, chave).ratio()
+        if ratio > melhor_ratio:
+            melhor_ratio = ratio
+            melhor_val = val
+    return melhor_val if melhor_ratio >= threshold else default
 
 # Threshold em minutos: se inicio da consulta > 60 min atras sem fim,
 # considera que o medico ja terminou mas esqueceu de fechar
@@ -154,9 +174,9 @@ def api_painel18_medicos():
                 if not nome_medico:
                     continue
 
-                met = metricas.get(nome_medico, {})
-                em_consulta = consultas.get(nome_medico, 0)
-                clinicas = clinicas_map.get(nome_medico, [])
+                met = _buscar_nome_fuzzy(nome_medico, metricas, {})
+                em_consulta = _buscar_nome_fuzzy(nome_medico, consultas, 0)
+                clinicas = _buscar_nome_fuzzy(nome_medico, clinicas_map, [])
 
                 ultimo_min = None
                 ultimo_dt = met.get('ultimo_atendimento')
@@ -260,7 +280,10 @@ def api_painel18_ranking():
                     'total_atendimentos': total,
                     'tempo_medio_consulta': round(mediana, 0) if mediana else None,
                     'clinica_principal': item.get('clinica_principal'),
-                    'logado': _norm_nome(nome) in logados,
+                    'logado': _norm_nome(nome) in logados or any(
+                        difflib.SequenceMatcher(None, _norm_nome(nome), log).ratio() >= 0.85
+                        for log in logados
+                    ),
                     'ultimo_atendimento': item.get('ultimo_atendimento').strftime(
                         '%H:%M') if item.get('ultimo_atendimento') else None
                 })
