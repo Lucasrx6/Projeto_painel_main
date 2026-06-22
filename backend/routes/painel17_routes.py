@@ -9,8 +9,17 @@ from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
 import statistics
+import unicodedata
 
 painel17_bp = Blueprint('painel17', __name__)
+
+
+def _norm_nome(texto):
+    """Normaliza nome para comparação: maiúsculas + sem acentos."""
+    if not texto:
+        return ''
+    nfkd = unicodedata.normalize('NFKD', str(texto).upper().strip())
+    return ''.join(c for c in nfkd if not unicodedata.combining(c))
 
 # =============================================================================
 # CONFIGURACAO
@@ -166,6 +175,28 @@ def api_painel17_tempos():
             """)
             clinicas = cursor.fetchall()
 
+            # Médicos logados agora (medicos_ps) — fonte de verdade de presença física
+            cursor.execute("""
+                SELECT ds_usuario FROM medicos_ps WHERE ds_usuario IS NOT NULL
+            """)
+            logados_set = set(_norm_nome(row['ds_usuario']) for row in cursor.fetchall())
+
+            # Todos os médico-clínica com atendimento iniciado hoje (bulk, evita N queries no loop)
+            cursor.execute("""
+                SELECT cd_clinica, nm_medico
+                FROM painel17_atendimentos_ps
+                WHERE dt_entrada >= NOW() - INTERVAL '24 hours'
+                  AND dt_inicio_atendimento_med IS NOT NULL
+                  AND nm_medico IS NOT NULL
+                GROUP BY cd_clinica, nm_medico
+            """)
+            medicos_por_clinica = {}
+            for row in cursor.fetchall():
+                chave = row['cd_clinica']
+                if chave not in medicos_por_clinica:
+                    medicos_por_clinica[chave] = set()
+                medicos_por_clinica[chave].add(_norm_nome(row['nm_medico']))
+
             resultado = []
 
             for clin in clinicas:
@@ -215,18 +246,10 @@ def api_painel17_tempos():
                 fila_row = cursor.fetchone()
                 fila = fila_row['total'] if fila_row else 0
 
-                # Medicos atendendo
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT nm_medico) AS total
-                    FROM painel17_atendimentos_ps
-                    WHERE cd_clinica = %s
-                      AND dt_inicio_atendimento_med IS NOT NULL
-                      AND dt_fim_atendimento IS NULL
-                      AND dt_alta IS NULL
-                      AND dt_entrada >= NOW() - INTERVAL '24 hours'
-                """, (cd,))
-                medicos_row = cursor.fetchone()
-                medicos = medicos_row['total'] if medicos_row else 0
+                # Médicos atendendo: interseção entre quem atendeu esta clínica hoje
+                # e quem está logado num consultório agora (medicos_ps)
+                nomes_clinica = medicos_por_clinica.get(cd, set())
+                medicos = sum(1 for nm in nomes_clinica if nm in logados_set)
 
                 # Verifica se o ultimo atendimento foi ha menos de HORAS_INATIVIDADE horas.
                 # Se a clinica ficou inativa por mais tempo, retorna o tempo padrao
