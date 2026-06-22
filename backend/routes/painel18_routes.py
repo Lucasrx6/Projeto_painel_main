@@ -18,6 +18,7 @@
 # =============================================================================
 
 import logging
+import unicodedata
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
@@ -29,6 +30,14 @@ from backend.cache import cache_route
 logger = logging.getLogger(__name__)
 
 painel18_bp = Blueprint('painel18', __name__)
+
+
+def _norm_nome(texto):
+    """Normaliza nome para comparação: maiúsculas + sem acentos."""
+    if not texto:
+        return ''
+    nfkd = unicodedata.normalize('NFKD', str(texto).upper().strip())
+    return ''.join(c for c in nfkd if not unicodedata.combining(c))
 
 # Threshold em minutos: se inicio da consulta > 60 min atras sem fim,
 # considera que o medico ja terminou mas esqueceu de fechar
@@ -101,7 +110,7 @@ def api_painel18_medicos():
             """, [hoje])
             metricas = {}
             for row in cursor.fetchall():
-                metricas[row[0]] = {
+                metricas[_norm_nome(row[0])] = {
                     'atendimentos_hoje': row[1] or 0,
                     'ultimo_atendimento': row[2]
                 }
@@ -120,7 +129,7 @@ def api_painel18_medicos():
             """, [threshold_dt])
             consultas = {}
             for row in cursor.fetchall():
-                consultas[row[0]] = row[1] or 0
+                consultas[_norm_nome(row[0])] = row[1] or 0
 
             # 4. Clinicas atendidas hoje (1 query para todos)
             cursor.execute("""
@@ -136,12 +145,12 @@ def api_painel18_medicos():
             """, [hoje])
             clinicas_map = {}
             for row in cursor.fetchall():
-                clinicas_map[row[0]] = row[1] or []
+                clinicas_map[_norm_nome(row[0])] = row[1] or []
 
             # Montar resultado cruzando medicos logados com metricas
             resultado = []
             for med in medicos_logados:
-                nome_medico = (med.get('ds_usuario') or '').strip().upper()
+                nome_medico = _norm_nome(med.get('ds_usuario') or '')
                 if not nome_medico:
                     continue
 
@@ -232,9 +241,9 @@ def api_painel18_ranking():
             colunas = [desc[0] for desc in cursor.description]
             atendimentos = [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
-            # Buscar medicos logados para marcar status
-            cursor.execute("SELECT UPPER(ds_usuario) as nome FROM medicos_ps")
-            logados = set(row[0] for row in cursor.fetchall() if row[0])
+            # Buscar medicos logados para marcar status (normalizado sem acentos)
+            cursor.execute("SELECT ds_usuario FROM medicos_ps")
+            logados = set(_norm_nome(row[0]) for row in cursor.fetchall() if row[0])
 
             resultado = []
             total_geral = 0
@@ -251,7 +260,7 @@ def api_painel18_ranking():
                     'total_atendimentos': total,
                     'tempo_medio_consulta': round(mediana, 0) if mediana else None,
                     'clinica_principal': item.get('clinica_principal'),
-                    'logado': nome.strip().upper() in logados,
+                    'logado': _norm_nome(nome) in logados,
                     'ultimo_atendimento': item.get('ultimo_atendimento').strftime(
                         '%H:%M') if item.get('ultimo_atendimento') else None
                 })
