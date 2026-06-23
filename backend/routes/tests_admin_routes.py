@@ -101,3 +101,26 @@ def run_sistema_checks():
                 'duration': 0,
             }
         }), 500
+
+
+@tests_bp.route('/ocupacao/enviar', methods=['POST'])
+@admin_required
+def testar_envio_ocupacao():
+    """
+    Dispara o envio de ocupação hospitalar imediatamente, fora do horário agendado.
+    Útil para testar configuração de email e destinatários.
+    POST /api/admin/tests/ocupacao/enviar
+    """
+    try:
+        from backend.notificador_ocupacao_hospitalar import executar_envio, get_status
+        executar_envio()
+        status = get_status()
+        return jsonify({
+            'success': True,
+            'resultado': status.get('ultimo_resultado'),
+            'ultimo_erro': status.get('ultimo_erro'),
+            'destinatarios_configurados': status.get('destinatarios_configurados'),
+            'status': status
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
