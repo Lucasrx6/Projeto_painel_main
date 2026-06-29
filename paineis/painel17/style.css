@@ -54,7 +54,7 @@
 }
 
 html {
-    font-size: 16px;
+    font-size: 20px;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -203,7 +203,7 @@ body {
 .painel-main {
     flex: 1;
     overflow: hidden;
-    padding: 20px 24px;
+    padding: 22px 28px;
     min-height: 0;
 }
 
@@ -240,7 +240,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 20px;
+    padding: 16px 22px;
     border-bottom: 1px solid var(--cor-borda);
     background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%);
     flex-shrink: 0;
@@ -272,7 +272,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 22px;
     text-align: center;
     min-height: 0;
 }
@@ -350,7 +350,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 10px 20px;
+    padding: 12px 22px;
     background: var(--cor-fundo);
     border-top: 1px solid var(--cor-borda);
     flex-shrink: 0;
@@ -580,8 +580,8 @@ body {
     .clinica-nome           { font-size: 1.45rem; }
     .clinica-medicos        { font-size: 0.88rem; }
 
-    .tempo-valor            { font-size: 6.5rem; }
-    .tempo-sufixo           { font-size: 2.1rem; }
+    .tempo-valor            { font-size: 5.2rem; }
+    .tempo-sufixo           { font-size: 1.7rem; }
     .tempo-unidade          { font-size: 0.9rem; }
     .tempo-tendencia        { font-size: 0.82rem; padding: 4px 14px; }
 
@@ -612,8 +612,8 @@ body {
     .clinica-medicos i      { font-size: 0.9rem; }
 
     .tempo-display          { gap: 10px; margin-bottom: 8px; }
-    .tempo-valor            { font-size: 7.5rem; letter-spacing: -2px; }
-    .tempo-sufixo           { font-size: 2.8rem; }
+    .tempo-valor            { font-size: 6rem; letter-spacing: -2px; }
+    .tempo-sufixo           { font-size: 2.2rem; }
     .tempo-unidade          { font-size: 1rem; letter-spacing: 1.5px; }
     .tempo-tendencia        { font-size: 0.9rem; padding: 5px 16px; margin-top: 14px; }
     .tempo-sem-dados        { font-size: 1.5rem; }
@@ -642,8 +642,8 @@ body {
     .clinica-nome           { font-size: 2.4rem; }
     .clinica-medicos        { font-size: 1.3rem; }
 
-    .tempo-valor            { font-size: 11rem; letter-spacing: -3px; }
-    .tempo-sufixo           { font-size: 4rem; }
+    .tempo-valor            { font-size: 8.8rem; letter-spacing: -3px; }
+    .tempo-sufixo           { font-size: 3.2rem; }
     .tempo-unidade          { font-size: 1.3rem; letter-spacing: 2px; }
     .tempo-tendencia        { font-size: 1.2rem; padding: 6px 20px; }
 

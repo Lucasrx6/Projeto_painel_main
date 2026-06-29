@@ -44,7 +44,7 @@
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+html { font-size: 20px; -webkit-font-smoothing: antialiased; }
 
 body {
     font-family: var(--fonte-principal);
@@ -137,8 +137,8 @@ body {
 .tabela-exames thead tr { display: table-row; }
 
 .tabela-exames thead th {
-    padding: 14px var(--espacamento-md);
-    text-align: left; font-size: 0.85rem; font-weight: 700;
+    padding: 18px var(--espacamento-md);
+    text-align: left; font-size: 0.88rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.5px;
     color: var(--cor-texto-secundario);
     background: var(--cor-fundo);
@@ -192,8 +192,8 @@ body {
 .tabela-exames tbody tr:hover { background: rgba(220,53,69,0.03); }
 
 .tabela-exames tbody tr td {
-    padding: 12px var(--espacamento-md);
-    font-size: 0.9rem; color: var(--cor-texto);
+    padding: 16px var(--espacamento-md);
+    font-size: 0.95rem; color: var(--cor-texto);
     vertical-align: middle;
 }
 
@@ -242,8 +242,8 @@ body {
 
 .status-badge {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 10px; border-radius: 12px;
-    font-size: 0.75rem; font-weight: 700;
+    padding: 5px 12px; border-radius: 12px;
+    font-size: 0.78rem; font-weight: 700;
     text-align: center; white-space: nowrap;
 }
 
@@ -260,8 +260,8 @@ body {
 
 .tempo-tipo-badge {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 10px; border-radius: 12px;
-    font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+    padding: 5px 12px; border-radius: 12px;
+    font-size: 0.82rem; font-weight: 700; white-space: nowrap;
 }
 
 /* Cores por gravidade (pendente/andamento) */
@@ -397,13 +397,50 @@ body {
     .col-medico { width: 180px; }
 }
 
-/* Telas grandes horizontais */
+/* Telas grandes horizontais (>= 1600px) */
 @media (min-width: 1600px) {
-    .tabela-exames thead th { font-size: 0.88rem; }
-    .tabela-exames tbody td { font-size: 1rem; }
-    .paciente-nome { font-size: 0.88rem; }
+    html { font-size: 20px; }
+    .painel-main { padding: 6px 12px; }
+    .tabela-exames thead th { font-size: 0.9rem; padding: 16px 14px; }
+    .tabela-exames tbody tr td { font-size: 0.95rem; padding: 14px 14px; }
+    .paciente-nome { font-size: 0.9rem; }
+    .paciente-subinfo { font-size: 0.78rem; }
     .atendimento-valor { font-size: 1.05rem; }
-    .col-medico { width: 180px; }
+    .medico-valor { font-size: 0.88rem; }
+    .status-badge { font-size: 0.8rem; padding: 5px 12px; }
+    .tempo-tipo-badge { font-size: 0.84rem; padding: 5px 12px; }
+    .col-medico { width: 200px; }
+    .header-title h1 { font-size: 1.25rem; }
+    .legenda-item { font-size: 1rem; }
+    .legenda-dot { width: 18px; height: 18px; }
+}
+
+/* TV 32" / Full HD horizontal (>= 1920px) */
+@media (min-width: 1920px) {
+    html { font-size: 20px; }
+    .painel-header { padding: 12px 20px; }
+    .painel-main { padding: 6px 8px; }
+    .tabela-exames thead th { font-size: 0.88rem; padding: 18px 12px; }
+    .tabela-exames tbody tr td { font-size: 0.92rem; padding: 16px 12px; }
+    .paciente-nome { font-size: 0.88rem; }
+    .paciente-subinfo { font-size: 0.76rem; }
+    .atendimento-valor { font-size: 1rem; }
+    .medico-valor { font-size: 0.85rem; }
+    .status-badge { font-size: 0.78rem; padding: 6px 12px; }
+    .tempo-tipo-badge { font-size: 0.8rem; padding: 6px 12px; }
+    .tempo-liberado { font-size: 0.76rem; }
+    .col-atendimento { width: 7%; }
+    .col-paciente { width: 24%; }
+    .col-lab { width: 13%; }
+    .col-tempo-lab { width: 13%; }
+    .col-radio { width: 13%; }
+    .col-tempo-rad { width: 13%; }
+    .col-medico { width: 17%; min-width: 180px; }
+    .header-title h1 { font-size: 1.3rem; }
+    .header-subtitle { font-size: 0.85rem; }
+    .legenda-item { font-size: 1rem; }
+    .legenda-dot { width: 20px; height: 20px; }
+    .legenda-footer { padding: 12px 20px; }
 }
 
 /* Safe area */
