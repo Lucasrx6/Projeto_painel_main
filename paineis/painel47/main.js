@@ -4,11 +4,17 @@
 
     var CONFIG = {
         api: {
-            dashboard: '/api/paineis/painel47/dashboard',
-            chamados:  '/api/paineis/painel47/chamados',
-            cancelar:  '/api/paineis/painel47/chamados/{id}/cancelar',
-            porSetor:  '/api/paineis/painel47/por-setor',
-            exportar:  '/api/paineis/painel47/exportar'
+            dashboard:    '/api/paineis/painel47/dashboard',
+            chamados:     '/api/paineis/painel47/chamados',
+            cancelar:     '/api/paineis/painel47/chamados/{id}/cancelar',
+            porSetor:     '/api/paineis/painel47/por-setor',
+            exportar:     '/api/paineis/painel47/exportar',
+            prodSync:     '/api/paineis/painel47/producao/sync',
+            prodKpis:     '/api/paineis/painel47/producao/kpis',
+            prodSetor:    '/api/paineis/painel47/producao/por-setor',
+            prodTipo:     '/api/paineis/painel47/producao/por-tipo',
+            prodExames:   '/api/paineis/painel47/producao/exames',
+            prodExportar: '/api/paineis/painel47/producao/exportar'
         },
         intervalo: 60000
     };
@@ -18,7 +24,9 @@
         cancelarId: null,
         cancelarNome: null,
         historicoData: [],
-        itemSelecionadoId: null
+        itemSelecionadoId: null,
+        producaoPeriodo: 'hoje',
+        producaoCarregado: false
     };
 
     // ── Toast ──────────────────────────────────────
@@ -84,7 +92,7 @@
             a.className = a.getAttribute('data-aba') === tab ? 'aba aba-ativa' : 'aba';
         }
 
-        var ids = ['dashboard', 'historico', 'analytics'];
+        var ids = ['dashboard', 'historico', 'producao', 'analytics'];
         for (var j = 0; j < ids.length; j++) {
             var el = document.getElementById('aba-' + ids[j]);
             if (el) el.style.display = ids[j] === tab ? '' : 'none';
@@ -92,6 +100,10 @@
 
         if (tab === 'historico') carregarHistorico();
         if (tab === 'analytics') carregarAnalytics();
+        if (tab === 'producao' && !Estado.producaoCarregado) {
+            Estado.producaoCarregado = true;
+            carregarProducao();
+        }
     }
 
     // ── Dashboard ──────────────────────────────────
@@ -454,6 +466,273 @@
         .finally(function() { if (btn) btn.disabled = false; });
     }
 
+    // ── Produção ───────────────────────────────────
+
+    function formatarDataHora(iso) {
+        if (!iso) return '-';
+        try {
+            var d = new Date(iso);
+            return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' '
+                 + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        } catch(e) { return iso; }
+    }
+
+    function formatarHoraSimples(iso) {
+        if (!iso) return '-';
+        try {
+            var d = new Date(iso);
+            return d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        } catch(e) { return iso; }
+    }
+
+    function badgeProdStatus(status) {
+        if (status === 'LAUDADO')
+            return '<span class="badge-status badge-concluido"><i class="fas fa-check-double"></i> Laudado</span>';
+        if (status === 'EXECUTADO_SEM_LAUDO')
+            return '<span class="badge-status badge-no_local"><i class="fas fa-hourglass-half"></i> Sem Laudo</span>';
+        if (status === 'AGUARDANDO')
+            return '<span class="badge-status badge-pendente"><i class="fas fa-clock"></i> Aguardando</span>';
+        return '<span style="font-size:11px;color:#aaa;">' + escHtml(status || '-') + '</span>';
+    }
+
+    function carregarProducao() {
+        carregarProdKpis();
+        carregarProdSetor();
+        carregarProdTipo();
+        carregarProdExames();
+    }
+
+    function carregarProdKpis() {
+        var grid = document.getElementById('prod-kpi-grid');
+        if (grid) grid.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+        fetch(CONFIG.api.prodKpis + '?periodo=' + Estado.producaoPeriodo, {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) throw new Error(d.error || 'Erro');
+                renderizarProdKpis(d);
+            })
+            .catch(function(e) {
+                console.error('[P47 prod]', e);
+                if (grid) grid.innerHTML = '<div class="tabela-vazio"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar KPIs.</p></div>';
+            });
+    }
+
+    function renderizarProdKpis(d) {
+        var grid = document.getElementById('prod-kpi-grid');
+        if (!grid) return;
+
+        // Última sync
+        var syncEl = document.getElementById('producao-ultima-sync');
+        if (syncEl && d.ultima_sync) {
+            syncEl.textContent = 'Sync: ' + formatarDataHora(d.ultima_sync);
+        }
+
+        function card(cls, icone, cor, num, label, sub) {
+            return '<div class="prod-kpi-card ' + cls + '">'
+                + '<div class="prod-kpi-icone" style="color:' + cor + '"><i class="fas ' + icone + '"></i></div>'
+                + '<div class="prod-kpi-num" style="color:' + cor + '">' + (num !== null && num !== undefined ? num : '—') + '</div>'
+                + '<div class="prod-kpi-label">' + label + '</div>'
+                + (sub ? '<div class="prod-kpi-sub">' + sub + '</div>' : '')
+                + '</div>';
+        }
+
+        var taxa = d.taxa_laudo_pct !== null && d.taxa_laudo_pct !== undefined ? d.taxa_laudo_pct + '%' : '—';
+        var tm1  = d.media_h_presc_exec  !== null && d.media_h_presc_exec  !== undefined ? d.media_h_presc_exec  + 'h' : '—';
+        var tm2  = d.media_h_exec_laudo  !== null && d.media_h_exec_laudo  !== undefined ? d.media_h_exec_laudo  + 'h' : '—';
+
+        grid.innerHTML = ''
+            + card('k-total',    'fa-prescription-bottle', '#17a2b8', d.total_prescritos, 'Prescritos', null)
+            + card('k-exec',     'fa-x-ray',               '#fd7e14', d.executados,       'Executados', null)
+            + card('k-laudado',  'fa-check-double',         '#28a745', d.laudados,         'Laudados',   null)
+            + card('k-semlaudo', 'fa-hourglass-half',       '#e0a800', d.sem_laudo,        'Sem Laudo',  null)
+            + card('k-taxa',     'fa-percent',              '#6610f2', taxa,               'Taxa Laudo', 'laudados / executados')
+            + card('k-tm1',      'fa-stopwatch',            '#6c757d', tm1,                'TM Presc → Exec', 'tempo médio em horas')
+            + card('k-tm2',      'fa-stopwatch',            '#6c757d', tm2,                'TM Exec → Laudo', 'tempo médio em horas');
+    }
+
+    function carregarProdSetor() {
+        var el = document.getElementById('prod-setor');
+        if (el) el.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+        fetch(CONFIG.api.prodSetor + '?periodo=' + Estado.producaoPeriodo, {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) throw new Error();
+                renderizarProdSetor(d.data || []);
+            })
+            .catch(function() {
+                if (el) el.innerHTML = '<div class="tabela-vazio"><p>Erro ao carregar.</p></div>';
+            });
+    }
+
+    function renderizarProdSetor(lista) {
+        var el = document.getElementById('prod-setor');
+        if (!el) return;
+        if (!lista.length) { el.innerHTML = '<div class="tabela-vazio"><p>Sem dados.</p></div>'; return; }
+
+        var max = 0;
+        for (var i = 0; i < lista.length; i++) if ((lista[i].total || 0) > max) max = lista[i].total;
+
+        var html = '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
+            + '<th>Setor</th><th class="num">Total</th><th class="num">Exec.</th>'
+            + '<th class="num">Laudados</th><th class="num">S/Laudo</th><th class="num">TM (h)</th>'
+            + '</tr></thead><tbody>';
+        for (var j = 0; j < lista.length; j++) {
+            var r = lista[j];
+            var pct = max > 0 ? Math.round((r.total / max) * 100) : 0;
+            var taxaRow = r.executados > 0 ? Math.round((r.laudados / r.executados) * 100) : 0;
+            html += '<tr>'
+                + '<td><span style="font-size:12px">' + escHtml(r.setor || '-') + '</span>'
+                + '<div class="barra-bg"><div class="barra-fill" style="width:' + pct + '%"></div></div></td>'
+                + '<td class="num"><strong>' + (r.total || 0) + '</strong></td>'
+                + '<td class="num">' + (r.executados || 0) + '</td>'
+                + '<td class="num" style="color:#28a745">' + (r.laudados || 0) + '</td>'
+                + '<td class="num" style="color:#e0a800">' + (r.sem_laudo || 0) + '</td>'
+                + '<td class="num">' + (r.media_h_espera !== null ? r.media_h_espera : '—') + '</td>'
+                + '</tr>';
+        }
+        html += '</tbody></table></div>';
+        el.innerHTML = html;
+    }
+
+    function carregarProdTipo() {
+        var el = document.getElementById('prod-tipo');
+        if (el) el.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+        fetch(CONFIG.api.prodTipo + '?periodo=' + Estado.producaoPeriodo, {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) throw new Error();
+                renderizarProdTipo(d.data || []);
+            })
+            .catch(function() {
+                if (el) el.innerHTML = '<div class="tabela-vazio"><p>Erro ao carregar.</p></div>';
+            });
+    }
+
+    function renderizarProdTipo(lista) {
+        var el = document.getElementById('prod-tipo');
+        if (!el) return;
+        if (!lista.length) { el.innerHTML = '<div class="tabela-vazio"><p>Sem dados.</p></div>'; return; }
+
+        var max = 0;
+        for (var i = 0; i < lista.length; i++) if ((lista[i].total || 0) > max) max = lista[i].total;
+
+        var html = '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
+            + '<th>Exame</th><th class="num">Total</th><th class="num">Laudados</th><th class="num">TM (h)</th>'
+            + '</tr></thead><tbody>';
+        for (var j = 0; j < lista.length; j++) {
+            var r = lista[j];
+            var pct = max > 0 ? Math.round((r.total / max) * 100) : 0;
+            html += '<tr>'
+                + '<td><span style="font-size:12px">' + escHtml(r.tipo || '-') + '</span>'
+                + '<div class="barra-bg"><div class="barra-fill" style="width:' + pct + '%;background:#17a2b8"></div></div></td>'
+                + '<td class="num"><strong>' + (r.total || 0) + '</strong></td>'
+                + '<td class="num" style="color:#28a745">' + (r.laudados || 0) + '</td>'
+                + '<td class="num">' + (r.media_h_espera !== null ? r.media_h_espera : '—') + '</td>'
+                + '</tr>';
+        }
+        html += '</tbody></table></div>';
+        el.innerHTML = html;
+    }
+
+    function carregarProdExames() {
+        var el = document.getElementById('prod-exames');
+        if (el) el.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+
+        var status = document.getElementById('prod-filtro-status') ? document.getElementById('prod-filtro-status').value : '';
+        var setor  = document.getElementById('prod-filtro-setor')  ? document.getElementById('prod-filtro-setor').value  : '';
+
+        var url = CONFIG.api.prodExames + '?periodo=' + Estado.producaoPeriodo;
+        if (status) url += '&status=' + encodeURIComponent(status);
+        if (setor)  url += '&setor='  + encodeURIComponent(setor);
+
+        fetch(url, {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) throw new Error(d.error || 'Erro');
+                renderizarProdExames(d.data || [], d.total || 0);
+            })
+            .catch(function(e) {
+                console.error('[P47 prod]', e);
+                if (el) el.innerHTML = '<div class="tabela-vazio"><p>Erro ao buscar exames.</p></div>';
+            });
+    }
+
+    function renderizarProdExames(lista, total) {
+        var el = document.getElementById('prod-exames');
+        if (!el) return;
+        if (!lista.length) {
+            el.innerHTML = '<div class="tabela-vazio"><i class="fas fa-x-ray"></i><p>Nenhum exame encontrado.</p></div>';
+            return;
+        }
+
+        var html = '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
+            + '<th>Paciente</th><th>Exame</th><th>Setor</th><th>Leito</th>'
+            + '<th style="text-align:center">Status</th>'
+            + '<th style="text-align:center">Prescrição</th>'
+            + '<th style="text-align:center">Execução</th>'
+            + '<th style="text-align:center">Laudo</th>'
+            + '<th class="num">TM P→E</th>'
+            + '<th class="num">TM E→L</th>'
+            + '</tr></thead><tbody>';
+
+        for (var i = 0; i < lista.length; i++) {
+            var it = lista[i];
+            var urgCls = it.ie_urgente === 'S' ? ' linha-urgente' : '';
+            html += '<tr class="' + urgCls + '">'
+                + '<td><span class="pct-nome" style="font-size:13px">' + escHtml(formatarNome(it.nm_pessoa_fisica)) + '</span>'
+                + '<div style="font-size:10px;color:#aaa">' + escHtml(it.nr_atendimento || '') + '</div></td>'
+                + '<td style="font-size:12px">' + escHtml(it.ds_procedimento || '-')
+                + (it.ie_urgente === 'S' ? ' <span class="badge-urgente" style="font-size:9px">URG</span>' : '') + '</td>'
+                + '<td style="font-size:12px">' + escHtml(it.nm_setor || '-') + '</td>'
+                + '<td style="font-size:12px">' + escHtml(it.leito || '-') + '</td>'
+                + '<td style="text-align:center">' + badgeProdStatus(it.status_radiologia) + '</td>'
+                + '<td style="text-align:center;font-size:11px;white-space:nowrap">' + formatarDataHora(it.dt_pedido) + '</td>'
+                + '<td style="text-align:center;font-size:11px;white-space:nowrap">'
+                + (it.dt_execucao ? formatarDataHora(it.dt_execucao) + (it.nm_executor ? '<div style="font-size:9px;color:#aaa">' + escHtml(it.nm_executor) + '</div>' : '') : '<span style="color:#ccc">—</span>') + '</td>'
+                + '<td style="text-align:center;font-size:11px;white-space:nowrap">'
+                + (it.dt_laudo ? formatarDataHora(it.dt_laudo) + (it.nm_laudador ? '<div style="font-size:9px;color:#aaa">' + escHtml(it.nm_laudador) + '</div>' : '') : '<span style="color:#ccc">—</span>') + '</td>'
+                + '<td class="num" style="font-size:11px">' + (it.h_presc_exec !== null ? it.h_presc_exec + 'h' : '—') + '</td>'
+                + '<td class="num" style="font-size:11px">' + (it.h_exec_laudo !== null ? it.h_exec_laudo + 'h' : '—') + '</td>'
+                + '</tr>';
+        }
+        html += '</tbody></table></div>';
+        if (total > lista.length)
+            html += '<div class="tabela-info">Exibindo ' + lista.length + ' de ' + total + ' registros.</div>';
+        el.innerHTML = html;
+    }
+
+    function sincronizarProducao() {
+        var btn = document.getElementById('btn-prod-sync');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; }
+
+        fetch(CONFIG.api.prodSync, {method: 'POST', credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) {
+                    toast('Sincronizado: ' + d.registros_afetados + ' registros atualizados.', 'success');
+                    carregarProducao();
+                } else {
+                    toast('Erro: ' + (d.error || 'Falha na sincronização'), 'error');
+                }
+            })
+            .catch(function(e) { console.error('[P47 sync]', e); toast('Erro de conexão', 'error'); })
+            .finally(function() {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar'; }
+            });
+    }
+
+    function exportarProducao() {
+        var status = document.getElementById('prod-filtro-status') ? document.getElementById('prod-filtro-status').value : '';
+        var setor  = document.getElementById('prod-filtro-setor')  ? document.getElementById('prod-filtro-setor').value  : '';
+        var url = CONFIG.api.prodExportar + '?periodo=' + Estado.producaoPeriodo;
+        if (status) url += '&status=' + encodeURIComponent(status);
+        if (setor)  url += '&setor='  + encodeURIComponent(setor);
+        window.location.href = url;
+    }
+
     // ── Inicializar ────────────────────────────────
     function inicializar() {
         // Tabs
@@ -485,6 +764,25 @@
         // Analytics
         var btnAn = document.getElementById('btn-analytics-buscar');
         if (btnAn) btnAn.addEventListener('click', carregarAnalytics);
+
+        // Produção — pills de período
+        var prodPills = document.querySelectorAll('#prod-periodo-pills .prod-pill');
+        for (var pp = 0; pp < prodPills.length; pp++) {
+            (function(btn) {
+                btn.addEventListener('click', function() {
+                    Estado.producaoPeriodo = btn.getAttribute('data-periodo');
+                    for (var k = 0; k < prodPills.length; k++)
+                        prodPills[k].className = 'prod-pill' + (prodPills[k] === btn ? ' ativo' : '');
+                    carregarProducao();
+                });
+            })(prodPills[pp]);
+        }
+        var btnProdSync = document.getElementById('btn-prod-sync');
+        if (btnProdSync) btnProdSync.addEventListener('click', sincronizarProducao);
+        var btnProdExp = document.getElementById('btn-prod-exportar');
+        if (btnProdExp) btnProdExp.addEventListener('click', exportarProducao);
+        var btnProdBuscar = document.getElementById('prod-btn-buscar');
+        if (btnProdBuscar) btnProdBuscar.addEventListener('click', carregarProdExames);
 
         // Modal cancelar
         var btnFC = document.getElementById('modal-cancelar-fechar');

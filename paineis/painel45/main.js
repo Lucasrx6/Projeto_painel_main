@@ -14,7 +14,7 @@
     var Estado = {
         dados: [],
         setoresSelecionados: [],   // [] = todos
-        filtroSoPendentes: false,
+        filtroStatus: 'todos',     // 'todos'|'pendentes'|'laudado'|'sem_laudo'|'sem_envio'
         visualizacao: 'cards',     // 'cards' | 'tabela'
         modalAtendimento: null,
         modalPrescricao: null
@@ -50,6 +50,16 @@
         if (!iso) return '-';
         try { var d = new Date(iso); return d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); }
         catch(e) { return iso; }
+    }
+
+    function formatarDataHoraCurta(iso) {
+        if (!iso) return null;
+        try {
+            var d = new Date(iso), h = new Date();
+            var mesmodia = d.getDate() === h.getDate() && d.getMonth() === h.getMonth() && d.getFullYear() === h.getFullYear();
+            var hora = d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+            return mesmodia ? hora : (d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + hora);
+        } catch(e) { return iso; }
     }
 
     // ── Badges ─────────────────────────────────────
@@ -207,7 +217,10 @@
             var ex = exames[j];
             var sepCls = j < exames.length - 1 ? ' card-ex-exam-sep' : '';
             html += '<div class="card-ex-exam-item' + sepCls + '">';
-            html += '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-') + '</div>';
+            html += '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-');
+            var hrPresc = formatarDataHoraCurta(ex.dt_pedido);
+            if (hrPresc) html += ' <span class="presc-hora"><i class="fas fa-clock"></i> ' + hrPresc + '</span>';
+            html += '</div>';
             html += '<div class="card-ex-exam-footer">'
                   + '<div class="card-ex-badges">'
                   + badgeTasy(ex)
@@ -265,11 +278,18 @@
         for (var n = 0; n < Estado.dados.length; n++) {
             var it = Estado.dados[n];
             if (Estado.setoresSelecionados.length && Estado.setoresSelecionados.indexOf(it.nm_setor || '') < 0) continue;
-            if (Estado.filtroSoPendentes) {
-                // Oculta laudados no Tasy (exame já finalizado pela radiologia)
-                if ((it.status_radiologia || '').toUpperCase() === 'LAUDADO') continue;
-                // Oculta concluídos/cancelados no controle interno
+            var stTasy = (it.status_radiologia || '').toUpperCase();
+            var eSemLaudo = stTasy !== 'LAUDADO' && stTasy !== 'AGUARDANDO';
+            if (Estado.filtroStatus === 'pendentes') {
+                // Pendente = apenas AGUARDANDO no Tasy, sem ter concluído/cancelado internamente
+                if (stTasy === 'LAUDADO' || eSemLaudo) continue;
                 if (it.radio_id && (it.radio_status === 'concluido' || it.radio_status === 'cancelado')) continue;
+            } else if (Estado.filtroStatus === 'laudado') {
+                if (stTasy !== 'LAUDADO') continue;
+            } else if (Estado.filtroStatus === 'sem_laudo') {
+                if (!eSemLaudo) continue;
+            } else if (Estado.filtroStatus === 'sem_envio') {
+                if (it.radio_id) continue;
             }
             filtrados.push(it);
         }
@@ -315,6 +335,7 @@
             } else {
                 html += '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
                       + '<th>Leito</th><th>Paciente</th><th>Exame</th>'
+                      + '<th style="text-align:center">Prescrição</th>'
                       + '<th style="text-align:center">Status Tasy</th>'
                       + '<th style="text-align:center">Controle</th>'
                       + '<th style="text-align:center">Transporte</th>'
@@ -333,6 +354,9 @@
                     if (e.radio_prioridade === 'urgente')
                         html += ' <span class="badge-urgente">URGENTE</span>';
                     html += '</td>';
+                    html += '<td style="text-align:center;font-size:12px;white-space:nowrap">'
+                          + '<i class="fas fa-clock" style="color:var(--texto-sec)"></i> '
+                          + (formatarDataHoraCurta(e.dt_pedido) || '-') + '</td>';
                     html += '<td style="text-align:center">' + badgeTasy(e) + '</td>';
                     html += '<td style="text-align:center">' + (e.radio_id ? badgeRadio(e.radio_status) : '<span style="font-size:11px;color:#aaa;">—</span>') + '</td>';
                     html += '<td style="text-align:center">' + badgeTransporte(e) + '</td>';
@@ -469,7 +493,7 @@
             if (ss) Estado.setoresSelecionados = JSON.parse(ss) || [];
         } catch(e) { Estado.setoresSelecionados = []; }
 
-        Estado.filtroSoPendentes = localStorage.getItem('p45_pendentes') === '1';
+        Estado.filtroStatus = localStorage.getItem('p45_filtro_status') || 'todos';
         Estado.visualizacao = localStorage.getItem('p45_view') || 'cards';
 
         // View toggle
@@ -493,15 +517,27 @@
             renderizar();
         });
 
-        // Checkbox pendentes
-        var chk = document.getElementById('toggle-pendentes');
-        if (chk) {
-            chk.checked = Estado.filtroSoPendentes;
-            chk.addEventListener('change', function() {
-                Estado.filtroSoPendentes = this.checked;
-                localStorage.setItem('p45_pendentes', this.checked ? '1' : '0');
-                renderizar();
-            });
+        // Pills de filtro de status
+        function atualizarPillsStatus() {
+            var btns = document.querySelectorAll('#filtro-status-pills .pill-status');
+            for (var i = 0; i < btns.length; i++) {
+                btns[i].className = 'pill-status' + (btns[i].getAttribute('data-status') === Estado.filtroStatus ? ' ativo' : '');
+            }
+        }
+        atualizarPillsStatus();
+        var pillsContainer = document.getElementById('filtro-status-pills');
+        if (pillsContainer) {
+            var pillBtns = pillsContainer.querySelectorAll('.pill-status');
+            for (var pi = 0; pi < pillBtns.length; pi++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        Estado.filtroStatus = btn.getAttribute('data-status');
+                        localStorage.setItem('p45_filtro_status', Estado.filtroStatus);
+                        atualizarPillsStatus();
+                        renderizar();
+                    });
+                })(pillBtns[pi]);
+            }
         }
 
         // Botões cabeçalho

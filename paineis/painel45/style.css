@@ -232,6 +232,16 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .pill:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
 .pill.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: white; }
 
+/* ── PILLS FILTRO STATUS ───────────────────────── */
+.filtro-status-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pill-status {
+    padding: 4px 11px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    border: 2px solid var(--borda); background: white; color: var(--texto-sec);
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.pill-status:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+.pill-status.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: white; }
+
 /* ── VIEW TOGGLE ───────────────────────────────── */
 .view-toggle { display: flex; gap: 2px; background: var(--borda); border-radius: 8px; padding: 2px; flex-shrink: 0; }
 .btn-view {
@@ -252,6 +262,11 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .card-ex-exam-footer {
     display: flex; align-items: center; justify-content: space-between;
     margin-top: 5px; gap: 8px; flex-wrap: wrap;
+}
+.presc-hora {
+    font-size: 10px; color: var(--texto-sec); font-weight: 600;
+    background: #f0f0f0; border-radius: 10px; padding: 1px 6px;
+    margin-left: 4px; white-space: nowrap;
 }
 
 /* ── GRID DE CARDS (P45) ───────────────────────── */

@@ -396,3 +396,313 @@ def api_p47_exportar():
     except Exception as e:
         current_app.logger.error(f'Erro exportar p47: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao exportar'}), 500
+
+
+# ── Produção: utilitário de filtro de período ────────────────
+
+def _filtro_periodo(periodo):
+    """Retorna (cláusula WHERE str, params list) para o período solicitado."""
+    if periodo == 'hoje':
+        return "DATE(dt_pedido) = CURRENT_DATE", []
+    elif periodo == 'mes':
+        return "dt_pedido >= DATE_TRUNC('month', NOW())", []
+    else:
+        try:
+            dias = min(int(periodo), 365)
+        except (ValueError, TypeError):
+            dias = 30
+        return "dt_pedido >= NOW() - INTERVAL %s", [f'{dias} days']
+
+
+# ── Produção: Sync (UPSERT vw_painel19_radiologia → radio_producao) ──
+
+@painel47_bp.route('/api/paineis/painel47/producao/sync', methods=['POST'])
+@login_required
+@panel_permission_required('painel47')
+def api_p47_producao_sync():
+    """
+    Sincroniza vw_painel19_radiologia → radio_producao via UPSERT no nr_prescricao.
+    Idempotente: pode ser chamado várias vezes sem duplicar registros.
+    Preserva timestamps históricos (dt_laudo, dt_execucao) que já foram gravados.
+    """
+    try:
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            cursor.execute("""
+                INSERT INTO radio_producao (
+                    nr_atendimento, nr_prescricao, nm_pessoa_fisica, ds_procedimento,
+                    nm_setor, cd_setor, leito, ds_convenio, ie_urgente,
+                    nm_executor, nm_laudador, status_radiologia,
+                    dt_pedido, dt_execucao, dt_laudo, dt_laudo_liberacao,
+                    horas_espera, ultima_atualizacao
+                )
+                SELECT
+                    p.nr_atendimento::varchar,
+                    p.nr_prescricao::varchar,
+                    p.nm_pessoa_fisica,
+                    p.ds_procedimento,
+                    p.nm_setor,
+                    p.cd_setor_atendimento,
+                    COALESCE(p.leito_base, p.leito),
+                    p.ds_convenio,
+                    p.ie_urgente,
+                    p.nm_executor,
+                    p.nm_laudador,
+                    p.status_radiologia,
+                    p.dt_pedido,
+                    p.dt_execucao,
+                    p.dt_laudo,
+                    p.dt_laudo_liberacao,
+                    p.horas_espera,
+                    NOW()
+                FROM vw_painel19_radiologia p
+                WHERE p.nr_prescricao IS NOT NULL
+                ON CONFLICT (nr_prescricao) DO UPDATE SET
+                    status_radiologia  = EXCLUDED.status_radiologia,
+                    dt_execucao        = COALESCE(EXCLUDED.dt_execucao,        radio_producao.dt_execucao),
+                    dt_laudo           = COALESCE(EXCLUDED.dt_laudo,           radio_producao.dt_laudo),
+                    dt_laudo_liberacao = COALESCE(EXCLUDED.dt_laudo_liberacao, radio_producao.dt_laudo_liberacao),
+                    horas_espera       = EXCLUDED.horas_espera,
+                    nm_executor        = COALESCE(EXCLUDED.nm_executor,  radio_producao.nm_executor),
+                    nm_laudador        = COALESCE(EXCLUDED.nm_laudador,  radio_producao.nm_laudador),
+                    ultima_atualizacao = NOW()
+            """)
+            afetados = cursor.rowcount
+
+        cache_delete_pattern('painel47:producao*')
+        current_app.logger.info(f'P47 producao sync: {afetados} registros afetados')
+        return jsonify({'success': True, 'registros_afetados': afetados,
+                        'timestamp': datetime.now().isoformat()})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro sync producao p47: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao sincronizar produção'}), 500
+
+
+# ── Produção: KPIs ───────────────────────────────────────────
+
+@painel47_bp.route('/api/paineis/painel47/producao/kpis')
+@login_required
+@panel_permission_required('painel47')
+def api_p47_producao_kpis():
+    """KPIs de produção. ?periodo=hoje|mes|N (N = dias)"""
+    try:
+        periodo = request.args.get('periodo', 'hoje')
+        filtro_dt, params = _filtro_periodo(periodo)
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    COUNT(*)                                                               AS total_prescritos,
+                    COUNT(*) FILTER (WHERE status_radiologia <> 'AGUARDANDO')              AS executados,
+                    COUNT(*) FILTER (WHERE status_radiologia = 'LAUDADO')                  AS laudados,
+                    COUNT(*) FILTER (WHERE status_radiologia = 'EXECUTADO_SEM_LAUDO')      AS sem_laudo,
+                    ROUND(
+                        COUNT(*) FILTER (WHERE status_radiologia = 'LAUDADO')::NUMERIC
+                        / NULLIF(COUNT(*) FILTER (WHERE status_radiologia <> 'AGUARDANDO'), 0) * 100
+                    , 1)                                                                   AS taxa_laudo_pct,
+                    ROUND(AVG(
+                        EXTRACT(EPOCH FROM (dt_execucao - dt_pedido)) / 3600
+                    ) FILTER (WHERE dt_execucao IS NOT NULL AND dt_pedido IS NOT NULL)::NUMERIC, 1)
+                                                                                           AS media_h_presc_exec,
+                    ROUND(AVG(
+                        EXTRACT(EPOCH FROM (dt_laudo - dt_execucao)) / 3600
+                    ) FILTER (WHERE dt_laudo IS NOT NULL AND dt_execucao IS NOT NULL)::NUMERIC, 1)
+                                                                                           AS media_h_exec_laudo,
+                    MAX(ultima_atualizacao)                                                AS ultima_sync
+                FROM radio_producao
+                WHERE {filtro_dt}
+            """, params)
+            row = _serial(dict(cursor.fetchone()))
+            row['success'] = True
+            row['periodo'] = periodo
+            return jsonify(row)
+
+    except Exception as e:
+        current_app.logger.error(f'Erro kpis producao p47: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar KPIs'}), 500
+
+
+# ── Produção: Por setor ──────────────────────────────────────
+
+@painel47_bp.route('/api/paineis/painel47/producao/por-setor')
+@login_required
+@panel_permission_required('painel47')
+def api_p47_producao_por_setor():
+    try:
+        periodo = request.args.get('periodo', 'hoje')
+        filtro_dt, params = _filtro_periodo(periodo)
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    nm_setor                                                               AS setor,
+                    COUNT(*)                                                               AS total,
+                    COUNT(*) FILTER (WHERE status_radiologia <> 'AGUARDANDO')              AS executados,
+                    COUNT(*) FILTER (WHERE status_radiologia = 'LAUDADO')                  AS laudados,
+                    COUNT(*) FILTER (WHERE status_radiologia = 'EXECUTADO_SEM_LAUDO')      AS sem_laudo,
+                    ROUND(AVG(
+                        EXTRACT(EPOCH FROM (dt_execucao - dt_pedido)) / 3600
+                    ) FILTER (WHERE dt_execucao IS NOT NULL AND dt_pedido IS NOT NULL)::NUMERIC, 1)
+                                                                                           AS media_h_espera
+                FROM radio_producao
+                WHERE {filtro_dt}
+                GROUP BY nm_setor
+                ORDER BY total DESC
+                LIMIT 30
+            """, params)
+            return jsonify({'success': True, 'data': [_serial(dict(r)) for r in cursor.fetchall()]})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro setor producao p47: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro'}), 500
+
+
+# ── Produção: Por tipo de exame ──────────────────────────────
+
+@painel47_bp.route('/api/paineis/painel47/producao/por-tipo')
+@login_required
+@panel_permission_required('painel47')
+def api_p47_producao_por_tipo():
+    try:
+        periodo = request.args.get('periodo', 'hoje')
+        filtro_dt, params = _filtro_periodo(periodo)
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    ds_procedimento                                                        AS tipo,
+                    COUNT(*)                                                               AS total,
+                    COUNT(*) FILTER (WHERE status_radiologia = 'LAUDADO')                  AS laudados,
+                    ROUND(AVG(
+                        EXTRACT(EPOCH FROM (dt_execucao - dt_pedido)) / 3600
+                    ) FILTER (WHERE dt_execucao IS NOT NULL AND dt_pedido IS NOT NULL)::NUMERIC, 1)
+                                                                                           AS media_h_espera
+                FROM radio_producao
+                WHERE {filtro_dt}
+                GROUP BY ds_procedimento
+                ORDER BY total DESC
+                LIMIT 20
+            """, params)
+            return jsonify({'success': True, 'data': [_serial(dict(r)) for r in cursor.fetchall()]})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro tipo producao p47: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro'}), 500
+
+
+# ── Produção: Lista de exames ────────────────────────────────
+
+@painel47_bp.route('/api/paineis/painel47/producao/exames')
+@login_required
+@panel_permission_required('painel47')
+def api_p47_producao_exames():
+    try:
+        periodo = request.args.get('periodo', 'hoje')
+        status  = request.args.get('status', '')
+        setor   = request.args.get('setor', '')
+        limit   = min(int(request.args.get('limit', 200)), 500)
+
+        filtro_dt, params = _filtro_periodo(periodo)
+        filtros = [filtro_dt]
+        if status:
+            filtros.append("status_radiologia = %s")
+            params.append(status)
+        if setor:
+            filtros.append("nm_setor ILIKE %s")
+            params.append(f'%{setor}%')
+        where = ' AND '.join(filtros)
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    id, nr_atendimento, nm_pessoa_fisica, ds_procedimento,
+                    nm_setor, leito, ds_convenio,
+                    ie_urgente, status_radiologia, nm_executor, nm_laudador,
+                    dt_pedido, dt_execucao, dt_laudo, dt_laudo_liberacao, horas_espera,
+                    ROUND((EXTRACT(EPOCH FROM (dt_execucao - dt_pedido)) / 3600)::NUMERIC, 1)
+                        AS h_presc_exec,
+                    ROUND((EXTRACT(EPOCH FROM (dt_laudo    - dt_execucao)) / 3600)::NUMERIC, 1)
+                        AS h_exec_laudo
+                FROM radio_producao
+                WHERE {where}
+                ORDER BY dt_pedido DESC
+                LIMIT %s
+            """, params + [limit])
+            exames = [_serial(dict(r)) for r in cursor.fetchall()]
+
+            cursor.execute(f"SELECT COUNT(*) FROM radio_producao WHERE {where}", params)
+            total = cursor.fetchone()[0]
+
+        return jsonify({'success': True, 'data': exames, 'total': total})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro exames producao p47: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar exames'}), 500
+
+
+# ── Produção: Exportar CSV ───────────────────────────────────
+
+@painel47_bp.route('/api/paineis/painel47/producao/exportar')
+@login_required
+@panel_permission_required('painel47')
+def api_p47_producao_exportar():
+    try:
+        periodo = request.args.get('periodo', '30')
+        status  = request.args.get('status', '')
+        setor   = request.args.get('setor', '')
+
+        def _fmt(dt):
+            return dt.strftime('%d/%m/%Y %H:%M') if dt else ''
+
+        filtro_dt, params = _filtro_periodo(periodo)
+        filtros = [filtro_dt]
+        if status:
+            filtros.append("status_radiologia = %s")
+            params.append(status)
+        if setor:
+            filtros.append("nm_setor ILIKE %s")
+            params.append(f'%{setor}%')
+        where = ' AND '.join(filtros)
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    nr_atendimento, nm_pessoa_fisica, ds_procedimento,
+                    nm_setor, leito, ds_convenio, ie_urgente, status_radiologia,
+                    nm_executor, nm_laudador,
+                    dt_pedido, dt_execucao, dt_laudo, dt_laudo_liberacao, horas_espera
+                FROM radio_producao
+                WHERE {where}
+                ORDER BY dt_pedido DESC
+            """, params)
+            rows = cursor.fetchall()
+
+        output = io.StringIO()
+        output.write('﻿')  # BOM UTF-8
+        writer = csv.writer(output, delimiter=';')
+        writer.writerow([
+            'Atendimento', 'Paciente', 'Exame', 'Setor', 'Leito', 'Convênio',
+            'Urgente', 'Status', 'Executor', 'Laudador',
+            'Dt Prescrição', 'Dt Execução', 'Dt Laudo', 'Dt Liberação Laudo', 'Horas Espera'
+        ])
+        for r in rows:
+            writer.writerow([
+                r['nr_atendimento'], r['nm_pessoa_fisica'], r['ds_procedimento'],
+                r['nm_setor'], r['leito'], r['ds_convenio'] or '',
+                'Sim' if r['ie_urgente'] == 'S' else 'Não',
+                r['status_radiologia'], r['nm_executor'] or '', r['nm_laudador'] or '',
+                _fmt(r['dt_pedido']), _fmt(r['dt_execucao']),
+                _fmt(r['dt_laudo']), _fmt(r['dt_laudo_liberacao']),
+                r['horas_espera'] or ''
+            ])
+
+        nome = f'radio_producao_{datetime.now().strftime("%Y%m%d_%H%M")}.csv'
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename="{nome}"'}
+        )
+
+    except Exception as e:
+        current_app.logger.error(f'Erro exportar producao p47: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao exportar'}), 500

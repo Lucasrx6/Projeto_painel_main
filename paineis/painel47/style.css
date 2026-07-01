@@ -297,3 +297,61 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .filtro-content { flex-direction: column; align-items: stretch; }
 }
+
+/* ── ABA PRODUÇÃO (Mini-BI) ─────────────────────── */
+.prod-periodo-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.prod-pill {
+    padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 2px solid var(--borda); background: white; color: var(--texto-sec);
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.prod-pill:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+.prod-pill.ativo  { background: var(--cor-primaria); border-color: var(--cor-primaria); color: white; }
+
+/* Grid 7 KPIs */
+.prod-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.prod-kpi-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--sombra);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.prod-kpi-card.k-total    { border-top: 3px solid #17a2b8; }
+.prod-kpi-card.k-exec     { border-top: 3px solid #fd7e14; }
+.prod-kpi-card.k-laudado  { border-top: 3px solid #28a745; }
+.prod-kpi-card.k-semlaudo { border-top: 3px solid #e0a800; }
+.prod-kpi-card.k-taxa     { border-top: 3px solid #6610f2; }
+.prod-kpi-card.k-tm1,
+.prod-kpi-card.k-tm2      { border-top: 3px solid #6c757d; }
+
+.prod-kpi-icone { font-size: 14px; margin-bottom: 2px; }
+.prod-kpi-num   { font-size: 26px; font-weight: 800; line-height: 1; }
+.prod-kpi-label { font-size: 10px; font-weight: 700; color: var(--texto-sec); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+.prod-kpi-sub   { font-size: 9px; color: var(--texto-sec); margin-top: 1px; }
+
+/* Grid 2 colunas setor + tipo */
+.prod-bi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+/* Barra proporcional reutilizada */
+.barra-bg  { height: 4px; background: #e9ecef; border-radius: 2px; margin-top: 3px; }
+.barra-fill { height: 4px; background: var(--cor-primaria); border-radius: 2px; }
+
+@media (max-width: 900px) {
+    .prod-bi-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .prod-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}

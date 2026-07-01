@@ -36,10 +36,13 @@
                     <button class="pill ativo" data-pill="todos">Todos</button>
                 </div>
                 <div class="filtros-right">
-                    <label class="filtro-toggle">
-                        <input type="checkbox" id="toggle-pendentes">
-                        Apenas pendentes
-                    </label>
+                    <div class="filtro-status-pills" id="filtro-status-pills">
+                        <button class="pill-status ativo" data-status="todos">Todos</button>
+                        <button class="pill-status" data-status="pendentes">Pendentes</button>
+                        <button class="pill-status" data-status="laudado">Laudados</button>
+                        <button class="pill-status" data-status="sem_laudo">Sem Laudo</button>
+                        <button class="pill-status" data-status="sem_envio">Sem Envio</button>
+                    </div>
                     <div class="view-toggle">
                         <button class="btn-view ativo" id="btn-view-cards" title="Cards"><i class="fas fa-th-large"></i> Cards</button>
                         <button class="btn-view" id="btn-view-tabela" title="Tabela"><i class="fas fa-table"></i> Tabela</button>
