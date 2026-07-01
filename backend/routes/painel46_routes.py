@@ -506,15 +506,15 @@ def api_p46_todos_exames():
                     pc.status        AS chamado_status
                 FROM vw_painel19_radiologia p
                 LEFT JOIN radio_agenda ra ON (
-                    ra.nr_atendimento = p.nr_atendimento
-                    AND ra.nr_prescricao = p.nr_prescricao
+                    ra.nr_atendimento = p.nr_atendimento::varchar
+                    AND ra.nr_prescricao = p.nr_prescricao::varchar
                     AND ra.status NOT IN ('concluido', 'cancelado')
                 )
                 LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
                 LEFT JOIN LATERAL (
                     SELECT id, status
                     FROM padioleiro_chamados
-                    WHERE nr_atendimento = p.nr_atendimento
+                    WHERE nr_atendimento = p.nr_atendimento::varchar
                       AND status NOT IN ('concluido', 'cancelado')
                     ORDER BY criado_em DESC LIMIT 1
                 ) pc ON TRUE
