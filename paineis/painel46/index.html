@@ -78,18 +78,26 @@
         <!-- ABA: EXAMES -->
         <div id="aba-exames" class="aba-conteudo" style="display:none;">
             <div class="exames-filtro-bar">
-                <select id="exames-filtro-setor"><option value="">Todos os setores</option></select>
-                <label class="exames-filtro-toggle">
-                    <input type="checkbox" id="exames-toggle-sem-controle">
-                    Apenas sem controle
-                </label>
+                <div class="pills-setor" id="exames-pills-setor">
+                    <button class="pill ativo" data-pill="todos">Todos</button>
+                </div>
+                <div class="filtros-right">
+                    <label class="exames-filtro-toggle">
+                        <input type="checkbox" id="exames-toggle-sem-controle">
+                        Apenas sem controle
+                    </label>
+                    <div class="view-toggle">
+                        <button class="btn-view ativo" id="exames-btn-cards" title="Cards"><i class="fas fa-th-large"></i> Cards</button>
+                        <button class="btn-view" id="exames-btn-tabela" title="Tabela"><i class="fas fa-table"></i> Tabela</button>
+                    </div>
+                </div>
             </div>
             <div id="exames-loading" class="loading"><div class="loading-spinner"></div><span>Carregando exames...</span></div>
             <div id="exames-vazio" class="painel-vazio" style="display:none;">
                 <i class="fas fa-clipboard-check"></i>
                 <p>Nenhum exame encontrado.</p>
             </div>
-            <div id="exames-conteudo" style="display:none;display:flex;flex-direction:column;gap:16px;"></div>
+            <div id="exames-conteudo" style="display:none;"></div>
         </div>
 
         <!-- ABA: AGENDA -->

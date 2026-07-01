@@ -240,18 +240,66 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 /* ── FILTRO BAR (aba exames) ───────────────────── */
 .exames-filtro-bar {
     background: white; border-bottom: 1px solid var(--borda);
-    padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
 }
-.exames-filtro-bar select {
-    border: 2px solid var(--borda); border-radius: 8px; padding: 6px 10px;
-    font-size: 13px; color: var(--texto); background: white;
-}
-.exames-filtro-bar select:focus { outline: none; border-color: var(--cor-primaria); }
 .exames-filtro-toggle {
     display: flex; align-items: center; gap: 6px;
     font-size: 13px; font-weight: 600; color: var(--texto-sec); cursor: pointer; user-select: none;
 }
 .exames-filtro-toggle input { cursor: pointer; accent-color: var(--cor-primaria); }
+
+/* ── PILLS MULTI-SETOR ─────────────────────────── */
+.pills-setor { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; flex: 1; min-width: 0; }
+.pill {
+    padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 2px solid var(--borda); background: white; color: var(--texto-sec);
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.pill:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+.pill.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: white; }
+
+/* ── VIEW TOGGLE ───────────────────────────────── */
+.filtros-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
+.view-toggle { display: flex; gap: 2px; background: var(--borda); border-radius: 8px; padding: 2px; }
+.btn-view {
+    background: none; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; color: var(--texto-sec); display: flex; align-items: center; gap: 4px;
+    font-weight: 600; transition: all 0.15s; white-space: nowrap;
+}
+.btn-view.ativo { background: white; color: var(--cor-primaria); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+/* ── GRID CARDS EXAMES (aba exames) ─────────────── */
+.grid-cards-exames {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px; padding: 14px;
+}
+.card-ex {
+    background: var(--card-bg); border-radius: var(--radius);
+    box-shadow: var(--sombra); border-left: 5px solid var(--borda);
+    overflow: hidden; transition: transform 0.15s, box-shadow 0.15s;
+}
+.card-ex:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+.card-ex.card-ex-urgente    { border-left-color: var(--cor-urgente); }
+.card-ex.card-ex-registrado { border-left-color: var(--cor-primaria); }
+.card-ex.card-ex-concluido  { border-left-color: var(--cor-sucesso); opacity: 0.82; }
+
+.card-ex-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 12px; background: #f8f9fa; border-bottom: 1px solid var(--borda);
+}
+.card-ex-setor { font-size: 10px; font-weight: 700; color: var(--cor-primaria); text-transform: uppercase; letter-spacing: 0.5px; }
+.card-ex-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+.card-ex-nome { font-size: 14px; font-weight: 700; color: var(--texto); }
+.card-ex-atnd { font-size: 11px; color: var(--texto-sec); }
+.card-ex-proc { font-size: 12px; font-weight: 600; color: var(--texto); display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+.card-ex-proc i { color: var(--cor-primaria); font-size: 11px; }
+.card-ex-leito { font-size: 11px; color: var(--texto-sec); display: flex; align-items: center; gap: 4px; }
+.card-ex-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+.card-ex-footer {
+    padding: 8px 12px; background: #f8f9fa; border-top: 1px solid var(--borda);
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+}
 
 /* ── TABELA EXAMES (aba exames) ─────────────────── */
 .setor-grupo { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--sombra); overflow: hidden; }

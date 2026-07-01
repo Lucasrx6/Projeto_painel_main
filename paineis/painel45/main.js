@@ -13,8 +13,9 @@
 
     var Estado = {
         dados: [],
-        filtroSetor: '',
+        setoresSelecionados: [],   // [] = todos
         filtroSoPendentes: false,
+        visualizacao: 'cards',     // 'cards' | 'tabela'
         modalAtendimento: null
     };
 
@@ -78,7 +79,7 @@
         if (!item.chamado_id) {
             if (item.requer_transporte === false)
                 return '<span style="font-size:11px;color:#aaa;">Portátil</span>';
-            return '<span style="font-size:11px;color:#aaa;">—</span>';
+            return '';
         }
         var s = item.chamado_status || '';
         if (s === 'aguardando' || s === 'aceito')
@@ -87,7 +88,7 @@
             return '<span class="badge-transp transp-em-transporte"><i class="fas fa-running"></i> Em transporte</span>';
         if (s === 'concluido')
             return '<span class="badge-transp transp-concluido"><i class="fas fa-flag-checkered"></i> Chegou</span>';
-        return '<span style="font-size:11px;color:#aaa;">—</span>';
+        return '';
     }
 
     function acoesHtml(item) {
@@ -96,7 +97,7 @@
             if (item.slot_data_hora)
                 h += '<div class="slot-agendado-info"><i class="fas fa-clock"></i> ' + formatarHora(item.slot_data_hora) + '</div>';
             if (item.radio_status !== 'concluido' && item.radio_status !== 'cancelado')
-                h += '<br><button class="btn-cancelar-reg" onclick="P45.cancelarReg(' + item.radio_id + ')">'
+                h += '<button class="btn-cancelar-reg" onclick="P45.cancelarReg(' + item.radio_id + ')">'
                    + '<i class="fas fa-times"></i> Cancelar</button>';
             return h;
         }
@@ -110,23 +111,49 @@
              + '<i class="fas fa-plus"></i> Registrar</button>';
     }
 
-    // ── Renderizar ─────────────────────────────────
-    function popularSetores() {
-        var sel = document.getElementById('filtro-setor');
-        if (!sel || sel.options.length > 1) return;
-        var setores = {};
+    // ── Pills multi-setor ──────────────────────────
+    function popularPills() {
+        var container = document.getElementById('pills-setor');
+        if (!container) return;
+
+        var setores = [];
+        var vistos = {};
         for (var i = 0; i < Estado.dados.length; i++) {
             var s = Estado.dados[i].nm_setor || '';
-            if (s) setores[s] = true;
+            if (s && !vistos[s]) { vistos[s] = true; setores.push(s); }
         }
-        var nomes = Object.keys(setores).sort();
-        for (var j = 0; j < nomes.length; j++) {
-            var opt = document.createElement('option');
-            opt.value = nomes[j]; opt.textContent = nomes[j];
-            sel.appendChild(opt);
+        setores.sort();
+
+        var todosAtivo = !Estado.setoresSelecionados.length;
+        var html = '<button class="pill' + (todosAtivo ? ' ativo' : '') + '" data-pill="todos">Todos</button>';
+        for (var j = 0; j < setores.length; j++) {
+            var isAtivo = Estado.setoresSelecionados.indexOf(setores[j]) >= 0;
+            html += '<button class="pill' + (isAtivo ? ' ativo' : '') + '" data-pill="' + escHtml(setores[j]) + '">'
+                  + escHtml(setores[j]) + '</button>';
+        }
+        container.innerHTML = html;
+
+        var btns = container.querySelectorAll('.pill');
+        for (var k = 0; k < btns.length; k++) {
+            (function(btn) {
+                btn.addEventListener('click', function() {
+                    var val = btn.getAttribute('data-pill');
+                    if (val === 'todos') {
+                        Estado.setoresSelecionados = [];
+                    } else {
+                        var idx = Estado.setoresSelecionados.indexOf(val);
+                        if (idx >= 0) Estado.setoresSelecionados.splice(idx, 1);
+                        else Estado.setoresSelecionados.push(val);
+                    }
+                    localStorage.setItem('p45_setores', JSON.stringify(Estado.setoresSelecionados));
+                    popularPills();
+                    renderizar();
+                });
+            })(btns[k]);
         }
     }
 
+    // ── Contadores ─────────────────────────────────
     function atualizarContadores(lista) {
         var total = lista.length, urgentes = 0, pendentes = 0, agendados = 0, concluidos = 0;
         for (var i = 0; i < lista.length; i++) {
@@ -143,17 +170,48 @@
         }
     }
 
+    // ── Card HTML ──────────────────────────────────
+    function cardExHtml(item) {
+        var cls = 'card-ex';
+        if (item.radio_prioridade === 'urgente') cls += ' card-ex-urgente';
+        else if (item.radio_status === 'concluido') cls += ' card-ex-concluido';
+        else if (item.radio_id) cls += ' card-ex-registrado';
+
+        var html = '<div class="' + cls + '">';
+
+        html += '<div class="card-ex-header">'
+              + '<span class="card-ex-setor">' + escHtml(item.nm_setor || '') + '</span>'
+              + (item.radio_prioridade === 'urgente' ? '<span class="badge-urgente">URGENTE</span>' : '')
+              + '</div>';
+
+        html += '<div class="card-ex-body">'
+              + '<div class="card-ex-nome">' + escHtml(formatarNome(item.nm_pessoa_fisica)) + '</div>'
+              + '<div class="card-ex-atnd"><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(String(item.nr_atendimento || '')) + '</div>'
+              + '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-') + '</div>'
+              + '<div class="card-ex-leito"><i class="fas fa-bed"></i> ' + escHtml(item.leito_base || item.leito || '-') + '</div>'
+              + '<div class="card-ex-badges">'
+              + badgeTasy(item)
+              + (item.radio_id ? ' ' + badgeRadio(item.radio_status) : '')
+              + ' ' + badgeTransporte(item)
+              + '</div>'
+              + '</div>';
+
+        html += '<div class="card-ex-footer">' + acoesHtml(item) + '</div>';
+        html += '</div>';
+        return html;
+    }
+
+    // ── Renderizar ─────────────────────────────────
     function renderizar() {
         var mc = document.getElementById('main-content');
         if (!mc) return;
 
-        popularSetores();
+        popularPills();
 
-        // Filtrar
         var filtrados = [];
         for (var n = 0; n < Estado.dados.length; n++) {
             var it = Estado.dados[n];
-            if (Estado.filtroSetor && it.nm_setor !== Estado.filtroSetor) continue;
+            if (Estado.setoresSelecionados.length && Estado.setoresSelecionados.indexOf(it.nm_setor || '') < 0) continue;
             if (Estado.filtroSoPendentes) {
                 if (it.radio_id && it.radio_status !== 'pendente' && it.radio_status !== 'agendado' && it.radio_status !== 'no_local') continue;
             }
@@ -183,35 +241,42 @@
             var lista = grupos[setor];
             html += '<div class="setor-grupo">'
                   + '<div class="setor-titulo"><i class="fas fa-hospital-alt"></i> ' + escHtml(setor)
-                  + '<span class="setor-count">' + lista.length + '</span></div>'
-                  + '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
-                  + '<th>Leito</th><th>Paciente</th><th>Exame</th>'
-                  + '<th style="text-align:center">Status Tasy</th>'
-                  + '<th style="text-align:center">Controle</th>'
-                  + '<th style="text-align:center">Transporte</th>'
-                  + '<th style="text-align:center">Ações</th>'
-                  + '</tr></thead><tbody>';
+                  + '<span class="setor-count">' + lista.length + '</span></div>';
 
-            for (var j = 0; j < lista.length; j++) {
-                var e = lista[j];
-                var urgCls = e.radio_prioridade === 'urgente' ? ' linha-urgente' : '';
-                html += '<tr class="' + urgCls + '">';
-                html += '<td><span class="leito-badge">' + escHtml(e.leito_base || e.leito || '-') + '</span></td>';
-                html += '<td><span class="pct-nome">' + escHtml(formatarNome(e.nm_pessoa_fisica)) + '</span>'
-                      + '<div class="pct-atnd"><i class="fas fa-hashtag" style="font-size:10px"></i> ' + escHtml(e.nr_atendimento || '') + '</div></td>';
-                html += '<td><div class="exame-nome">' + escHtml(e.ds_procedimento || '-') + '</div>';
-                if (e.requer_transporte === false)
-                    html += '<span class="badge-rx-portatil"><i class="fas fa-bed"></i> Portátil</span>';
-                if (e.radio_prioridade === 'urgente')
-                    html += ' <span class="badge-urgente">URGENTE</span>';
-                html += '</td>';
-                html += '<td style="text-align:center">' + badgeTasy(e) + '</td>';
-                html += '<td style="text-align:center">' + (e.radio_id ? badgeRadio(e.radio_status) : '<span style="font-size:11px;color:#aaa;">—</span>') + '</td>';
-                html += '<td style="text-align:center">' + badgeTransporte(e) + '</td>';
-                html += '<td style="text-align:center">' + acoesHtml(e) + '</td>';
-                html += '</tr>';
+            if (Estado.visualizacao === 'cards') {
+                html += '<div class="grid-cards-exames">';
+                for (var ci = 0; ci < lista.length; ci++) html += cardExHtml(lista[ci]);
+                html += '</div>';
+            } else {
+                html += '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
+                      + '<th>Leito</th><th>Paciente</th><th>Exame</th>'
+                      + '<th style="text-align:center">Status Tasy</th>'
+                      + '<th style="text-align:center">Controle</th>'
+                      + '<th style="text-align:center">Transporte</th>'
+                      + '<th style="text-align:center">Ações</th>'
+                      + '</tr></thead><tbody>';
+                for (var j = 0; j < lista.length; j++) {
+                    var e = lista[j];
+                    var urgCls = e.radio_prioridade === 'urgente' ? ' linha-urgente' : '';
+                    html += '<tr class="' + urgCls + '">';
+                    html += '<td><span class="leito-badge">' + escHtml(e.leito_base || e.leito || '-') + '</span></td>';
+                    html += '<td><span class="pct-nome">' + escHtml(formatarNome(e.nm_pessoa_fisica)) + '</span>'
+                          + '<div class="pct-atnd"><i class="fas fa-hashtag" style="font-size:10px"></i> ' + escHtml(e.nr_atendimento || '') + '</div></td>';
+                    html += '<td><div class="exame-nome">' + escHtml(e.ds_procedimento || '-') + '</div>';
+                    if (e.requer_transporte === false)
+                        html += '<span class="badge-rx-portatil"><i class="fas fa-bed"></i> Portátil</span>';
+                    if (e.radio_prioridade === 'urgente')
+                        html += ' <span class="badge-urgente">URGENTE</span>';
+                    html += '</td>';
+                    html += '<td style="text-align:center">' + badgeTasy(e) + '</td>';
+                    html += '<td style="text-align:center">' + (e.radio_id ? badgeRadio(e.radio_status) : '<span style="font-size:11px;color:#aaa;">—</span>') + '</td>';
+                    html += '<td style="text-align:center">' + badgeTransporte(e) + '</td>';
+                    html += '<td style="text-align:center">' + acoesHtml(e) + '</td>';
+                    html += '</tr>';
+                }
+                html += '</tbody></table></div>';
             }
-            html += '</tbody></table></div></div>';
+            html += '</div>';
         }
         mc.innerHTML = html;
     }
@@ -271,7 +336,6 @@
         var btn = document.getElementById('modal-reg-confirmar');
         if (btn) btn.disabled = true;
 
-        // Encontrar dados completos do exame
         var exame = null;
         for (var i = 0; i < Estado.dados.length; i++) {
             if (String(Estado.dados[i].nr_atendimento) === String(Estado.modalAtendimento)) {
@@ -323,26 +387,37 @@
 
     // ── Inicializar ────────────────────────────────
     function inicializar() {
-        // Restaurar filtros
-        var s = localStorage.getItem('p45_setor');
-        if (s) Estado.filtroSetor = s;
-        Estado.filtroSoPendentes = localStorage.getItem('p45_pendentes') === '1';
+        // Restaurar preferências
+        try {
+            var ss = localStorage.getItem('p45_setores');
+            if (ss) Estado.setoresSelecionados = JSON.parse(ss) || [];
+        } catch(e) { Estado.setoresSelecionados = []; }
 
-        document.getElementById('btn-refresh').addEventListener('click', carregar);
-        document.getElementById('btn-voltar').addEventListener('click', function() {
-            window.history.back();
+        Estado.filtroSoPendentes = localStorage.getItem('p45_pendentes') === '1';
+        Estado.visualizacao = localStorage.getItem('p45_view') || 'cards';
+
+        // View toggle
+        var btnCards  = document.getElementById('btn-view-cards');
+        var btnTabela = document.getElementById('btn-view-tabela');
+        function atualizarBotoesView() {
+            if (btnCards)  btnCards.className  = 'btn-view' + (Estado.visualizacao === 'cards'  ? ' ativo' : '');
+            if (btnTabela) btnTabela.className = 'btn-view' + (Estado.visualizacao === 'tabela' ? ' ativo' : '');
+        }
+        atualizarBotoesView();
+        if (btnCards) btnCards.addEventListener('click', function() {
+            Estado.visualizacao = 'cards';
+            localStorage.setItem('p45_view', 'cards');
+            atualizarBotoesView();
+            renderizar();
+        });
+        if (btnTabela) btnTabela.addEventListener('click', function() {
+            Estado.visualizacao = 'tabela';
+            localStorage.setItem('p45_view', 'tabela');
+            atualizarBotoesView();
+            renderizar();
         });
 
-        var sel = document.getElementById('filtro-setor');
-        if (sel) {
-            if (Estado.filtroSetor) sel.value = Estado.filtroSetor;
-            sel.addEventListener('change', function() {
-                Estado.filtroSetor = this.value;
-                localStorage.setItem('p45_setor', this.value);
-                renderizar();
-            });
-        }
-
+        // Checkbox pendentes
         var chk = document.getElementById('toggle-pendentes');
         if (chk) {
             chk.checked = Estado.filtroSoPendentes;
@@ -352,6 +427,12 @@
                 renderizar();
             });
         }
+
+        // Botões cabeçalho
+        var btnR = document.getElementById('btn-refresh');
+        if (btnR) btnR.addEventListener('click', carregar);
+        var btnV = document.getElementById('btn-voltar');
+        if (btnV) btnV.addEventListener('click', function() { window.history.back(); });
 
         // Modal
         document.getElementById('modal-reg-fechar').addEventListener('click', fecharModal);

@@ -22,9 +22,9 @@
         fila: { agendados: [], pendentes: [] },
         slots: [],
         exames: [],
-        setoresExames: [],
-        filtroSetor: '',
+        setoresExamesSelecionados: [],   // [] = todos
         filtroSemControle: false,
+        visualizacaoExames: 'cards',     // 'cards' | 'tabela'
         carregandoFila: false,
         carregandoExames: false
     };
@@ -143,7 +143,6 @@
         else if (item.status === 'concluido')  statusCls = ' card-concluido';
 
         var html = '<div class="card-paciente' + statusCls + '">';
-
         html += '<div class="card-header-p">'
               + '<div><div class="card-nome">' + escHtml(formatarNome(item.nm_paciente)) + '</div>'
               + '<div class="card-atnd"><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(item.nr_atendimento || '') + '</div></div>';
@@ -205,7 +204,6 @@
             if (secPend) secPend.style.display = 'none';
             return;
         }
-
         if (vazio) vazio.style.display = 'none';
 
         if (agendados.length) {
@@ -229,10 +227,10 @@
         }
     }
 
-    // ── Renderizar Exames ──────────────────────────
-    function popularFiltroSetores(dados) {
-        var select = document.getElementById('exames-filtro-setor');
-        if (!select) return;
+    // ── Pills Exames ───────────────────────────────
+    function popularPillsExames(dados) {
+        var container = document.getElementById('exames-pills-setor');
+        if (!container) return;
 
         var setores = [];
         var vistos = {};
@@ -242,55 +240,85 @@
         }
         setores.sort();
 
-        var opts = '<option value="">Todos os setores</option>';
+        var todosAtivo = !Estado.setoresExamesSelecionados.length;
+        var html = '<button class="pill' + (todosAtivo ? ' ativo' : '') + '" data-pill="todos">Todos</button>';
         for (var j = 0; j < setores.length; j++) {
-            var sel = setores[j] === Estado.filtroSetor ? ' selected' : '';
-            opts += '<option value="' + escHtml(setores[j]) + '"' + sel + '>' + escHtml(setores[j]) + '</option>';
+            var isAtivo = Estado.setoresExamesSelecionados.indexOf(setores[j]) >= 0;
+            html += '<button class="pill' + (isAtivo ? ' ativo' : '') + '" data-pill="' + escHtml(setores[j]) + '">'
+                  + escHtml(setores[j]) + '</button>';
         }
-        select.innerHTML = opts;
+        container.innerHTML = html;
+
+        var btns = container.querySelectorAll('.pill');
+        for (var k = 0; k < btns.length; k++) {
+            (function(btn) {
+                btn.addEventListener('click', function() {
+                    var val = btn.getAttribute('data-pill');
+                    if (val === 'todos') {
+                        Estado.setoresExamesSelecionados = [];
+                    } else {
+                        var idx = Estado.setoresExamesSelecionados.indexOf(val);
+                        if (idx >= 0) Estado.setoresExamesSelecionados.splice(idx, 1);
+                        else Estado.setoresExamesSelecionados.push(val);
+                    }
+                    popularPillsExames(Estado.exames);
+                    renderizarExamesRadio();
+                });
+            })(btns[k]);
+        }
     }
 
-    function exameRowHtml(ex) {
+    // ── Card Exame (aba exames) ─────────────────────
+    function cardExameHtml(ex) {
         var radioId  = ex.radio_id;
         var radioSt  = ex.radio_status || '';
         var slotHora = ex.slot_data_hora ? formatarHora(ex.slot_data_hora) : '';
-        var presc    = ex.nr_prescricao || '';
 
-        var html = '<tr>';
-        html += '<td><div class="pct-nome">' + escHtml(formatarNome(ex.nm_pessoa_fisica)) + '</div>'
-              + '<div class="pct-atnd"># ' + escHtml(ex.nr_atendimento || '') + '</div></td>';
-        html += '<td><span class="leito-badge">' + escHtml(ex.leito || ex.leito_base || '-') + '</span></td>';
-        html += '<td><div class="exame-nome">' + escHtml(ex.ds_procedimento || '-') + '</div>'
-              + (presc ? '<div class="pct-atnd">Presc. ' + escHtml(presc) + '</div>' : '') + '</td>';
+        var cls = 'card-ex';
+        if (ex.radio_prioridade === 'urgente') cls += ' card-ex-urgente';
+        else if (radioSt === 'concluido') cls += ' card-ex-concluido';
+        else if (radioId) cls += ' card-ex-registrado';
 
+        var html = '<div class="' + cls + '">';
+
+        html += '<div class="card-ex-header">'
+              + '<span class="card-ex-setor">' + escHtml(ex.nm_setor || '') + '</span>'
+              + (ex.radio_prioridade === 'urgente' ? '<span class="badge-urgente">URGENTE</span>' : '')
+              + '</div>';
+
+        html += '<div class="card-ex-body">'
+              + '<div class="card-ex-nome">' + escHtml(formatarNome(ex.nm_pessoa_fisica)) + '</div>'
+              + '<div class="card-ex-atnd"><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(String(ex.nr_atendimento || '')) + '</div>'
+              + '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-') + '</div>'
+              + '<div class="card-ex-leito"><i class="fas fa-bed"></i> ' + escHtml(ex.leito || ex.leito_base || '-') + '</div>';
+
+        html += '<div class="card-ex-badges">';
         if (radioId) {
-            html += '<td>' + badgeStatus(radioSt) + (slotHora ? '<div class="pct-atnd" style="margin-top:3px"><i class="fas fa-clock"></i> ' + slotHora + '</div>' : '') + '</td>';
-            html += '<td>';
-            if (radioSt === 'pendente' || radioSt === 'agendado') {
-                html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + radioId + ',\'no_local\')" style="padding:4px 8px;font-size:11px">'
-                      + '<i class="fas fa-map-marker-alt"></i> Chegou</button> ';
-            }
-            if (radioSt === 'no_local') {
-                html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + radioId + ',\'executando\')" style="padding:4px 8px;font-size:11px">'
-                      + '<i class="fas fa-play"></i> Iniciar</button> ';
-            }
-            if (radioSt === 'executando') {
-                html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + radioId + ',\'concluido\')" style="padding:4px 8px;font-size:11px">'
-                      + '<i class="fas fa-check"></i> Concluir</button> ';
-            }
-            if (radioSt !== 'concluido' && radioSt !== 'cancelado') {
-                html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + radioId + ',\'cancelado\')" style="padding:4px 8px;font-size:11px">'
-                      + '<i class="fas fa-times"></i></button>';
-            }
-            html += '</td>';
+            html += badgeStatus(radioSt);
+            if (slotHora) html += '<span style="font-size:11px;color:#0c5460"><i class="fas fa-clock"></i> ' + slotHora + '</span>';
         } else {
-            html += '<td><span class="badge-status badge-pendente" style="opacity:.6"><i class="fas fa-minus"></i> Sem controle</span></td>';
-            html += '<td style="color:#6c757d;font-size:11px">—</td>';
+            html += '<span class="badge-status badge-pendente" style="opacity:.6"><i class="fas fa-minus"></i> Sem controle</span>';
         }
-        html += '</tr>';
+        html += '</div></div>';
+
+        html += '<div class="card-ex-footer">';
+        if (radioId) {
+            if (radioSt === 'pendente' || radioSt === 'agendado')
+                html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + radioId + ',\'no_local\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-map-marker-alt"></i> Chegou</button>';
+            if (radioSt === 'no_local')
+                html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + radioId + ',\'executando\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-play"></i> Iniciar</button>';
+            if (radioSt === 'executando')
+                html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + radioId + ',\'concluido\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-check"></i> Concluir</button>';
+            if (radioSt !== 'concluido' && radioSt !== 'cancelado')
+                html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + radioId + ',\'cancelado\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-times"></i></button>';
+        } else {
+            html += '<span style="font-size:11px;color:#6c757d;">Aguardando registro</span>';
+        }
+        html += '</div></div>';
         return html;
     }
 
+    // ── Renderizar Exames ──────────────────────────
     function renderizarExamesRadio() {
         var loading  = document.getElementById('exames-loading');
         var vazio    = document.getElementById('exames-vazio');
@@ -299,11 +327,10 @@
 
         var dados = Estado.exames;
 
-        // Aplicar filtro local
         var filtrados = [];
         for (var i = 0; i < dados.length; i++) {
             var ex = dados[i];
-            if (Estado.filtroSetor && ex.nm_setor !== Estado.filtroSetor) continue;
+            if (Estado.setoresExamesSelecionados.length && Estado.setoresExamesSelecionados.indexOf(ex.nm_setor || '') < 0) continue;
             if (Estado.filtroSemControle && ex.radio_id) continue;
             filtrados.push(ex);
         }
@@ -313,12 +340,9 @@
             if (conteudo) conteudo.style.display = 'none';
             return;
         }
-
         if (vazio) vazio.style.display = 'none';
 
-        // Agrupar por setor
-        var grupos = {};
-        var ordem  = [];
+        var grupos = {}, ordem = [];
         for (var j = 0; j < filtrados.length; j++) {
             var nm = filtrados[j].nm_setor || 'Sem setor';
             if (!grupos[nm]) { grupos[nm] = []; ordem.push(nm); }
@@ -332,13 +356,49 @@
             html += '<div class="setor-grupo">';
             html += '<div class="setor-titulo"><i class="fas fa-hospital-alt"></i> ' + escHtml(setor)
                   + '<span class="setor-count">' + itens.length + '</span></div>';
-            html += '<div class="tabela-wrapper"><table class="tabela-exames">';
-            html += '<thead><tr><th>Paciente</th><th>Leito</th><th>Exame</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
-            for (var m = 0; m < itens.length; m++) html += exameRowHtml(itens[m]);
-            html += '</tbody></table></div></div>';
+
+            if (Estado.visualizacaoExames === 'cards') {
+                html += '<div class="grid-cards-exames">';
+                for (var ci = 0; ci < itens.length; ci++) html += cardExameHtml(itens[ci]);
+                html += '</div>';
+            } else {
+                html += '<div class="tabela-wrapper"><table class="tabela-exames">';
+                html += '<thead><tr><th>Paciente</th><th>Leito</th><th>Exame</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+                for (var m = 0; m < itens.length; m++) {
+                    var item = itens[m];
+                    var rid  = item.radio_id;
+                    var rst  = item.radio_status || '';
+                    html += '<tr>';
+                    html += '<td><div class="pct-nome">' + escHtml(formatarNome(item.nm_pessoa_fisica)) + '</div>'
+                          + '<div class="pct-atnd"># ' + escHtml(item.nr_atendimento || '') + '</div></td>';
+                    html += '<td><span class="leito-badge">' + escHtml(item.leito || item.leito_base || '-') + '</span></td>';
+                    html += '<td><div class="exame-nome">' + escHtml(item.ds_procedimento || '-') + '</div></td>';
+                    if (rid) {
+                        html += '<td>' + badgeStatus(rst)
+                              + (item.slot_data_hora ? '<div class="pct-atnd"><i class="fas fa-clock"></i> ' + formatarHora(item.slot_data_hora) + '</div>' : '')
+                              + '</td>';
+                        html += '<td>';
+                        if (rst === 'pendente' || rst === 'agendado')
+                            html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + rid + ',\'no_local\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-map-marker-alt"></i> Chegou</button> ';
+                        if (rst === 'no_local')
+                            html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + rid + ',\'executando\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-play"></i> Iniciar</button> ';
+                        if (rst === 'executando')
+                            html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + rid + ',\'concluido\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-check"></i> Concluir</button> ';
+                        if (rst !== 'concluido' && rst !== 'cancelado')
+                            html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + rid + ',\'cancelado\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-times"></i></button>';
+                        html += '</td>';
+                    } else {
+                        html += '<td><span class="badge-status badge-pendente" style="opacity:.6"><i class="fas fa-minus"></i> Sem controle</span></td>';
+                        html += '<td style="color:#6c757d;font-size:11px">—</td>';
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody></table></div>';
+            }
+            html += '</div>';
         }
 
-        if (conteudo) { conteudo.innerHTML = html; conteudo.style.display = 'flex'; }
+        if (conteudo) { conteudo.innerHTML = html; conteudo.style.display = 'flex'; conteudo.style.flexDirection = 'column'; conteudo.style.gap = '16px'; }
     }
 
     // ── Renderizar Agenda ──────────────────────────
@@ -349,7 +409,6 @@
         html += '<div class="slot-duracao">' + (slot.duracao_min || 30) + ' min</div>';
         if (slot.modalidade)
             html += '<span class="slot-modal-badge">' + escHtml(slot.modalidade) + '</span>';
-
         if (slot.status === 'ocupado' && slot.nm_paciente) {
             html += '<div class="slot-paciente"><i class="fas fa-user"></i> ' + escHtml(formatarNome(slot.nm_paciente)) + '</div>';
             if (slot.ds_procedimento)
@@ -397,16 +456,13 @@
         var loading = document.getElementById('agenda-loading');
         var vazio   = document.getElementById('agenda-vazia');
         var grade   = document.getElementById('grade-slots');
-
         if (loading) loading.style.display = 'none';
-
         if (!Estado.slots.length) {
             if (vazio) vazio.style.display = '';
             if (grade) grade.style.display = 'none';
             atualizarInfoSlots();
             return;
         }
-
         if (vazio) vazio.style.display = 'none';
         var html = '';
         for (var i = 0; i < Estado.slots.length; i++) html += slotCardHtml(Estado.slots[i]);
@@ -418,7 +474,6 @@
     function carregarFila() {
         if (Estado.carregandoFila) return;
         Estado.carregandoFila = true;
-
         fetch(CONFIG.api.fila + '?data=' + Estado.dataConsulta, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
@@ -440,7 +495,6 @@
         var grade   = document.getElementById('grade-slots');
         if (loading) loading.style.display = '';
         if (grade)   grade.style.display = 'none';
-
         fetch(CONFIG.api.slots + '?data=' + Estado.dataConsulta, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
@@ -466,7 +520,7 @@
             .then(function(d) {
                 if (d.success) {
                     Estado.exames = d.data || [];
-                    popularFiltroSetores(Estado.exames);
+                    popularPillsExames(Estado.exames);
                 } else {
                     Estado.exames = [];
                     toast('Erro ao carregar exames: ' + (d.error || 'Falha'), 'error');
@@ -476,8 +530,8 @@
             .catch(function(e) {
                 console.error('[P46] exames:', e);
                 Estado.exames = [];
-                if (loading)  loading.style.display = 'none';
-                if (vazio)    { vazio.style.display = ''; vazio.querySelector('p').textContent = 'Erro ao carregar exames.'; }
+                if (loading) loading.style.display = 'none';
+                if (vazio)   vazio.style.display = '';
                 toast('Erro de conexão ao carregar exames', 'error');
             })
             .finally(function() { Estado.carregandoExames = false; });
@@ -582,7 +636,6 @@
         for (var i = 0; i < Estado.slots.length; i++) {
             if (Estado.slots[i].id === slotId) { slotInfo = Estado.slots[i]; break; }
         }
-
         if (infoEl && slotInfo)
             infoEl.innerHTML = '<strong>Vaga: ' + formatarHora(slotInfo.data_hora) + '</strong>'
                 + (slotInfo.modalidade ? ' — ' + escHtml(slotInfo.modalidade) : '')
@@ -629,15 +682,12 @@
         var fim        = document.getElementById('lote-fim').value;
         var duracao    = document.getElementById('lote-duracao').value;
         var modalidade = document.getElementById('lote-modalidade') ? document.getElementById('lote-modalidade').value : '';
-
         if (!data || !inicio || !fim) { toast('Preencha data, início e fim.', 'warning'); return; }
-
         fetch(CONFIG.api.slotsLote, {
             method: 'POST', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({data: data, hora_inicio: inicio, hora_fim: fim,
-                                  duracao_min: parseInt(duracao) || 30,
-                                  modalidade: modalidade || null})
+                                  duracao_min: parseInt(duracao) || 30, modalidade: modalidade || null})
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
@@ -653,21 +703,17 @@
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
     }
 
-    // ── Modal vaga avulsa ──────────────────────────
     function criarAvulso() {
         var data       = document.getElementById('avulso-data').value;
         var hora       = document.getElementById('avulso-hora').value;
         var duracao    = document.getElementById('avulso-duracao').value;
         var modalidade = document.getElementById('avulso-modalidade') ? document.getElementById('avulso-modalidade').value : '';
-
         if (!data || !hora) { toast('Preencha data e horário.', 'warning'); return; }
-
         fetch(CONFIG.api.slots, {
             method: 'POST', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({data_hora: data + 'T' + hora + ':00',
-                                  duracao_min: parseInt(duracao) || 30,
-                                  modalidade: modalidade || null})
+                                  duracao_min: parseInt(duracao) || 30, modalidade: modalidade || null})
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
@@ -694,23 +740,22 @@
         DOM.labelData = document.getElementById('label-data');
         if (DOM.labelData) DOM.labelData.textContent = labelData(Estado.dataConsulta);
 
+        // Restaurar preferências
+        Estado.visualizacaoExames = localStorage.getItem('p46_view_exames') || 'cards';
+
         // Tabs
         var abasBtns = document.querySelectorAll('.aba');
         for (var i = 0; i < abasBtns.length; i++) {
             (function(btn) {
-                btn.addEventListener('click', function() {
-                    mudarTab(btn.getAttribute('data-aba'));
-                });
+                btn.addEventListener('click', function() { mudarTab(btn.getAttribute('data-aba')); });
             })(abasBtns[i]);
         }
 
-        // data-fecha (fechar modal por botão)
+        // data-fecha
         var fechaBtns = document.querySelectorAll('[data-fecha]');
         for (var j = 0; j < fechaBtns.length; j++) {
             (function(btn) {
-                btn.addEventListener('click', function() {
-                    fecharModal(btn.getAttribute('data-fecha'));
-                });
+                btn.addEventListener('click', function() { fecharModal(btn.getAttribute('data-fecha')); });
             })(fechaBtns[j]);
         }
 
@@ -740,12 +785,28 @@
             carregarSlots();
         });
 
-        // Filtros aba exames
-        var filtroSetor = document.getElementById('exames-filtro-setor');
-        if (filtroSetor) filtroSetor.addEventListener('change', function() {
-            Estado.filtroSetor = this.value;
+        // View toggle (aba exames)
+        var btnExCards  = document.getElementById('exames-btn-cards');
+        var btnExTabela = document.getElementById('exames-btn-tabela');
+        function atualizarBotoesViewEx() {
+            if (btnExCards)  btnExCards.className  = 'btn-view' + (Estado.visualizacaoExames === 'cards'  ? ' ativo' : '');
+            if (btnExTabela) btnExTabela.className = 'btn-view' + (Estado.visualizacaoExames === 'tabela' ? ' ativo' : '');
+        }
+        atualizarBotoesViewEx();
+        if (btnExCards) btnExCards.addEventListener('click', function() {
+            Estado.visualizacaoExames = 'cards';
+            localStorage.setItem('p46_view_exames', 'cards');
+            atualizarBotoesViewEx();
             renderizarExamesRadio();
         });
+        if (btnExTabela) btnExTabela.addEventListener('click', function() {
+            Estado.visualizacaoExames = 'tabela';
+            localStorage.setItem('p46_view_exames', 'tabela');
+            atualizarBotoesViewEx();
+            renderizarExamesRadio();
+        });
+
+        // Filtro "sem controle"
         var toggleSemCtrl = document.getElementById('exames-toggle-sem-controle');
         if (toggleSemCtrl) toggleSemCtrl.addEventListener('change', function() {
             Estado.filtroSemControle = this.checked;
@@ -783,13 +844,13 @@
     }
 
     window.P46 = {
-        atualizarStatus:    atualizarStatus,
-        bloquearSlot:       bloquearSlot,
-        desbloquearSlot:    desbloquearSlot,
-        removerSlot:        removerSlot,
-        desagendar:         desagendar,
-        abrirAgendar:       abrirAgendar,
-        vincularPaciente:   vincularPaciente,
+        atualizarStatus:     atualizarStatus,
+        bloquearSlot:        bloquearSlot,
+        desbloquearSlot:     desbloquearSlot,
+        removerSlot:         removerSlot,
+        desagendar:          desagendar,
+        abrirAgendar:        abrirAgendar,
+        vincularPaciente:    vincularPaciente,
         carregarExamesRadio: carregarExamesRadio
     };
 
