@@ -227,6 +227,9 @@
         if (total > lista.length)
             html += '<div class="tabela-info">Exibindo ' + lista.length + ' de ' + total + ' registros.</div>';
         secao.innerHTML = html;
+
+        // Abrir automaticamente o primeiro item
+        if (lista.length) selecionarItem(lista[0].id);
     }
 
     // ── Linha do Tempo (sub-linha inline na tabela) ────
