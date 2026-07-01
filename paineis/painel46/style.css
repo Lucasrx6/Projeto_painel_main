@@ -237,6 +237,49 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
+/* ── FILTRO BAR (aba exames) ───────────────────── */
+.exames-filtro-bar {
+    background: white; border-bottom: 1px solid var(--borda);
+    padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+.exames-filtro-bar select {
+    border: 2px solid var(--borda); border-radius: 8px; padding: 6px 10px;
+    font-size: 13px; color: var(--texto); background: white;
+}
+.exames-filtro-bar select:focus { outline: none; border-color: var(--cor-primaria); }
+.exames-filtro-toggle {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--texto-sec); cursor: pointer; user-select: none;
+}
+.exames-filtro-toggle input { cursor: pointer; accent-color: var(--cor-primaria); }
+
+/* ── TABELA EXAMES (aba exames) ─────────────────── */
+.setor-grupo { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--sombra); overflow: hidden; }
+.setor-titulo {
+    display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+    color: var(--texto); padding: 10px 14px; border-bottom: 1px solid var(--borda);
+    background: #f8f9fa; border-left: 4px solid var(--cor-primaria);
+}
+.setor-count {
+    margin-left: auto; background: var(--cor-primaria); color: white;
+    border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700;
+}
+.tabela-wrapper { overflow-x: auto; }
+.tabela-exames { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela-exames th {
+    background: #f8f9fa; padding: 9px 12px; text-align: left;
+    font-size: 11px; font-weight: 700; color: var(--texto-sec);
+    text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid var(--borda); white-space: nowrap;
+}
+.tabela-exames td { padding: 9px 12px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+.tabela-exames tr:last-child td { border-bottom: none; }
+.tabela-exames tr:hover td { background: #f8f9fa; }
+.tabela-exames tr.linha-urgente td:first-child { border-left: 3px solid var(--cor-urgente); }
+.leito-badge { display: inline-block; background: #e9ecef; color: var(--texto); padding: 2px 7px; border-radius: 5px; font-weight: 700; font-size: 11px; }
+.pct-nome { font-weight: 600; display: block; }
+.pct-atnd { font-size: 11px; color: var(--texto-sec); margin-top: 1px; }
+.exame-nome { font-size: 13px; font-weight: 500; }
+
 /* ── LOADING / VAZIO ───────────────────────────── */
 .loading { display: flex; flex-direction: column; align-items: center; padding: 60px; gap: 12px; color: var(--texto-sec); }
 .loading-spinner { width: 36px; height: 36px; border: 3px solid var(--borda); border-top-color: var(--cor-primaria); border-radius: 50%; animation: spin 0.8s linear infinite; }

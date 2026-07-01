@@ -33,6 +33,7 @@
     <div class="abas-bar">
         <div class="abas-content">
             <button class="aba aba-ativa" data-aba="fila"><i class="fas fa-list-ol"></i> Fila do Dia</button>
+            <button class="aba" data-aba="exames"><i class="fas fa-clipboard-list"></i> Exames</button>
             <button class="aba" data-aba="agenda"><i class="fas fa-calendar-alt"></i> Agenda</button>
             <!-- Navegação de data (visível só na aba agenda) -->
             <div id="nav-data" class="nav-data" style="display:none;margin-left:12px;">
@@ -42,8 +43,8 @@
             </div>
             <div class="abas-acoes" id="agenda-acoes" style="display:none;">
                 <span class="slots-info-bar" id="slots-info-bar"></span>
-                <button class="btn-aba-acao" id="btn-criar-lote"><i class="fas fa-magic"></i> Criar slots em lote</button>
-                <button class="btn-aba-acao sec" id="btn-criar-avulso"><i class="fas fa-plus"></i> Avulso</button>
+                <button class="btn-aba-acao" id="btn-criar-lote"><i class="fas fa-magic"></i> Criar vagas em lote</button>
+                <button class="btn-aba-acao sec" id="btn-criar-avulso"><i class="fas fa-plus"></i> Vaga avulsa</button>
             </div>
         </div>
     </div>
@@ -74,13 +75,30 @@
             </div>
         </div>
 
+        <!-- ABA: EXAMES -->
+        <div id="aba-exames" class="aba-conteudo" style="display:none;">
+            <div class="exames-filtro-bar">
+                <select id="exames-filtro-setor"><option value="">Todos os setores</option></select>
+                <label class="exames-filtro-toggle">
+                    <input type="checkbox" id="exames-toggle-sem-controle">
+                    Apenas sem controle
+                </label>
+            </div>
+            <div id="exames-loading" class="loading"><div class="loading-spinner"></div><span>Carregando exames...</span></div>
+            <div id="exames-vazio" class="painel-vazio" style="display:none;">
+                <i class="fas fa-clipboard-check"></i>
+                <p>Nenhum exame encontrado.</p>
+            </div>
+            <div id="exames-conteudo" style="display:none;display:flex;flex-direction:column;gap:16px;"></div>
+        </div>
+
         <!-- ABA: AGENDA -->
         <div id="aba-agenda" class="aba-conteudo" style="display:none;">
             <div id="agenda-loading" class="loading"><div class="loading-spinner"></div><span>Carregando agenda...</span></div>
             <div id="agenda-vazia" class="painel-vazio" style="display:none;">
                 <i class="fas fa-calendar-alt"></i>
-                <p>Nenhum slot para este dia.</p>
-                <small>Use "Criar slots em lote" para gerar a grade.</small>
+                <p>Nenhuma vaga para este dia.</p>
+                <small>Use "Criar vagas em lote" para gerar a grade.</small>
             </div>
             <div class="grade-slots" id="grade-slots" style="display:none;"></div>
         </div>
@@ -91,7 +109,7 @@
     <div id="modal-lote" class="modal-overlay" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
-                <h3><i class="fas fa-magic"></i> Criar Slots em Lote</h3>
+                <h3><i class="fas fa-magic"></i> Criar Vagas em Lote</h3>
                 <button class="btn-fechar-modal" data-fecha="modal-lote"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
@@ -132,11 +150,11 @@
         </div>
     </div>
 
-    <!-- MODAL: SLOT AVULSO -->
+    <!-- MODAL: VAGA AVULSA -->
     <div id="modal-avulso" class="modal-overlay" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
-                <h3><i class="fas fa-plus"></i> Slot Avulso</h3>
+                <h3><i class="fas fa-plus"></i> Vaga Avulsa</h3>
                 <button class="btn-fechar-modal" data-fecha="modal-avulso"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
@@ -179,7 +197,7 @@
     <div id="modal-vincular" class="modal-overlay" style="display:none;">
         <div class="modal-box modal-box-wide">
             <div class="modal-header">
-                <h3><i class="fas fa-user-plus"></i> Vincular Paciente ao Slot</h3>
+                <h3><i class="fas fa-user-plus"></i> Vincular Paciente à Vaga</h3>
                 <button class="btn-fechar-modal" data-fecha="modal-vincular"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">

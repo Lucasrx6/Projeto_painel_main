@@ -472,6 +472,65 @@ def api_p46_slots_atualizar(slot_id):
         return jsonify({'success': False, 'error': 'Erro ao atualizar slot'}), 500
 
 
+@painel46_bp.route('/api/paineis/painel46/todos-exames')
+@login_required
+@panel_permission_required('painel46')
+def api_p46_todos_exames():
+    """
+    Retorna todos os exames de radiologia prescritos (vw_painel19_radiologia)
+    com status de controle (radio_agenda) e slot vinculado.
+    ?setor=nome_setor
+    """
+    try:
+        setor = request.args.get('setor', '').strip()
+        filtros = []
+        params = []
+        if setor:
+            filtros.append("p.nm_setor = %s")
+            params.append(setor)
+        where = ('WHERE ' + ' AND '.join(filtros)) if filtros else ''
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    p.nr_atendimento, p.nm_pessoa_fisica,
+                    p.leito, p.leito_base, p.nm_setor, p.cd_setor_atendimento,
+                    p.nr_prescricao, p.ds_procedimento,
+                    p.status_radiologia, p.dt_pedido, p.prioridade_ordem,
+                    ra.id            AS radio_id,
+                    ra.status        AS radio_status,
+                    ra.prioridade    AS radio_prioridade,
+                    ra.requer_transporte,
+                    rs.data_hora     AS slot_data_hora,
+                    pc.id            AS chamado_id,
+                    pc.status        AS chamado_status
+                FROM vw_painel19_radiologia p
+                LEFT JOIN radio_agenda ra ON (
+                    ra.nr_atendimento = p.nr_atendimento
+                    AND ra.nr_prescricao = p.nr_prescricao
+                    AND ra.status NOT IN ('concluido', 'cancelado')
+                )
+                LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
+                LEFT JOIN LATERAL (
+                    SELECT id, status
+                    FROM padioleiro_chamados
+                    WHERE nr_atendimento = p.nr_atendimento
+                      AND status NOT IN ('concluido', 'cancelado')
+                    ORDER BY criado_em DESC LIMIT 1
+                ) pc ON TRUE
+                {where}
+                ORDER BY p.nm_setor, p.leito_base, p.prioridade_ordem, p.dt_pedido
+            """, params)
+            dados = [_serial(dict(r)) for r in cursor.fetchall()]
+
+        return jsonify({'success': True, 'data': dados, 'total': len(dados),
+                        'timestamp': datetime.now().isoformat()})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro todos-exames p46: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar exames'}), 500
+
+
 @painel46_bp.route('/api/paineis/painel46/slots/<int:slot_id>', methods=['DELETE'])
 @login_required
 @panel_permission_required('painel46')

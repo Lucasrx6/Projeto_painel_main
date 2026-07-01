@@ -4,13 +4,14 @@
 
     var CONFIG = {
         api: {
-            fila:       '/api/paineis/painel46/fila',
-            slots:      '/api/paineis/painel46/slots',
-            slotsLote:  '/api/paineis/painel46/slots/lote',
-            exameStatus:'/api/paineis/painel46/exames/{id}/status',
-            agendar:    '/api/paineis/painel46/exames/{id}/agendar',
-            slotUpdate: '/api/paineis/painel46/slots/{id}',
-            slotDelete: '/api/paineis/painel46/slots/{id}'
+            fila:         '/api/paineis/painel46/fila',
+            slots:        '/api/paineis/painel46/slots',
+            slotsLote:    '/api/paineis/painel46/slots/lote',
+            exameStatus:  '/api/paineis/painel46/exames/{id}/status',
+            agendar:      '/api/paineis/painel46/exames/{id}/agendar',
+            slotUpdate:   '/api/paineis/painel46/slots/{id}',
+            slotDelete:   '/api/paineis/painel46/slots/{id}',
+            todosExames:  '/api/paineis/painel46/todos-exames'
         },
         intervalo: 45000
     };
@@ -20,7 +21,12 @@
         dataConsulta: new Date().toISOString().slice(0, 10),
         fila: { agendados: [], pendentes: [] },
         slots: [],
-        carregandoFila: false
+        exames: [],
+        setoresExames: [],
+        filtroSetor: '',
+        filtroSemControle: false,
+        carregandoFila: false,
+        carregandoExames: false
     };
 
     var DOM = {};
@@ -84,9 +90,11 @@
             a.className = a.getAttribute('data-aba') === tab ? 'aba aba-ativa' : 'aba';
         }
 
-        var fila = document.getElementById('aba-fila');
+        var fila   = document.getElementById('aba-fila');
+        var exames = document.getElementById('aba-exames');
         var agenda = document.getElementById('aba-agenda');
         if (fila)   fila.style.display   = tab === 'fila'   ? '' : 'none';
+        if (exames) exames.style.display = tab === 'exames' ? '' : 'none';
         if (agenda) agenda.style.display = tab === 'agenda' ? '' : 'none';
 
         var navData     = document.getElementById('nav-data');
@@ -97,6 +105,7 @@
         if (DOM.labelData) DOM.labelData.textContent = labelData(Estado.dataConsulta);
 
         if (tab === 'agenda') carregarSlots();
+        if (tab === 'exames') carregarExamesRadio();
     }
 
     // ── Renderizar Fila ────────────────────────────
@@ -135,7 +144,6 @@
 
         var html = '<div class="card-paciente' + statusCls + '">';
 
-        // Header
         html += '<div class="card-header-p">'
               + '<div><div class="card-nome">' + escHtml(formatarNome(item.nm_paciente)) + '</div>'
               + '<div class="card-atnd"><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(item.nr_atendimento || '') + '</div></div>';
@@ -143,7 +151,6 @@
             html += '<div class="card-badge-prio"><span class="badge-urgente"><i class="fas fa-exclamation"></i> Urgente</span></div>';
         html += '</div>';
 
-        // Body
         html += '<div class="card-body-p">'
               + '<div class="card-exame"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-') + '</div>';
         if (item.leito_origem)
@@ -156,7 +163,6 @@
         html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeTransporte(item) + '</div>';
         html += '</div>';
 
-        // Footer com botões
         html += '<div class="card-footer-p">';
         if (item.status === 'pendente' || item.status === 'agendado') {
             html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + item.id + ',\'no_local\')">'
@@ -223,6 +229,118 @@
         }
     }
 
+    // ── Renderizar Exames ──────────────────────────
+    function popularFiltroSetores(dados) {
+        var select = document.getElementById('exames-filtro-setor');
+        if (!select) return;
+
+        var setores = [];
+        var vistos = {};
+        for (var i = 0; i < dados.length; i++) {
+            var nm = dados[i].nm_setor || '';
+            if (nm && !vistos[nm]) { vistos[nm] = true; setores.push(nm); }
+        }
+        setores.sort();
+
+        var opts = '<option value="">Todos os setores</option>';
+        for (var j = 0; j < setores.length; j++) {
+            var sel = setores[j] === Estado.filtroSetor ? ' selected' : '';
+            opts += '<option value="' + escHtml(setores[j]) + '"' + sel + '>' + escHtml(setores[j]) + '</option>';
+        }
+        select.innerHTML = opts;
+    }
+
+    function exameRowHtml(ex) {
+        var radioId  = ex.radio_id;
+        var radioSt  = ex.radio_status || '';
+        var slotHora = ex.slot_data_hora ? formatarHora(ex.slot_data_hora) : '';
+        var presc    = ex.nr_prescricao || '';
+
+        var html = '<tr>';
+        html += '<td><div class="pct-nome">' + escHtml(formatarNome(ex.nm_pessoa_fisica)) + '</div>'
+              + '<div class="pct-atnd"># ' + escHtml(ex.nr_atendimento || '') + '</div></td>';
+        html += '<td><span class="leito-badge">' + escHtml(ex.leito || ex.leito_base || '-') + '</span></td>';
+        html += '<td><div class="exame-nome">' + escHtml(ex.ds_procedimento || '-') + '</div>'
+              + (presc ? '<div class="pct-atnd">Presc. ' + escHtml(presc) + '</div>' : '') + '</td>';
+
+        if (radioId) {
+            html += '<td>' + badgeStatus(radioSt) + (slotHora ? '<div class="pct-atnd" style="margin-top:3px"><i class="fas fa-clock"></i> ' + slotHora + '</div>' : '') + '</td>';
+            html += '<td>';
+            if (radioSt === 'pendente' || radioSt === 'agendado') {
+                html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + radioId + ',\'no_local\')" style="padding:4px 8px;font-size:11px">'
+                      + '<i class="fas fa-map-marker-alt"></i> Chegou</button> ';
+            }
+            if (radioSt === 'no_local') {
+                html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + radioId + ',\'executando\')" style="padding:4px 8px;font-size:11px">'
+                      + '<i class="fas fa-play"></i> Iniciar</button> ';
+            }
+            if (radioSt === 'executando') {
+                html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + radioId + ',\'concluido\')" style="padding:4px 8px;font-size:11px">'
+                      + '<i class="fas fa-check"></i> Concluir</button> ';
+            }
+            if (radioSt !== 'concluido' && radioSt !== 'cancelado') {
+                html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + radioId + ',\'cancelado\')" style="padding:4px 8px;font-size:11px">'
+                      + '<i class="fas fa-times"></i></button>';
+            }
+            html += '</td>';
+        } else {
+            html += '<td><span class="badge-status badge-pendente" style="opacity:.6"><i class="fas fa-minus"></i> Sem controle</span></td>';
+            html += '<td style="color:#6c757d;font-size:11px">—</td>';
+        }
+        html += '</tr>';
+        return html;
+    }
+
+    function renderizarExamesRadio() {
+        var loading  = document.getElementById('exames-loading');
+        var vazio    = document.getElementById('exames-vazio');
+        var conteudo = document.getElementById('exames-conteudo');
+        if (loading) loading.style.display = 'none';
+
+        var dados = Estado.exames;
+
+        // Aplicar filtro local
+        var filtrados = [];
+        for (var i = 0; i < dados.length; i++) {
+            var ex = dados[i];
+            if (Estado.filtroSetor && ex.nm_setor !== Estado.filtroSetor) continue;
+            if (Estado.filtroSemControle && ex.radio_id) continue;
+            filtrados.push(ex);
+        }
+
+        if (!filtrados.length) {
+            if (vazio) vazio.style.display = '';
+            if (conteudo) conteudo.style.display = 'none';
+            return;
+        }
+
+        if (vazio) vazio.style.display = 'none';
+
+        // Agrupar por setor
+        var grupos = {};
+        var ordem  = [];
+        for (var j = 0; j < filtrados.length; j++) {
+            var nm = filtrados[j].nm_setor || 'Sem setor';
+            if (!grupos[nm]) { grupos[nm] = []; ordem.push(nm); }
+            grupos[nm].push(filtrados[j]);
+        }
+
+        var html = '';
+        for (var k = 0; k < ordem.length; k++) {
+            var setor = ordem[k];
+            var itens = grupos[setor];
+            html += '<div class="setor-grupo">';
+            html += '<div class="setor-titulo"><i class="fas fa-hospital-alt"></i> ' + escHtml(setor)
+                  + '<span class="setor-count">' + itens.length + '</span></div>';
+            html += '<div class="tabela-wrapper"><table class="tabela-exames">';
+            html += '<thead><tr><th>Paciente</th><th>Leito</th><th>Exame</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+            for (var m = 0; m < itens.length; m++) html += exameRowHtml(itens[m]);
+            html += '</tbody></table></div></div>';
+        }
+
+        if (conteudo) { conteudo.innerHTML = html; conteudo.style.display = 'flex'; }
+    }
+
     // ── Renderizar Agenda ──────────────────────────
     function slotCardHtml(slot) {
         var cssClass = 'slot-card slot-' + (slot.status || 'livre');
@@ -272,7 +390,7 @@
             else bloqueados++;
         }
         var el = document.getElementById('slots-info-bar');
-        if (el) el.textContent = livres + ' livres · ' + ocupados + ' ocupados · ' + bloqueados + ' bloqueados';
+        if (el) el.textContent = livres + ' livres · ' + ocupados + ' ocupadas · ' + bloqueados + ' bloqueadas';
     }
 
     function renderizarAgenda() {
@@ -332,9 +450,43 @@
             .catch(function(e) { console.error('[P46] slots:', e); toast('Erro ao carregar agenda', 'error'); });
     }
 
+    function carregarExamesRadio() {
+        if (Estado.carregandoExames) return;
+        Estado.carregandoExames = true;
+
+        var loading  = document.getElementById('exames-loading');
+        var vazio    = document.getElementById('exames-vazio');
+        var conteudo = document.getElementById('exames-conteudo');
+        if (loading)  loading.style.display = '';
+        if (vazio)    vazio.style.display = 'none';
+        if (conteudo) conteudo.style.display = 'none';
+
+        fetch(CONFIG.api.todosExames, {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) {
+                    Estado.exames = d.data || [];
+                    popularFiltroSetores(Estado.exames);
+                } else {
+                    Estado.exames = [];
+                    toast('Erro ao carregar exames: ' + (d.error || 'Falha'), 'error');
+                }
+                renderizarExamesRadio();
+            })
+            .catch(function(e) {
+                console.error('[P46] exames:', e);
+                Estado.exames = [];
+                if (loading)  loading.style.display = 'none';
+                if (vazio)    { vazio.style.display = ''; vazio.querySelector('p').textContent = 'Erro ao carregar exames.'; }
+                toast('Erro de conexão ao carregar exames', 'error');
+            })
+            .finally(function() { Estado.carregandoExames = false; });
+    }
+
     function carregarTudo() {
         carregarFila();
         if (Estado.tabAtiva === 'agenda') carregarSlots();
+        if (Estado.tabAtiva === 'exames') carregarExamesRadio();
     }
 
     // ── Atualizar status ───────────────────────────
@@ -352,13 +504,16 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            if (d.success) { toast('Status atualizado!', 'success'); carregarFila(); }
-            else toast('Erro: ' + (d.error || 'Falha'), 'error');
+            if (d.success) {
+                toast('Status atualizado!', 'success');
+                carregarFila();
+                if (Estado.tabAtiva === 'exames') carregarExamesRadio();
+            } else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
     }
 
-    // ── Gestão de slots ────────────────────────────
+    // ── Gestão de vagas ────────────────────────────
     function bloquearSlot(slotId) {
         var obs = prompt('Motivo do bloqueio (opcional):') || '';
         fetch(CONFIG.api.slotUpdate.replace('{id}', slotId), {
@@ -368,7 +523,7 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            if (d.success) { toast('Slot bloqueado.', 'warning'); carregarSlots(); }
+            if (d.success) { toast('Vaga bloqueada.', 'warning'); carregarSlots(); }
             else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
@@ -382,27 +537,27 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            if (d.success) { toast('Slot desbloqueado.', 'success'); carregarSlots(); }
+            if (d.success) { toast('Vaga desbloqueada.', 'success'); carregarSlots(); }
             else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
     }
 
     function removerSlot(slotId) {
-        if (!confirm('Remover este slot?')) return;
+        if (!confirm('Remover esta vaga?')) return;
         fetch(CONFIG.api.slotDelete.replace('{id}', slotId), {
             method: 'DELETE', credentials: 'same-origin'
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            if (d.success) { toast('Slot removido.', 'info'); carregarSlots(); }
+            if (d.success) { toast('Vaga removida.', 'info'); carregarSlots(); }
             else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
     }
 
     function desagendar(slotId, radioId) {
-        if (!confirm('Desvincular paciente deste slot?')) return;
+        if (!confirm('Desvincular paciente desta vaga?')) return;
         fetch(CONFIG.api.agendar.replace('{id}', radioId), {
             method: 'PUT', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
@@ -429,7 +584,7 @@
         }
 
         if (infoEl && slotInfo)
-            infoEl.innerHTML = '<strong>Slot: ' + formatarHora(slotInfo.data_hora) + '</strong>'
+            infoEl.innerHTML = '<strong>Vaga: ' + formatarHora(slotInfo.data_hora) + '</strong>'
                 + (slotInfo.modalidade ? ' — ' + escHtml(slotInfo.modalidade) : '')
                 + ' · ' + (slotInfo.duracao_min || 30) + 'min';
 
@@ -488,7 +643,7 @@
         .then(function(d) {
             fecharModal('modal-lote');
             if (d.success) {
-                toast((d.criados || 0) + ' slots criados!', 'success');
+                toast((d.criados || 0) + ' vagas criadas!', 'success');
                 Estado.dataConsulta = data;
                 if (DOM.labelData) DOM.labelData.textContent = labelData(data);
                 mudarTab('agenda');
@@ -498,7 +653,7 @@
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
     }
 
-    // ── Modal slot avulso ──────────────────────────
+    // ── Modal vaga avulsa ──────────────────────────
     function criarAvulso() {
         var data       = document.getElementById('avulso-data').value;
         var hora       = document.getElementById('avulso-hora').value;
@@ -517,7 +672,7 @@
         .then(function(r) { return r.json(); })
         .then(function(d) {
             fecharModal('modal-avulso');
-            if (d.success) { toast('Slot criado!', 'success'); carregarSlots(); }
+            if (d.success) { toast('Vaga criada!', 'success'); carregarSlots(); }
             else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
@@ -585,6 +740,18 @@
             carregarSlots();
         });
 
+        // Filtros aba exames
+        var filtroSetor = document.getElementById('exames-filtro-setor');
+        if (filtroSetor) filtroSetor.addEventListener('change', function() {
+            Estado.filtroSetor = this.value;
+            renderizarExamesRadio();
+        });
+        var toggleSemCtrl = document.getElementById('exames-toggle-sem-controle');
+        if (toggleSemCtrl) toggleSemCtrl.addEventListener('change', function() {
+            Estado.filtroSemControle = this.checked;
+            renderizarExamesRadio();
+        });
+
         // Botões gerais
         var btnR = document.getElementById('btn-refresh');
         if (btnR) btnR.addEventListener('click', carregarTudo);
@@ -616,13 +783,14 @@
     }
 
     window.P46 = {
-        atualizarStatus: atualizarStatus,
-        bloquearSlot:    bloquearSlot,
-        desbloquearSlot: desbloquearSlot,
-        removerSlot:     removerSlot,
-        desagendar:      desagendar,
-        abrirAgendar:    abrirAgendar,
-        vincularPaciente: vincularPaciente
+        atualizarStatus:    atualizarStatus,
+        bloquearSlot:       bloquearSlot,
+        desbloquearSlot:    desbloquearSlot,
+        removerSlot:        removerSlot,
+        desagendar:         desagendar,
+        abrirAgendar:       abrirAgendar,
+        vincularPaciente:   vincularPaciente,
+        carregarExamesRadio: carregarExamesRadio
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);
