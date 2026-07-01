@@ -110,7 +110,7 @@
              + escHtml(String(item.nr_prescricao  || '')) + '\',\''
              + escHtml(item.nm_pessoa_fisica || '') + '\',\''
              + escHtml(item.ds_procedimento || '') + '\')">'
-             + '<i class="fas fa-plus"></i> Registrar</button>';
+             + '<i class="fas fa-paper-plane"></i> Enviar</button>';
     }
 
     // ── Pills multi-setor ──────────────────────────
@@ -172,7 +172,58 @@
         }
     }
 
-    // ── Card HTML ──────────────────────────────────
+    // ── Card agrupado por paciente (view cards) ────
+    function cardPacienteExamesHtml(exames) {
+        var info = exames[0];
+        var hasUrgente = false, anyRegistrado = false;
+        for (var i = 0; i < exames.length; i++) {
+            if (exames[i].radio_prioridade === 'urgente') hasUrgente = true;
+            if (exames[i].radio_id) anyRegistrado = true;
+        }
+
+        var cls = 'card-ex';
+        if (hasUrgente) cls += ' card-ex-urgente';
+        else if (anyRegistrado) cls += ' card-ex-registrado';
+
+        var html = '<div class="' + cls + '">';
+
+        // Header
+        html += '<div class="card-ex-header">'
+              + '<span class="card-ex-setor">' + escHtml(info.nm_setor || '') + '</span>'
+              + (hasUrgente ? '<span class="badge-urgente">URGENTE</span>' : '')
+              + '</div>';
+
+        // Dados do paciente
+        html += '<div class="card-ex-body">'
+              + '<div class="card-ex-nome">' + escHtml(formatarNome(info.nm_pessoa_fisica)) + '</div>'
+              + '<div class="card-ex-meta">'
+              + '<span><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(String(info.nr_atendimento || '')) + '</span>'
+              + '<span><i class="fas fa-bed"></i> ' + escHtml(info.leito_base || info.leito || '-') + '</span>'
+              + '</div>';
+
+        // Lista de exames
+        html += '<div class="card-ex-exames">';
+        for (var j = 0; j < exames.length; j++) {
+            var ex = exames[j];
+            var sepCls = j < exames.length - 1 ? ' card-ex-exam-sep' : '';
+            html += '<div class="card-ex-exam-item' + sepCls + '">';
+            html += '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-') + '</div>';
+            html += '<div class="card-ex-exam-footer">'
+                  + '<div class="card-ex-badges">'
+                  + badgeTasy(ex)
+                  + (ex.radio_id ? ' ' + badgeRadio(ex.radio_status) : '')
+                  + ' ' + badgeTransporte(ex)
+                  + '</div>'
+                  + '<div>' + acoesHtml(ex) + '</div>'
+                  + '</div>';
+            html += '</div>';
+        }
+        html += '</div>'; // card-ex-exames
+        html += '</div></div>'; // card-ex-body + card-ex
+        return html;
+    }
+
+    // ── Card HTML (tabela — mantém um card por exame) ──
     function cardExHtml(item) {
         var cls = 'card-ex';
         if (item.radio_prioridade === 'urgente') cls += ' card-ex-urgente';
@@ -246,8 +297,17 @@
                   + '<span class="setor-count">' + lista.length + '</span></div>';
 
             if (Estado.visualizacao === 'cards') {
+                // Agrupar por paciente (nr_atendimento)
+                var pacientes = {}, ordemPac = [];
+                for (var pi = 0; pi < lista.length; pi++) {
+                    var pkey = String(lista[pi].nr_atendimento || '');
+                    if (!pacientes[pkey]) { pacientes[pkey] = []; ordemPac.push(pkey); }
+                    pacientes[pkey].push(lista[pi]);
+                }
                 html += '<div class="grid-cards-exames">';
-                for (var ci = 0; ci < lista.length; ci++) html += cardExHtml(lista[ci]);
+                for (var oi = 0; oi < ordemPac.length; oi++) {
+                    html += cardPacienteExamesHtml(pacientes[ordemPac[oi]]);
+                }
                 html += '</div>';
             } else {
                 html += '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
@@ -376,7 +436,7 @@
         .then(function(r) { return r.json(); })
         .then(function(d) {
             fecharModal();
-            if (d.success) { toast('Exame registrado para radiologia!', 'success'); carregar(); }
+            if (d.success) { toast('Exame enviado para radiologia!', 'success'); carregar(); }
             else toast('Erro: ' + (d.error || 'Falha ao registrar'), 'error');
         })
         .catch(function(e) { console.error('[P45]', e); toast('Erro de conexão', 'error'); })

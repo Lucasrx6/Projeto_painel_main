@@ -281,26 +281,51 @@ def api_p46_agendar(radio_id):
 @login_required
 @panel_permission_required('painel46')
 def api_p46_slots_get():
-    """Retorna slots de uma data com info do paciente vinculado. ?data=YYYY-MM-DD"""
+    """Retorna slots de uma data com info do paciente vinculado. ?data=YYYY-MM-DD
+    Para hoje: exclui automaticamente vagas passadas sem uso (livre/bloqueado)
+    e retorna apenas vagas futuras + vagas ocupadas (independente do horário).
+    """
     try:
         data_str = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
+        hoje = datetime.now().strftime('%Y-%m-%d')
+        eh_hoje = (data_str == hoje)
+
+        _SELECT_SLOTS = """
+            SELECT
+                rs.id, rs.data_hora, rs.duracao_min, rs.modalidade,
+                rs.status, rs.obs_bloqueio,
+                ra.id           AS radio_id,
+                ra.nm_paciente,
+                ra.ds_procedimento,
+                ra.leito_origem,
+                ra.setor_origem_nome,
+                ra.prioridade,
+                ra.status       AS radio_status
+            FROM radio_slots rs
+            LEFT JOIN radio_agenda ra ON ra.id = rs.radio_agenda_id
+        """
+
         with get_db_cursor() as cursor:
-            cursor.execute("""
-                SELECT
-                    rs.id, rs.data_hora, rs.duracao_min, rs.modalidade,
-                    rs.status, rs.obs_bloqueio,
-                    ra.id           AS radio_id,
-                    ra.nm_paciente,
-                    ra.ds_procedimento,
-                    ra.leito_origem,
-                    ra.setor_origem_nome,
-                    ra.prioridade,
-                    ra.status       AS radio_status
-                FROM radio_slots rs
-                LEFT JOIN radio_agenda ra ON ra.id = rs.radio_agenda_id
-                WHERE DATE(rs.data_hora) = %s
-                ORDER BY rs.data_hora
-            """, (data_str,))
+            if eh_hoje:
+                # Remove vagas passadas sem uso para manter a agenda limpa
+                cursor.execute("""
+                    DELETE FROM radio_slots
+                    WHERE DATE(data_hora) = %s
+                      AND data_hora < NOW()
+                      AND status IN ('livre', 'bloqueado')
+                """, (data_str,))
+
+                cursor.execute(_SELECT_SLOTS + """
+                    WHERE DATE(rs.data_hora) = %s
+                      AND (rs.data_hora >= NOW() OR rs.status = 'ocupado')
+                    ORDER BY rs.data_hora
+                """, (data_str,))
+            else:
+                cursor.execute(_SELECT_SLOTS + """
+                    WHERE DATE(rs.data_hora) = %s
+                    ORDER BY rs.data_hora
+                """, (data_str,))
+
             return jsonify({'success': True, 'data': [_serial(dict(r)) for r in cursor.fetchall()],
                             'data_consultada': data_str})
     except Exception as e:
@@ -323,6 +348,9 @@ def api_p46_slots_criar():
             data_hora = datetime.fromisoformat(data_hora_str)
         except ValueError:
             return jsonify({'success': False, 'error': 'Formato de data inválido (ISO 8601)'}), 400
+
+        if data_hora < datetime.now():
+            return jsonify({'success': False, 'error': 'Não é possível criar vaga em horário já passado'}), 400
 
         with get_db_cursor(use_dict_cursor=False) as cursor:
             cursor.execute("""
@@ -378,10 +406,17 @@ def api_p46_slots_lote():
 
         slots_criados = 0
         slots_ignorados = 0
+        agora = datetime.now()
         dt_atual = dt_inicio
 
         with get_db_cursor(use_dict_cursor=False) as cursor:
             while dt_atual < dt_fim:
+                # Pula horários que já passaram
+                if dt_atual < agora:
+                    slots_ignorados += 1
+                    dt_atual += timedelta(minutes=duracao_min)
+                    continue
+
                 # Ignora se já existe slot no mesmo horário e modalidade
                 cursor.execute("""
                     SELECT id FROM radio_slots

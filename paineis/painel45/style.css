@@ -241,6 +241,19 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 }
 .btn-view.ativo { background: white; color: var(--cor-primaria); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
 
+/* ── CARD AGRUPADO POR PACIENTE ────────────────── */
+.card-ex-meta {
+    font-size: 11px; color: var(--texto-sec);
+    display: flex; gap: 10px; margin-top: 2px; flex-wrap: wrap;
+}
+.card-ex-exames { margin-top: 8px; display: flex; flex-direction: column; }
+.card-ex-exam-item { padding: 7px 0; }
+.card-ex-exam-sep { border-bottom: 1px solid var(--borda); margin-bottom: 1px; }
+.card-ex-exam-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 5px; gap: 8px; flex-wrap: wrap;
+}
+
 /* ── GRID DE CARDS (P45) ───────────────────────── */
 .grid-cards-exames {
     display: grid;
