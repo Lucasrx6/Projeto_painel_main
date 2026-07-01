@@ -239,67 +239,6 @@ def api_p47_cancelar(radio_id):
         return jsonify({'success': False, 'error': 'Erro ao cancelar'}), 500
 
 
-# ── Analytics por modalidade ─────────────────────────────────
-
-@painel47_bp.route('/api/paineis/painel47/por-modalidade')
-@login_required
-@panel_permission_required('painel47')
-@cache_route(ttl=120, key_prefix='painel47:modalidade')
-def api_p47_modalidade():
-    """Volume e tempo médio por tipo de exame (ds_procedimento) — últimos 30 dias."""
-    try:
-        with get_db_cursor() as cursor:
-            cursor.execute("""
-                SELECT
-                    ds_procedimento,
-                    COUNT(*)                                         AS total,
-                    COUNT(*) FILTER (WHERE status = 'concluido')    AS concluidos,
-                    COUNT(*) FILTER (WHERE status = 'cancelado')    AS cancelados,
-                    COUNT(*) FILTER (WHERE prioridade = 'urgente')  AS urgentes,
-                    ROUND(AVG(
-                        EXTRACT(EPOCH FROM (atualizado_em - criado_em)) / 3600
-                    ) FILTER (WHERE status = 'concluido')::NUMERIC, 1) AS tempo_medio_h
-                FROM radio_agenda
-                WHERE criado_em >= NOW() - INTERVAL '30 days'
-                GROUP BY ds_procedimento
-                ORDER BY total DESC
-                LIMIT 30
-            """)
-            return jsonify({'success': True, 'data': [_serial(dict(r)) for r in cursor.fetchall()]})
-    except Exception as e:
-        current_app.logger.error(f'Erro modalidade p47: {e}', exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro'}), 500
-
-
-# ── Analytics por setor ──────────────────────────────────────
-
-@painel47_bp.route('/api/paineis/painel47/por-setor')
-@login_required
-@panel_permission_required('painel47')
-@cache_route(ttl=120, key_prefix='painel47:setor')
-def api_p47_setor():
-    """Volume por setor de origem."""
-    try:
-        dias = min(int(request.args.get('dias', 30)), 90)
-        with get_db_cursor() as cursor:
-            cursor.execute("""
-                SELECT
-                    setor_origem_nome,
-                    COUNT(*)                                         AS total,
-                    COUNT(*) FILTER (WHERE status = 'concluido')    AS concluidos,
-                    COUNT(*) FILTER (WHERE prioridade = 'urgente')  AS urgentes,
-                    COUNT(*) FILTER (WHERE requer_transporte = FALSE) AS rx_portatil
-                FROM radio_agenda
-                WHERE criado_em >= NOW() - INTERVAL %s
-                GROUP BY setor_origem_nome
-                ORDER BY total DESC
-            """, (f'{dias} days',))
-            return jsonify({'success': True, 'data': [dict(r) for r in cursor.fetchall()]})
-    except Exception as e:
-        current_app.logger.error(f'Erro setor p47: {e}', exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro'}), 500
-
-
 # ── Exportar CSV ─────────────────────────────────────────────
 
 @painel47_bp.route('/api/paineis/painel47/exportar')

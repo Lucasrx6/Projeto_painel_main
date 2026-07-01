@@ -34,7 +34,6 @@
             <button class="aba aba-ativa" data-aba="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
             <button class="aba" data-aba="historico"><i class="fas fa-history"></i> Histórico</button>
             <button class="aba" data-aba="producao"><i class="fas fa-chart-line"></i> Produção</button>
-            <button class="aba" data-aba="analytics"><i class="fas fa-chart-pie"></i> Analytics</button>
         </div>
     </div>
 
@@ -168,34 +167,6 @@
                     </div>
                 </div>
                 <div id="prod-exames"><div class="loading"><div class="loading-spinner"></div></div></div>
-            </div>
-        </div>
-
-        <!-- ABA: ANALYTICS -->
-        <div id="aba-analytics" class="aba-conteudo" style="display:none;">
-            <div class="filtro-bar">
-                <div class="filtro-content">
-                    <div class="filtro-grupo">
-                        <label>Período</label>
-                        <select id="analytics-dias">
-                            <option value="7">7 dias</option>
-                            <option value="30" selected>30 dias</option>
-                            <option value="60">60 dias</option>
-                            <option value="90">90 dias</option>
-                        </select>
-                    </div>
-                    <button class="btn-aplicar-filtro" id="btn-analytics-buscar"><i class="fas fa-sync-alt"></i> Atualizar</button>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                <div class="secao">
-                    <div class="secao-titulo"><i class="fas fa-hospital-alt"></i> Por Setor de Origem</div>
-                    <div id="analytics-setor"><div class="loading"><div class="loading-spinner"></div></div></div>
-                </div>
-                <div class="secao">
-                    <div class="secao-titulo"><i class="fas fa-chart-bar"></i> Por Status</div>
-                    <div id="analytics-status"><div class="loading"><div class="loading-spinner"></div></div></div>
-                </div>
             </div>
         </div>
 
