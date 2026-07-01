@@ -374,7 +374,7 @@ def api_p47_producao_sync():
                     dt_pedido, dt_execucao, dt_laudo, dt_laudo_liberacao,
                     horas_espera, ultima_atualizacao
                 )
-                SELECT
+                SELECT DISTINCT ON (p.nr_prescricao)
                     p.nr_atendimento::varchar,
                     p.nr_prescricao::varchar,
                     p.nm_pessoa_fisica,
@@ -395,6 +395,7 @@ def api_p47_producao_sync():
                     NOW()
                 FROM vw_painel19_radiologia p
                 WHERE p.nr_prescricao IS NOT NULL
+                ORDER BY p.nr_prescricao, p.dt_carga DESC
                 ON CONFLICT (nr_prescricao) DO UPDATE SET
                     status_radiologia  = EXCLUDED.status_radiologia,
                     dt_execucao        = COALESCE(EXCLUDED.dt_execucao,        radio_producao.dt_execucao),
@@ -569,8 +570,8 @@ def api_p47_producao_exames():
             """, params + [limit])
             exames = [_serial(dict(r)) for r in cursor.fetchall()]
 
-            cursor.execute(f"SELECT COUNT(*) FROM radio_producao WHERE {where}", params)
-            total = cursor.fetchone()[0]
+            cursor.execute(f"SELECT COUNT(*) AS total FROM radio_producao WHERE {where}", params)
+            total = cursor.fetchone()['total']
 
         return jsonify({'success': True, 'data': exames, 'total': total})
 
