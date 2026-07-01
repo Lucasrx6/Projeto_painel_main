@@ -50,7 +50,16 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 /* Nav de data */
 .nav-data { display: flex; align-items: center; gap: 6px; }
-.label-data { font-size: 13px; font-weight: 700; min-width: 80px; text-align: center; }
+.label-data { font-size: 13px; font-weight: 700; min-width: 80px; text-align: center; color: var(--texto); }
+/* Botões de seta dentro da barra de abas (fundo branco) — precisam de cor visível */
+.nav-data .btn-header {
+    background: var(--cor-primaria-light);
+    color: var(--cor-primaria);
+}
+.nav-data .btn-header:hover {
+    background: var(--cor-primaria);
+    color: white;
+}
 
 /* Status online */
 .status-dot { font-size: 10px; color: #4dff91; animation: piscar 2s infinite; cursor: default; }

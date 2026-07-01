@@ -184,6 +184,12 @@ def api_p46_status(radio_id):
                         SET status = 'livre', radio_agenda_id = NULL, atualizado_em = NOW()
                         WHERE id = %s
                     """, (slot_id,))
+            elif novo_status == 'no_local':
+                extra_sql = ', dt_no_local = NOW()'
+            elif novo_status == 'executando':
+                extra_sql = ', dt_inicio_exame = NOW()'
+            elif novo_status == 'concluido':
+                extra_sql = ', dt_conclusao_exame = NOW()'
 
             cursor.execute(f"""
                 UPDATE radio_agenda

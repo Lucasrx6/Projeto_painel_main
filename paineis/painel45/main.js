@@ -266,7 +266,10 @@
             var it = Estado.dados[n];
             if (Estado.setoresSelecionados.length && Estado.setoresSelecionados.indexOf(it.nm_setor || '') < 0) continue;
             if (Estado.filtroSoPendentes) {
-                if (it.radio_id && it.radio_status !== 'pendente' && it.radio_status !== 'agendado' && it.radio_status !== 'no_local') continue;
+                // Oculta laudados no Tasy (exame já finalizado pela radiologia)
+                if ((it.status_radiologia || '').toUpperCase() === 'LAUDADO') continue;
+                // Oculta concluídos/cancelados no controle interno
+                if (it.radio_id && (it.radio_status === 'concluido' || it.radio_status === 'cancelado')) continue;
             }
             filtrados.push(it);
         }

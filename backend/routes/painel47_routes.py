@@ -152,13 +152,32 @@ def api_p47_chamados():
                     ra.leito_origem, ra.setor_origem_nome, ra.prioridade,
                     ra.status, ra.requer_transporte,
                     ra.solicitante_nome, ra.observacao, ra.motivo_cancelamento,
-                    ra.criado_em, ra.atualizado_em,
+                    ra.criado_em,
+                    ra.dt_no_local,
+                    ra.dt_inicio_exame,
+                    ra.dt_conclusao_exame,
+                    ra.atualizado_em,
                     rs.data_hora AS slot_data_hora,
                     ROUND(
-                        EXTRACT(EPOCH FROM (ra.atualizado_em - ra.criado_em)) / 3600
-                    ::NUMERIC, 1) AS duracao_horas
+                        (EXTRACT(EPOCH FROM (ra.atualizado_em - ra.criado_em)) / 3600)::NUMERIC, 1
+                    ) AS duracao_horas,
+                    -- Transporte do padioleiro mais próximo no tempo deste exame (opcional)
+                    pc.criado_em          AS transp_solicitado,
+                    pc.dt_aceite          AS transp_aceito,
+                    pc.dt_inicio_transporte AS transp_inicio,
+                    pc.dt_conclusao       AS transp_conclusao,
+                    pc.padioleiro_nome    AS transp_padioleiro,
+                    pc.status             AS transp_status
                 FROM radio_agenda ra
                 LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
+                LEFT JOIN LATERAL (
+                    SELECT criado_em, dt_aceite, dt_inicio_transporte, dt_conclusao,
+                           padioleiro_nome, status
+                    FROM padioleiro_chamados
+                    WHERE nr_atendimento = ra.nr_atendimento
+                    ORDER BY ABS(EXTRACT(EPOCH FROM (criado_em - ra.criado_em)))
+                    LIMIT 1
+                ) pc ON TRUE
                 {where}
                 ORDER BY ra.criado_em DESC
                 LIMIT %s
@@ -291,6 +310,9 @@ def api_p47_exportar():
     try:
         dias = min(int(request.args.get('dias', 30)), 90)
 
+        def _fmt(dt):
+            return dt.strftime('%d/%m/%Y %H:%M') if dt else ''
+
         with get_db_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -302,36 +324,64 @@ def api_p47_exportar():
                     ra.solicitante_nome,
                     rs.data_hora AS slot_agendado,
                     ra.motivo_cancelamento,
+                    ra.dt_no_local,
+                    ra.dt_inicio_exame,
+                    ra.dt_conclusao_exame,
                     ROUND(
-                        EXTRACT(EPOCH FROM (ra.atualizado_em - ra.criado_em)) / 3600
-                    ::NUMERIC, 1) AS duracao_horas
+                        (EXTRACT(EPOCH FROM (ra.atualizado_em - ra.criado_em)) / 3600)::NUMERIC, 1
+                    ) AS duracao_horas,
+                    pc.criado_em            AS transp_solicitado,
+                    pc.dt_aceite            AS transp_aceito,
+                    pc.dt_inicio_transporte AS transp_inicio,
+                    pc.dt_conclusao         AS transp_conclusao,
+                    pc.padioleiro_nome      AS transp_padioleiro,
+                    pc.status               AS transp_status
                 FROM radio_agenda ra
                 LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
-                WHERE ra.criado_em >= NOW() - INTERVAL '%s days'
+                LEFT JOIN LATERAL (
+                    SELECT criado_em, dt_aceite, dt_inicio_transporte, dt_conclusao,
+                           padioleiro_nome, status
+                    FROM padioleiro_chamados
+                    WHERE nr_atendimento = ra.nr_atendimento
+                    ORDER BY ABS(EXTRACT(EPOCH FROM (criado_em - ra.criado_em)))
+                    LIMIT 1
+                ) pc ON TRUE
+                WHERE ra.criado_em >= NOW() - INTERVAL %s
                 ORDER BY ra.criado_em DESC
-            """, (dias,))
+            """, (f'{dias} days',))
             rows = cursor.fetchall()
 
         output = io.StringIO()
         output.write('﻿')  # BOM UTF-8
         writer = csv.writer(output, delimiter=';')
         writer.writerow([
-            'ID', 'Criado em', 'Atualizado em', 'Atendimento', 'Paciente',
+            'ID', 'Enviado (Enfermagem)', 'Slot Agendado', 'Atendimento', 'Paciente',
             'Leito', 'Setor', 'Exame', 'Requer Transporte',
-            'Prioridade', 'Status', 'Solicitante', 'Slot Agendado',
-            'Motivo Cancelamento', 'Duração (h)'
+            'Prioridade', 'Status',
+            'Chegou (No Local)', 'Exame Iniciado', 'Exame Concluído',
+            'Transporte Solicitado', 'Transporte Aceito', 'Transporte Iniciado', 'Transporte Concluído',
+            'Padioleiro',
+            'Solicitante', 'Motivo Cancelamento', 'Duração Total (h)'
         ])
         for r in rows:
             writer.writerow([
                 r['id'],
-                r['criado_em'].strftime('%d/%m/%Y %H:%M') if r['criado_em'] else '',
-                r['atualizado_em'].strftime('%d/%m/%Y %H:%M') if r['atualizado_em'] else '',
+                _fmt(r['criado_em']),
+                _fmt(r['slot_agendado']),
                 r['nr_atendimento'], r['nm_paciente'],
                 r['leito_origem'], r['setor_origem_nome'],
                 r['ds_procedimento'],
                 'Não' if not r['requer_transporte'] else 'Sim',
-                r['prioridade'], r['status'], r['solicitante_nome'],
-                r['slot_agendado'].strftime('%d/%m/%Y %H:%M') if r['slot_agendado'] else '',
+                r['prioridade'], r['status'],
+                _fmt(r['dt_no_local']),
+                _fmt(r['dt_inicio_exame']),
+                _fmt(r['dt_conclusao_exame']),
+                _fmt(r['transp_solicitado']),
+                _fmt(r['transp_aceito']),
+                _fmt(r['transp_inicio']),
+                _fmt(r['transp_conclusao']),
+                r['transp_padioleiro'] or '',
+                r['solicitante_nome'] or '',
                 r['motivo_cancelamento'] or '',
                 r['duracao_horas'] or ''
             ])

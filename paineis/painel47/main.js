@@ -16,7 +16,8 @@
     var Estado = {
         tabAtiva: 'dashboard',
         cancelarId: null,
-        cancelarNome: null
+        cancelarNome: null,
+        historicoData: []    // armazena os itens do histórico para o modal de timeline
     };
 
     // ── Toast ──────────────────────────────────────
@@ -182,6 +183,7 @@
     }
 
     function renderizarHistorico(lista, total) {
+        Estado.historicoData = lista;
         var secao = document.getElementById('secao-historico');
         if (!secao) return;
 
@@ -191,7 +193,7 @@
         }
 
         var html = '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
-            + '<th>Data</th><th>Paciente</th><th>Exame</th><th>Setor</th>'
+            + '<th>Enviado</th><th>Paciente</th><th>Exame</th><th>Setor</th>'
             + '<th>Leito</th><th>Status</th><th>Agendado</th><th>Ações</th>'
             + '</tr></thead><tbody>';
 
@@ -206,7 +208,9 @@
                 + '<td>' + escHtml(item.leito_origem || '-') + '</td>'
                 + '<td>' + badgeStatus(item.status) + '</td>'
                 + '<td style="white-space:nowrap;font-size:12px">' + (item.slot_data_hora ? formatarDataHora(item.slot_data_hora) : '-') + '</td>'
-                + '<td>';
+                + '<td style="white-space:nowrap">';
+            html += '<button class="btn-tl" onclick="P47.abrirTimeline(' + item.id + ')" title="Linha do Tempo">'
+                  + '<i class="fas fa-stream"></i></button> ';
             if (item.status !== 'concluido' && item.status !== 'cancelado') {
                 html += '<button class="btn-admin-cancelar" onclick="P47.abrirCancelar(' + item.id + ',\''
                       + escHtml(item.nm_paciente || '') + '\')">'
@@ -218,6 +222,63 @@
         if (total > lista.length)
             html += '<div class="tabela-info">Exibindo ' + lista.length + ' de ' + total + ' registros.</div>';
         secao.innerHTML = html;
+    }
+
+    // ── Linha do Tempo ─────────────────────────────
+    function abrirTimeline(id) {
+        var item = null;
+        for (var i = 0; i < Estado.historicoData.length; i++) {
+            if (Estado.historicoData[i].id === id) { item = Estado.historicoData[i]; break; }
+        }
+        if (!item) return;
+
+        var pctEl = document.getElementById('modal-tl-paciente');
+        if (pctEl) pctEl.textContent = formatarNome(item.nm_paciente)
+            + ' · ' + (item.ds_procedimento || '') + ' · ' + (item.setor_origem_nome || '');
+
+        var body = document.getElementById('modal-tl-body');
+        if (!body) return;
+
+        function etapa(icone, cor, titulo, valor) {
+            var valTxt = valor ? formatarDataHora(valor) : null;
+            var cls = valTxt ? 'tl-etapa tl-ok' : 'tl-etapa tl-pendente';
+            return '<div class="' + cls + '">'
+                + '<div class="tl-icone" style="background:' + cor + '">'
+                + '<i class="fas ' + icone + '"></i></div>'
+                + '<div class="tl-corpo">'
+                + '<div class="tl-titulo">' + titulo + '</div>'
+                + '<div class="tl-valor">' + (valTxt || '—') + '</div>'
+                + '</div></div>';
+        }
+
+        var html = '<div class="timeline">';
+
+        html += etapa('fa-paper-plane', '#6c757d', 'Enviado pela Enfermagem', item.criado_em);
+
+        // Transporte (opcional)
+        if (item.transp_solicitado) {
+            html += '<div class="tl-grupo-titulo"><i class="fas fa-wheelchair"></i> Transporte'
+                  + (item.transp_padioleiro ? ' — ' + escHtml(item.transp_padioleiro) : '') + '</div>';
+            html += etapa('fa-clock', '#fd7e14', 'Transporte solicitado', item.transp_solicitado);
+            html += etapa('fa-user-check', '#fd7e14', 'Padioleiro aceitou', item.transp_aceito);
+            html += etapa('fa-running', '#fd7e14', 'Em transporte', item.transp_inicio);
+            html += etapa('fa-flag-checkered', '#28a745', 'Transporte concluído', item.transp_conclusao);
+        } else {
+            html += '<div class="tl-sem-transporte"><i class="fas fa-info-circle"></i> '
+                  + (item.requer_transporte === false ? 'Exame portátil — sem transporte' : 'Transporte não encontrado para este atendimento')
+                  + '</div>';
+        }
+
+        html += '<div class="tl-grupo-titulo"><i class="fas fa-x-ray"></i> Radiologia</div>';
+        html += etapa('fa-map-marker-alt', '#17a2b8', 'Paciente chegou / No Local', item.dt_no_local);
+        html += etapa('fa-play', '#17a2b8', 'Exame iniciado', item.dt_inicio_exame);
+        html += etapa('fa-check-double', '#28a745', 'Exame concluído', item.dt_conclusao_exame);
+
+        html += '</div>';
+        body.innerHTML = html;
+
+        var modal = document.getElementById('modal-timeline');
+        if (modal) modal.style.display = 'flex';
     }
 
     // ── Analytics ──────────────────────────────────
@@ -403,13 +464,21 @@
         var btnConf = document.getElementById('modal-cancelar-confirmar');
         if (btnConf) btnConf.addEventListener('click', confirmarCancelar);
 
+        // Modal linha do tempo
+        var btnTlF1 = document.getElementById('modal-tl-fechar');
+        var btnTlF2 = document.getElementById('modal-tl-btn-fechar');
+        var modalTl = document.getElementById('modal-timeline');
+        if (btnTlF1) btnTlF1.addEventListener('click', function() { if (modalTl) modalTl.style.display = 'none'; });
+        if (btnTlF2) btnTlF2.addEventListener('click', function() { if (modalTl) modalTl.style.display = 'none'; });
+        if (modalTl) modalTl.addEventListener('click', function(e) { if (e.target === modalTl) modalTl.style.display = 'none'; });
+
         carregarDashboard();
         setInterval(function() {
             if (Estado.tabAtiva === 'dashboard') carregarDashboard();
         }, CONFIG.intervalo);
     }
 
-    window.P47 = { abrirCancelar: abrirCancelar };
+    window.P47 = { abrirCancelar: abrirCancelar, abrirTimeline: abrirTimeline };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);
     else inicializar();
