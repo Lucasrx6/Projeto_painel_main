@@ -202,51 +202,111 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .toast-info { background: #17a2b8; }
 @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
 
-/* ── BOTÃO LINHA DO TEMPO ──────────────────────── */
-.btn-tl {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 30px; height: 30px; border-radius: 7px;
-    background: var(--cor-primaria-light); color: var(--cor-primaria);
-    border: none; cursor: pointer; font-size: 13px; transition: all 0.15s;
+/* ── HISTORICO SPLIT LAYOUT ─────────────────────── */
+.historico-split {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 16px;
+    align-items: start;
 }
-.btn-tl:hover { background: var(--cor-primaria); color: white; }
+.historico-lista .secao { margin: 0; }
 
-/* ── MODAL TIMELINE ────────────────────────────── */
-.modal-box-wide { max-width: 520px; }
+.historico-tl-panel {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+    position: sticky;
+    top: 112px;
+    max-height: calc(100vh - 130px);
+    display: flex;
+    flex-direction: column;
+}
 
+.tl-panel-header {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--borda);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--texto);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+}
+
+.tl-panel-info {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--borda);
+    background: var(--cor-primaria-light);
+    font-size: 12px;
+    color: var(--cor-primaria-dark);
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+#painel-tl-body {
+    padding: 12px 14px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.tl-placeholder {
+    text-align: center;
+    padding: 30px 16px;
+    color: var(--texto-sec);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.tl-placeholder i { font-size: 30px; opacity: 0.3; }
+.tl-placeholder p  { font-size: 13px; line-height: 1.4; }
+
+/* Linha selecionada na tabela */
+.tabela tr.linha-selecionada td { background: var(--cor-primaria-light) !important; }
+.tabela tr.tl-clicavel { cursor: pointer; }
+.tabela tr.tl-clicavel:hover td { background: #f0f4f8; }
+.tabela tr.tl-clicavel.linha-selecionada:hover td { background: var(--cor-primaria-light) !important; }
+
+/* ── TIMELINE ELEMENTS ─────────────────────────── */
 .timeline { display: flex; flex-direction: column; gap: 4px; }
 
 .tl-grupo-titulo {
-    font-size: 11px; font-weight: 700; color: var(--cor-primaria);
+    font-size: 10px; font-weight: 700; color: var(--cor-primaria);
     text-transform: uppercase; letter-spacing: 0.5px;
     margin: 10px 0 4px; display: flex; align-items: center; gap: 5px;
 }
 
 .tl-etapa {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 10px; border-radius: 8px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 8px; border-radius: 8px;
 }
 .tl-ok      { background: #f8f9fa; }
-.tl-pendente{ background: white; opacity: 0.55; }
+.tl-pendente{ background: white; opacity: 0.5; }
 
 .tl-icone {
-    width: 30px; height: 30px; border-radius: 50%;
+    width: 28px; height: 28px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; color: white; font-size: 12px;
+    flex-shrink: 0; color: white; font-size: 11px;
 }
-.tl-pendente .tl-icone { background: #dee2e6 !important; }
 
-.tl-corpo { flex: 1; }
-.tl-titulo { font-size: 12px; color: var(--texto-sec); }
-.tl-valor  { font-size: 14px; font-weight: 700; color: var(--texto); }
-.tl-pendente .tl-valor { color: var(--texto-sec); font-weight: 400; }
+.tl-corpo { flex: 1; min-width: 0; }
+.tl-titulo { font-size: 11px; color: var(--texto-sec); }
+.tl-valor  { font-size: 13px; font-weight: 700; color: var(--texto); }
+.tl-pendente .tl-valor { color: var(--texto-sec); font-weight: 400; font-style: italic; }
 
 .tl-sem-transporte {
-    font-size: 12px; color: var(--texto-sec); padding: 8px 10px;
+    font-size: 11px; color: var(--texto-sec); padding: 7px 8px;
     background: #f8f9fa; border-radius: 8px; display: flex;
-    align-items: center; gap: 6px; margin: 4px 0;
+    align-items: center; gap: 6px; margin: 2px 0;
 }
 
+@media (max-width: 900px) {
+    .historico-split { grid-template-columns: 1fr; }
+    .historico-tl-panel { position: static; max-height: none; }
+}
 @media (max-width: 600px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .filtro-content { flex-direction: column; align-items: stretch; }

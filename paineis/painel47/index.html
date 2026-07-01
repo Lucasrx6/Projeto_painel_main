@@ -114,8 +114,25 @@
                     <button class="btn-exportar-csv" id="btn-exportar"><i class="fas fa-file-csv"></i> Exportar CSV</button>
                 </div>
             </div>
-            <div class="secao" id="secao-historico">
-                <div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
+            <!-- SPLIT: tabela + painel de timeline -->
+            <div class="historico-split">
+                <div class="historico-lista">
+                    <div class="secao" id="secao-historico">
+                        <div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
+                    </div>
+                </div>
+                <div class="historico-tl-panel" id="historico-tl-panel">
+                    <div class="tl-panel-header">
+                        <i class="fas fa-stream" style="color:var(--cor-primaria)"></i> Linha do Tempo
+                    </div>
+                    <div id="painel-tl-info" class="tl-panel-info" style="display:none;"></div>
+                    <div id="painel-tl-body">
+                        <div class="tl-placeholder">
+                            <i class="fas fa-hand-pointer"></i>
+                            <p>Clique em um registro para ver a linha do tempo</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -148,23 +165,6 @@
         </div>
 
     </main>
-
-    <!-- MODAL LINHA DO TEMPO -->
-    <div id="modal-timeline" class="modal-overlay" style="display:none;">
-        <div class="modal-box modal-box-wide">
-            <div class="modal-header">
-                <div>
-                    <h3><i class="fas fa-stream" style="color:var(--cor-primaria)"></i> Linha do Tempo</h3>
-                    <div id="modal-tl-paciente" style="font-size:12px;color:#6c757d;margin-top:2px;"></div>
-                </div>
-                <button class="btn-fechar-modal" id="modal-tl-fechar"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body" id="modal-tl-body"></div>
-            <div class="modal-footer">
-                <button class="btn-modal btn-modal-sec" id="modal-tl-btn-fechar">Fechar</button>
-            </div>
-        </div>
-    </div>
 
     <!-- MODAL CANCELAR -->
     <div id="modal-cancelar" class="modal-overlay" style="display:none;">
