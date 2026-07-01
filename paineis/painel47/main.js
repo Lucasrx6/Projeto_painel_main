@@ -185,6 +185,7 @@
 
     function renderizarHistorico(lista, total) {
         Estado.historicoData = lista;
+        Estado.itemSelecionadoId = null;
         var secao = document.getElementById('secao-historico');
         if (!secao) return;
 
@@ -200,8 +201,8 @@
 
         for (var i = 0; i < lista.length; i++) {
             var item = lista[i];
-            var selecionado = item.id === Estado.itemSelecionadoId ? ' linha-selecionada' : '';
-            html += '<tr class="tl-clicavel' + selecionado + '" data-id="' + item.id + '" onclick="P47.selecionarItem(' + item.id + ')">'
+            // Linha principal clicável
+            html += '<tr class="tl-clicavel" data-id="' + item.id + '" onclick="P47.selecionarItem(' + item.id + ')">'
                 + '<td style="white-space:nowrap;font-size:12px">' + formatarDataHora(item.criado_em) + '</td>'
                 + '<td><strong>' + escHtml(formatarNome(item.nm_paciente)) + '</strong><br>'
                 + '<small style="color:#95a5a6">' + escHtml(item.nr_atendimento || '') + '</small></td>'
@@ -217,6 +218,10 @@
                       + '<i class="fas fa-ban"></i></button>';
             }
             html += '</td></tr>';
+            // Sub-linha de timeline (oculta por padrão)
+            html += '<tr class="tl-row" id="tl-row-' + item.id + '" style="display:none;">'
+                  + '<td colspan="8" class="tl-row-cell"></td>'
+                  + '</tr>';
         }
         html += '</tbody></table></div>';
         if (total > lista.length)
@@ -224,70 +229,87 @@
         secao.innerHTML = html;
     }
 
-    // ── Linha do Tempo (painel inline) ────────────────
+    // ── Linha do Tempo (sub-linha inline na tabela) ────
     function selecionarItem(id) {
+        // Fechar sub-linha anterior
+        if (Estado.itemSelecionadoId !== null) {
+            var anterior = document.getElementById('tl-row-' + Estado.itemSelecionadoId);
+            if (anterior) anterior.style.display = 'none';
+            var trAnterior = document.querySelector('.tl-clicavel[data-id="' + Estado.itemSelecionadoId + '"]');
+            if (trAnterior) trAnterior.className = 'tl-clicavel';
+            // Toggle: clicar na mesma linha fecha
+            if (Estado.itemSelecionadoId === id) {
+                Estado.itemSelecionadoId = null;
+                return;
+            }
+        }
+
         var item = null;
         for (var i = 0; i < Estado.historicoData.length; i++) {
             if (Estado.historicoData[i].id === id) { item = Estado.historicoData[i]; break; }
         }
         if (!item) return;
 
-        // Atualizar linha selecionada na tabela
         Estado.itemSelecionadoId = id;
-        var trs = document.querySelectorAll('#secao-historico .tl-clicavel');
-        for (var j = 0; j < trs.length; j++) {
-            var tr = trs[j];
-            var trId = parseInt(tr.getAttribute('data-id'), 10);
-            if (trId === id) tr.className = 'tl-clicavel linha-selecionada';
-            else             tr.className = 'tl-clicavel';
-        }
 
-        // Info do paciente
-        var infoEl = document.getElementById('painel-tl-info');
-        if (infoEl) {
-            infoEl.style.display = '';
-            infoEl.innerHTML = '<strong>' + escHtml(formatarNome(item.nm_paciente)) + '</strong>'
-                + ' &mdash; ' + escHtml(item.ds_procedimento || '')
-                + '<br><small>' + escHtml(item.setor_origem_nome || '') + ' · Leito ' + escHtml(item.leito_origem || '-') + '</small>';
-        }
+        // Destacar linha principal
+        var trAtual = document.querySelector('.tl-clicavel[data-id="' + id + '"]');
+        if (trAtual) trAtual.className = 'tl-clicavel linha-selecionada';
 
-        // Construir timeline
-        function etapa(icone, cor, titulo, valor) {
+        // Helper: um passo da timeline
+        function step(icone, cor, label, valor) {
             var valTxt = valor ? formatarDataHora(valor) : null;
-            var cls = valTxt ? 'tl-etapa tl-ok' : 'tl-etapa tl-pendente';
+            var cls = valTxt ? 'tl-step ok' : 'tl-step pendente';
             return '<div class="' + cls + '">'
-                + '<div class="tl-icone" style="background:' + cor + '">'
+                + '<div class="tl-step-icone" style="background:' + cor + '">'
                 + '<i class="fas ' + icone + '"></i></div>'
-                + '<div class="tl-corpo">'
-                + '<div class="tl-titulo">' + titulo + '</div>'
-                + '<div class="tl-valor">' + (valTxt || '—') + '</div>'
+                + '<div class="tl-step-info">'
+                + '<span class="tl-step-label">' + label + '</span>'
+                + '<span class="tl-step-valor">' + (valTxt || '—') + '</span>'
                 + '</div></div>';
         }
 
-        var html = '<div class="timeline">';
-        html += etapa('fa-paper-plane', '#6c757d', 'Enviado pela Enfermagem', item.criado_em);
+        var html = '<div class="tl-inline-wrap">';
 
-        if (item.transp_solicitado) {
-            html += '<div class="tl-grupo-titulo"><i class="fas fa-wheelchair"></i> Transporte'
-                  + (item.transp_padioleiro ? ' — ' + escHtml(item.transp_padioleiro) : '') + '</div>';
-            html += etapa('fa-clock', '#fd7e14', 'Transporte solicitado', item.transp_solicitado);
-            html += etapa('fa-user-check', '#fd7e14', 'Padioleiro aceitou', item.transp_aceito);
-            html += etapa('fa-running', '#fd7e14', 'Em transporte', item.transp_inicio);
-            html += etapa('fa-flag-checkered', '#28a745', 'Transporte concluído', item.transp_conclusao);
-        } else {
-            html += '<div class="tl-sem-transporte"><i class="fas fa-info-circle"></i> '
-                  + (item.requer_transporte === false ? 'Exame portátil — sem transporte' : 'Transporte não encontrado')
-                  + '</div>';
-        }
-
-        html += '<div class="tl-grupo-titulo"><i class="fas fa-x-ray"></i> Radiologia</div>';
-        html += etapa('fa-map-marker-alt', '#17a2b8', 'Paciente chegou / No Local', item.dt_no_local);
-        html += etapa('fa-play', '#17a2b8', 'Exame iniciado', item.dt_inicio_exame);
-        html += etapa('fa-check-double', '#28a745', 'Exame concluído', item.dt_conclusao_exame);
+        // Grupo 1: Envio
+        html += '<div class="tl-grupo">';
+        html += step('fa-paper-plane', '#6c757d', 'Enviado', item.criado_em);
         html += '</div>';
 
-        var body = document.getElementById('painel-tl-body');
-        if (body) body.innerHTML = html;
+        // Seta + Grupo 2: Transporte
+        html += '<span class="tl-seta"><i class="fas fa-chevron-right"></i></span>';
+        html += '<div class="tl-grupo">';
+        if (item.transp_solicitado) {
+            html += '<span class="tl-grupo-label"><i class="fas fa-wheelchair"></i>'
+                  + (item.transp_padioleiro ? ' ' + escHtml(item.transp_padioleiro) : ' Transporte') + '</span>';
+            html += step('fa-clock',          '#fd7e14', 'Solicitado', item.transp_solicitado);
+            html += step('fa-user-check',     '#fd7e14', 'Aceito',     item.transp_aceito);
+            html += step('fa-running',        '#fd7e14', 'Em rota',    item.transp_inicio);
+            html += step('fa-flag-checkered', '#28a745', 'Entregue',   item.transp_conclusao);
+        } else {
+            html += '<div class="tl-sem-transp"><i class="fas fa-info-circle"></i> '
+                  + (item.requer_transporte === false ? 'Portátil' : 'Sem transporte') + '</div>';
+        }
+        html += '</div>';
+
+        // Seta + Grupo 3: Radiologia
+        html += '<span class="tl-seta"><i class="fas fa-chevron-right"></i></span>';
+        html += '<div class="tl-grupo">';
+        html += '<span class="tl-grupo-label"><i class="fas fa-x-ray"></i> Radiologia</span>';
+        html += step('fa-map-marker-alt', '#17a2b8', 'No Local',   item.dt_no_local);
+        html += step('fa-play',           '#17a2b8', 'Iniciado',   item.dt_inicio_exame);
+        html += step('fa-check-double',   '#28a745', 'Concluído',  item.dt_conclusao_exame);
+        html += '</div>';
+
+        html += '</div>';
+
+        // Injetar na sub-linha e exibir
+        var subRow = document.getElementById('tl-row-' + id);
+        if (subRow) {
+            var cell = subRow.querySelector('td');
+            if (cell) cell.innerHTML = html;
+            subRow.style.display = '';
+        }
     }
 
     // ── Analytics ──────────────────────────────────
