@@ -16,7 +16,8 @@
         setoresSelecionados: [],   // [] = todos
         filtroSoPendentes: false,
         visualizacao: 'cards',     // 'cards' | 'tabela'
-        modalAtendimento: null
+        modalAtendimento: null,
+        modalPrescricao: null
     };
 
     // ── Toast ──────────────────────────────────────
@@ -106,6 +107,7 @@
             return '<span class="txt-ja-registrado"><i class="fas fa-check-double" style="color:#28a745"></i> Laudado</span>';
         return '<button class="btn-registrar" onclick="P45.abrirRegistrar(\''
              + escHtml(String(item.nr_atendimento || '')) + '\',\''
+             + escHtml(String(item.nr_prescricao  || '')) + '\',\''
              + escHtml(item.nm_pessoa_fisica || '') + '\',\''
              + escHtml(item.ds_procedimento || '') + '\')">'
              + '<i class="fas fa-plus"></i> Registrar</button>';
@@ -310,8 +312,9 @@
     }
 
     // ── Modal registrar ────────────────────────────
-    function abrirRegistrar(nr, nome, exame) {
+    function abrirRegistrar(nr, presc, nome, exame) {
         Estado.modalAtendimento = nr;
+        Estado.modalPrescricao  = presc;
         var info = document.getElementById('modal-reg-info');
         if (info) {
             info.innerHTML = '<strong>' + escHtml(formatarNome(nome)) + '</strong><br>'
@@ -338,8 +341,18 @@
 
         var exame = null;
         for (var i = 0; i < Estado.dados.length; i++) {
-            if (String(Estado.dados[i].nr_atendimento) === String(Estado.modalAtendimento)) {
-                exame = Estado.dados[i]; break;
+            var d = Estado.dados[i];
+            if (String(d.nr_atendimento) === String(Estado.modalAtendimento)
+                && String(d.nr_prescricao || '') === String(Estado.modalPrescricao || '')) {
+                exame = d; break;
+            }
+        }
+        // fallback: busca só por atendimento se prescrição não bateu
+        if (!exame) {
+            for (var j = 0; j < Estado.dados.length; j++) {
+                if (String(Estado.dados[j].nr_atendimento) === String(Estado.modalAtendimento)) {
+                    exame = Estado.dados[j]; break;
+                }
             }
         }
         if (!exame) { toast('Exame não encontrado.', 'error'); if (btn) btn.disabled = false; return; }
@@ -348,16 +361,16 @@
             method: 'POST', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                nr_atendimento:    exame.nr_atendimento,
-                nr_prescricao:     exame.nr_prescricao || null,
-                ds_procedimento:   exame.ds_procedimento,
-                nm_paciente:       exame.nm_pessoa_fisica,
-                leito_origem:      exame.leito_base || exame.leito,
-                setor_origem_nome: exame.nm_setor,
-                cd_setor:          exame.cd_setor_atendimento,
-                nm_medico:         exame.nm_medico || '',
-                prioridade:        prioridade,
-                observacao:        obs
+                nr_atendimento:       String(exame.nr_atendimento || ''),
+                nr_prescricao:        String(exame.nr_prescricao  || ''),
+                ds_procedimento:      exame.ds_procedimento || '',
+                nm_paciente:          exame.nm_pessoa_fisica || '',
+                leito_origem:         exame.leito_base || exame.leito || '',
+                setor_origem_nome:    exame.nm_setor || '',
+                cd_setor_atendimento: exame.cd_setor_atendimento || null,
+                nm_medico_solicitante: exame.nm_medico || '',
+                prioridade:           prioridade,
+                observacao:           obs
             })
         })
         .then(function(r) { return r.json(); })

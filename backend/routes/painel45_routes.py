@@ -168,11 +168,13 @@ def api_p45_registrar():
     """Cria entrada em radio_agenda para um exame do painel19."""
     try:
         dados = request.get_json() or {}
-        nr_atendimento = dados.get('nr_atendimento', '').strip()
-        nr_prescricao  = dados.get('nr_prescricao', '').strip()
+        nr_atendimento = str(dados.get('nr_atendimento') or '').strip()
+        nr_prescricao  = str(dados.get('nr_prescricao')  or '').strip()
 
-        if not nr_atendimento or not nr_prescricao:
-            return jsonify({'success': False, 'error': 'nr_atendimento e nr_prescricao obrigatórios'}), 400
+        if not nr_atendimento:
+            return jsonify({'success': False, 'error': 'nr_atendimento obrigatório'}), 400
+        if not nr_prescricao:
+            return jsonify({'success': False, 'error': 'nr_prescricao obrigatório'}), 400
 
         ds_procedimento = dados.get('ds_procedimento', '')
         requer = _requer_transporte(ds_procedimento)
