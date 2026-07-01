@@ -47,7 +47,8 @@ def api_minhas_permissoes():
                     'painel30', 'painel31', 'painel32', 'painel33',
                     'painel34', 'painel35', 'painel36', 'painel37', 'painel38', 'painel39',
                     'painel40',
-                    'painel41', 'painel42', 'painel43', 'painel44'
+                    'painel41', 'painel42', 'painel43', 'painel44',
+                    'painel45', 'painel46', 'painel47'
                 ],
                 'is_admin': True
             })
@@ -455,6 +456,12 @@ def api_listar_paineis():
              'descricao': '[Sistema Auxiliar] Gestao, relatorios e configuracoes do sistema de nutricao', 'ativo': True},
             {'nome': 'painel44', 'titulo': 'Hub de Serviços',
              'descricao': 'Central de navegacao para todos os subsistemas e paineis auxiliares do HAC', 'ativo': True},
+            {'nome': 'painel45', 'titulo': 'Radiologia - Enfermagem',
+             'descricao': '[Sistema Auxiliar] Visualizacao e registro de exames de radiologia pelo setor solicitante', 'ativo': True},
+            {'nome': 'painel46', 'titulo': 'Radiologia - Tela Operacional',
+             'descricao': '[Sistema Auxiliar] Fila do dia e gestao de agenda de horarios para a equipe de radiologia', 'ativo': True},
+            {'nome': 'painel47', 'titulo': 'Radiologia - Gestão',
+             'descricao': '[Sistema Auxiliar] Dashboard, historico, analytics e exportacao do sistema de radiologia', 'ativo': True},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

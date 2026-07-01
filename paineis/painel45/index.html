@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radiologia — Enfermagem | Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel45/style.css">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- HEADER -->
+    <header class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="HAC">
+                <h1><i class="fas fa-x-ray"></i> Radiologia — Enfermagem</h1>
+            </div>
+            <div class="header-right">
+                <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                <button class="btn-header" id="btn-refresh" title="Atualizar"><i class="fas fa-sync-alt"></i></button>
+                <button class="btn-header" id="btn-voltar" title="Voltar"><i class="fas fa-arrow-left"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- FILTROS BAR -->
+    <div class="filtros-bar">
+        <div class="filtros-content">
+            <label>Setor:</label>
+            <select id="filtro-setor">
+                <option value="">Todos os setores</option>
+            </select>
+            <label class="filtro-toggle">
+                <input type="checkbox" id="toggle-pendentes">
+                Apenas com pendência
+            </label>
+        </div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-item-num" id="cnt-total">-</div>
+            <div class="stat-item-label">Total</div>
+        </div>
+        <div class="stat-item urgente">
+            <div class="stat-item-num" id="cnt-urgentes">-</div>
+            <div class="stat-item-label">Urgentes</div>
+        </div>
+        <div class="stat-item pendente">
+            <div class="stat-item-num" id="cnt-pendentes">-</div>
+            <div class="stat-item-label">Pendentes</div>
+        </div>
+        <div class="stat-item agendado">
+            <div class="stat-item-num" id="cnt-agendados">-</div>
+            <div class="stat-item-label">Agendados</div>
+        </div>
+        <div class="stat-item concluido">
+            <div class="stat-item-num" id="cnt-concluidos">-</div>
+            <div class="stat-item-label">Concluídos</div>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <main class="main-content" id="main-content">
+        <div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
+    </main>
+
+    <!-- MODAL: REGISTRAR EXAME -->
+    <div id="modal-registrar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus-circle" style="color:var(--cor-primaria)"></i> Registrar para Radiologia</h3>
+                <button class="btn-fechar-modal" id="modal-reg-fechar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-reg-info"></div>
+                <div class="form-group">
+                    <label>Prioridade</label>
+                    <select id="modal-reg-prioridade">
+                        <option value="normal">Normal</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Observação (opcional)</label>
+                    <textarea id="modal-reg-obs" rows="3" placeholder="Informações adicionais..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal" id="modal-reg-cancelar">Cancelar</button>
+                <button class="btn-modal btn-modal-prim" id="modal-reg-confirmar"><i class="fas fa-check"></i> Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <footer class="sistema-footer">
+        <span id="sistema-versao-footer">Central de Informações V 1.1.4</span>
+    </footer>
+</div>
+
+<script src="/paineis/painel45/main.js"></script>
+<script src="/static/js/versao.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

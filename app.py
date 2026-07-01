@@ -69,6 +69,9 @@ from backend.routes.painel41_routes import painel41_bp
 from backend.routes.painel42_routes import painel42_bp
 from backend.routes.painel43_routes import painel43_bp
 from backend.routes.painel44_routes import painel44_bp
+from backend.routes.painel45_routes import painel45_bp
+from backend.routes.painel46_routes import painel46_bp
+from backend.routes.painel47_routes import painel47_bp
 from backend.routes.tests_admin_routes import tests_bp
 from backend.routes.admin_acessos_routes import acessos_bp
 
@@ -166,7 +169,8 @@ paineis = [
     painel37_bp, painel38_bp,
     painel39_bp, painel40_bp,
     painel41_bp, painel42_bp, painel43_bp,
-    painel44_bp
+    painel44_bp,
+    painel45_bp, painel46_bp, painel47_bp,
 ]
 
 for painel in paineis:

@@ -14,6 +14,7 @@ _HUB_PAINEIS = {
     'painel14', 'painel15', 'painel28',
     'painel34', 'painel35', 'painel36',
     'painel41', 'painel42', 'painel43',
+    'painel45', 'painel46', 'painel47',
 }
 
 # ============================================================
@@ -53,6 +54,18 @@ _SUBSISTEMAS = [
         'cor': '#E67E00',
         'paineis': [
             {'nome': 'Sentir e Agir', 'icone': 'fa-heart-pulse', 'url': '/paineis/painel28/sentir-agir.html', 'permissao': 'painel28'},
+        ]
+    },
+    {
+        'id': 'radiologia',
+        'grupo': 'Radiologia',
+        'descricao': 'Controle do fluxo de exames de imagem: solicitação, fila do dia e agenda',
+        'icone': 'fa-x-ray',
+        'cor': '#6F42C1',
+        'paineis': [
+            {'nome': 'Solicitar Exame',      'icone': 'fa-circle-plus',    'url': '/painel/painel45', 'permissao': 'painel45'},
+            {'nome': 'Tela da Radiologia',   'icone': 'fa-x-ray',          'url': '/painel/painel46', 'permissao': 'painel46'},
+            {'nome': 'Gestão e Relatórios',  'icone': 'fa-chart-bar',      'url': '/painel/painel47', 'permissao': 'painel47'},
         ]
     },
     {

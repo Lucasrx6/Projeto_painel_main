@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Radiologia | Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel47/style.css">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- HEADER -->
+    <header class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="HAC">
+                <h1><i class="fas fa-chart-bar"></i> Gestão Radiologia</h1>
+            </div>
+            <div class="header-right">
+                <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                <button class="btn-header" id="btn-refresh" title="Atualizar"><i class="fas fa-sync-alt"></i></button>
+                <button class="btn-header" id="btn-voltar" title="Voltar"><i class="fas fa-arrow-left"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ABAS -->
+    <div class="abas-bar">
+        <div class="abas-content">
+            <button class="aba aba-ativa" data-aba="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
+            <button class="aba" data-aba="historico"><i class="fas fa-history"></i> Histórico</button>
+            <button class="aba" data-aba="analytics"><i class="fas fa-chart-pie"></i> Analytics</button>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+        <!-- ABA: DASHBOARD -->
+        <div id="aba-dashboard" class="aba-conteudo">
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card stat-total">
+                    <div class="stat-icone"><i class="fas fa-x-ray"></i></div>
+                    <div class="stat-num" id="m-total">-</div>
+                    <div class="stat-label">Total Hoje</div>
+                </div>
+                <div class="stat-card stat-pendente">
+                    <div class="stat-icone"><i class="fas fa-hourglass"></i></div>
+                    <div class="stat-num" id="m-pendentes">-</div>
+                    <div class="stat-label">Pendentes</div>
+                </div>
+                <div class="stat-card stat-executando">
+                    <div class="stat-icone"><i class="fas fa-spinner"></i></div>
+                    <div class="stat-num" id="m-executando">-</div>
+                    <div class="stat-label">Em Execução</div>
+                </div>
+                <div class="stat-card stat-concluido">
+                    <div class="stat-icone"><i class="fas fa-check-double"></i></div>
+                    <div class="stat-num" id="m-concluidos">-</div>
+                    <div class="stat-label">Concluídos</div>
+                </div>
+                <div class="stat-card stat-cancelado">
+                    <div class="stat-icone"><i class="fas fa-ban"></i></div>
+                    <div class="stat-num" id="m-cancelados">-</div>
+                    <div class="stat-label">Cancelados</div>
+                </div>
+                <div class="stat-card stat-slots">
+                    <div class="stat-icone"><i class="fas fa-calendar-day"></i></div>
+                    <div class="stat-num" id="m-slots">-</div>
+                    <div class="stat-label">Slots Hoje</div>
+                </div>
+            </div>
+            <div class="secao">
+                <div class="secao-titulo"><i class="fas fa-list-ul"></i> Exames em andamento</div>
+                <div id="lista-ativos"><div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div></div>
+            </div>
+        </div>
+
+        <!-- ABA: HISTÓRICO -->
+        <div id="aba-historico" class="aba-conteudo" style="display:none;">
+            <div class="filtro-bar">
+                <div class="filtro-content">
+                    <div class="filtro-grupo">
+                        <label>Período</label>
+                        <select id="filtro-dias">
+                            <option value="1">Hoje</option>
+                            <option value="7" selected>7 dias</option>
+                            <option value="30">30 dias</option>
+                            <option value="60">60 dias</option>
+                            <option value="90">90 dias</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Status</label>
+                        <select id="filtro-status">
+                            <option value="">Todos</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="agendado">Agendado</option>
+                            <option value="no_local">No Local</option>
+                            <option value="executando">Executando</option>
+                            <option value="concluido">Concluído</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Setor</label>
+                        <input type="text" id="filtro-setor" placeholder="Filtrar setor...">
+                    </div>
+                    <button class="btn-aplicar-filtro" id="btn-buscar"><i class="fas fa-search"></i> Buscar</button>
+                    <button class="btn-exportar-csv" id="btn-exportar"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+                </div>
+            </div>
+            <div class="secao" id="secao-historico">
+                <div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
+            </div>
+        </div>
+
+        <!-- ABA: ANALYTICS -->
+        <div id="aba-analytics" class="aba-conteudo" style="display:none;">
+            <div class="filtro-bar">
+                <div class="filtro-content">
+                    <div class="filtro-grupo">
+                        <label>Período</label>
+                        <select id="analytics-dias">
+                            <option value="7">7 dias</option>
+                            <option value="30" selected>30 dias</option>
+                            <option value="60">60 dias</option>
+                            <option value="90">90 dias</option>
+                        </select>
+                    </div>
+                    <button class="btn-aplicar-filtro" id="btn-analytics-buscar"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="secao">
+                    <div class="secao-titulo"><i class="fas fa-hospital-alt"></i> Por Setor de Origem</div>
+                    <div id="analytics-setor"><div class="loading"><div class="loading-spinner"></div></div></div>
+                </div>
+                <div class="secao">
+                    <div class="secao-titulo"><i class="fas fa-chart-bar"></i> Por Status</div>
+                    <div id="analytics-status"><div class="loading"><div class="loading-spinner"></div></div></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL CANCELAR -->
+    <div id="modal-cancelar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-ban" style="color:#dc3545"></i> Cancelar Exame</h3>
+                <button class="btn-fechar-modal" id="modal-cancelar-fechar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-cancelar-info"></div>
+                <div class="form-group">
+                    <label>Motivo do cancelamento</label>
+                    <textarea id="modal-cancelar-motivo" rows="3" placeholder="Descreva o motivo (mínimo 5 caracteres)..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-sec" id="modal-cancelar-btn-fechar">Fechar</button>
+                <button class="btn-modal btn-modal-danger" id="modal-cancelar-confirmar"><i class="fas fa-ban"></i> Cancelar Exame</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <footer class="sistema-footer">
+        <span id="sistema-versao-footer">Central de Informações V 1.1.4</span>
+    </footer>
+</div>
+
+<script src="/paineis/painel47/main.js"></script>
+<script src="/static/js/versao.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
