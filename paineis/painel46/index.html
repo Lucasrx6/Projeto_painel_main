@@ -43,6 +43,8 @@
             </div>
             <div class="abas-acoes" id="agenda-acoes" style="display:none;">
                 <span class="slots-info-bar" id="slots-info-bar"></span>
+                <button class="btn-aba-acao btn-export-agenda" id="btn-export-pdf" title="Gerar PDF da agenda do dia"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button class="btn-aba-acao btn-export-agenda" id="btn-export-excel" title="Exportar agenda em Excel"><i class="fas fa-file-excel"></i> Excel</button>
                 <button class="btn-aba-acao" id="btn-criar-lote"><i class="fas fa-magic"></i> Criar vagas em lote</button>
                 <button class="btn-aba-acao sec" id="btn-criar-avulso"><i class="fas fa-plus"></i> Vaga avulsa</button>
             </div>
@@ -276,7 +278,9 @@
                     <textarea id="ag-obs" rows="2" placeholder="Informações adicionais..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Horário Disponível <span id="ag-slots-loading" style="font-size:11px;color:#6c757d;display:none;">(buscando...)</span></label>
+                    <label>Horário Disponível <span id="ag-slots-loading" style="font-size:11px;color:#6c757d;display:none;">(buscando...)</span>
+                        <button type="button" class="btn-nova-vaga-inline" id="btn-nova-vaga-ag"><i class="fas fa-plus"></i> Nova vaga</button>
+                    </label>
                     <div id="ag-lista-slots" class="lista-slots-ag">
                         <div style="text-align:center;padding:20px;color:#6c757d;font-size:13px;">
                             Selecione uma data para ver os horários disponíveis.
