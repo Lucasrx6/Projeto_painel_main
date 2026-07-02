@@ -29,6 +29,7 @@
         exames: [],
         setoresExamesSelecionados: [],
         filtroTipoExame: '',             // '' | 'RX' | 'RM' | 'TC' | 'USG' | 'MAM' | 'OUTROS'
+        filtroModalidade: '',            // filtro ativo na aba Agenda
         filtroSemControle: false,
         visualizacaoExames: 'cards',
         carregandoFila: false,
@@ -396,6 +397,26 @@
         }
     }
 
+    // ── Pills Agenda (filtro por modalidade) ───────
+    function inicializarPillsAgenda() {
+        var container = document.getElementById('agenda-pills-bar');
+        if (!container) return;
+        var btns = container.querySelectorAll('.pill-agenda');
+        for (var i = 0; i < btns.length; i++) {
+            (function(btn) {
+                btn.addEventListener('click', function() {
+                    Estado.filtroModalidade = btn.getAttribute('data-modal') || '';
+                    var todos = container.querySelectorAll('.pill-agenda');
+                    for (var j = 0; j < todos.length; j++) {
+                        var ativo = todos[j].getAttribute('data-modal') === Estado.filtroModalidade;
+                        todos[j].className = todos[j].className.replace(' ativo', '') + (ativo ? ' ativo' : '');
+                    }
+                    renderizarAgenda();
+                });
+            })(btns[i]);
+        }
+    }
+
     // ── Renderizar Exames ──────────────────────────
     function renderizarExamesRadio() {
         var loading  = document.getElementById('exames-loading');
@@ -519,16 +540,34 @@
         return html;
     }
 
+    var _AGENDA_TIPOS = ['RM', 'TC', 'USG', 'RX', 'MAM', 'OUTROS'];
+
     function atualizarInfoSlots() {
         var livres = 0, ocupados = 0, bloqueados = 0;
+        var contagem = {todos: 0, RM: 0, TC: 0, USG: 0, RX: 0, MAM: 0, OUTROS: 0};
         for (var i = 0; i < Estado.slots.length; i++) {
-            var s = Estado.slots[i].status;
+            var sl = Estado.slots[i];
+            var s  = sl.status;
             if (s === 'livre') livres++;
             else if (s === 'ocupado') ocupados++;
             else bloqueados++;
+            contagem.todos++;
+            var modal = sl.modalidade || 'OUTROS';
+            if (contagem[modal] !== undefined) contagem[modal]++;
+            else contagem.OUTROS++;
         }
         var el = document.getElementById('slots-info-bar');
         if (el) el.textContent = livres + ' livres · ' + ocupados + ' ocupadas · ' + bloqueados + ' bloqueadas';
+
+        // Atualiza badges das pills
+        var setarCnt = function(id, n) { var e = document.getElementById(id); if (e) e.textContent = n; };
+        setarCnt('acnt-todos',   contagem.todos);
+        setarCnt('acnt-rm',      contagem.RM);
+        setarCnt('acnt-tc',      contagem.TC);
+        setarCnt('acnt-usg',     contagem.USG);
+        setarCnt('acnt-rx',      contagem.RX);
+        setarCnt('acnt-mam',     contagem.MAM);
+        setarCnt('acnt-outros',  contagem.OUTROS);
     }
 
     function renderizarAgenda() {
@@ -536,7 +575,15 @@
         var vazio   = document.getElementById('agenda-vazia');
         var grade   = document.getElementById('grade-slots');
         if (loading) loading.style.display = 'none';
-        if (!Estado.slots.length) {
+
+        var filtro = Estado.filtroModalidade;
+        var lista  = Estado.slots.filter(function(sl) {
+            if (!filtro) return true;
+            var modal = sl.modalidade || 'OUTROS';
+            return modal === filtro;
+        });
+
+        if (!lista.length) {
             if (vazio) vazio.style.display = '';
             if (grade) grade.style.display = 'none';
             atualizarInfoSlots();
@@ -544,7 +591,7 @@
         }
         if (vazio) vazio.style.display = 'none';
         var html = '';
-        for (var i = 0; i < Estado.slots.length; i++) html += slotCardHtml(Estado.slots[i]);
+        for (var i = 0; i < lista.length; i++) html += slotCardHtml(lista[i]);
         if (grade) { grade.innerHTML = html; grade.style.display = ''; }
         atualizarInfoSlots();
     }
@@ -1023,6 +1070,7 @@
 
         // Pills de tipo de exame
         inicializarPillsTipo();
+        inicializarPillsAgenda();
 
         // Tabs
         var abasBtns = document.querySelectorAll('.aba');

@@ -122,6 +122,15 @@
 
         <!-- ABA: AGENDA -->
         <div id="aba-agenda" class="aba-conteudo" style="display:none;">
+            <div class="agenda-pills-bar" id="agenda-pills-bar">
+                <button class="pill-agenda ativo" data-modal="">Todos <span class="pill-agenda-cnt" id="acnt-todos">0</span></button>
+                <button class="pill-agenda pill-agenda-rm"    data-modal="RM">RM <span class="pill-agenda-cnt" id="acnt-rm">0</span></button>
+                <button class="pill-agenda pill-agenda-tc"    data-modal="TC">TC <span class="pill-agenda-cnt" id="acnt-tc">0</span></button>
+                <button class="pill-agenda pill-agenda-usg"   data-modal="USG">USG <span class="pill-agenda-cnt" id="acnt-usg">0</span></button>
+                <button class="pill-agenda pill-agenda-rx"    data-modal="RX">RX <span class="pill-agenda-cnt" id="acnt-rx">0</span></button>
+                <button class="pill-agenda pill-agenda-mam"   data-modal="MAM">MAM <span class="pill-agenda-cnt" id="acnt-mam">0</span></button>
+                <button class="pill-agenda pill-agenda-outros" data-modal="OUTROS">Outros <span class="pill-agenda-cnt" id="acnt-outros">0</span></button>
+            </div>
             <div id="agenda-loading" class="loading"><div class="loading-spinner"></div><span>Carregando agenda...</span></div>
             <div id="agenda-vazia" class="painel-vazio" style="display:none;">
                 <i class="fas fa-calendar-alt"></i>
