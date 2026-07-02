@@ -853,12 +853,18 @@
         for (var i = 0; i < Estado.slots.length; i++) {
             if (Estado.slots[i].id === slotId) { slotInfo = Estado.slots[i]; break; }
         }
-        if (infoEl && slotInfo)
-            infoEl.innerHTML = '<strong>Vaga: ' + formatarHora(slotInfo.data_hora) + '</strong>'
-                + (slotInfo.modalidade ? ' — ' + escHtml(slotInfo.modalidade) : '')
-                + ' · ' + (slotInfo.duracao_min || 30) + 'min';
-
         Estado._vincularSlotId = slotId;
+
+        // Modalidade do slot (ex: 'RM', 'TC', null)
+        var slotModal = slotInfo ? (slotInfo.modalidade || '') : '';
+
+        // Atualiza info com o filtro ativo
+        if (infoEl && slotInfo) {
+            infoEl.innerHTML = '<strong>Vaga: ' + formatarHora(slotInfo.data_hora) + '</strong>'
+                + (slotModal ? ' — ' + escHtml(slotModal) : ' — Qualquer tipo')
+                + ' · ' + (slotInfo.duracao_min || 30) + 'min'
+                + (slotModal ? '<br><small style="color:#6c757d;margin-top:4px;display:block;">Mostrando apenas pacientes compatíveis com a modalidade <strong>' + escHtml(slotModal) + '</strong> (+ tipo "Outros")</small>' : '');
+        }
 
         function preencherListaVincular(exames) {
             var candidatos = [];
@@ -866,7 +872,14 @@
                 var ex = exames[j];
                 var rs = ex.radio_status;
                 // Agendável: sem radio_agenda OU aguardando slot
-                if (!rs || rs === 'pendente') candidatos.push(ex);
+                if (rs && rs !== 'pendente') continue;
+                // Filtro por modalidade do slot: se a vaga tem modalidade definida,
+                // só exibe pacientes com mesmo tipo ou OUTROS (tipo desconhecido)
+                if (slotModal) {
+                    var exTipo = ex.tipo_exame || '';
+                    if (exTipo && exTipo !== 'OUTROS' && exTipo !== slotModal) continue;
+                }
+                candidatos.push(ex);
             }
             Estado._vincularCandidatos = candidatos;
 
@@ -1060,55 +1073,57 @@
         if (btnOk) btnOk.disabled = true;
 
         renderizarSlotsDaModal([]);
-        // Busca a partir de hoje, avançando até 14 dias se necessário (autoAvanca=true)
-        buscarSlotsPorTipo(hojeISO(), 0, true);
+        // Busca o próximo dia com vagas disponíveis (uma única query no backend)
+        buscarSlotsPorTipo('auto');
         abrirModal('modal-agendar-presc');
     }
 
-    // autoAvanca: true = abre o modal e avança até 14 dias; false/undefined = usuário digitou data
-    function buscarSlotsPorTipo(dataISO, tentativa, autoAvanca) {
+    // Busca slots compatíveis.
+    // Sem args: lê do campo ag-data (digitação manual).
+    // Com modo='auto': uma query ao backend que encontra o próximo dia com vagas.
+    // Com modo='YYYY-MM-DD': busca nessa data específica.
+    function buscarSlotsPorTipo(modo) {
         var presc = Estado.modalAgendPresc;
         if (!presc) return;
         var tipo   = presc.tipo_exame || '';
         var dataEl = document.getElementById('ag-data');
+        var loadEl = document.getElementById('ag-slots-loading');
+        var btnOk  = document.getElementById('modal-ag-confirmar');
 
-        // Modo manual: usuário digitou no campo (chamado sem args pelo event listener)
-        if (dataISO === undefined) {
+        var url;
+        if (modo === 'auto') {
+            // Deixa o backend encontrar a próxima data disponível (uma query, sem loop)
+            url = CONFIG.api.slotsPorTipo + '?tipo=' + encodeURIComponent(tipo) + '&primeira_data=true';
+        } else if (modo && modo !== 'auto') {
+            // Data específica passada como argumento (YYYY-MM-DD)
+            url = CONFIG.api.slotsPorTipo + '?tipo=' + encodeURIComponent(tipo) + '&data=' + encodeURIComponent(modo);
+        } else {
+            // Modo manual: lê do campo
             var digitado = dataEl ? displayParaISO(dataEl.value) : '';
             if (!digitado) return;
-            dataISO    = digitado;
-            tentativa  = 0;
-            autoAvanca = false;
+            url = CONFIG.api.slotsPorTipo + '?tipo=' + encodeURIComponent(tipo) + '&data=' + encodeURIComponent(digitado);
         }
 
-        var loadEl = document.getElementById('ag-slots-loading');
         if (loadEl) loadEl.style.display = '';
         Estado.modalAgendSlotId = null;
-        var btnOk = document.getElementById('modal-ag-confirmar');
         if (btnOk) btnOk.disabled = true;
 
-        fetch(CONFIG.api.slotsPorTipo + '?tipo=' + encodeURIComponent(tipo) + '&data=' + encodeURIComponent(dataISO),
-              {credentials: 'same-origin'})
+        fetch(url, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 var slots = (d.success && d.data) ? d.data : [];
-                // Auto-avanço: só quando abrindo o modal (autoAvanca=true) e sem vagas
-                if (!slots.length && autoAvanca && tentativa < 13) {
-                    var next = new Date(dataISO + 'T12:00:00');
-                    next.setDate(next.getDate() + 1);
-                    var nextISO = next.getFullYear() + '-' + ('0'+(next.getMonth()+1)).slice(-2) + '-' + ('0'+next.getDate()).slice(-2);
-                    buscarSlotsPorTipo(nextISO, tentativa + 1, true);
-                    return;
+                var dataEncontrada = d.data_consulta || '';
+                // Preenche o campo com a data encontrada (auto ou específica)
+                if (dataEl && slots.length && dataEncontrada) {
+                    dataEl.value = isoParaDisplay(dataEncontrada);
                 }
-                // Preenche o campo com a data encontrada
-                if (dataEl && slots.length) dataEl.value = isoParaDisplay(dataISO);
                 Estado.slotsDisponiveis = slots;
-                renderizarSlotsDaModal(slots, dataISO);
+                renderizarSlotsDaModal(slots, dataEncontrada);
             })
             .catch(function(e) {
                 console.error('[P46] slots-por-tipo:', e);
                 Estado.slotsDisponiveis = [];
-                renderizarSlotsDaModal([], dataISO);
+                renderizarSlotsDaModal([], '');
             })
             .finally(function() { if (loadEl) loadEl.style.display = 'none'; });
     }
@@ -1117,10 +1132,14 @@
         var listaEl = document.getElementById('ag-lista-slots');
         if (!listaEl) return;
         if (!slots.length) {
-            var msgData = dataISO ? (' nos próximos 14 dias a partir de ' + isoParaDisplay(dataISO.split('T')[0] || dataISO)) : '';
+            var presc = Estado.modalAgendPresc;
+            var tipoMsg = presc && presc.tipo_exame ? ' para ' + escHtml(presc.tipo_exame) : '';
+            var dataMsg = dataISO ? ' a partir de ' + isoParaDisplay((dataISO.split('T')[0]) || dataISO) : '';
             listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;font-size:13px;">'
-                + '<i class="fas fa-calendar-times"></i> Nenhuma vaga disponível' + escHtml(msgData) + '.'
-                + '<br><small style="margin-top:6px;display:block;">Crie vagas na aba <strong>Agenda</strong> e volte aqui.</small></div>';
+                + '<i class="fas fa-calendar-times"></i> Nenhuma vaga disponível' + tipoMsg + dataMsg + '.'
+                + '<br><small style="margin-top:6px;display:block;">Crie vagas na aba <strong>Agenda</strong>'
+                + (presc && presc.tipo_exame && presc.tipo_exame !== 'OUTROS' ? ' com modalidade <strong>' + escHtml(presc.tipo_exame) + '</strong>' : '')
+                + ' e volte aqui.</small></div>';
             return;
         }
         var html = '';

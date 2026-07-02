@@ -906,33 +906,59 @@ def api_p46_agendar_prescricao():
 def api_p46_slots_por_tipo():
     """
     Slots livres filtrados por tipo de exame e data.
-    ?tipo=RX|RM|TC|USG|MAM|OUTROS  &data=YYYY-MM-DD
-    Tipos mapeiam para modalidade: RM→MR, TC→CT, USG→US; RX, MAM, OUTROS direto.
-    Slots sem modalidade (NULL) são oferecidos para qualquer tipo.
+    ?tipo=RX|RM|TC|USG|MAM|OUTROS  &data=YYYY-MM-DD  &primeira_data=true
+    Com primeira_data=true: busca o próximo dia com vagas em uma única query (sem loop no frontend).
+    OUTROS/vazio: sem filtro de modalidade (qualquer slot aceita).
     """
     try:
-        tipo     = request.args.get('tipo', '').strip().upper()
-        data_str = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
-        modal    = _TIPO_TO_MODAL.get(tipo) if tipo else None
+        tipo          = request.args.get('tipo', '').strip().upper()
+        data_str      = request.args.get('data', '').strip()
+        primeira_data = request.args.get('primeira_data', 'false').lower() == 'true'
 
-        filtros = ["DATE(rs.data_hora) = %s", "rs.status = 'livre'"]
-        params  = [data_str]
-
-        if tipo == 'OUTROS':
-            filtros.append("(rs.modalidade IS NULL OR rs.modalidade = 'OUTROS')")
-        elif modal:
-            filtros.append("(rs.modalidade = %s OR rs.modalidade IS NULL)")
-            params.append(modal)
-
-        where = 'WHERE ' + ' AND '.join(filtros)
+        # Mapeamento identidade — OUTROS/vazio não filtra por modalidade
+        modal = _TIPO_TO_MODAL.get(tipo) if (tipo and tipo != 'OUTROS') else None
 
         with get_db_cursor() as cursor:
-            cursor.execute(f"""
+            if primeira_data:
+                # Uma única query para encontrar o próximo dia com vagas
+                if modal:
+                    cursor.execute("""
+                        SELECT DATE(data_hora) AS d
+                        FROM radio_slots
+                        WHERE status = 'livre' AND data_hora > NOW()
+                          AND (modalidade = %s OR modalidade IS NULL)
+                        ORDER BY data_hora
+                        LIMIT 1
+                    """, (modal,))
+                else:
+                    cursor.execute("""
+                        SELECT DATE(data_hora) AS d
+                        FROM radio_slots
+                        WHERE status = 'livre' AND data_hora > NOW()
+                        ORDER BY data_hora
+                        LIMIT 1
+                    """)
+                row = cursor.fetchone()
+                if not row or not row['d']:
+                    return jsonify({'success': True, 'data': [], 'tipo': tipo,
+                                    'data_consulta': None, 'total': 0})
+                data_str = str(row['d'])
+
+            if not data_str:
+                data_str = datetime.now().strftime('%Y-%m-%d')
+
+            filtros = ["DATE(rs.data_hora) = %s", "rs.status = 'livre'"]
+            params  = [data_str]
+            if modal:
+                filtros.append("(rs.modalidade = %s OR rs.modalidade IS NULL)")
+                params.append(modal)
+
+            cursor.execute("""
                 SELECT id, data_hora, duracao_min, modalidade
-                FROM radio_slots
-                {where}
-                ORDER BY data_hora
-            """, params)
+                FROM radio_slots rs
+                WHERE {}
+                ORDER BY rs.data_hora
+            """.format(' AND '.join(filtros)), params)
             slots = [_serial(dict(r)) for r in cursor.fetchall()]
 
         return jsonify({'success': True, 'data': slots, 'tipo': tipo,
