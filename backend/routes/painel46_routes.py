@@ -140,6 +140,52 @@ def api_p46_fila():
         return jsonify({'success': False, 'error': 'Erro ao buscar fila'}), 500
 
 
+# ── Exames realizados sem envio prévio da enfermagem ────────
+
+@painel46_bp.route('/api/paineis/painel46/sem-envio')
+@login_required
+@panel_permission_required('painel46')
+def api_p46_sem_envio():
+    """
+    Retorna exames que já foram executados/laudados no Tasy (status != AGUARDANDO)
+    mas nunca tiveram um registro de envio pela enfermagem (nenhuma linha em radio_agenda).
+    Filtrado para o dia atual por padrão (?data=YYYY-MM-DD).
+    """
+    try:
+        data_str = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    p.nr_atendimento,
+                    p.nm_pessoa_fisica,
+                    p.leito_base,
+                    p.leito,
+                    p.nm_setor,
+                    p.nr_prescricao,
+                    p.ds_procedimento,
+                    p.status_radiologia,
+                    p.dt_pedido,
+                    p.dt_execucao,
+                    p.dt_laudo,
+                    p.ds_convenio,
+                    p.ie_urgente
+                FROM vw_painel19_radiologia p
+                WHERE p.status_radiologia <> 'AGUARDANDO'
+                  AND DATE(COALESCE(p.dt_execucao, p.dt_laudo, p.dt_pedido)) = %s
+                  AND NOT EXISTS (
+                      SELECT 1 FROM radio_agenda ra
+                      WHERE ra.nr_atendimento = p.nr_atendimento::varchar
+                        AND ra.nr_prescricao  = p.nr_prescricao::varchar
+                  )
+                ORDER BY p.nm_setor, p.dt_execucao NULLS LAST
+            """, (data_str,))
+            rows = [_serial(dict(r)) for r in cursor.fetchall()]
+        return jsonify({'success': True, 'data': rows, 'data_consulta': data_str})
+    except Exception as e:
+        current_app.logger.error(f'Erro sem-envio p46: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar sem-envio'}), 500
+
+
 # ── Atualizar status do exame ────────────────────────────────
 
 @painel46_bp.route('/api/paineis/painel46/exames/<int:radio_id>/status', methods=['PUT'])

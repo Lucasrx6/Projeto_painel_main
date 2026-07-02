@@ -346,6 +346,26 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .painel-vazio p { font-size: 15px; font-weight: 600; }
 .painel-vazio small { font-size: 13px; }
 
+/* ── SEÇÃO SEM ENVIO PRÉVIO ─────────────────────── */
+.secao-sem-envio { border-left: 4px solid #e0a800; }
+.secao-titulo-sem-envio {
+    cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
+    color: #856404;
+}
+.secao-titulo-sem-envio:hover { background: #fff8e1; border-radius: 6px; }
+.secao-count-sem-envio { background: #e0a800 !important; }
+#grid-sem-envio { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; padding: 10px 0 4px; }
+.card-sem-envio {
+    background: #fffbe6; border: 1.5px solid #ffc107; border-radius: 10px;
+    padding: 10px 12px; font-size: 12px;
+}
+.card-sem-envio-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 5px; }
+.card-sem-envio-nome { font-weight: 700; font-size: 13px; color: #333; }
+.card-sem-envio-setor { font-size: 10px; color: #856404; font-weight: 600; background: #fff3cd; border-radius: 8px; padding: 2px 6px; white-space: nowrap; }
+.card-sem-envio-info { display: flex; flex-wrap: wrap; gap: 6px 12px; color: #555; }
+.card-sem-envio-info span { display: flex; align-items: center; gap: 4px; }
+
 /* ── TOAST ─────────────────────────────────────── */
 .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .toast { padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; max-width: 360px; text-align: center; }

@@ -372,7 +372,7 @@ def api_p47_producao_sync():
                     nm_setor, cd_setor, leito, ds_convenio, ie_urgente,
                     nm_executor, nm_laudador, status_radiologia,
                     dt_pedido, dt_execucao, dt_laudo, dt_laudo_liberacao,
-                    horas_espera, ultima_atualizacao
+                    horas_espera, sem_envio_enfermagem, ultima_atualizacao
                 )
                 SELECT DISTINCT ON (p.nr_prescricao)
                     p.nr_atendimento::varchar,
@@ -392,19 +392,27 @@ def api_p47_producao_sync():
                     p.dt_laudo,
                     p.dt_laudo_liberacao,
                     p.horas_espera,
+                    -- sem_envio_enfermagem: true se exame já executado/laudado sem nenhum radio_agenda
+                    (p.status_radiologia <> 'AGUARDANDO'
+                     AND NOT EXISTS (
+                         SELECT 1 FROM radio_agenda ra
+                         WHERE ra.nr_prescricao = p.nr_prescricao::varchar
+                     )),
                     NOW()
                 FROM vw_painel19_radiologia p
                 WHERE p.nr_prescricao IS NOT NULL
                 ORDER BY p.nr_prescricao, p.dt_carga DESC
                 ON CONFLICT (nr_prescricao) DO UPDATE SET
-                    status_radiologia  = EXCLUDED.status_radiologia,
-                    dt_execucao        = COALESCE(EXCLUDED.dt_execucao,        radio_producao.dt_execucao),
-                    dt_laudo           = COALESCE(EXCLUDED.dt_laudo,           radio_producao.dt_laudo),
-                    dt_laudo_liberacao = COALESCE(EXCLUDED.dt_laudo_liberacao, radio_producao.dt_laudo_liberacao),
-                    horas_espera       = EXCLUDED.horas_espera,
-                    nm_executor        = COALESCE(EXCLUDED.nm_executor,  radio_producao.nm_executor),
-                    nm_laudador        = COALESCE(EXCLUDED.nm_laudador,  radio_producao.nm_laudador),
-                    ultima_atualizacao = NOW()
+                    status_radiologia    = EXCLUDED.status_radiologia,
+                    dt_execucao          = COALESCE(EXCLUDED.dt_execucao,        radio_producao.dt_execucao),
+                    dt_laudo             = COALESCE(EXCLUDED.dt_laudo,           radio_producao.dt_laudo),
+                    dt_laudo_liberacao   = COALESCE(EXCLUDED.dt_laudo_liberacao, radio_producao.dt_laudo_liberacao),
+                    horas_espera         = EXCLUDED.horas_espera,
+                    nm_executor          = COALESCE(EXCLUDED.nm_executor,        radio_producao.nm_executor),
+                    nm_laudador          = COALESCE(EXCLUDED.nm_laudador,        radio_producao.nm_laudador),
+                    -- uma vez verdadeiro, nunca reverte (histórico preservado)
+                    sem_envio_enfermagem = radio_producao.sem_envio_enfermagem OR EXCLUDED.sem_envio_enfermagem,
+                    ultima_atualizacao   = NOW()
             """)
             afetados = cursor.rowcount
 
@@ -436,6 +444,7 @@ def api_p47_producao_kpis():
                     COUNT(*) FILTER (WHERE status_radiologia <> 'AGUARDANDO')              AS executados,
                     COUNT(*) FILTER (WHERE status_radiologia = 'LAUDADO')                  AS laudados,
                     COUNT(*) FILTER (WHERE status_radiologia = 'EXECUTADO_SEM_LAUDO')      AS sem_laudo,
+                    COUNT(*) FILTER (WHERE sem_envio_enfermagem = TRUE)                    AS sem_envio_enfermagem,
                     ROUND(
                         COUNT(*) FILTER (WHERE status_radiologia = 'LAUDADO')::NUMERIC
                         / NULLIF(COUNT(*) FILTER (WHERE status_radiologia <> 'AGUARDANDO'), 0) * 100
@@ -558,6 +567,7 @@ def api_p47_producao_exames():
                     id, nr_atendimento, nm_pessoa_fisica, ds_procedimento,
                     nm_setor, leito, ds_convenio,
                     ie_urgente, status_radiologia, nm_executor, nm_laudador,
+                    sem_envio_enfermagem,
                     dt_pedido, dt_execucao, dt_laudo, dt_laudo_liberacao, horas_espera,
                     ROUND((EXTRACT(EPOCH FROM (dt_execucao - dt_pedido)) / 3600)::NUMERIC, 1)
                         AS h_presc_exec,

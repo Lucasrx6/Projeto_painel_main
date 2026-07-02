@@ -451,13 +451,14 @@
         var tm2  = d.media_h_exec_laudo  !== null && d.media_h_exec_laudo  !== undefined ? d.media_h_exec_laudo  + 'h' : '—';
 
         grid.innerHTML = ''
-            + card('k-total',    'fa-prescription-bottle', '#17a2b8', d.total_prescritos, 'Prescritos', null)
-            + card('k-exec',     'fa-x-ray',               '#fd7e14', d.executados,       'Executados', null)
-            + card('k-laudado',  'fa-check-double',         '#28a745', d.laudados,         'Laudados',   null)
-            + card('k-semlaudo', 'fa-hourglass-half',       '#e0a800', d.sem_laudo,        'Sem Laudo',  null)
-            + card('k-taxa',     'fa-percent',              '#6610f2', taxa,               'Taxa Laudo', 'laudados / executados')
-            + card('k-tm1',      'fa-stopwatch',            '#6c757d', tm1,                'TM Presc → Exec', 'tempo médio em horas')
-            + card('k-tm2',      'fa-stopwatch',            '#6c757d', tm2,                'TM Exec → Laudo', 'tempo médio em horas');
+            + card('k-total',      'fa-prescription-bottle',  '#17a2b8', d.total_prescritos,     'Prescritos',           null)
+            + card('k-exec',       'fa-x-ray',                '#fd7e14', d.executados,            'Executados',           null)
+            + card('k-laudado',    'fa-check-double',          '#28a745', d.laudados,              'Laudados',             null)
+            + card('k-semlaudo',   'fa-hourglass-half',        '#e0a800', d.sem_laudo,             'Sem Laudo',            null)
+            + card('k-sem-envio',  'fa-exclamation-triangle',  '#dc3545', d.sem_envio_enfermagem,  'Sem Envio Enf.',       'realizados sem registro da enfermagem')
+            + card('k-taxa',       'fa-percent',               '#6610f2', taxa,                    'Taxa Laudo',           'laudados / executados')
+            + card('k-tm1',        'fa-stopwatch',             '#6c757d', tm1,                     'TM Presc → Exec',     'tempo médio em horas')
+            + card('k-tm2',        'fa-stopwatch',             '#6c757d', tm2,                     'TM Exec → Laudo',     'tempo médio em horas');
     }
 
     function carregarProdSetor() {
@@ -580,6 +581,7 @@
         var html = '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
             + '<th>Paciente</th><th>Exame</th><th>Setor</th><th>Leito</th>'
             + '<th style="text-align:center">Status</th>'
+            + '<th style="text-align:center">Envio Enf.</th>'
             + '<th style="text-align:center">Prescrição</th>'
             + '<th style="text-align:center">Execução</th>'
             + '<th style="text-align:center">Laudo</th>'
@@ -590,6 +592,9 @@
         for (var i = 0; i < lista.length; i++) {
             var it = lista[i];
             var urgCls = it.ie_urgente === 'S' ? ' linha-urgente' : '';
+            var badgeEnvio = it.sem_envio_enfermagem
+                ? '<span class="badge-sem-envio-prod"><i class="fas fa-exclamation-triangle"></i> Sem envio</span>'
+                : '<span style="font-size:11px;color:#aaa">—</span>';
             html += '<tr class="' + urgCls + '">'
                 + '<td><span class="pct-nome" style="font-size:13px">' + escHtml(formatarNome(it.nm_pessoa_fisica)) + '</span>'
                 + '<div style="font-size:10px;color:#aaa">' + escHtml(it.nr_atendimento || '') + '</div></td>'
@@ -598,6 +603,7 @@
                 + '<td style="font-size:12px">' + escHtml(it.nm_setor || '-') + '</td>'
                 + '<td style="font-size:12px">' + escHtml(it.leito || '-') + '</td>'
                 + '<td style="text-align:center">' + badgeProdStatus(it.status_radiologia) + '</td>'
+                + '<td style="text-align:center">' + badgeEnvio + '</td>'
                 + '<td style="text-align:center;font-size:11px;white-space:nowrap">' + formatarDataHora(it.dt_pedido) + '</td>'
                 + '<td style="text-align:center;font-size:11px;white-space:nowrap">'
                 + (it.dt_execucao ? formatarDataHora(it.dt_execucao) + (it.nm_executor ? '<div style="font-size:9px;color:#aaa">' + escHtml(it.nm_executor) + '</div>' : '') : '<span style="color:#ccc">—</span>') + '</td>'

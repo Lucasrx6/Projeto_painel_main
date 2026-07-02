@@ -112,6 +112,10 @@
                    + '<i class="fas fa-times"></i> Cancelar</button>';
             return h;
         }
+        // Executado/laudado no Tasy sem nenhum envio prévio da enfermagem
+        if (item.sem_envio_previo) {
+            return '<span class="badge-ja-realizado"><i class="fas fa-check-double"></i> Já Realizado</span>';
+        }
         var tasy = (item.status_radiologia || '').toUpperCase();
         if (tasy === 'LAUDADO')
             return '<span class="txt-ja-registrado"><i class="fas fa-check-double" style="color:#28a745"></i> Laudado</span>';
@@ -289,7 +293,11 @@
             } else if (Estado.filtroStatus === 'sem_laudo') {
                 if (!eSemLaudo) continue;
             } else if (Estado.filtroStatus === 'sem_envio') {
+                // Sem envio = AGUARDANDO sem radio_agenda (excluir os "já realizado")
                 if (it.radio_id) continue;
+                if (it.sem_envio_previo) continue;
+            } else if (Estado.filtroStatus === 'ja_realizado') {
+                if (!it.sem_envio_previo) continue;
             }
             filtrados.push(it);
         }

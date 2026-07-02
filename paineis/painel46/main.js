@@ -5,6 +5,7 @@
     var CONFIG = {
         api: {
             fila:         '/api/paineis/painel46/fila',
+            semEnvio:     '/api/paineis/painel46/sem-envio',
             slots:        '/api/paineis/painel46/slots',
             slotsLote:    '/api/paineis/painel46/slots/lote',
             exameStatus:  '/api/paineis/painel46/exames/{id}/status',
@@ -20,6 +21,8 @@
         tabAtiva: 'fila',
         dataConsulta: new Date().toISOString().slice(0, 10),
         fila: { agendados: [], pendentes: [] },
+        semEnvioPrevio: [],
+        semEnvioAberto: false,
         slots: [],
         exames: [],
         setoresExamesSelecionados: [],   // [] = todos
@@ -470,6 +473,66 @@
         atualizarInfoSlots();
     }
 
+    // ── Sem Envio Prévio ───────────────────────────
+    function cardSemEnvioHtml(ex) {
+        var stTasy = (ex.status_radiologia || '').toUpperCase();
+        var badgeSt = stTasy === 'LAUDADO'
+            ? '<span class="badge-status badge-laudado"><i class="fas fa-check"></i> Laudado</span>'
+            : '<span class="badge-status badge-sem-laudo"><i class="fas fa-hourglass-half"></i> Sem laudo</span>';
+        var html = '<div class="card-sem-envio">';
+        html += '<div class="card-sem-envio-top">';
+        html += '<span class="card-sem-envio-nome">' + escHtml(formatarNome(ex.nm_pessoa_fisica)) + '</span>';
+        html += '<span class="card-sem-envio-setor">' + escHtml(ex.nm_setor || '') + '</span>';
+        html += '</div>';
+        html += '<div class="card-sem-envio-info">';
+        html += '<span><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-') + '</span>';
+        html += '<span><i class="fas fa-bed"></i> ' + escHtml(ex.leito_base || ex.leito || '-') + '</span>';
+        if (ex.dt_execucao)
+            html += '<span><i class="fas fa-clock"></i> ' + formatarHora(ex.dt_execucao) + '</span>';
+        html += '</div>';
+        html += '<div style="margin-top:4px;">' + badgeSt + '</div>';
+        html += '</div>';
+        return html;
+    }
+
+    function renderizarSemEnvio() {
+        var lista = Estado.semEnvioPrevio;
+        var secao = document.getElementById('secao-sem-envio');
+        var cnt   = document.getElementById('count-sem-envio');
+        var grid  = document.getElementById('grid-sem-envio');
+        var icone = document.getElementById('icone-sem-envio');
+        if (!secao) return;
+
+        if (!lista.length) { secao.style.display = 'none'; return; }
+        secao.style.display = '';
+        if (cnt) cnt.textContent = lista.length;
+
+        var html = '';
+        for (var i = 0; i < lista.length; i++) html += cardSemEnvioHtml(lista[i]);
+        if (grid) grid.innerHTML = html;
+
+        if (grid) grid.style.display = Estado.semEnvioAberto ? '' : 'none';
+        if (icone) icone.style.transform = Estado.semEnvioAberto ? 'rotate(180deg)' : '';
+    }
+
+    function toggleSemEnvio() {
+        Estado.semEnvioAberto = !Estado.semEnvioAberto;
+        var grid  = document.getElementById('grid-sem-envio');
+        var icone = document.getElementById('icone-sem-envio');
+        if (grid) grid.style.display = Estado.semEnvioAberto ? '' : 'none';
+        if (icone) icone.style.transform = Estado.semEnvioAberto ? 'rotate(180deg)' : '';
+    }
+
+    function carregarSemEnvio() {
+        fetch(CONFIG.api.semEnvio + '?data=' + Estado.dataConsulta, {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                Estado.semEnvioPrevio = (d.success && d.data) ? d.data : [];
+                renderizarSemEnvio();
+            })
+            .catch(function(e) { console.error('[P46 sem-envio]', e); });
+    }
+
     // ── Carregar ───────────────────────────────────
     function carregarFila() {
         if (Estado.carregandoFila) return;
@@ -482,6 +545,7 @@
                     Estado.fila.pendentes = d.pendentes || [];
                 }
                 renderizarFila();
+                carregarSemEnvio();
                 setStatusDot(false);
                 var el = document.getElementById('ultima-atualizacao');
                 if (el) el.textContent = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
@@ -851,7 +915,8 @@
         desagendar:          desagendar,
         abrirAgendar:        abrirAgendar,
         vincularPaciente:    vincularPaciente,
-        carregarExamesRadio: carregarExamesRadio
+        carregarExamesRadio: carregarExamesRadio,
+        toggleSemEnvio:      toggleSemEnvio
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);

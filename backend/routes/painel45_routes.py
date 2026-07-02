@@ -122,13 +122,21 @@ def api_p45_exames():
                     pc.id               AS chamado_id,
                     pc.status           AS chamado_status,
                     pc.padioleiro_nome  AS chamado_padioleiro,
-                    pc.tipo_movimento_nome AS chamado_tipo
+                    pc.tipo_movimento_nome AS chamado_tipo,
+                    -- Realizado no Tasy sem envio prévio da enfermagem
+                    (p.status_radiologia <> 'AGUARDANDO'
+                     AND ra_hist.nr_prescricao IS NULL)  AS sem_envio_previo
                 FROM vw_painel19_radiologia p
                 LEFT JOIN radio_agenda ra ON (
                     ra.nr_atendimento = p.nr_atendimento::varchar
                     AND ra.nr_prescricao = p.nr_prescricao::varchar
                     AND ra.status NOT IN ('concluido', 'cancelado')
                 )
+                LEFT JOIN (
+                    SELECT DISTINCT nr_atendimento, nr_prescricao
+                    FROM radio_agenda
+                ) ra_hist ON ra_hist.nr_atendimento = p.nr_atendimento::varchar
+                         AND ra_hist.nr_prescricao = p.nr_prescricao::varchar
                 LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
                 LEFT JOIN LATERAL (
                     SELECT id, status, padioleiro_nome, tipo_movimento_nome

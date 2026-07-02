@@ -68,6 +68,15 @@
                 </div>
                 <div class="grid-fila" id="grid-pendentes"></div>
             </div>
+            <!-- Seção: realizados sem envio prévio da enfermagem -->
+            <div class="secao secao-sem-envio" id="secao-sem-envio" style="display:none;">
+                <div class="secao-titulo secao-titulo-sem-envio" onclick="P46.toggleSemEnvio()">
+                    <span><i class="fas fa-exclamation-triangle"></i> Realizados sem envio da enfermagem
+                    <span class="secao-count secao-count-sem-envio" id="count-sem-envio">0</span></span>
+                    <i class="fas fa-chevron-down" id="icone-sem-envio" style="font-size:12px;transition:transform 0.2s;"></i>
+                </div>
+                <div id="grid-sem-envio" style="display:none;"></div>
+            </div>
             <div id="fila-loading" class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
             <div id="fila-vazia" class="painel-vazio" style="display:none;">
                 <i class="fas fa-calendar-check"></i>

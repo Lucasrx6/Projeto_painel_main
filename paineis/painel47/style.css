@@ -324,13 +324,21 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     flex-direction: column;
     gap: 3px;
 }
-.prod-kpi-card.k-total    { border-top: 3px solid #17a2b8; }
-.prod-kpi-card.k-exec     { border-top: 3px solid #fd7e14; }
-.prod-kpi-card.k-laudado  { border-top: 3px solid #28a745; }
-.prod-kpi-card.k-semlaudo { border-top: 3px solid #e0a800; }
-.prod-kpi-card.k-taxa     { border-top: 3px solid #6610f2; }
+.prod-kpi-card.k-total     { border-top: 3px solid #17a2b8; }
+.prod-kpi-card.k-exec      { border-top: 3px solid #fd7e14; }
+.prod-kpi-card.k-laudado   { border-top: 3px solid #28a745; }
+.prod-kpi-card.k-semlaudo  { border-top: 3px solid #e0a800; }
+.prod-kpi-card.k-sem-envio { border-top: 3px solid #dc3545; }
+.prod-kpi-card.k-taxa      { border-top: 3px solid #6610f2; }
 .prod-kpi-card.k-tm1,
-.prod-kpi-card.k-tm2      { border-top: 3px solid #6c757d; }
+.prod-kpi-card.k-tm2       { border-top: 3px solid #6c757d; }
+
+.badge-sem-envio-prod {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 8px; background: #fff3cd; color: #856404;
+    border: 1px solid #ffc107; white-space: nowrap;
+}
 
 .prod-kpi-icone { font-size: 14px; margin-bottom: 2px; }
 .prod-kpi-num   { font-size: 26px; font-weight: 800; line-height: 1; }

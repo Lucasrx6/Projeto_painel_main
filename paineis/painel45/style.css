@@ -241,6 +241,17 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 }
 .pill-status:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
 .pill-status.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: white; }
+.pill-ja-realizado { border-color: #e0a800 !important; color: #856404 !important; }
+.pill-ja-realizado:hover { background: #fff3cd !important; }
+.pill-ja-realizado.ativo { background: #e0a800 !important; border-color: #e0a800 !important; color: white !important; }
+
+/* ── BADGE JÁ REALIZADO ─────────────────────────── */
+.badge-ja-realizado {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; padding: 3px 8px;
+    border-radius: 10px; background: #fff3cd; color: #856404;
+    border: 1.5px solid #e0a800; white-space: nowrap;
+}
 
 /* ── VIEW TOGGLE ───────────────────────────────── */
 .view-toggle { display: flex; gap: 2px; background: var(--borda); border-radius: 8px; padding: 2px; flex-shrink: 0; }
