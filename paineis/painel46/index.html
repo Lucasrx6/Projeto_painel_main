@@ -68,15 +68,6 @@
                 </div>
                 <div class="grid-fila" id="grid-pendentes"></div>
             </div>
-            <!-- Seção: realizados sem envio prévio da enfermagem -->
-            <div class="secao secao-sem-envio" id="secao-sem-envio" style="display:none;">
-                <div class="secao-titulo secao-titulo-sem-envio" onclick="P46.toggleSemEnvio()">
-                    <span><i class="fas fa-exclamation-triangle"></i> Realizados sem envio da enfermagem
-                    <span class="secao-count secao-count-sem-envio" id="count-sem-envio">0</span></span>
-                    <i class="fas fa-chevron-down" id="icone-sem-envio" style="font-size:12px;transition:transform 0.2s;"></i>
-                </div>
-                <div id="grid-sem-envio" style="display:none;"></div>
-            </div>
             <div id="fila-loading" class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
             <div id="fila-vazia" class="painel-vazio" style="display:none;">
                 <i class="fas fa-calendar-check"></i>
@@ -106,6 +97,11 @@
                         <input type="checkbox" id="exames-toggle-sem-controle">
                         Apenas sem agendar
                     </label>
+                    <button class="btn-toggle-exames" id="btn-toggle-todos-exames">
+                        <i class="fas fa-eye" id="icon-toggle-exames"></i>
+                        <span id="label-toggle-exames">Ver realizados</span>
+                        <span class="badge-mini" id="badge-exames-ocultos" style="display:none;"></span>
+                    </button>
                     <div class="view-toggle">
                         <button class="btn-view ativo" id="exames-btn-cards" title="Cards"><i class="fas fa-th-large"></i> Cards</button>
                         <button class="btn-view" id="exames-btn-tabela" title="Tabela"><i class="fas fa-table"></i> Tabela</button>

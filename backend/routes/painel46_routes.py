@@ -16,15 +16,20 @@ painel46_bp = Blueprint('painel46', __name__)
 _SQL_TIPO_EXAME_P = """
     CASE
         WHEN p.ds_procedimento ILIKE 'RX%%'
-          OR p.ds_procedimento ILIKE '%%RADIOGRAF%%'     THEN 'RX'
+          OR p.ds_procedimento ILIKE '%%RADIOGRAF%%'                                       THEN 'RX'
         WHEN p.ds_procedimento ILIKE '%%RESSONANCI%%'
-          OR p.ds_procedimento ILIKE 'RM %%'            THEN 'RM'
+          OR p.ds_procedimento ILIKE 'RM %%'
+          OR p.ds_procedimento ILIKE 'RM-%%'
+          OR (p.ds_procedimento ILIKE '%%ANGIO%%' AND p.ds_procedimento ILIKE '%%RM%%')
+          OR (p.ds_procedimento ILIKE '%%HIDRO%%' AND p.ds_procedimento ILIKE '%%RM%%')    THEN 'RM'
         WHEN p.ds_procedimento ILIKE '%%TOMOGRAF%%'
           OR p.ds_procedimento ILIKE 'TC %%'
-          OR p.ds_procedimento ILIKE 'CT %%'            THEN 'TC'
+          OR p.ds_procedimento ILIKE 'CT %%'                                               THEN 'TC'
         WHEN p.ds_procedimento ILIKE '%%ULTRASSOM%%'
-          OR p.ds_procedimento ILIKE 'USG%%'            THEN 'USG'
-        WHEN p.ds_procedimento ILIKE '%%MAMOGRAF%%'      THEN 'MAM'
+          OR p.ds_procedimento ILIKE 'USG%%'
+          OR p.ds_procedimento ILIKE 'US %%'
+          OR p.ds_procedimento ILIKE 'US-%%'                                               THEN 'USG'
+        WHEN p.ds_procedimento ILIKE '%%MAMOGRAF%%'                                        THEN 'MAM'
         ELSE 'OUTROS'
     END
 """
@@ -32,15 +37,20 @@ _SQL_TIPO_EXAME_P = """
 _SQL_TIPO_EXAME_RA = """
     CASE
         WHEN ra.ds_procedimento ILIKE 'RX%%'
-          OR ra.ds_procedimento ILIKE '%%RADIOGRAF%%'     THEN 'RX'
+          OR ra.ds_procedimento ILIKE '%%RADIOGRAF%%'                                       THEN 'RX'
         WHEN ra.ds_procedimento ILIKE '%%RESSONANCI%%'
-          OR ra.ds_procedimento ILIKE 'RM %%'            THEN 'RM'
+          OR ra.ds_procedimento ILIKE 'RM %%'
+          OR ra.ds_procedimento ILIKE 'RM-%%'
+          OR (ra.ds_procedimento ILIKE '%%ANGIO%%' AND ra.ds_procedimento ILIKE '%%RM%%')
+          OR (ra.ds_procedimento ILIKE '%%HIDRO%%' AND ra.ds_procedimento ILIKE '%%RM%%')   THEN 'RM'
         WHEN ra.ds_procedimento ILIKE '%%TOMOGRAF%%'
           OR ra.ds_procedimento ILIKE 'TC %%'
-          OR ra.ds_procedimento ILIKE 'CT %%'            THEN 'TC'
+          OR ra.ds_procedimento ILIKE 'CT %%'                                               THEN 'TC'
         WHEN ra.ds_procedimento ILIKE '%%ULTRASSOM%%'
-          OR ra.ds_procedimento ILIKE 'USG%%'            THEN 'USG'
-        WHEN ra.ds_procedimento ILIKE '%%MAMOGRAF%%'      THEN 'MAM'
+          OR ra.ds_procedimento ILIKE 'USG%%'
+          OR ra.ds_procedimento ILIKE 'US %%'
+          OR ra.ds_procedimento ILIKE 'US-%%'                                               THEN 'USG'
+        WHEN ra.ds_procedimento ILIKE '%%MAMOGRAF%%'                                        THEN 'MAM'
         ELSE 'OUTROS'
     END
 """
@@ -51,14 +61,15 @@ _TIPO_TO_MODAL = {'RX': 'RX', 'RM': 'RM', 'TC': 'TC', 'USG': 'USG', 'MAM': 'MAM'
 def _tipo_exame(ds_procedimento):
     if not ds_procedimento:
         return 'OUTROS'
-    p = ds_procedimento.upper()
+    p = ds_procedimento.upper().strip()
     if p.startswith('RX') or 'RADIOGRAF' in p:
         return 'RX'
-    if 'RESSONANCI' in p or p.startswith('RM '):
+    if ('RESSONANCI' in p or p.startswith('RM ') or p.startswith('RM-')
+            or ('ANGIO' in p and 'RM' in p) or ('HIDRO' in p and 'RM' in p)):
         return 'RM'
     if 'TOMOGRAF' in p or p.startswith('TC ') or p.startswith('CT '):
         return 'TC'
-    if 'ULTRASSOM' in p or p.startswith('USG'):
+    if 'ULTRASSOM' in p or p.startswith('USG') or p.startswith('US ') or p.startswith('US-'):
         return 'USG'
     if 'MAMOGRAF' in p:
         return 'MAM'
@@ -359,12 +370,9 @@ def api_p46_agendar(radio_id):
                 """, (radio_id, slot_id))
                 cursor.execute("""
                     UPDATE radio_agenda
-                    SET slot_id           = %s,
-                        status            = 'agendado',
-                        status_enfermagem = 'pendente',
-                        motivo_recusa     = NULL,
-                        dt_recusa         = NULL,
-                        atualizado_em     = NOW()
+                    SET slot_id       = %s,
+                        status        = 'agendado',
+                        atualizado_em = NOW()
                     WHERE id = %s
                 """, (slot_id, radio_id))
             else:
@@ -840,12 +848,9 @@ def api_p46_agendar_prescricao():
 
                 cursor.execute("""
                     UPDATE radio_agenda
-                    SET slot_id           = %s,
-                        status            = 'agendado',
-                        status_enfermagem = 'pendente',
-                        motivo_recusa     = NULL,
-                        dt_recusa         = NULL,
-                        atualizado_em     = NOW()
+                    SET slot_id       = %s,
+                        status        = 'agendado',
+                        atualizado_em = NOW()
                     WHERE id = %s
                 """, (slot_id, radio_id))
             else:
@@ -854,8 +859,8 @@ def api_p46_agendar_prescricao():
                         nr_atendimento, nr_prescricao, nm_paciente, ds_procedimento,
                         leito_origem, setor_origem_nome, cd_setor_atendimento,
                         prioridade, requer_transporte, observacao, nm_medico_solicitante,
-                        slot_id, status, status_enfermagem, criado_em, atualizado_em
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'agendado','pendente',NOW(),NOW())
+                        slot_id, status, criado_em, atualizado_em
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'agendado',NOW(),NOW())
                     RETURNING id
                 """, (
                     nr_atendimento,

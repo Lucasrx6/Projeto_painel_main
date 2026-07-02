@@ -15,15 +15,20 @@ painel45_bp = Blueprint('painel45', __name__)
 _SQL_TIPO_EXAME = """
     CASE
         WHEN ra.ds_procedimento ILIKE 'RX%%'
-          OR ra.ds_procedimento ILIKE '%%RADIOGRAF%%'     THEN 'RX'
+          OR ra.ds_procedimento ILIKE '%%RADIOGRAF%%'                                        THEN 'RX'
         WHEN ra.ds_procedimento ILIKE '%%RESSONANCI%%'
-          OR ra.ds_procedimento ILIKE 'RM %%'            THEN 'RM'
+          OR ra.ds_procedimento ILIKE 'RM %%'
+          OR ra.ds_procedimento ILIKE 'RM-%%'
+          OR (ra.ds_procedimento ILIKE '%%ANGIO%%' AND ra.ds_procedimento ILIKE '%%RM%%')
+          OR (ra.ds_procedimento ILIKE '%%HIDRO%%' AND ra.ds_procedimento ILIKE '%%RM%%')    THEN 'RM'
         WHEN ra.ds_procedimento ILIKE '%%TOMOGRAF%%'
           OR ra.ds_procedimento ILIKE 'TC %%'
-          OR ra.ds_procedimento ILIKE 'CT %%'            THEN 'TC'
+          OR ra.ds_procedimento ILIKE 'CT %%'                                                THEN 'TC'
         WHEN ra.ds_procedimento ILIKE '%%ULTRASSOM%%'
-          OR ra.ds_procedimento ILIKE 'USG%%'            THEN 'USG'
-        WHEN ra.ds_procedimento ILIKE '%%MAMOGRAF%%'      THEN 'MAM'
+          OR ra.ds_procedimento ILIKE 'USG%%'
+          OR ra.ds_procedimento ILIKE 'US %%'
+          OR ra.ds_procedimento ILIKE 'US-%%'                                                THEN 'USG'
+        WHEN ra.ds_procedimento ILIKE '%%MAMOGRAF%%'                                         THEN 'MAM'
         ELSE 'OUTROS'
     END
 """

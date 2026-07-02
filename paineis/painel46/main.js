@@ -21,19 +21,20 @@
 
     var Estado = {
         tabAtiva: 'fila',
-        dataConsulta: new Date().toISOString().slice(0, 10),
+        dataConsulta: (function() { var d = new Date(); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2); })(),
         fila: { agendados: [], pendentes: [] },
-        semEnvioPrevio: [],
-        semEnvioAberto: false,
         slots: [],
         exames: [],
         setoresExamesSelecionados: [],
         filtroTipoExame: '',             // '' | 'RX' | 'RM' | 'TC' | 'USG' | 'MAM' | 'OUTROS'
         filtroModalidade: '',            // filtro ativo na aba Agenda
         filtroSemControle: false,
+        mostrarTodosExames: false,
         visualizacaoExames: 'cards',
         carregandoFila: false,
         carregandoExames: false,
+        _vincularSlotId: null,
+        _vincularCandidatos: [],
         // Scheduling modal
         modalAgendPresc: null,           // prescrição selecionada
         modalAgendSlotId: null,          // slot selecionado
@@ -216,10 +217,7 @@
         if (item.slot_data_hora)
             html += '<div class="card-linha"><i class="fas fa-clock"></i><span><strong>' + formatarHora(item.slot_data_hora) + '</strong>'
                   + (item.slot_modalidade ? ' — ' + escHtml(item.slot_modalidade) : '') + '</span></div>';
-        html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeStatusEnf(item.status_enfermagem) + badgeTransporte(item) + '</div>';
-        if (item.status_enfermagem === 'recusado' && item.motivo_recusa)
-            html += '<div class="card-motivo-recusa"><i class="fas fa-exclamation-circle"></i> '
-                  + escHtml(item.motivo_recusa) + '</div>';
+        html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeTransporte(item) + '</div>';
         html += '</div>';
 
         html += '<div class="card-footer-p">';
@@ -332,7 +330,6 @@
     function cardExameHtml(ex) {
         var radioId  = ex.radio_id;
         var radioSt  = ex.radio_status || '';
-        var enfSt    = ex.status_enfermagem || '';
         var slotHora = ex.slot_data_hora ? formatarHora(ex.slot_data_hora) : '';
         var urgente  = ex.ie_urgente === 'S' || ex.radio_prioridade === 'urgente';
 
@@ -358,16 +355,11 @@
         html += badgeTipoExame(ex.tipo_exame);
         if (radioId) {
             html += ' ' + badgeStatus(radioSt);
-            html += ' ' + badgeStatusEnf(enfSt);
             if (slotHora) html += '<span class="badge-slot-hora"><i class="fas fa-clock"></i> ' + slotHora + '</span>';
         } else {
             html += '<span class="badge-status badge-presc-sem-ag"><i class="fas fa-calendar-plus"></i> Sem agendamento</span>';
         }
         html += '</div>';
-
-        if (enfSt === 'recusado' && ex.motivo_recusa) {
-            html += '<div class="card-ex-recusa"><i class="fas fa-exclamation-circle"></i> ' + escHtml(ex.motivo_recusa) + '</div>';
-        }
 
         html += '</div>';  // card-ex-body
 
@@ -383,7 +375,7 @@
                 html += '<button class="btn-card-acao btn-agendar-presc" onclick="P46.abrirAgendarPresc(\''
                       + escHtml(String(ex.nr_atendimento || '')) + '\',\''
                       + escHtml(String(ex.nr_prescricao || '')) + '\')" style="font-size:11px;padding:5px 9px">'
-                      + '<i class="fas fa-calendar-alt"></i> ' + (enfSt === 'recusado' ? 'Reagendar' : 'Reagendar') + '</button>';
+                      + '<i class="fas fa-calendar-alt"></i> Reagendar</button>';
             if (radioSt !== 'concluido' && radioSt !== 'cancelado')
                 html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + radioId + ',\'cancelado\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-times"></i></button>';
         } else {
@@ -445,12 +437,33 @@
 
         var dados = Estado.exames;
 
+        // Contar ocultos (não-AGUARDANDO) para badge do toggle
+        var contOcultos = 0;
+        for (var oi = 0; oi < dados.length; oi++) {
+            var stO = (dados[oi].status_radiologia || '').toUpperCase();
+            if (stO && stO !== 'AGUARDANDO') contOcultos++;
+        }
+        var badgeEl = document.getElementById('badge-exames-ocultos');
+        var labelEl = document.getElementById('label-toggle-exames');
+        var iconEl  = document.getElementById('icon-toggle-exames');
+        if (badgeEl) {
+            badgeEl.textContent = contOcultos;
+            badgeEl.style.display = (!Estado.mostrarTodosExames && contOcultos > 0) ? '' : 'none';
+        }
+        if (labelEl) labelEl.textContent = Estado.mostrarTodosExames ? 'Apenas pendentes' : 'Ver realizados';
+        if (iconEl)  iconEl.className    = 'fas ' + (Estado.mostrarTodosExames ? 'fa-eye-slash' : 'fa-eye');
+
         var filtrados = [];
         for (var i = 0; i < dados.length; i++) {
             var ex = dados[i];
             if (Estado.setoresExamesSelecionados.length && Estado.setoresExamesSelecionados.indexOf(ex.nm_setor || '') < 0) continue;
             if (Estado.filtroTipoExame && ex.tipo_exame !== Estado.filtroTipoExame) continue;
             if (Estado.filtroSemControle && ex.radio_id) continue;
+            // Por padrão, ocultar exames já realizados no Tasy (não-AGUARDANDO)
+            if (!Estado.mostrarTodosExames) {
+                var stEx = (ex.status_radiologia || '').toUpperCase();
+                if (stEx && stEx !== 'AGUARDANDO') continue;
+            }
             filtrados.push(ex);
         }
 
@@ -687,7 +700,6 @@
                     Estado.fila.pendentes = d.pendentes || [];
                 }
                 renderizarFila();
-                carregarSemEnvio();
                 setStatusDot(false);
                 var el = document.getElementById('ultima-atualizacao');
                 if (el) el.textContent = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
@@ -833,10 +845,9 @@
 
     // ── Modal vincular paciente ────────────────────
     function abrirAgendar(slotId) {
-        var pendentes = Estado.fila.pendentes;
-        var listaEl  = document.getElementById('lista-vincular');
-        var infoEl   = document.getElementById('modal-vincular-info');
-        var modal    = document.getElementById('modal-vincular');
+        var listaEl = document.getElementById('lista-vincular');
+        var infoEl  = document.getElementById('modal-vincular-info');
+        var modal   = document.getElementById('modal-vincular');
 
         var slotInfo = null;
         for (var i = 0; i < Estado.slots.length; i++) {
@@ -847,22 +858,71 @@
                 + (slotInfo.modalidade ? ' — ' + escHtml(slotInfo.modalidade) : '')
                 + ' · ' + (slotInfo.duracao_min || 30) + 'min';
 
-        if (listaEl) {
-            if (!pendentes.length) {
-                listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;">Nenhum paciente sem horário.</div>';
+        Estado._vincularSlotId = slotId;
+
+        function preencherListaVincular(exames) {
+            var candidatos = [];
+            for (var j = 0; j < exames.length; j++) {
+                var ex = exames[j];
+                var rs = ex.radio_status;
+                // Agendável: sem radio_agenda OU aguardando slot
+                if (!rs || rs === 'pendente') candidatos.push(ex);
+            }
+            Estado._vincularCandidatos = candidatos;
+
+            if (!candidatos.length) {
+                listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;">Nenhum paciente disponível para agendamento.</div>';
             } else {
                 var html = '';
-                for (var j = 0; j < pendentes.length; j++) {
-                    var p = pendentes[j];
-                    html += '<div class="lista-vincular-item" onclick="P46.vincularPaciente(' + slotId + ',' + p.id + ')">'
-                          + '<div><div class="lv-nome">' + escHtml(formatarNome(p.nm_paciente)) + '</div>'
-                          + '<div class="lv-info">' + escHtml(p.ds_procedimento || '') + ' · ' + escHtml(p.leito_origem || '') + '</div></div>'
-                          + '<i class="fas fa-chevron-right" style="color:var(--cor-primaria);"></i></div>';
+                for (var k = 0; k < candidatos.length; k++) {
+                    var p = candidatos[k];
+                    html += '<div class="lista-vincular-item" data-cand-idx="' + k + '">'
+                          + '<div style="flex:1;min-width:0;">'
+                          + '<div class="lv-nome">' + escHtml(formatarNome(p.nm_pessoa_fisica || p.nm_paciente)) + '</div>'
+                          + '<div class="lv-info">' + escHtml(p.ds_procedimento || '')
+                          + (p.leito || p.leito_base || p.leito_origem ? ' · ' + escHtml(p.leito || p.leito_base || p.leito_origem || '') : '')
+                          + (p.nm_setor ? ' · ' + escHtml(p.nm_setor) : '') + '</div>'
+                          + '</div>'
+                          + (p.tipo_exame ? badgeTipoExame(p.tipo_exame) : '')
+                          + '<i class="fas fa-chevron-right" style="color:var(--cor-primaria);margin-left:8px;"></i></div>';
                 }
                 listaEl.innerHTML = html;
+                // Bind event listeners (sem onclick inline — seguro)
+                var items = listaEl.querySelectorAll('.lista-vincular-item');
+                for (var m = 0; m < items.length; m++) {
+                    (function(el) {
+                        el.addEventListener('click', function() {
+                            var idx  = parseInt(el.getAttribute('data-cand-idx'));
+                            var cand = Estado._vincularCandidatos[idx];
+                            if (cand.radio_id) {
+                                vincularPaciente(slotId, cand.radio_id);
+                            } else {
+                                vincularPrescricao(slotId, cand);
+                            }
+                        });
+                    })(items[m]);
+                }
             }
+            if (modal) modal.style.display = 'flex';
         }
-        if (modal) modal.style.display = 'flex';
+
+        if (!listaEl) return;
+        if (Estado.exames && Estado.exames.length) {
+            preencherListaVincular(Estado.exames);
+        } else {
+            listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+            if (modal) modal.style.display = 'flex';
+            fetch(CONFIG.api.prescricoes, {credentials: 'same-origin'})
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) Estado.exames = d.data || [];
+                    preencherListaVincular(Estado.exames);
+                })
+                .catch(function(e) {
+                    console.error('[P46]', e);
+                    listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#dc3545;">Erro ao carregar pacientes.</div>';
+                });
+        }
     }
 
     function vincularPaciente(slotId, radioId) {
@@ -875,7 +935,36 @@
         .then(function(d) {
             var modal = document.getElementById('modal-vincular');
             if (modal) modal.style.display = 'none';
-            if (d.success) { toast('Paciente agendado!', 'success'); carregarSlots(); carregarFila(); }
+            if (d.success) { toast('Paciente agendado!', 'success'); carregarSlots(); carregarFila(); carregarExamesRadio(); }
+            else toast('Erro: ' + (d.error || 'Falha'), 'error');
+        })
+        .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
+    }
+
+    function vincularPrescricao(slotId, ex) {
+        fetch(CONFIG.api.agendarPrescricao, {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                nr_atendimento:       String(ex.nr_atendimento || ''),
+                nr_prescricao:        String(ex.nr_prescricao || ''),
+                slot_id:              slotId,
+                nm_paciente:          ex.nm_pessoa_fisica || '',
+                ds_procedimento:      ex.ds_procedimento || '',
+                leito_origem:         ex.leito || ex.leito_base || '',
+                setor_origem_nome:    ex.nm_setor || '',
+                cd_setor_atendimento: ex.cd_setor_atendimento || null,
+                prioridade:           'normal',
+                requer_transporte:    true,
+                observacao:           '',
+                nm_medico_solicitante: ex.nm_medico_solicitante || ''
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var modal = document.getElementById('modal-vincular');
+            if (modal) modal.style.display = 'none';
+            if (d.success) { toast('Paciente vinculado!', 'success'); carregarSlots(); carregarFila(); carregarExamesRadio(); }
             else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
@@ -1164,6 +1253,13 @@
             renderizarExamesRadio();
         });
 
+        // Toggle mostrar todos / apenas pendentes
+        var btnToggleTodos = document.getElementById('btn-toggle-todos-exames');
+        if (btnToggleTodos) btnToggleTodos.addEventListener('click', function() {
+            Estado.mostrarTodosExames = !Estado.mostrarTodosExames;
+            renderizarExamesRadio();
+        });
+
         // Botões gerais
         var btnR = document.getElementById('btn-refresh');
         if (btnR) btnR.addEventListener('click', carregarTudo);
@@ -1244,8 +1340,8 @@
         desagendar:          desagendar,
         abrirAgendar:        abrirAgendar,
         vincularPaciente:    vincularPaciente,
+        vincularPrescricao:  vincularPrescricao,
         carregarExamesRadio: carregarExamesRadio,
-        toggleSemEnvio:      toggleSemEnvio,
         abrirAgendarPresc:   abrirAgendarPresc,
         selecionarSlot:      selecionarSlot
     };
