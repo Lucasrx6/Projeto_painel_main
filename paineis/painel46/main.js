@@ -54,6 +54,25 @@
     }
 
     // ── Utilitários ────────────────────────────────
+
+    // Converte 'YYYY-MM-DD' → 'DD/MM/AAAA' (exibição)
+    function isoParaDisplay(iso) {
+        if (!iso || iso.length < 10) return '';
+        return iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
+    }
+    // Converte 'DD/MM/AAAA' → 'YYYY-MM-DD' (API)
+    function displayParaISO(str) {
+        if (!str) return '';
+        var p = str.split('/');
+        if (p.length !== 3 || p[2].length < 4) return '';
+        return p[2] + '-' + ('0' + p[1]).slice(-2) + '-' + ('0' + p[0]).slice(-2);
+    }
+    // Data de hoje no fuso local (sem confusão UTC)
+    function hojeISO() {
+        var d = new Date();
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+
     function escHtml(t) {
         if (!t) return '';
         var d = document.createElement('div'); d.textContent = t; return d.innerHTML;
@@ -864,12 +883,13 @@
 
     // ── Modal criar lote ───────────────────────────
     function criarLote() {
-        var data       = document.getElementById('lote-data').value;
+        var dataDisp   = document.getElementById('lote-data').value;
+        var data       = displayParaISO(dataDisp);
         var inicio     = document.getElementById('lote-inicio').value;
         var fim        = document.getElementById('lote-fim').value;
         var duracao    = document.getElementById('lote-duracao').value;
         var modalidade = document.getElementById('lote-modalidade') ? document.getElementById('lote-modalidade').value : '';
-        if (!data || !inicio || !fim) { toast('Preencha data, início e fim.', 'warning'); return; }
+        if (!data || !inicio || !fim) { toast('Preencha data (DD/MM/AAAA), início e fim.', 'warning'); return; }
         fetch(CONFIG.api.slotsLote, {
             method: 'POST', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
@@ -880,7 +900,14 @@
         .then(function(d) {
             fecharModal('modal-lote');
             if (d.success) {
-                toast((d.criados || 0) + ' vagas criadas!', 'success');
+                var criados = d.criados || 0;
+                var ignorados = d.ignorados || 0;
+                if (criados > 0) {
+                    toast(criados + ' vagas criadas!' + (ignorados ? ' (' + ignorados + ' ignoradas — horário passado)' : ''), 'success');
+                } else {
+                    toast('Nenhuma vaga criada' + (ignorados ? ' — todos os horários já passaram.' : '.'), 'warning');
+                    return;
+                }
                 Estado.dataConsulta = data;
                 if (DOM.labelData) DOM.labelData.textContent = labelData(data);
                 mudarTab('agenda');
@@ -891,11 +918,11 @@
     }
 
     function criarAvulso() {
-        var data       = document.getElementById('avulso-data').value;
+        var data       = displayParaISO(document.getElementById('avulso-data').value);
         var hora       = document.getElementById('avulso-hora').value;
         var duracao    = document.getElementById('avulso-duracao').value;
         var modalidade = document.getElementById('avulso-modalidade') ? document.getElementById('avulso-modalidade').value : '';
-        if (!data || !hora) { toast('Preencha data e horário.', 'warning'); return; }
+        if (!data || !hora) { toast('Preencha data (DD/MM/AAAA) e horário.', 'warning'); return; }
         fetch(CONFIG.api.slots, {
             method: 'POST', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
@@ -935,12 +962,7 @@
         var tipoEl = document.getElementById('ag-tipo');
         if (tipoEl) tipoEl.value = presc.tipo_exame || 'OUTROS';
         var dataEl = document.getElementById('ag-data');
-        if (dataEl) {
-            var _h = new Date();
-            dataEl.value = _h.getFullYear() + '-'
-                + ('0' + (_h.getMonth() + 1)).slice(-2) + '-'
-                + ('0' + _h.getDate()).slice(-2);
-        }
+        if (dataEl) dataEl.value = isoParaDisplay(Estado.dataConsulta || hojeISO());
         var obsEl = document.getElementById('ag-obs');
         if (obsEl) obsEl.value = '';
         var priEl = document.getElementById('ag-prioridade');
@@ -958,7 +980,7 @@
         if (!presc) return;
         var tipo    = presc.tipo_exame || '';
         var dataEl  = document.getElementById('ag-data');
-        var data    = dataEl ? dataEl.value : new Date().toISOString().slice(0, 10);
+        var data    = dataEl ? displayParaISO(dataEl.value) : hojeISO();
         var loadEl  = document.getElementById('ag-slots-loading');
         if (loadEl) loadEl.style.display = '';
         Estado.modalAgendSlotId = null;
@@ -1159,18 +1181,38 @@
                     this.value = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
                 });
                 el.addEventListener('blur', function() {
-                    // Garante formato HH:MM ao sair do campo
                     var m = this.value.match(/^(\d{1,2}):?(\d{2})$/);
                     if (m) this.value = ('0' + m[1]).slice(-2) + ':' + m[2];
                 });
             })(idsHora[hi]);
         }
 
+        // Máscara automática DD/MM/AAAA nos campos de data
+        var idsDatas = ['lote-data', 'avulso-data', 'ag-data'];
+        for (var di = 0; di < idsDatas.length; di++) {
+            (function(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('input', function() {
+                    var digits = this.value.replace(/\D/g, '').slice(0, 8);
+                    var res = digits;
+                    if (digits.length > 2) res = digits.slice(0, 2) + '/' + digits.slice(2);
+                    if (digits.length > 4) res = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+                    this.value = res;
+                });
+                if (id === 'ag-data') {
+                    el.addEventListener('input', function() {
+                        if (this.value.length === 10) buscarSlotsPorTipo();
+                    });
+                }
+            })(idsDatas[di]);
+        }
+
         // Modal lote
         var btnLote = document.getElementById('btn-criar-lote');
         if (btnLote) btnLote.addEventListener('click', function() {
             var el = document.getElementById('lote-data');
-            if (el) el.value = Estado.dataConsulta;
+            if (el) el.value = isoParaDisplay(Estado.dataConsulta || hojeISO());
             abrirModal('modal-lote');
         });
         var btnLoteOk = document.getElementById('modal-lote-confirmar');
@@ -1179,15 +1221,12 @@
         // Modal agendar prescrição
         var btnAgOk = document.getElementById('modal-ag-confirmar');
         if (btnAgOk) btnAgOk.addEventListener('click', confirmarAgendamento);
-        // Recarregar slots quando muda a data
-        var agDataEl = document.getElementById('ag-data');
-        if (agDataEl) agDataEl.addEventListener('change', buscarSlotsPorTipo);
 
         // Modal avulso
         var btnAv = document.getElementById('btn-criar-avulso');
         if (btnAv) btnAv.addEventListener('click', function() {
             var el = document.getElementById('avulso-data');
-            if (el) el.value = Estado.dataConsulta;
+            if (el) el.value = isoParaDisplay(Estado.dataConsulta || hojeISO());
             abrirModal('modal-avulso');
         });
         var btnAvOk = document.getElementById('modal-avulso-confirmar');
