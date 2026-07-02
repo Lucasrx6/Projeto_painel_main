@@ -46,7 +46,7 @@ _SQL_TIPO_EXAME_RA = """
 """
 
 # Mapeamento tipo → modalidade dos slots
-_TIPO_TO_MODAL = {'RX': 'RX', 'RM': 'MR', 'TC': 'CT', 'USG': 'US', 'MAM': 'MAM', 'OUTROS': 'OUTROS'}
+_TIPO_TO_MODAL = {'RX': 'RX', 'RM': 'RM', 'TC': 'TC', 'USG': 'USG', 'MAM': 'MAM', 'OUTROS': 'OUTROS'}
 
 def _tipo_exame(ds_procedimento):
     if not ds_procedimento:

@@ -888,7 +888,12 @@
         var tipoEl = document.getElementById('ag-tipo');
         if (tipoEl) tipoEl.value = presc.tipo_exame || 'OUTROS';
         var dataEl = document.getElementById('ag-data');
-        if (dataEl) dataEl.value = new Date().toISOString().slice(0, 10);
+        if (dataEl) {
+            var _h = new Date();
+            dataEl.value = _h.getFullYear() + '-'
+                + ('0' + (_h.getMonth() + 1)).slice(-2) + '-'
+                + ('0' + _h.getDate()).slice(-2);
+        }
         var obsEl = document.getElementById('ag-obs');
         if (obsEl) obsEl.value = '';
         var priEl = document.getElementById('ag-prioridade');
