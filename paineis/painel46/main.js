@@ -1184,7 +1184,7 @@
             var presc = Estado.modalAgendPresc;
             var tipoMsg = presc && presc.tipo_exame ? ' para ' + escHtml(presc.tipo_exame) : '';
             var dataMsg = dataISO ? ' a partir de ' + isoParaDisplay((dataISO.split('T')[0]) || dataISO) : '';
-            listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;font-size:13px;">'
+            listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;font-size:13px;grid-column:1/-1;width:100%;">'
                 + '<i class="fas fa-calendar-times"></i> Nenhuma vaga disponível' + tipoMsg + dataMsg + '.'
                 + '<br><small style="margin-top:6px;display:block;">Crie vagas na aba <strong>Agenda</strong>'
                 + (presc && presc.tipo_exame && presc.tipo_exame !== 'OUTROS' ? ' com modalidade <strong>' + escHtml(presc.tipo_exame) + '</strong>' : '')
