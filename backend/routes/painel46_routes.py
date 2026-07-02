@@ -761,7 +761,13 @@ def api_p46_prescricoes():
                     rs.id               AS slot_id,
                     rs.data_hora        AS slot_data_hora,
                     rs.duracao_min      AS slot_duracao,
-                    rs.modalidade       AS slot_modalidade
+                    rs.modalidade       AS slot_modalidade,
+                    EXISTS (
+                        SELECT 1 FROM radio_agenda ra2
+                        WHERE ra2.nr_atendimento = p.nr_atendimento::varchar
+                          AND ra2.nr_prescricao  = p.nr_prescricao::varchar
+                          AND ra2.status = 'concluido'
+                    ) AS concluido_interno
                 FROM vw_painel19_radiologia p
                 LEFT JOIN radio_agenda ra ON (
                     ra.nr_atendimento = p.nr_atendimento::varchar

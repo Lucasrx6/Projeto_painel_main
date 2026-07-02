@@ -328,13 +328,15 @@
 
     // ── Card Prescrição (aba exames/prescrições) ────
     function cardExameHtml(ex) {
-        var radioId  = ex.radio_id;
-        var radioSt  = ex.radio_status || '';
-        var slotHora = ex.slot_data_hora ? formatarHora(ex.slot_data_hora) : '';
-        var urgente  = ex.ie_urgente === 'S' || ex.radio_prioridade === 'urgente';
+        var radioId          = ex.radio_id;
+        var radioSt          = ex.radio_status || '';
+        var slotHora         = ex.slot_data_hora ? formatarHora(ex.slot_data_hora) : '';
+        var urgente          = ex.ie_urgente === 'S' || ex.radio_prioridade === 'urgente';
+        var concluidoInterno = !!ex.concluido_interno;
 
         var cls = 'card-ex';
-        if (urgente) cls += ' card-ex-urgente';
+        if (concluidoInterno) cls += ' card-ex-concluido';
+        else if (urgente) cls += ' card-ex-urgente';
         else if (radioSt === 'concluido') cls += ' card-ex-concluido';
         else if (radioId) cls += ' card-ex-registrado';
 
@@ -342,7 +344,7 @@
 
         html += '<div class="card-ex-header">'
               + '<span class="card-ex-setor">' + escHtml(ex.nm_setor || '') + '</span>'
-              + (urgente ? '<span class="badge-urgente">URGENTE</span>' : '')
+              + (urgente && !concluidoInterno ? '<span class="badge-urgente">URGENTE</span>' : '')
               + '</div>';
 
         html += '<div class="card-ex-body">'
@@ -353,7 +355,11 @@
 
         html += '<div class="card-ex-badges">';
         html += badgeTipoExame(ex.tipo_exame);
-        if (radioId) {
+        if (concluidoInterno) {
+            html += '<span class="badge-status badge-concluido"><i class="fas fa-check-double"></i> Concluído</span>'
+                  + '<span class="badge-status" style="background:#dee2e6;color:#6c757d;font-size:10px;">'
+                  + '<i class="fas fa-sync-alt"></i> Aguard. Tasy</span>';
+        } else if (radioId) {
             html += ' ' + badgeStatus(radioSt);
             if (slotHora) html += '<span class="badge-slot-hora"><i class="fas fa-clock"></i> ' + slotHora + '</span>';
         } else {
@@ -364,7 +370,10 @@
         html += '</div>';  // card-ex-body
 
         html += '<div class="card-ex-footer">';
-        if (radioId) {
+        if (concluidoInterno) {
+            // Exame concluído internamente — sem ações disponíveis até o Tasy atualizar
+            html += '<span style="font-size:11px;color:#6c757d;padding:5px 0;"><i class="fas fa-info-circle"></i> Aguardando atualização do Tasy</span>';
+        } else if (radioId) {
             if (radioSt === 'pendente' || radioSt === 'agendado')
                 html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + radioId + ',\'no_local\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-map-marker-alt"></i> Chegou</button>';
             if (radioSt === 'no_local')
@@ -437,11 +446,11 @@
 
         var dados = Estado.exames;
 
-        // Contar ocultos (não-AGUARDANDO) para badge do toggle
+        // Contar ocultos (não-AGUARDANDO no Tasy OU já concluído internamente)
         var contOcultos = 0;
         for (var oi = 0; oi < dados.length; oi++) {
             var stO = (dados[oi].status_radiologia || '').toUpperCase();
-            if (stO && stO !== 'AGUARDANDO') contOcultos++;
+            if ((stO && stO !== 'AGUARDANDO') || dados[oi].concluido_interno) contOcultos++;
         }
         var badgeEl = document.getElementById('badge-exames-ocultos');
         var labelEl = document.getElementById('label-toggle-exames');
@@ -459,10 +468,10 @@
             if (Estado.setoresExamesSelecionados.length && Estado.setoresExamesSelecionados.indexOf(ex.nm_setor || '') < 0) continue;
             if (Estado.filtroTipoExame && ex.tipo_exame !== Estado.filtroTipoExame) continue;
             if (Estado.filtroSemControle && ex.radio_id) continue;
-            // Por padrão, ocultar exames já realizados no Tasy (não-AGUARDANDO)
+            // Por padrão, ocultar exames já realizados (Tasy não-AGUARDANDO OU concluído internamente)
             if (!Estado.mostrarTodosExames) {
                 var stEx = (ex.status_radiologia || '').toUpperCase();
-                if (stEx && stEx !== 'AGUARDANDO') continue;
+                if ((stEx && stEx !== 'AGUARDANDO') || ex.concluido_interno) continue;
             }
             filtrados.push(ex);
         }
@@ -871,8 +880,9 @@
             for (var j = 0; j < exames.length; j++) {
                 var ex = exames[j];
                 var rs = ex.radio_status;
-                // Agendável: sem radio_agenda OU aguardando slot
+                // Agendável: sem radio_agenda OU aguardando slot; nunca se já concluído
                 if (rs && rs !== 'pendente') continue;
+                if (ex.concluido_interno) continue;
                 // Filtro por modalidade do slot: se a vaga tem modalidade definida,
                 // só exibe pacientes com mesmo tipo ou OUTROS (tipo desconhecido)
                 if (slotModal) {
@@ -1051,6 +1061,7 @@
             }
         }
         if (!presc) { toast('Prescrição não encontrada.', 'error'); return; }
+        if (presc.concluido_interno) { toast('Exame já concluído. Aguardando atualização do Tasy.', 'info'); return; }
 
         Estado.modalAgendPresc   = presc;
         Estado.modalAgendSlotId  = null;
