@@ -493,6 +493,17 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 }
 .form-group textarea:focus { outline: none; border-color: var(--cor-primaria); }
 
+/* ── TOGGLE DE PREPARO ───────────────────────────── */
+.preparo-toggle-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-preparo {
+    padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 2px solid var(--borda); background: #f8f9fa; color: var(--texto-sec);
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+}
+.btn-preparo:hover:not(.ativo) { background: #e9ecef; border-color: #adb5bd; }
+.btn-preparo-nao.ativo { background: #d1e7dd; border-color: #198754; color: #0f5132; }
+.btn-preparo-sim.ativo { background: #fff3cd; border-color: #ffc107; color: #664d03; }
+
 /* ── PILLS DA AGENDA (FILTRO POR MODALIDADE) ─────── */
 .agenda-pills-bar {
     display: flex; flex-wrap: wrap; gap: 6px;

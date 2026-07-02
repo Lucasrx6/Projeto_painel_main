@@ -134,6 +134,7 @@ def api_p46_fila():
                     ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
                     ra.dt_no_local, ra.dt_inicio_exame, ra.dt_conclusao_exame,
                     ra.nm_medico_solicitante, ra.criado_em, ra.atualizado_em,
+                    ra.requer_preparo, ra.tipo_preparo,
                     rs.id           AS slot_id,
                     rs.data_hora    AS slot_data_hora,
                     rs.duracao_min  AS slot_duracao,
@@ -173,6 +174,7 @@ def api_p46_fila():
                     ra.prioridade, ra.status, ra.requer_transporte, ra.observacao,
                     ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
                     ra.nm_medico_solicitante, ra.criado_em, ra.atualizado_em,
+                    ra.requer_preparo, ra.tipo_preparo,
                     {_SQL_TIPO_EXAME_RA} AS tipo_exame,
                     pc.id           AS chamado_id,
                     pc.status       AS chamado_status,
@@ -419,7 +421,9 @@ def api_p46_slots_get():
                 ra.leito_origem,
                 ra.setor_origem_nome,
                 ra.prioridade,
-                ra.status       AS radio_status
+                ra.status       AS radio_status,
+                ra.requer_preparo,
+                ra.tipo_preparo
             FROM radio_slots rs
             LEFT JOIN radio_agenda ra ON ra.id = rs.radio_agenda_id
         """
@@ -758,6 +762,8 @@ def api_p46_prescricoes():
                     ra.prioridade        AS radio_prioridade,
                     ra.requer_transporte,
                     ra.observacao        AS radio_obs,
+                    ra.requer_preparo,
+                    ra.tipo_preparo      AS radio_preparo,
                     rs.id               AS slot_id,
                     rs.data_hora        AS slot_data_hora,
                     rs.duracao_min      AS slot_duracao,
@@ -811,12 +817,17 @@ def api_p46_agendar_prescricao():
         nr_atendimento = str(dados.get('nr_atendimento', '')).strip()
         nr_prescricao  = str(dados.get('nr_prescricao',  '')).strip()
         slot_id        = dados.get('slot_id')
+        requer_preparo = bool(dados.get('requer_preparo', False))
+        tipo_preparo   = str(dados.get('tipo_preparo', '') or '').strip()
 
         if not nr_atendimento or not nr_prescricao:
             return jsonify({'success': False,
                             'error': 'nr_atendimento e nr_prescricao são obrigatórios'}), 400
         if not slot_id:
             return jsonify({'success': False, 'error': 'slot_id é obrigatório'}), 400
+        if requer_preparo and len(tipo_preparo) < 15:
+            return jsonify({'success': False,
+                            'error': 'Descreva o preparo com ao menos 15 caracteres'}), 400
 
         with get_db_cursor(use_dict_cursor=False) as cursor:
             # Verificar slot
@@ -854,19 +865,22 @@ def api_p46_agendar_prescricao():
 
                 cursor.execute("""
                     UPDATE radio_agenda
-                    SET slot_id       = %s,
-                        status        = 'agendado',
-                        atualizado_em = NOW()
+                    SET slot_id        = %s,
+                        status         = 'agendado',
+                        requer_preparo = %s,
+                        tipo_preparo   = %s,
+                        atualizado_em  = NOW()
                     WHERE id = %s
-                """, (slot_id, radio_id))
+                """, (slot_id, requer_preparo, tipo_preparo, radio_id))
             else:
                 cursor.execute("""
                     INSERT INTO radio_agenda (
                         nr_atendimento, nr_prescricao, nm_paciente, ds_procedimento,
                         leito_origem, setor_origem_nome, cd_setor_atendimento,
                         prioridade, requer_transporte, observacao, nm_medico_solicitante,
+                        requer_preparo, tipo_preparo,
                         slot_id, status, criado_em, atualizado_em
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'agendado',NOW(),NOW())
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'agendado',NOW(),NOW())
                     RETURNING id
                 """, (
                     nr_atendimento,
@@ -880,6 +894,8 @@ def api_p46_agendar_prescricao():
                     dados.get('requer_transporte', False),
                     dados.get('observacao', ''),
                     dados.get('nm_medico_solicitante', ''),
+                    requer_preparo,
+                    tipo_preparo,
                     slot_id,
                 ))
                 radio_id = cursor.fetchone()[0]

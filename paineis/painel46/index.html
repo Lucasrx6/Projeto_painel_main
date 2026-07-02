@@ -278,6 +278,22 @@
                     <textarea id="ag-obs" rows="2" placeholder="Informações adicionais..."></textarea>
                 </div>
                 <div class="form-group">
+                    <label>Requer preparo?</label>
+                    <div class="preparo-toggle-group" id="ag-preparo-toggle">
+                        <button type="button" class="btn-preparo btn-preparo-nao ativo" id="btn-preparo-nao">
+                            <i class="fas fa-times-circle"></i> Não
+                        </button>
+                        <button type="button" class="btn-preparo btn-preparo-sim" id="btn-preparo-sim">
+                            <i class="fas fa-clipboard-check"></i> Sim, requer preparo
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group" id="ag-preparo-grupo" style="display:none;">
+                    <label>Tipo de preparo <span style="color:#dc3545">*</span></label>
+                    <textarea id="ag-preparo-texto" rows="2" placeholder="Descreva o preparo necessário (mínimo 15 caracteres)..." maxlength="500"></textarea>
+                    <small id="ag-preparo-hint" style="color:#6c757d;font-size:11px;">0 / 15 mínimo</small>
+                </div>
+                <div class="form-group">
                     <label>Horário Disponível <span id="ag-slots-loading" style="font-size:11px;color:#6c757d;display:none;">(buscando...)</span>
                         <button type="button" class="btn-nova-vaga-inline" id="btn-nova-vaga-ag"><i class="fas fa-plus"></i> Nova vaga</button>
                     </label>

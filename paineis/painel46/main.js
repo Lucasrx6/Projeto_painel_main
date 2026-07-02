@@ -1116,6 +1116,17 @@
         if (dataEl) dataEl.value = '';        // deixa vazio; busca automática pelo próximo dia com vaga
         var obsEl = document.getElementById('ag-obs');
         if (obsEl) obsEl.value = '';
+        // Reset preparo
+        var btnPreparoNaoEl = document.getElementById('btn-preparo-nao');
+        var btnPreparoSimEl = document.getElementById('btn-preparo-sim');
+        var preparoGrupoEl  = document.getElementById('ag-preparo-grupo');
+        var preparoTextoEl  = document.getElementById('ag-preparo-texto');
+        var preparoHintEl   = document.getElementById('ag-preparo-hint');
+        if (btnPreparoNaoEl) btnPreparoNaoEl.className = 'btn-preparo btn-preparo-nao ativo';
+        if (btnPreparoSimEl) btnPreparoSimEl.className = 'btn-preparo btn-preparo-sim';
+        if (preparoGrupoEl)  preparoGrupoEl.style.display = 'none';
+        if (preparoTextoEl)  preparoTextoEl.value = '';
+        if (preparoHintEl)   preparoHintEl.textContent = '0 / 15 mínimo';
         var priEl = document.getElementById('ag-prioridade');
         if (priEl) priEl.value = presc.radio_prioridade || 'normal';
         var btnOk = document.getElementById('modal-ag-confirmar');
@@ -1218,9 +1229,17 @@
         var presc   = Estado.modalAgendPresc;
         var slotId  = Estado.modalAgendSlotId;
         if (!presc || !slotId) { toast('Selecione um horário.', 'warning'); return; }
-        var priEl = document.getElementById('ag-prioridade');
-        var obsEl = document.getElementById('ag-obs');
-        var btnOk = document.getElementById('modal-ag-confirmar');
+        var priEl            = document.getElementById('ag-prioridade');
+        var obsEl            = document.getElementById('ag-obs');
+        var btnOk            = document.getElementById('modal-ag-confirmar');
+        var btnPreparoSimEl  = document.getElementById('btn-preparo-sim');
+        var preparoTextoEl   = document.getElementById('ag-preparo-texto');
+        var requerPreparo    = !!(btnPreparoSimEl && btnPreparoSimEl.className.indexOf('ativo') >= 0);
+        var tipoPreparo      = preparoTextoEl ? preparoTextoEl.value.trim() : '';
+        if (requerPreparo && tipoPreparo.length < 15) {
+            toast('Descreva o preparo com ao menos 15 caracteres.', 'warning');
+            return;
+        }
         if (btnOk) btnOk.disabled = true;
         fetch(CONFIG.api.agendarPrescricao, {
             method: 'POST', credentials: 'same-origin',
@@ -1237,7 +1256,9 @@
                 prioridade:           priEl ? priEl.value : 'normal',
                 requer_transporte:    true,
                 observacao:           obsEl ? obsEl.value.trim() : '',
-                nm_medico_solicitante: presc.nm_medico_solicitante || ''
+                nm_medico_solicitante: presc.nm_medico_solicitante || '',
+                requer_preparo:       requerPreparo,
+                tipo_preparo:         requerPreparo ? tipoPreparo : ''
             })
         })
         .then(function(r) { return r.json(); })
@@ -1342,13 +1363,14 @@
 
             corpo += '<div class="secao"><div class="secao-h">' + nomeM + ' — ' + grupo.length + ' vaga(s)</div>'
                    + '<table><thead><tr>'
-                   + '<th style="width:72px">Horário</th>'
-                   + '<th style="width:48px">Dur.</th>'
-                   + '<th style="width:200px">Paciente</th>'
+                   + '<th style="width:68px">Horário</th>'
+                   + '<th style="width:44px">Dur.</th>'
+                   + '<th style="width:170px">Paciente</th>'
                    + '<th>Procedimento</th>'
-                   + '<th style="width:90px">Leito</th>'
-                   + '<th style="width:130px">Setor</th>'
-                   + '<th style="width:96px">Status</th>'
+                   + '<th style="width:78px">Leito</th>'
+                   + '<th style="width:110px">Setor</th>'
+                   + '<th style="width:82px">Status</th>'
+                   + '<th style="width:150px">Preparo</th>'
                    + '</tr></thead><tbody>';
 
             for (var si = 0; si < grupo.length; si++) {
@@ -1361,6 +1383,7 @@
                     + '<td>' + escHtml(sl.leito_origem || '—') + '</td>'
                     + '<td>' + escHtml(sl.setor_origem_nome || '—') + '</td>'
                     + '<td style="color:' + _corStatusSlot(sl) + ';font-weight:700;">' + _textoStatusSlot(sl) + '</td>'
+                    + '<td>' + (sl.requer_preparo && sl.tipo_preparo ? escHtml(sl.tipo_preparo) : '—') + '</td>'
                     + '</tr>';
             }
             corpo += '</tbody></table></div>';
@@ -1382,7 +1405,7 @@
         var data    = Estado.dataConsulta;
         var dataFmt = isoParaDisplay(data);
 
-        var linhas = [['Modalidade', 'Horário', 'Duração (min)', 'Paciente', 'Procedimento', 'Leito', 'Setor', 'Status']];
+        var linhas = [['Modalidade', 'Horário', 'Duração (min)', 'Paciente', 'Procedimento', 'Leito', 'Setor', 'Status', 'Preparo']];
 
         for (var oi = 0; oi < _ORDEM_MODAIS.length; oi++) {
             var m     = _ORDEM_MODAIS[oi];
@@ -1399,7 +1422,8 @@
                     sl.ds_procedimento || '—',
                     sl.leito_origem || '—',
                     sl.setor_origem_nome || '—',
-                    _textoStatusSlot(sl)
+                    _textoStatusSlot(sl),
+                    (sl.requer_preparo && sl.tipo_preparo) ? sl.tipo_preparo : '—'
                 ]);
             }
         }
@@ -1585,6 +1609,31 @@
 
         var btnNovaVagaAg = document.getElementById('btn-nova-vaga-ag');
         if (btnNovaVagaAg) btnNovaVagaAg.addEventListener('click', abrirAvulsoParaAgendamento);
+
+        // Preparo toggle
+        var btnPreparoNao = document.getElementById('btn-preparo-nao');
+        var btnPreparoSim = document.getElementById('btn-preparo-sim');
+        var preparoGrupo  = document.getElementById('ag-preparo-grupo');
+        var preparoTexto  = document.getElementById('ag-preparo-texto');
+        var preparoHint   = document.getElementById('ag-preparo-hint');
+        function atualizarPreparoHint() {
+            if (!preparoHint || !preparoTexto) return;
+            var len = preparoTexto.value.length;
+            preparoHint.textContent = len + ' / 15 mínimo' + (len >= 15 ? ' ✓' : '');
+            preparoHint.style.color = len >= 15 ? '#198754' : '#6c757d';
+        }
+        if (btnPreparoNao) btnPreparoNao.addEventListener('click', function() {
+            btnPreparoNao.className = 'btn-preparo btn-preparo-nao ativo';
+            if (btnPreparoSim) btnPreparoSim.className = 'btn-preparo btn-preparo-sim';
+            if (preparoGrupo) preparoGrupo.style.display = 'none';
+        });
+        if (btnPreparoSim) btnPreparoSim.addEventListener('click', function() {
+            btnPreparoSim.className = 'btn-preparo btn-preparo-sim ativo';
+            if (btnPreparoNao) btnPreparoNao.className = 'btn-preparo btn-preparo-nao';
+            if (preparoGrupo) preparoGrupo.style.display = '';
+            if (preparoTexto) preparoTexto.focus();
+        });
+        if (preparoTexto) preparoTexto.addEventListener('input', atualizarPreparoHint);
 
         var btnPDF   = document.getElementById('btn-export-pdf');
         var btnExcel = document.getElementById('btn-export-excel');
