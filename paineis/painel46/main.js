@@ -1051,7 +1051,7 @@
         var tipoEl = document.getElementById('ag-tipo');
         if (tipoEl) tipoEl.value = presc.tipo_exame || 'OUTROS';
         var dataEl = document.getElementById('ag-data');
-        if (dataEl) dataEl.value = isoParaDisplay(Estado.dataConsulta || hojeISO());
+        if (dataEl) dataEl.value = '';        // deixa vazio; busca automática pelo próximo dia com vaga
         var obsEl = document.getElementById('ag-obs');
         if (obsEl) obsEl.value = '';
         var priEl = document.getElementById('ag-prioridade');
@@ -1060,42 +1060,67 @@
         if (btnOk) btnOk.disabled = true;
 
         renderizarSlotsDaModal([]);
-        buscarSlotsPorTipo();
+        // Busca a partir de hoje, avançando até 14 dias se necessário (autoAvanca=true)
+        buscarSlotsPorTipo(hojeISO(), 0, true);
         abrirModal('modal-agendar-presc');
     }
 
-    function buscarSlotsPorTipo() {
+    // autoAvanca: true = abre o modal e avança até 14 dias; false/undefined = usuário digitou data
+    function buscarSlotsPorTipo(dataISO, tentativa, autoAvanca) {
         var presc = Estado.modalAgendPresc;
         if (!presc) return;
-        var tipo    = presc.tipo_exame || '';
-        var dataEl  = document.getElementById('ag-data');
-        var data    = dataEl ? displayParaISO(dataEl.value) : hojeISO();
-        var loadEl  = document.getElementById('ag-slots-loading');
+        var tipo   = presc.tipo_exame || '';
+        var dataEl = document.getElementById('ag-data');
+
+        // Modo manual: usuário digitou no campo (chamado sem args pelo event listener)
+        if (dataISO === undefined) {
+            var digitado = dataEl ? displayParaISO(dataEl.value) : '';
+            if (!digitado) return;
+            dataISO    = digitado;
+            tentativa  = 0;
+            autoAvanca = false;
+        }
+
+        var loadEl = document.getElementById('ag-slots-loading');
         if (loadEl) loadEl.style.display = '';
         Estado.modalAgendSlotId = null;
         var btnOk = document.getElementById('modal-ag-confirmar');
         if (btnOk) btnOk.disabled = true;
-        fetch(CONFIG.api.slotsPorTipo + '?tipo=' + encodeURIComponent(tipo) + '&data=' + encodeURIComponent(data),
+
+        fetch(CONFIG.api.slotsPorTipo + '?tipo=' + encodeURIComponent(tipo) + '&data=' + encodeURIComponent(dataISO),
               {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
-                Estado.slotsDisponiveis = (d.success && d.data) ? d.data : [];
-                renderizarSlotsDaModal(Estado.slotsDisponiveis);
+                var slots = (d.success && d.data) ? d.data : [];
+                // Auto-avanço: só quando abrindo o modal (autoAvanca=true) e sem vagas
+                if (!slots.length && autoAvanca && tentativa < 13) {
+                    var next = new Date(dataISO + 'T12:00:00');
+                    next.setDate(next.getDate() + 1);
+                    var nextISO = next.getFullYear() + '-' + ('0'+(next.getMonth()+1)).slice(-2) + '-' + ('0'+next.getDate()).slice(-2);
+                    buscarSlotsPorTipo(nextISO, tentativa + 1, true);
+                    return;
+                }
+                // Preenche o campo com a data encontrada
+                if (dataEl && slots.length) dataEl.value = isoParaDisplay(dataISO);
+                Estado.slotsDisponiveis = slots;
+                renderizarSlotsDaModal(slots, dataISO);
             })
             .catch(function(e) {
                 console.error('[P46] slots-por-tipo:', e);
                 Estado.slotsDisponiveis = [];
-                renderizarSlotsDaModal([]);
+                renderizarSlotsDaModal([], dataISO);
             })
             .finally(function() { if (loadEl) loadEl.style.display = 'none'; });
     }
 
-    function renderizarSlotsDaModal(slots) {
+    function renderizarSlotsDaModal(slots, dataISO) {
         var listaEl = document.getElementById('ag-lista-slots');
         if (!listaEl) return;
         if (!slots.length) {
+            var msgData = dataISO ? (' nos próximos 14 dias a partir de ' + isoParaDisplay(dataISO.split('T')[0] || dataISO)) : '';
             listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;font-size:13px;">'
-                + '<i class="fas fa-calendar-times"></i> Nenhuma vaga disponível para esta data e tipo.</div>';
+                + '<i class="fas fa-calendar-times"></i> Nenhuma vaga disponível' + escHtml(msgData) + '.'
+                + '<br><small style="margin-top:6px;display:block;">Crie vagas na aba <strong>Agenda</strong> e volte aqui.</small></div>';
             return;
         }
         var html = '';
