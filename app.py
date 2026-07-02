@@ -163,14 +163,11 @@ paineis = [
     painel18_bp, painel19_bp, painel20_bp, painel21_bp,
     painel22_bp, painel23_bp, painel24_bp, painel25_bp,
     painel26_bp, painel27_bp, painel28_bp, painel29_bp,
-    painel30_bp, painel31_bp, painel32_bp,
-    painel33_bp,
-    painel34_bp, painel35_bp, painel36_bp,
-    painel37_bp, painel38_bp,
-    painel39_bp, painel40_bp,
-    painel41_bp, painel42_bp, painel43_bp,
-    painel44_bp,
-    painel45_bp, painel46_bp, painel47_bp,
+    painel30_bp, painel31_bp, painel32_bp, painel33_bp,
+    painel34_bp, painel35_bp, painel36_bp, painel37_bp, 
+    painel38_bp, painel39_bp, painel40_bp, painel41_bp, 
+    painel42_bp, painel43_bp, painel44_bp, painel45_bp, 
+    painel46_bp, painel47_bp,
 ]
 
 for painel in paineis:

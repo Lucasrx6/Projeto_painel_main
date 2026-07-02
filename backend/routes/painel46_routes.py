@@ -12,6 +12,58 @@ from backend.cache import cache_route, cache_delete_pattern
 
 painel46_bp = Blueprint('painel46', __name__)
 
+# Tipo de exame derivado do nome do procedimento
+_SQL_TIPO_EXAME_P = """
+    CASE
+        WHEN p.ds_procedimento ILIKE 'RX%'
+          OR p.ds_procedimento ILIKE '%RADIOGRAF%'     THEN 'RX'
+        WHEN p.ds_procedimento ILIKE '%RESSONANCI%'
+          OR p.ds_procedimento ILIKE 'RM %'            THEN 'RM'
+        WHEN p.ds_procedimento ILIKE '%TOMOGRAF%'
+          OR p.ds_procedimento ILIKE 'TC %'
+          OR p.ds_procedimento ILIKE 'CT %'            THEN 'TC'
+        WHEN p.ds_procedimento ILIKE '%ULTRASSOM%'
+          OR p.ds_procedimento ILIKE 'USG%'            THEN 'USG'
+        WHEN p.ds_procedimento ILIKE '%MAMOGRAF%'      THEN 'MAM'
+        ELSE 'OUTROS'
+    END
+"""
+
+_SQL_TIPO_EXAME_RA = """
+    CASE
+        WHEN ra.ds_procedimento ILIKE 'RX%'
+          OR ra.ds_procedimento ILIKE '%RADIOGRAF%'     THEN 'RX'
+        WHEN ra.ds_procedimento ILIKE '%RESSONANCI%'
+          OR ra.ds_procedimento ILIKE 'RM %'            THEN 'RM'
+        WHEN ra.ds_procedimento ILIKE '%TOMOGRAF%'
+          OR ra.ds_procedimento ILIKE 'TC %'
+          OR ra.ds_procedimento ILIKE 'CT %'            THEN 'TC'
+        WHEN ra.ds_procedimento ILIKE '%ULTRASSOM%'
+          OR ra.ds_procedimento ILIKE 'USG%'            THEN 'USG'
+        WHEN ra.ds_procedimento ILIKE '%MAMOGRAF%'      THEN 'MAM'
+        ELSE 'OUTROS'
+    END
+"""
+
+# Mapeamento tipo → modalidade dos slots
+_TIPO_TO_MODAL = {'RX': 'RX', 'RM': 'MR', 'TC': 'CT', 'USG': 'US', 'MAM': 'MAM', 'OUTROS': 'OUTROS'}
+
+def _tipo_exame(ds_procedimento):
+    if not ds_procedimento:
+        return 'OUTROS'
+    p = ds_procedimento.upper()
+    if p.startswith('RX') or 'RADIOGRAF' in p:
+        return 'RX'
+    if 'RESSONANCI' in p or p.startswith('RM '):
+        return 'RM'
+    if 'TOMOGRAF' in p or p.startswith('TC ') or p.startswith('CT '):
+        return 'TC'
+    if 'ULTRASSOM' in p or p.startswith('USG'):
+        return 'USG'
+    if 'MAMOGRAF' in p:
+        return 'MAM'
+    return 'OUTROS'
+
 # Transições de status permitidas
 _TRANSICOES = {
     'pendente':  ['agendado', 'no_local', 'cancelado'],
@@ -62,20 +114,23 @@ def api_p46_fila():
         data_str = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
 
         with get_db_cursor() as cursor:
-            # Agendados para a data (com slot)
-            cursor.execute("""
+            # Agendados para a data (com slot) — inclui ciência/recusa
+            cursor.execute(f"""
                 SELECT
                     ra.id, ra.nr_atendimento, ra.nm_paciente, ra.ds_procedimento,
-                    ra.leito_origem, ra.setor_origem_nome, ra.prioridade,
-                    ra.status, ra.requer_transporte, ra.observacao,
-                    ra.criado_em, ra.atualizado_em,
-                    rs.id         AS slot_id,
-                    rs.data_hora  AS slot_data_hora,
-                    rs.duracao_min AS slot_duracao,
-                    rs.modalidade AS slot_modalidade,
+                    ra.leito_origem, ra.setor_origem_nome, ra.cd_setor_atendimento,
+                    ra.prioridade, ra.status, ra.requer_transporte, ra.observacao,
+                    ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
+                    ra.dt_no_local, ra.dt_inicio_exame, ra.dt_conclusao_exame,
+                    ra.nm_medico_solicitante, ra.criado_em, ra.atualizado_em,
+                    rs.id           AS slot_id,
+                    rs.data_hora    AS slot_data_hora,
+                    rs.duracao_min  AS slot_duracao,
+                    rs.modalidade   AS slot_modalidade,
+                    {_SQL_TIPO_EXAME_RA} AS tipo_exame,
                     -- Padioleiro ativo
-                    pc.id         AS chamado_id,
-                    pc.status     AS chamado_status,
+                    pc.id           AS chamado_id,
+                    pc.status       AS chamado_status,
                     pc.padioleiro_nome AS chamado_padioleiro,
                     pc.tipo_movimento_nome AS chamado_tipo
                 FROM radio_agenda ra
@@ -90,27 +145,26 @@ def api_p46_fila():
                 ) pc ON TRUE
                 WHERE ra.status NOT IN ('cancelado')
                   AND (
-                      -- Agendados nesta data
                       (rs.id IS NOT NULL AND DATE(rs.data_hora) = %s)
-                      -- Ou chegaram/estão em execução hoje (independente do slot)
                       OR (ra.status IN ('no_local', 'executando')
                           AND DATE(ra.atualizado_em) = %s)
-                      -- Concluídos hoje
                       OR (ra.status = 'concluido' AND DATE(ra.atualizado_em) = %s)
                   )
                 ORDER BY rs.data_hora NULLS LAST, ra.prioridade DESC, ra.criado_em
             """, (data_str, data_str, data_str))
             agendados = [_serial(dict(r)) for r in cursor.fetchall()]
 
-            # Pendentes sem slot (qualquer data, não concluídos/cancelados)
-            cursor.execute("""
+            # Pendentes sem slot (aguardando agendamento pela radiologia / recusados)
+            cursor.execute(f"""
                 SELECT
                     ra.id, ra.nr_atendimento, ra.nm_paciente, ra.ds_procedimento,
-                    ra.leito_origem, ra.setor_origem_nome, ra.prioridade,
-                    ra.status, ra.requer_transporte, ra.observacao,
-                    ra.criado_em, ra.atualizado_em,
-                    pc.id         AS chamado_id,
-                    pc.status     AS chamado_status,
+                    ra.leito_origem, ra.setor_origem_nome, ra.cd_setor_atendimento,
+                    ra.prioridade, ra.status, ra.requer_transporte, ra.observacao,
+                    ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
+                    ra.nm_medico_solicitante, ra.criado_em, ra.atualizado_em,
+                    {_SQL_TIPO_EXAME_RA} AS tipo_exame,
+                    pc.id           AS chamado_id,
+                    pc.status       AS chamado_status,
                     pc.padioleiro_nome AS chamado_padioleiro
                 FROM radio_agenda ra
                 LEFT JOIN LATERAL (
@@ -122,8 +176,8 @@ def api_p46_fila():
                     LIMIT 1
                 ) pc ON TRUE
                 WHERE ra.slot_id IS NULL
-                  AND ra.status IN ('pendente')
-                ORDER BY ra.prioridade DESC, ra.criado_em
+                  AND ra.status = 'pendente'
+                ORDER BY ra.status_enfermagem DESC, ra.prioridade DESC, ra.criado_em
             """)
             pendentes = [_serial(dict(r)) for r in cursor.fetchall()]
 
@@ -305,7 +359,12 @@ def api_p46_agendar(radio_id):
                 """, (radio_id, slot_id))
                 cursor.execute("""
                     UPDATE radio_agenda
-                    SET slot_id = %s, status = 'agendado', atualizado_em = NOW()
+                    SET slot_id           = %s,
+                        status            = 'agendado',
+                        status_enfermagem = 'pendente',
+                        motivo_recusa     = NULL,
+                        dt_recusa         = NULL,
+                        atualizado_em     = NOW()
                     WHERE id = %s
                 """, (slot_id, radio_id))
             else:
@@ -640,3 +699,240 @@ def api_p46_slots_deletar(slot_id):
     except Exception as e:
         current_app.logger.error(f'Erro delete slot p46: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao remover slot'}), 500
+
+
+# ── Prescrições Tasy (nova aba principal) ────────────────────
+
+@painel46_bp.route('/api/paineis/painel46/prescricoes')
+@login_required
+@panel_permission_required('painel46')
+def api_p46_prescricoes():
+    """
+    Todas as prescrições de radiologia (vw_painel19_radiologia) com status de controle
+    interno (radio_agenda), slot agendado e tipo_exame.
+    ?setor=nome  &tipo=RX|RM|TC|USG|MAM|OUTROS
+    """
+    try:
+        setor = request.args.get('setor', '').strip()
+        tipo  = request.args.get('tipo',  '').strip().upper()
+
+        filtros = []
+        params  = []
+        if setor:
+            filtros.append("p.nm_setor = %s")
+            params.append(setor)
+        where = ('WHERE ' + ' AND '.join(filtros)) if filtros else ''
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    p.nr_atendimento,
+                    p.nm_pessoa_fisica,
+                    p.leito,
+                    p.leito_base,
+                    p.nm_setor,
+                    p.cd_setor_atendimento,
+                    p.nr_prescricao,
+                    p.ds_procedimento,
+                    p.status_radiologia,
+                    p.dt_pedido,
+                    p.dt_execucao,
+                    p.dt_laudo,
+                    p.prioridade_ordem,
+                    p.ie_urgente,
+                    p.ds_convenio,
+                    p.nm_medico_solicitante,
+                    {_SQL_TIPO_EXAME_P} AS tipo_exame,
+                    ra.id                AS radio_id,
+                    ra.status            AS radio_status,
+                    ra.status_enfermagem,
+                    ra.motivo_recusa,
+                    ra.prioridade        AS radio_prioridade,
+                    ra.requer_transporte,
+                    ra.observacao        AS radio_obs,
+                    rs.id               AS slot_id,
+                    rs.data_hora        AS slot_data_hora,
+                    rs.duracao_min      AS slot_duracao,
+                    rs.modalidade       AS slot_modalidade
+                FROM vw_painel19_radiologia p
+                LEFT JOIN radio_agenda ra ON (
+                    ra.nr_atendimento = p.nr_atendimento::varchar
+                    AND ra.nr_prescricao  = p.nr_prescricao::varchar
+                    AND ra.status NOT IN ('concluido', 'cancelado')
+                )
+                LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
+                {where}
+                ORDER BY p.nm_setor, p.leito_base, p.prioridade_ordem, p.dt_pedido
+            """, params)
+            dados = [_serial(dict(r)) for r in cursor.fetchall()]
+
+        if tipo:
+            dados = [d for d in dados if d.get('tipo_exame') == tipo]
+
+        return jsonify({'success': True, 'data': dados, 'total': len(dados),
+                        'timestamp': datetime.now().isoformat()})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro prescricoes p46: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar prescrições'}), 500
+
+
+# ── Agendar prescrição (cria/reagenda radio_agenda + atribui slot) ────
+
+@painel46_bp.route('/api/paineis/painel46/agendar-prescricao', methods=['POST'])
+@login_required
+@panel_permission_required('painel46')
+def api_p46_agendar_prescricao():
+    """
+    Cria ou reagenda um exame a partir de uma prescrição Tasy.
+    - Se não existe radio_agenda ativo: cria + vincula slot
+    - Se existe radio_agenda pendente/recusado: reusa + vincula novo slot + status_enfermagem=pendente
+    Body: { nr_atendimento, nr_prescricao, slot_id,
+            nm_paciente, ds_procedimento, leito_origem, setor_origem_nome,
+            cd_setor_atendimento, prioridade, requer_transporte, observacao,
+            nm_medico_solicitante }
+    """
+    try:
+        dados = request.get_json() or {}
+        nr_atendimento = str(dados.get('nr_atendimento', '')).strip()
+        nr_prescricao  = str(dados.get('nr_prescricao',  '')).strip()
+        slot_id        = dados.get('slot_id')
+
+        if not nr_atendimento or not nr_prescricao:
+            return jsonify({'success': False,
+                            'error': 'nr_atendimento e nr_prescricao são obrigatórios'}), 400
+        if not slot_id:
+            return jsonify({'success': False, 'error': 'slot_id é obrigatório'}), 400
+
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            # Verificar slot
+            cursor.execute("SELECT id, status FROM radio_slots WHERE id = %s", (slot_id,))
+            slot = cursor.fetchone()
+            if not slot:
+                return jsonify({'success': False, 'error': 'Slot não encontrado'}), 404
+            if slot[1] == 'bloqueado':
+                return jsonify({'success': False, 'error': 'Slot bloqueado'}), 409
+            if slot[1] == 'ocupado':
+                return jsonify({'success': False, 'error': 'Slot já ocupado por outro paciente'}), 409
+
+            # Verificar radio_agenda existente (pendente, agendado, recusado)
+            cursor.execute("""
+                SELECT id, status, slot_id
+                FROM radio_agenda
+                WHERE nr_atendimento = %s AND nr_prescricao = %s
+                  AND status NOT IN ('concluido', 'cancelado')
+                ORDER BY criado_em DESC
+                LIMIT 1
+            """, (nr_atendimento, nr_prescricao))
+            existente = cursor.fetchone()
+
+            if existente:
+                radio_id      = existente[0]
+                slot_id_atual = existente[2]
+
+                # Libera slot anterior
+                if slot_id_atual:
+                    cursor.execute("""
+                        UPDATE radio_slots
+                        SET status = 'livre', radio_agenda_id = NULL, atualizado_em = NOW()
+                        WHERE id = %s
+                    """, (slot_id_atual,))
+
+                cursor.execute("""
+                    UPDATE radio_agenda
+                    SET slot_id           = %s,
+                        status            = 'agendado',
+                        status_enfermagem = 'pendente',
+                        motivo_recusa     = NULL,
+                        dt_recusa         = NULL,
+                        atualizado_em     = NOW()
+                    WHERE id = %s
+                """, (slot_id, radio_id))
+            else:
+                cursor.execute("""
+                    INSERT INTO radio_agenda (
+                        nr_atendimento, nr_prescricao, nm_paciente, ds_procedimento,
+                        leito_origem, setor_origem_nome, cd_setor_atendimento,
+                        prioridade, requer_transporte, observacao, nm_medico_solicitante,
+                        slot_id, status, status_enfermagem, criado_em, atualizado_em
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'agendado','pendente',NOW(),NOW())
+                    RETURNING id
+                """, (
+                    nr_atendimento,
+                    nr_prescricao,
+                    dados.get('nm_paciente', ''),
+                    dados.get('ds_procedimento', ''),
+                    dados.get('leito_origem', ''),
+                    dados.get('setor_origem_nome', ''),
+                    dados.get('cd_setor_atendimento'),
+                    dados.get('prioridade', 'normal'),
+                    dados.get('requer_transporte', False),
+                    dados.get('observacao', ''),
+                    dados.get('nm_medico_solicitante', ''),
+                    slot_id,
+                ))
+                radio_id = cursor.fetchone()[0]
+
+            # Ocupa o slot
+            cursor.execute("""
+                UPDATE radio_slots
+                SET status = 'ocupado', radio_agenda_id = %s, atualizado_em = NOW()
+                WHERE id = %s
+            """, (radio_id, slot_id))
+
+        cache_delete_pattern('painel46:*')
+        cache_delete_pattern('painel45:*')
+        usuario = session.get('nome_completo') or session.get('usuario', '')
+        current_app.logger.info(
+            f'P46 agendar-prescricao: atend={nr_atendimento} presc={nr_prescricao} slot={slot_id} por {usuario}'
+        )
+        return jsonify({'success': True, 'radio_id': radio_id}), 201
+
+    except Exception as e:
+        current_app.logger.error(f'Erro agendar-prescricao p46: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao agendar prescrição'}), 500
+
+
+# ── Slots disponíveis filtrados por tipo de exame ────────────
+
+@painel46_bp.route('/api/paineis/painel46/slots-por-tipo')
+@login_required
+@panel_permission_required('painel46')
+def api_p46_slots_por_tipo():
+    """
+    Slots livres filtrados por tipo de exame e data.
+    ?tipo=RX|RM|TC|USG|MAM|OUTROS  &data=YYYY-MM-DD
+    Tipos mapeiam para modalidade: RM→MR, TC→CT, USG→US; RX, MAM, OUTROS direto.
+    Slots sem modalidade (NULL) são oferecidos para qualquer tipo.
+    """
+    try:
+        tipo     = request.args.get('tipo', '').strip().upper()
+        data_str = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
+        modal    = _TIPO_TO_MODAL.get(tipo) if tipo else None
+
+        filtros = ["DATE(rs.data_hora) = %s", "rs.status = 'livre'"]
+        params  = [data_str]
+
+        if tipo == 'OUTROS':
+            filtros.append("(rs.modalidade IS NULL OR rs.modalidade = 'OUTROS')")
+        elif modal:
+            filtros.append("(rs.modalidade = %s OR rs.modalidade IS NULL)")
+            params.append(modal)
+
+        where = 'WHERE ' + ' AND '.join(filtros)
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT id, data_hora, duracao_min, modalidade
+                FROM radio_slots
+                {where}
+                ORDER BY data_hora
+            """, params)
+            slots = [_serial(dict(r)) for r in cursor.fetchall()]
+
+        return jsonify({'success': True, 'data': slots, 'tipo': tipo,
+                        'data_consulta': data_str, 'total': len(slots)})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro slots-por-tipo p46: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar slots por tipo'}), 500

@@ -379,3 +379,99 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     .grade-slots { grid-template-columns: repeat(2, 1fr); }
     .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
 }
+
+/* ── PILLS TIPO EXAME ────────────────────────────── */
+.pills-tipo {
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+}
+.pill-tipo {
+    padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    border: 2px solid var(--borda); background: white; color: var(--texto-sec);
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.pill-tipo:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+.pill-tipo.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: white; }
+.pill-tipo-rx     { border-color: #0d6efd !important; color: #0d6efd !important; }
+.pill-tipo-rx.ativo     { background: #0d6efd !important; color: white !important; }
+.pill-tipo-rm     { border-color: #6f42c1 !important; color: #6f42c1 !important; }
+.pill-tipo-rm.ativo     { background: #6f42c1 !important; color: white !important; }
+.pill-tipo-tc     { border-color: #0dcaf0 !important; color: #0870a8 !important; }
+.pill-tipo-tc.ativo     { background: #0dcaf0 !important; color: #052c65 !important; }
+.pill-tipo-usg    { border-color: #198754 !important; color: #198754 !important; }
+.pill-tipo-usg.ativo    { background: #198754 !important; color: white !important; }
+.pill-tipo-mam    { border-color: #fd7e14 !important; color: #cc6500 !important; }
+.pill-tipo-mam.ativo    { background: #fd7e14 !important; color: white !important; }
+.pill-tipo-outros { border-color: #6c757d !important; color: #6c757d !important; }
+.pill-tipo-outros.ativo { background: #6c757d !important; color: white !important; }
+
+.exames-filtro-bar-sec { border-top: 1px solid var(--borda); }
+
+/* ── BADGES NOVOS ─────────────────────────────────── */
+.badge-tipo-ex {
+    padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 800;
+    border: 1.5px solid; white-space: nowrap; display: inline-flex; align-items: center;
+}
+.badge-presc-sem-ag { background: #f8f9fa; color: #6c757d; }
+.badge-slot-hora    { background: #d1ecf1; color: #0c5460; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+
+/* Badges enfermagem */
+.badge-enf { padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.badge-enf-pendente { background: #fff3cd; color: #856404; }
+.badge-enf-ciente   { background: #d1e7dd; color: #0f5132; }
+.badge-enf-recusado { background: #f8d7da; color: #842029; }
+
+/* Motivo recusa inline */
+.card-ex-recusa {
+    font-size: 11px; color: #842029; background: #f8d7da;
+    border-radius: 6px; padding: 4px 8px; display: flex; align-items: flex-start; gap: 4px; margin-top: 4px;
+}
+.card-motivo-recusa {
+    font-size: 11px; color: #842029; background: #f8d7da;
+    border-radius: 6px; padding: 4px 8px; display: flex; align-items: flex-start; gap: 4px; margin-top: 4px;
+}
+
+/* ── BOTÃO AGENDAR PRESCRIÇÃO ────────────────────── */
+.btn-agendar-presc {
+    background: white; color: var(--cor-primaria); border: 2px solid var(--cor-primaria);
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 9px; border-radius: 8px; font-size: 11px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+}
+.btn-agendar-presc:hover { background: var(--cor-primaria-light); }
+.btn-agendar-presc-novo {
+    flex: 1; background: var(--cor-primaria); color: white; border: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: background 0.2s;
+}
+.btn-agendar-presc-novo:hover { background: var(--cor-primaria-dark); }
+
+/* ── LISTA DE SLOTS NO MODAL ─────────────────────── */
+.lista-slots-ag {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px;
+    max-height: 220px; overflow-y: auto; border: 2px solid var(--borda); border-radius: 10px; padding: 10px;
+    background: #f8f9fa;
+}
+.slot-opcao {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 10px 8px; border-radius: 8px; border: 2px solid var(--borda); background: white;
+    cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.slot-opcao:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-light); }
+.slot-opcao-ativo {
+    border-color: var(--cor-primaria) !important;
+    background: var(--cor-primaria) !important;
+    color: white !important;
+}
+.slot-opcao-hora { font-size: 16px; font-weight: 800; }
+.slot-opcao-dur  { font-size: 11px; color: var(--texto-sec); }
+.slot-opcao-modal { font-size: 10px; font-weight: 700; background: #e2e3e5; border-radius: 6px; padding: 1px 6px; }
+.slot-opcao-ativo .slot-opcao-dur { color: rgba(255,255,255,0.8); }
+.slot-opcao-ativo .slot-opcao-modal { background: rgba(255,255,255,0.2); color: white; }
+
+.form-group textarea {
+    border: 2px solid var(--borda); border-radius: 8px; padding: 9px 12px;
+    font-size: 14px; color: var(--texto); background: white; width: 100%;
+    font-family: inherit; resize: vertical; min-height: 60px;
+}
+.form-group textarea:focus { outline: none; border-color: var(--cor-primaria); }

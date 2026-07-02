@@ -38,15 +38,15 @@
                 <div class="filtros-right">
                     <div class="filtro-status-pills" id="filtro-status-pills">
                         <button class="pill-status ativo" data-status="todos">Todos</button>
-                        <button class="pill-status" data-status="pendentes">Pendentes</button>
-                        <button class="pill-status" data-status="laudado">Laudados</button>
-                        <button class="pill-status" data-status="sem_laudo">Sem Laudo</button>
-                        <button class="pill-status" data-status="sem_envio">Sem Envio</button>
-                        <button class="pill-status pill-ja-realizado" data-status="ja_realizado"><i class="fas fa-exclamation-triangle"></i> Já Realizado</button>
-                    </div>
-                    <div class="view-toggle">
-                        <button class="btn-view ativo" id="btn-view-cards" title="Cards"><i class="fas fa-th-large"></i> Cards</button>
-                        <button class="btn-view" id="btn-view-tabela" title="Tabela"><i class="fas fa-table"></i> Tabela</button>
+                        <button class="pill-status pill-aguardando" data-status="pendente">
+                            <i class="fas fa-clock"></i> Aguard. Ciência
+                        </button>
+                        <button class="pill-status pill-ciente" data-status="ciente">
+                            <i class="fas fa-check"></i> Ciente
+                        </button>
+                        <button class="pill-status pill-recusado" data-status="recusado">
+                            <i class="fas fa-times"></i> Recusado
+                        </button>
                     </div>
                 </div>
             </div>
@@ -65,15 +65,15 @@
         </div>
         <div class="stat-item pendente">
             <div class="stat-item-num" id="cnt-pendentes">-</div>
-            <div class="stat-item-label">Pendentes</div>
+            <div class="stat-item-label">Aguard. Ciência</div>
         </div>
-        <div class="stat-item agendado">
-            <div class="stat-item-num" id="cnt-agendados">-</div>
-            <div class="stat-item-label">Agendados</div>
+        <div class="stat-item ciente">
+            <div class="stat-item-num" id="cnt-cientes">-</div>
+            <div class="stat-item-label">Cientes</div>
         </div>
-        <div class="stat-item concluido">
-            <div class="stat-item-num" id="cnt-concluidos">-</div>
-            <div class="stat-item-label">Concluídos</div>
+        <div class="stat-item recusado">
+            <div class="stat-item-num" id="cnt-recusados">-</div>
+            <div class="stat-item-label">Recusados</div>
         </div>
     </div>
 
@@ -82,30 +82,49 @@
         <div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
     </main>
 
-    <!-- MODAL: REGISTRAR EXAME -->
-    <div id="modal-registrar" class="modal-overlay" style="display:none;">
+    <!-- MODAL: DAR CIÊNCIA -->
+    <div id="modal-ciencia" class="modal-overlay" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
-                <h3><i class="fas fa-paper-plane" style="color:var(--cor-primaria)"></i> Enviar para Radiologia</h3>
-                <button class="btn-fechar-modal" id="modal-reg-fechar"><i class="fas fa-times"></i></button>
+                <h3><i class="fas fa-check-circle" style="color:#28a745"></i> Dar Ciência</h3>
+                <button class="btn-fechar-modal" id="modal-cien-fechar"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <div class="modal-info" id="modal-reg-info"></div>
+                <div class="modal-info" id="modal-cien-info"></div>
+                <p class="modal-confirm-text">Confirma ciência do agendamento deste exame?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal" id="modal-cien-cancelar">Cancelar</button>
+                <button class="btn-modal btn-modal-ciente" id="modal-cien-confirmar">
+                    <i class="fas fa-check"></i> Confirmar Ciência
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: RECUSAR -->
+    <div id="modal-recusar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-times-circle" style="color:#dc3545"></i> Recusar Agendamento</h3>
+                <button class="btn-fechar-modal" id="modal-rec-fechar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-rec-info"></div>
                 <div class="form-group">
-                    <label>Prioridade</label>
-                    <select id="modal-reg-prioridade">
-                        <option value="normal">Normal</option>
-                        <option value="urgente">Urgente</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Observação (opcional)</label>
-                    <textarea id="modal-reg-obs" rows="3" placeholder="Informações adicionais..."></textarea>
+                    <label>Motivo da recusa <span style="color:#dc3545">*</span></label>
+                    <textarea id="modal-rec-motivo" rows="3"
+                        placeholder="Informe o motivo (mínimo 5 caracteres)..."></textarea>
+                    <small class="form-hint" id="modal-rec-hint" style="color:#dc3545;display:none;">
+                        Mínimo 5 caracteres obrigatório.
+                    </small>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-modal" id="modal-reg-cancelar">Cancelar</button>
-                <button class="btn-modal btn-modal-prim" id="modal-reg-confirmar"><i class="fas fa-paper-plane"></i> Enviar</button>
+                <button class="btn-modal" id="modal-rec-cancelar">Cancelar</button>
+                <button class="btn-modal btn-modal-recusar" id="modal-rec-confirmar">
+                    <i class="fas fa-times"></i> Recusar
+                </button>
             </div>
         </div>
     </div>

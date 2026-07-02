@@ -1,23 +1,23 @@
-/* PAINEL 45 - Radiologia / Enfermagem — ES5 */
+/* PAINEL 45 - Radiologia / Enfermagem — ES5
+   Novo fluxo: enfermagem vê exames agendados pela radiologia e dá ciência ou recusa.
+*/
 (function() {
     'use strict';
 
     var CONFIG = {
         api: {
-            exames:   '/api/paineis/painel45/exames',
-            registrar:'/api/paineis/painel45/registrar',
-            cancelar: '/api/paineis/painel45/exames/{id}/cancelar'
+            agendamentos: '/api/paineis/painel45/agendamentos',
+            ciencia:      '/api/paineis/painel45/exames/{id}/ciencia',
+            recusar:      '/api/paineis/painel45/exames/{id}/recusar'
         },
         intervalo: 45000
     };
 
     var Estado = {
         dados: [],
-        setoresSelecionados: [],   // [] = todos
-        filtroStatus: 'todos',     // 'todos'|'pendentes'|'laudado'|'sem_laudo'|'sem_envio'
-        visualizacao: 'cards',     // 'cards' | 'tabela'
-        modalAtendimento: null,
-        modalPrescricao: null
+        setoresSelecionados: [],
+        filtroStatus: 'todos',   // 'todos'|'pendente'|'ciente'|'recusado'
+        modalId: null
     };
 
     // ── Toast ──────────────────────────────────────
@@ -52,94 +52,68 @@
         catch(e) { return iso; }
     }
 
-    function formatarDataHoraCurta(iso) {
-        if (!iso) return null;
+    function formatarDataHora(iso) {
+        if (!iso) return '-';
         try {
-            var d = new Date(iso), h = new Date();
-            var mesmodia = d.getDate() === h.getDate() && d.getMonth() === h.getMonth() && d.getFullYear() === h.getFullYear();
-            var hora = d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-            return mesmodia ? hora : (d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + hora);
+            var d = new Date(iso);
+            var hoje = new Date();
+            var mesmodia = d.getDate() === hoje.getDate()
+                        && d.getMonth() === hoje.getMonth()
+                        && d.getFullYear() === hoje.getFullYear();
+            var h = d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+            if (mesmodia) return h;
+            return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + h;
         } catch(e) { return iso; }
     }
 
     // ── Badges ─────────────────────────────────────
-    function badgeTasy(item) {
-        var s = (item.status_radiologia || '').toUpperCase();
-        if (s === 'LAUDADO')
-            return '<span class="badge-status badge-laudado"><i class="fas fa-check"></i> Laudado</span>';
-        if (s === 'AGUARDANDO')
-            return '<span class="badge-status badge-aguardando"><i class="fas fa-clock"></i> Aguardando</span>';
-        return '<span class="badge-status badge-sem-laudo"><i class="fas fa-hourglass-half"></i> Sem laudo</span>';
-    }
-
-    function badgeRadio(status) {
+    function badgeEnf(status) {
         var mapa = {
-            'pendente':   ['badge-pendente',   'fa-hourglass',      'Pendente'],
-            'agendado':   ['badge-agendado',   'fa-calendar-check', 'Agendado'],
-            'no_local':   ['badge-no_local',   'fa-map-marker-alt', 'No Local'],
-            'executando': ['badge-executando', 'fa-spinner',        'Executando'],
-            'concluido':  ['badge-concluido',  'fa-check-double',   'Concluído'],
-            'cancelado':  ['badge-cancelado',  'fa-ban',            'Cancelado']
+            'pendente': ['badge-enf-pendente', 'fa-clock',       'Aguard. Ciência'],
+            'ciente':   ['badge-enf-ciente',   'fa-check',       'Ciente'],
+            'recusado': ['badge-enf-recusado', 'fa-times',       'Recusado']
         };
-        var m = mapa[status];
-        if (!m) return '<span style="font-size:11px;color:#aaa;">—</span>';
+        var m = mapa[status] || ['', 'fa-question', status || '?'];
         return '<span class="badge-status ' + m[0] + '"><i class="fas ' + m[1] + '"></i> ' + m[2] + '</span>';
     }
 
-    function badgeTransporte(item) {
-        if (!item.chamado_id) {
-            if (item.requer_transporte === false)
-                return '<span style="font-size:11px;color:#aaa;">Portátil</span>';
-            return '';
-        }
-        var s = item.chamado_status || '';
-        if (s === 'aguardando' || s === 'aceito')
-            return '<span class="badge-transp transp-aguardando"><i class="fas fa-clock"></i> A caminho</span>';
-        if (s === 'em_transporte')
-            return '<span class="badge-transp transp-em-transporte"><i class="fas fa-running"></i> Em transporte</span>';
-        if (s === 'concluido')
-            return '<span class="badge-transp transp-concluido"><i class="fas fa-flag-checkered"></i> Chegou</span>';
-        return '';
+    function badgeTipo(tipo) {
+        var cores = {
+            'RX':    ['#0d6efd', '#cfe2ff'],
+            'RM':    ['#6f42c1', '#e2d9f3'],
+            'TC':    ['#0dcaf0', '#cff4fc'],
+            'USG':   ['#198754', '#d1e7dd'],
+            'MAM':   ['#fd7e14', '#ffe5d0'],
+            'OUTROS':['#6c757d', '#e2e3e5']
+        };
+        var c = cores[tipo] || cores['OUTROS'];
+        return '<span class="badge-tipo" style="background:' + c[1] + ';color:' + c[0] + ';border-color:' + c[0] + '">'
+             + escHtml(tipo || 'OUTROS') + '</span>';
     }
 
-    function acoesHtml(item) {
-        if (item.radio_id) {
-            var h = '<span class="txt-ja-registrado"><i class="fas fa-check-circle" style="color:#28a745"></i> Registrado</span>';
-            if (item.slot_data_hora)
-                h += '<div class="slot-agendado-info"><i class="fas fa-clock"></i> ' + formatarHora(item.slot_data_hora) + '</div>';
-            if (item.radio_status !== 'concluido' && item.radio_status !== 'cancelado')
-                h += '<button class="btn-cancelar-reg" onclick="P45.cancelarReg(' + item.radio_id + ')">'
-                   + '<i class="fas fa-times"></i> Cancelar</button>';
-            return h;
-        }
-        // Executado/laudado no Tasy sem nenhum envio prévio da enfermagem
-        if (item.sem_envio_previo) {
-            return '<span class="badge-ja-realizado"><i class="fas fa-check-double"></i> Já Realizado</span>';
-        }
-        var tasy = (item.status_radiologia || '').toUpperCase();
-        if (tasy === 'LAUDADO')
-            return '<span class="txt-ja-registrado"><i class="fas fa-check-double" style="color:#28a745"></i> Laudado</span>';
-        return '<button class="btn-registrar" onclick="P45.abrirRegistrar(\''
-             + escHtml(String(item.nr_atendimento || '')) + '\',\''
-             + escHtml(String(item.nr_prescricao  || '')) + '\',\''
-             + escHtml(item.nm_pessoa_fisica || '') + '\',\''
-             + escHtml(item.ds_procedimento || '') + '\')">'
-             + '<i class="fas fa-paper-plane"></i> Enviar</button>';
+    function badgeRadioStatus(s) {
+        var mapa = {
+            'pendente':   ['badge-radio-pendente',   'fa-hourglass-half', 'Sem horário'],
+            'agendado':   ['badge-radio-agendado',   'fa-calendar-check', 'Agendado'],
+            'no_local':   ['badge-radio-nolo',       'fa-map-marker-alt', 'No Local'],
+            'executando': ['badge-radio-exec',       'fa-spinner',        'Executando'],
+            'concluido':  ['badge-radio-conc',       'fa-check-double',   'Concluído']
+        };
+        var m = mapa[s];
+        if (!m) return '';
+        return '<span class="badge-status ' + m[0] + '"><i class="fas ' + m[1] + '"></i> ' + m[2] + '</span>';
     }
 
-    // ── Pills multi-setor ──────────────────────────
+    // ── Pills de setor ─────────────────────────────
     function popularPills() {
         var container = document.getElementById('pills-setor');
         if (!container) return;
-
-        var setores = [];
-        var vistos = {};
+        var setores = [], vistos = {};
         for (var i = 0; i < Estado.dados.length; i++) {
-            var s = Estado.dados[i].nm_setor || '';
+            var s = Estado.dados[i].setor_origem_nome || '';
             if (s && !vistos[s]) { vistos[s] = true; setores.push(s); }
         }
         setores.sort();
-
         var todosAtivo = !Estado.setoresSelecionados.length;
         var html = '<button class="pill' + (todosAtivo ? ' ativo' : '') + '" data-pill="todos">Todos</button>';
         for (var j = 0; j < setores.length; j++) {
@@ -148,7 +122,6 @@
                   + escHtml(setores[j]) + '</button>';
         }
         container.innerHTML = html;
-
         var btns = container.querySelectorAll('.pill');
         for (var k = 0; k < btns.length; k++) {
             (function(btn) {
@@ -171,103 +144,121 @@
 
     // ── Contadores ─────────────────────────────────
     function atualizarContadores(lista) {
-        var total = lista.length, urgentes = 0, pendentes = 0, agendados = 0, concluidos = 0;
+        var total = lista.length, urgentes = 0, pendentes = 0, cientes = 0, recusados = 0;
         for (var i = 0; i < lista.length; i++) {
             var it = lista[i];
-            if (it.radio_prioridade === 'urgente') urgentes++;
-            if (!it.radio_id) pendentes++;
-            else if (it.radio_status === 'agendado' || it.radio_status === 'no_local') agendados++;
-            else if (it.radio_status === 'concluido') concluidos++;
+            if (it.prioridade === 'urgente') urgentes++;
+            var enf = it.status_enfermagem || 'pendente';
+            if (enf === 'pendente')  pendentes++;
+            else if (enf === 'ciente')   cientes++;
+            else if (enf === 'recusado') recusados++;
         }
-        var ids = {total: total, urgentes: urgentes, pendentes: pendentes, agendados: agendados, concluidos: concluidos};
+        var ids = {total: total, urgentes: urgentes, pendentes: pendentes, cientes: cientes, recusados: recusados};
         for (var k in ids) {
             var el = document.getElementById('cnt-' + k);
             if (el) el.textContent = ids[k];
         }
     }
 
-    // ── Card agrupado por paciente (view cards) ────
-    function cardPacienteExamesHtml(exames) {
-        var info = exames[0];
-        var hasUrgente = false, anyRegistrado = false;
-        for (var i = 0; i < exames.length; i++) {
-            if (exames[i].radio_prioridade === 'urgente') hasUrgente = true;
-            if (exames[i].radio_id) anyRegistrado = true;
-        }
+    // ── Card de agendamento ─────────────────────────
+    function cardAgendamentoHtml(item) {
+        var enf      = item.status_enfermagem || 'pendente';
+        var urgente  = item.prioridade === 'urgente';
+        var recusado = enf === 'recusado';
+        var ciente   = enf === 'ciente';
 
-        var cls = 'card-ex';
-        if (hasUrgente) cls += ' card-ex-urgente';
-        else if (anyRegistrado) cls += ' card-ex-registrado';
+        var cls = 'card-ag';
+        if (urgente)  cls += ' card-ag-urgente';
+        if (recusado) cls += ' card-ag-recusado';
+        if (ciente)   cls += ' card-ag-ciente';
 
         var html = '<div class="' + cls + '">';
 
         // Header
-        html += '<div class="card-ex-header">'
-              + '<span class="card-ex-setor">' + escHtml(info.nm_setor || '') + '</span>'
-              + (hasUrgente ? '<span class="badge-urgente">URGENTE</span>' : '')
-              + '</div>';
+        html += '<div class="card-ag-header">';
+        html += '<span class="card-ag-setor"><i class="fas fa-hospital-alt"></i> ' + escHtml(item.setor_origem_nome || '-') + '</span>';
+        if (urgente) html += '<span class="badge-urgente">URGENTE</span>';
+        html += '</div>';
 
-        // Dados do paciente
-        html += '<div class="card-ex-body">'
-              + '<div class="card-ex-nome">' + escHtml(formatarNome(info.nm_pessoa_fisica)) + '</div>'
-              + '<div class="card-ex-meta">'
-              + '<span><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(String(info.nr_atendimento || '')) + '</span>'
-              + '<span><i class="fas fa-bed"></i> ' + escHtml(info.leito_base || info.leito || '-') + '</span>'
-              + '</div>';
+        // Corpo
+        html += '<div class="card-ag-body">';
 
-        // Lista de exames
-        html += '<div class="card-ex-exames">';
-        for (var j = 0; j < exames.length; j++) {
-            var ex = exames[j];
-            var sepCls = j < exames.length - 1 ? ' card-ex-exam-sep' : '';
-            html += '<div class="card-ex-exam-item' + sepCls + '">';
-            html += '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-');
-            var hrPresc = formatarDataHoraCurta(ex.dt_pedido);
-            if (hrPresc) html += ' <span class="presc-hora"><i class="fas fa-clock"></i> ' + hrPresc + '</span>';
-            html += '</div>';
-            html += '<div class="card-ex-exam-footer">'
-                  + '<div class="card-ex-badges">'
-                  + badgeTasy(ex)
-                  + (ex.radio_id ? ' ' + badgeRadio(ex.radio_status) : '')
-                  + ' ' + badgeTransporte(ex)
-                  + '</div>'
-                  + '<div>' + acoesHtml(ex) + '</div>'
-                  + '</div>';
-            html += '</div>';
-        }
-        html += '</div>'; // card-ex-exames
-        html += '</div></div>'; // card-ex-body + card-ex
-        return html;
-    }
-
-    // ── Card HTML (tabela — mantém um card por exame) ──
-    function cardExHtml(item) {
-        var cls = 'card-ex';
-        if (item.radio_prioridade === 'urgente') cls += ' card-ex-urgente';
-        else if (item.radio_status === 'concluido') cls += ' card-ex-concluido';
-        else if (item.radio_id) cls += ' card-ex-registrado';
-
-        var html = '<div class="' + cls + '">';
-
-        html += '<div class="card-ex-header">'
-              + '<span class="card-ex-setor">' + escHtml(item.nm_setor || '') + '</span>'
-              + (item.radio_prioridade === 'urgente' ? '<span class="badge-urgente">URGENTE</span>' : '')
-              + '</div>';
-
-        html += '<div class="card-ex-body">'
-              + '<div class="card-ex-nome">' + escHtml(formatarNome(item.nm_pessoa_fisica)) + '</div>'
-              + '<div class="card-ex-atnd"><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(String(item.nr_atendimento || '')) + '</div>'
-              + '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-') + '</div>'
-              + '<div class="card-ex-leito"><i class="fas fa-bed"></i> ' + escHtml(item.leito_base || item.leito || '-') + '</div>'
-              + '<div class="card-ex-badges">'
-              + badgeTasy(item)
-              + (item.radio_id ? ' ' + badgeRadio(item.radio_status) : '')
-              + ' ' + badgeTransporte(item)
+        // Paciente
+        html += '<div class="card-ag-paciente">'
+              + '<div class="card-ag-nome">' + escHtml(formatarNome(item.nm_paciente)) + '</div>'
+              + '<div class="card-ag-meta">'
+              + '<span><i class="fas fa-bed"></i> ' + escHtml(item.leito_origem || '-') + '</span>'
               + '</div>'
               + '</div>';
 
-        html += '<div class="card-ex-footer">' + acoesHtml(item) + '</div>';
-        html += '</div>';
+        // Exame + tipo + horário
+        html += '<div class="card-ag-exame">'
+              + '<div class="card-ag-proc"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-') + '</div>'
+              + '<div class="card-ag-badges">'
+              + badgeTipo(item.tipo_exame)
+              + ' ' + badgeEnf(enf)
+              + ' ' + badgeRadioStatus(item.status)
+              + '</div>';
+
+        // Horário do slot
+        if (item.slot_data_hora) {
+            html += '<div class="card-ag-slot"><i class="fas fa-clock"></i> Horário: <strong>'
+                  + formatarDataHora(item.slot_data_hora) + '</strong>';
+            if (item.slot_modalidade) html += ' <span class="badge-modalidade">' + escHtml(item.slot_modalidade) + '</span>';
+            html += '</div>';
+        } else {
+            html += '<div class="card-ag-slot card-ag-slot-sem"><i class="fas fa-calendar-times"></i> Aguardando horário</div>';
+        }
+
+        // Motivo recusa
+        if (recusado && item.motivo_recusa) {
+            html += '<div class="card-ag-recusa-motivo">'
+                  + '<i class="fas fa-exclamation-circle"></i> <strong>Motivo:</strong> '
+                  + escHtml(item.motivo_recusa)
+                  + '</div>';
+        }
+
+        // Observação
+        if (item.observacao) {
+            html += '<div class="card-ag-obs"><i class="fas fa-comment-alt"></i> ' + escHtml(item.observacao) + '</div>';
+        }
+
+        // Médico solicitante
+        if (item.nm_medico_solicitante) {
+            html += '<div class="card-ag-medico"><i class="fas fa-user-md"></i> ' + escHtml(item.nm_medico_solicitante) + '</div>';
+        }
+
+        html += '</div>';  // card-ag-exame
+        html += '</div>';  // card-ag-body
+
+        // Ações — só para exames agendados (com slot) e não concluídos/cancelados
+        var podeAgir = item.status !== 'concluido' && item.status !== 'cancelado';
+        if (podeAgir && item.slot_id) {
+            html += '<div class="card-ag-footer">';
+            if (enf !== 'ciente') {
+                html += '<button class="btn-ciencia" onclick="P45.abrirCiencia(' + item.id + ',\''
+                      + escHtml(item.nm_paciente || '') + '\',\''
+                      + escHtml(item.ds_procedimento || '') + '\')">'
+                      + '<i class="fas fa-check"></i> Dar Ciência</button>';
+            } else {
+                html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciência registrada';
+                if (item.dt_ciencia) html += ' ' + formatarDataHora(item.dt_ciencia);
+                html += '</span>';
+            }
+            if (enf !== 'ciente') {
+                html += '<button class="btn-recusar" onclick="P45.abrirRecusar(' + item.id + ',\''
+                      + escHtml(item.nm_paciente || '') + '\',\''
+                      + escHtml(item.ds_procedimento || '') + '\')">'
+                      + '<i class="fas fa-times"></i> Recusar</button>';
+            }
+            html += '</div>';
+        } else if (!item.slot_id) {
+            html += '<div class="card-ag-footer">'
+                  + '<span class="txt-sem-horario"><i class="fas fa-hourglass-half"></i> Aguardando horário da radiologia</span>'
+                  + '</div>';
+        }
+
+        html += '</div>';  // card-ag
         return html;
     }
 
@@ -278,35 +269,22 @@
 
         popularPills();
 
+        // Filtrar
         var filtrados = [];
         for (var n = 0; n < Estado.dados.length; n++) {
             var it = Estado.dados[n];
-            if (Estado.setoresSelecionados.length && Estado.setoresSelecionados.indexOf(it.nm_setor || '') < 0) continue;
-            var stTasy = (it.status_radiologia || '').toUpperCase();
-            var eSemLaudo = stTasy !== 'LAUDADO' && stTasy !== 'AGUARDANDO';
-            if (Estado.filtroStatus === 'pendentes') {
-                // Pendente = apenas AGUARDANDO no Tasy, sem ter concluído/cancelado internamente
-                if (stTasy === 'LAUDADO' || eSemLaudo) continue;
-                if (it.radio_id && (it.radio_status === 'concluido' || it.radio_status === 'cancelado')) continue;
-            } else if (Estado.filtroStatus === 'laudado') {
-                if (stTasy !== 'LAUDADO') continue;
-            } else if (Estado.filtroStatus === 'sem_laudo') {
-                if (!eSemLaudo) continue;
-            } else if (Estado.filtroStatus === 'sem_envio') {
-                // Sem envio = AGUARDANDO sem radio_agenda (excluir os "já realizado")
-                if (it.radio_id) continue;
-                if (it.sem_envio_previo) continue;
-            } else if (Estado.filtroStatus === 'ja_realizado') {
-                if (!it.sem_envio_previo) continue;
-            }
+            if (Estado.setoresSelecionados.length
+                && Estado.setoresSelecionados.indexOf(it.setor_origem_nome || '') < 0) continue;
+            var enf = it.status_enfermagem || 'pendente';
+            if (Estado.filtroStatus !== 'todos' && enf !== Estado.filtroStatus) continue;
             filtrados.push(it);
         }
 
         atualizarContadores(Estado.dados);
 
         if (!filtrados.length) {
-            mc.innerHTML = '<div class="painel-vazio"><i class="fas fa-x-ray"></i>'
-                + '<p>Nenhum exame encontrado.</p></div>';
+            mc.innerHTML = '<div class="painel-vazio"><i class="fas fa-calendar-check"></i>'
+                + '<p>Nenhum agendamento encontrado.</p></div>';
             return;
         }
 
@@ -314,7 +292,7 @@
         var grupos = {}, ordem = [];
         for (var m = 0; m < filtrados.length; m++) {
             var ex = filtrados[m];
-            var sg = ex.nm_setor || 'Sem setor';
+            var sg = ex.setor_origem_nome || 'Sem setor';
             if (!grupos[sg]) { grupos[sg] = []; ordem.push(sg); }
             grupos[sg].push(ex);
         }
@@ -323,73 +301,33 @@
         for (var s = 0; s < ordem.length; s++) {
             var setor = ordem[s];
             var lista = grupos[setor];
+            var pendCount = 0;
+            for (var pi = 0; pi < lista.length; pi++) {
+                if ((lista[pi].status_enfermagem || 'pendente') === 'pendente') pendCount++;
+            }
             html += '<div class="setor-grupo">'
                   + '<div class="setor-titulo"><i class="fas fa-hospital-alt"></i> ' + escHtml(setor)
-                  + '<span class="setor-count">' + lista.length + '</span></div>';
-
-            if (Estado.visualizacao === 'cards') {
-                // Agrupar por paciente (nr_atendimento)
-                var pacientes = {}, ordemPac = [];
-                for (var pi = 0; pi < lista.length; pi++) {
-                    var pkey = String(lista[pi].nr_atendimento || '');
-                    if (!pacientes[pkey]) { pacientes[pkey] = []; ordemPac.push(pkey); }
-                    pacientes[pkey].push(lista[pi]);
-                }
-                html += '<div class="grid-cards-exames">';
-                for (var oi = 0; oi < ordemPac.length; oi++) {
-                    html += cardPacienteExamesHtml(pacientes[ordemPac[oi]]);
-                }
-                html += '</div>';
-            } else {
-                html += '<div class="tabela-wrapper"><table class="tabela"><thead><tr>'
-                      + '<th>Leito</th><th>Paciente</th><th>Exame</th>'
-                      + '<th style="text-align:center">Prescrição</th>'
-                      + '<th style="text-align:center">Status Tasy</th>'
-                      + '<th style="text-align:center">Controle</th>'
-                      + '<th style="text-align:center">Transporte</th>'
-                      + '<th style="text-align:center">Ações</th>'
-                      + '</tr></thead><tbody>';
-                for (var j = 0; j < lista.length; j++) {
-                    var e = lista[j];
-                    var urgCls = e.radio_prioridade === 'urgente' ? ' linha-urgente' : '';
-                    html += '<tr class="' + urgCls + '">';
-                    html += '<td><span class="leito-badge">' + escHtml(e.leito_base || e.leito || '-') + '</span></td>';
-                    html += '<td><span class="pct-nome">' + escHtml(formatarNome(e.nm_pessoa_fisica)) + '</span>'
-                          + '<div class="pct-atnd"><i class="fas fa-hashtag" style="font-size:10px"></i> ' + escHtml(e.nr_atendimento || '') + '</div></td>';
-                    html += '<td><div class="exame-nome">' + escHtml(e.ds_procedimento || '-') + '</div>';
-                    if (e.requer_transporte === false)
-                        html += '<span class="badge-rx-portatil"><i class="fas fa-bed"></i> Portátil</span>';
-                    if (e.radio_prioridade === 'urgente')
-                        html += ' <span class="badge-urgente">URGENTE</span>';
-                    html += '</td>';
-                    html += '<td style="text-align:center;font-size:12px;white-space:nowrap">'
-                          + '<i class="fas fa-clock" style="color:var(--texto-sec)"></i> '
-                          + (formatarDataHoraCurta(e.dt_pedido) || '-') + '</td>';
-                    html += '<td style="text-align:center">' + badgeTasy(e) + '</td>';
-                    html += '<td style="text-align:center">' + (e.radio_id ? badgeRadio(e.radio_status) : '<span style="font-size:11px;color:#aaa;">—</span>') + '</td>';
-                    html += '<td style="text-align:center">' + badgeTransporte(e) + '</td>';
-                    html += '<td style="text-align:center">' + acoesHtml(e) + '</td>';
-                    html += '</tr>';
-                }
-                html += '</tbody></table></div>';
+                  + '<span class="setor-count">' + lista.length + '</span>';
+            if (pendCount > 0) {
+                html += '<span class="setor-pendentes">' + pendCount + ' aguard.</span>';
             }
             html += '</div>';
+            html += '<div class="grid-cards-ag">';
+            for (var ci = 0; ci < lista.length; ci++) {
+                html += cardAgendamentoHtml(lista[ci]);
+            }
+            html += '</div></div>';
         }
         mc.innerHTML = html;
     }
 
     // ── Carregar ───────────────────────────────────
-    function mostrarErro(msg) {
-        var mc = document.getElementById('main-content');
-        if (mc) mc.innerHTML = '<div class="painel-vazio"><i class="fas fa-exclamation-triangle"></i><p>' + msg + '</p></div>';
-    }
-
     function carregar() {
-        fetch(CONFIG.api.exames, {credentials: 'same-origin'})
+        fetch(CONFIG.api.agendamentos, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) {
-                    Estado.dados = d.dados || d.data || [];
+                    Estado.dados = d.data || [];
                 } else {
                     Estado.dados = [];
                     toast('Erro: ' + (d.error || 'Falha ao carregar'), 'error');
@@ -401,141 +339,117 @@
             .catch(function(e) {
                 console.error('[P45]', e);
                 Estado.dados = [];
-                mostrarErro('Erro de conexão com o servidor.');
+                var mc = document.getElementById('main-content');
+                if (mc) mc.innerHTML = '<div class="painel-vazio"><i class="fas fa-exclamation-triangle"></i><p>Erro de conexão.</p></div>';
                 toast('Erro ao carregar dados', 'error');
             });
     }
 
-    // ── Modal registrar ────────────────────────────
-    function abrirRegistrar(nr, presc, nome, exame) {
-        Estado.modalAtendimento = nr;
-        Estado.modalPrescricao  = presc;
-        var info = document.getElementById('modal-reg-info');
+    // ── Modal Ciência ──────────────────────────────
+    function abrirCiencia(id, nome, exame) {
+        Estado.modalId = id;
+        var info = document.getElementById('modal-cien-info');
         if (info) {
             info.innerHTML = '<strong>' + escHtml(formatarNome(nome)) + '</strong><br>'
-                           + '<small>' + escHtml(exame) + ' · Atend. ' + escHtml(String(nr)) + '</small>';
+                           + '<small>' + escHtml(exame) + '</small>';
         }
-        var obs = document.getElementById('modal-reg-obs');
-        if (obs) obs.value = '';
-        var sel = document.getElementById('modal-reg-prioridade');
-        if (sel) sel.value = 'normal';
-        var modal = document.getElementById('modal-registrar');
+        var modal = document.getElementById('modal-ciencia');
         if (modal) modal.style.display = 'flex';
     }
 
-    function fecharModal() {
-        var modal = document.getElementById('modal-registrar');
+    function fecharCiencia() {
+        var modal = document.getElementById('modal-ciencia');
         if (modal) modal.style.display = 'none';
+        Estado.modalId = null;
     }
 
-    function confirmarRegistrar() {
-        var prioridade = document.getElementById('modal-reg-prioridade').value;
-        var obs = document.getElementById('modal-reg-obs').value.trim();
-        var btn = document.getElementById('modal-reg-confirmar');
+    function confirmarCiencia() {
+        if (!Estado.modalId) return;
+        var btn = document.getElementById('modal-cien-confirmar');
         if (btn) btn.disabled = true;
-
-        var exame = null;
-        for (var i = 0; i < Estado.dados.length; i++) {
-            var d = Estado.dados[i];
-            if (String(d.nr_atendimento) === String(Estado.modalAtendimento)
-                && String(d.nr_prescricao || '') === String(Estado.modalPrescricao || '')) {
-                exame = d; break;
-            }
-        }
-        // fallback: busca só por atendimento se prescrição não bateu
-        if (!exame) {
-            for (var j = 0; j < Estado.dados.length; j++) {
-                if (String(Estado.dados[j].nr_atendimento) === String(Estado.modalAtendimento)) {
-                    exame = Estado.dados[j]; break;
-                }
-            }
-        }
-        if (!exame) { toast('Exame não encontrado.', 'error'); if (btn) btn.disabled = false; return; }
-
-        fetch(CONFIG.api.registrar, {
-            method: 'POST', credentials: 'same-origin',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                nr_atendimento:       String(exame.nr_atendimento || ''),
-                nr_prescricao:        String(exame.nr_prescricao  || ''),
-                ds_procedimento:      exame.ds_procedimento || '',
-                nm_paciente:          exame.nm_pessoa_fisica || '',
-                leito_origem:         exame.leito_base || exame.leito || '',
-                setor_origem_nome:    exame.nm_setor || '',
-                cd_setor_atendimento: exame.cd_setor_atendimento || null,
-                nm_medico_solicitante: exame.nm_medico || '',
-                prioridade:           prioridade,
-                observacao:           obs
+        var url = CONFIG.api.ciencia.replace('{id}', Estado.modalId);
+        fetch(url, {method: 'PUT', credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json'}})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                fecharCiencia();
+                if (d.success) { toast('Ciência registrada!', 'success'); carregar(); }
+                else toast('Erro: ' + (d.error || 'Falha'), 'error');
             })
+            .catch(function(e) { console.error('[P45]', e); toast('Erro de conexão', 'error'); })
+            .finally(function() { if (btn) btn.disabled = false; });
+    }
+
+    // ── Modal Recusar ──────────────────────────────
+    function abrirRecusar(id, nome, exame) {
+        Estado.modalId = id;
+        var info = document.getElementById('modal-rec-info');
+        if (info) {
+            info.innerHTML = '<strong>' + escHtml(formatarNome(nome)) + '</strong><br>'
+                           + '<small>' + escHtml(exame) + '</small>';
+        }
+        var motivo = document.getElementById('modal-rec-motivo');
+        if (motivo) motivo.value = '';
+        var hint = document.getElementById('modal-rec-hint');
+        if (hint) hint.style.display = 'none';
+        var modal = document.getElementById('modal-recusar');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function fecharRecusar() {
+        var modal = document.getElementById('modal-recusar');
+        if (modal) modal.style.display = 'none';
+        Estado.modalId = null;
+    }
+
+    function confirmarRecusar() {
+        if (!Estado.modalId) return;
+        var motivoEl = document.getElementById('modal-rec-motivo');
+        var hint     = document.getElementById('modal-rec-hint');
+        var motivo   = motivoEl ? motivoEl.value.trim() : '';
+        if (motivo.length < 5) {
+            if (hint) hint.style.display = '';
+            return;
+        }
+        if (hint) hint.style.display = 'none';
+        var btn = document.getElementById('modal-rec-confirmar');
+        if (btn) btn.disabled = true;
+        var url = CONFIG.api.recusar.replace('{id}', Estado.modalId);
+        fetch(url, {
+            method: 'PUT', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({motivo: motivo})
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            fecharModal();
-            if (d.success) { toast('Exame enviado para radiologia!', 'success'); carregar(); }
-            else toast('Erro: ' + (d.error || 'Falha ao registrar'), 'error');
+            fecharRecusar();
+            if (d.success) { toast('Agendamento recusado.', 'warning'); carregar(); }
+            else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P45]', e); toast('Erro de conexão', 'error'); })
         .finally(function() { if (btn) btn.disabled = false; });
     }
 
-    function cancelarReg(radioId) {
-        if (!confirm('Cancelar este registro de radiologia?')) return;
-        fetch(CONFIG.api.cancelar.replace('{id}', radioId), {
-            method: 'PUT', credentials: 'same-origin',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({motivo: 'Cancelado pela enfermagem'})
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.success) { toast('Registro cancelado.', 'warning'); carregar(); }
-            else toast('Erro: ' + (d.error || 'Falha'), 'error');
-        })
-        .catch(function(e) { console.error('[P45]', e); toast('Erro de conexão', 'error'); });
-    }
-
     // ── Inicializar ────────────────────────────────
     function inicializar() {
-        // Restaurar preferências
         try {
             var ss = localStorage.getItem('p45_setores');
             if (ss) Estado.setoresSelecionados = JSON.parse(ss) || [];
         } catch(e) { Estado.setoresSelecionados = []; }
-
         Estado.filtroStatus = localStorage.getItem('p45_filtro_status') || 'todos';
-        Estado.visualizacao = localStorage.getItem('p45_view') || 'cards';
 
-        // View toggle
-        var btnCards  = document.getElementById('btn-view-cards');
-        var btnTabela = document.getElementById('btn-view-tabela');
-        function atualizarBotoesView() {
-            if (btnCards)  btnCards.className  = 'btn-view' + (Estado.visualizacao === 'cards'  ? ' ativo' : '');
-            if (btnTabela) btnTabela.className = 'btn-view' + (Estado.visualizacao === 'tabela' ? ' ativo' : '');
-        }
-        atualizarBotoesView();
-        if (btnCards) btnCards.addEventListener('click', function() {
-            Estado.visualizacao = 'cards';
-            localStorage.setItem('p45_view', 'cards');
-            atualizarBotoesView();
-            renderizar();
-        });
-        if (btnTabela) btnTabela.addEventListener('click', function() {
-            Estado.visualizacao = 'tabela';
-            localStorage.setItem('p45_view', 'tabela');
-            atualizarBotoesView();
-            renderizar();
-        });
-
-        // Pills de filtro de status
+        // Pills de status
         function atualizarPillsStatus() {
             var btns = document.querySelectorAll('#filtro-status-pills .pill-status');
             for (var i = 0; i < btns.length; i++) {
-                btns[i].className = 'pill-status' + (btns[i].getAttribute('data-status') === Estado.filtroStatus ? ' ativo' : '');
+                var ativo = btns[i].getAttribute('data-status') === Estado.filtroStatus;
+                btns[i].className = btns[i].className.replace(' ativo', '') + (ativo ? ' ativo' : '');
             }
         }
         atualizarPillsStatus();
-        var pillsContainer = document.getElementById('filtro-status-pills');
-        if (pillsContainer) {
-            var pillBtns = pillsContainer.querySelectorAll('.pill-status');
+        var pillsCont = document.getElementById('filtro-status-pills');
+        if (pillsCont) {
+            var pillBtns = pillsCont.querySelectorAll('.pill-status');
             for (var pi = 0; pi < pillBtns.length; pi++) {
                 (function(btn) {
                     btn.addEventListener('click', function() {
@@ -554,19 +468,30 @@
         var btnV = document.getElementById('btn-voltar');
         if (btnV) btnV.addEventListener('click', function() { window.history.back(); });
 
-        // Modal
-        document.getElementById('modal-reg-fechar').addEventListener('click', fecharModal);
-        document.getElementById('modal-reg-cancelar').addEventListener('click', fecharModal);
-        document.getElementById('modal-reg-confirmar').addEventListener('click', confirmarRegistrar);
-        document.getElementById('modal-registrar').addEventListener('click', function(e) {
-            if (e.target === this) fecharModal();
+        // Modal ciência
+        document.getElementById('modal-cien-fechar').addEventListener('click', fecharCiencia);
+        document.getElementById('modal-cien-cancelar').addEventListener('click', fecharCiencia);
+        document.getElementById('modal-cien-confirmar').addEventListener('click', confirmarCiencia);
+        document.getElementById('modal-ciencia').addEventListener('click', function(e) {
+            if (e.target === this) fecharCiencia();
+        });
+
+        // Modal recusar
+        document.getElementById('modal-rec-fechar').addEventListener('click', fecharRecusar);
+        document.getElementById('modal-rec-cancelar').addEventListener('click', fecharRecusar);
+        document.getElementById('modal-rec-confirmar').addEventListener('click', confirmarRecusar);
+        document.getElementById('modal-recusar').addEventListener('click', function(e) {
+            if (e.target === this) fecharRecusar();
         });
 
         carregar();
         setInterval(carregar, CONFIG.intervalo);
     }
 
-    window.P45 = { abrirRegistrar: abrirRegistrar, cancelarReg: cancelarReg };
+    window.P45 = {
+        abrirCiencia: abrirCiencia,
+        abrirRecusar: abrirRecusar
+    };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);
     else inicializar();

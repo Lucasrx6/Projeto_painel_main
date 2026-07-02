@@ -4,15 +4,17 @@
 
     var CONFIG = {
         api: {
-            fila:         '/api/paineis/painel46/fila',
-            semEnvio:     '/api/paineis/painel46/sem-envio',
-            slots:        '/api/paineis/painel46/slots',
-            slotsLote:    '/api/paineis/painel46/slots/lote',
-            exameStatus:  '/api/paineis/painel46/exames/{id}/status',
-            agendar:      '/api/paineis/painel46/exames/{id}/agendar',
-            slotUpdate:   '/api/paineis/painel46/slots/{id}',
-            slotDelete:   '/api/paineis/painel46/slots/{id}',
-            todosExames:  '/api/paineis/painel46/todos-exames'
+            fila:            '/api/paineis/painel46/fila',
+            semEnvio:        '/api/paineis/painel46/sem-envio',
+            slots:           '/api/paineis/painel46/slots',
+            slotsLote:       '/api/paineis/painel46/slots/lote',
+            exameStatus:     '/api/paineis/painel46/exames/{id}/status',
+            agendar:         '/api/paineis/painel46/exames/{id}/agendar',
+            slotUpdate:      '/api/paineis/painel46/slots/{id}',
+            slotDelete:      '/api/paineis/painel46/slots/{id}',
+            prescricoes:     '/api/paineis/painel46/prescricoes',
+            agendarPrescricao: '/api/paineis/painel46/agendar-prescricao',
+            slotsPorTipo:    '/api/paineis/painel46/slots-por-tipo'
         },
         intervalo: 45000
     };
@@ -25,11 +27,16 @@
         semEnvioAberto: false,
         slots: [],
         exames: [],
-        setoresExamesSelecionados: [],   // [] = todos
+        setoresExamesSelecionados: [],
+        filtroTipoExame: '',             // '' | 'RX' | 'RM' | 'TC' | 'USG' | 'MAM' | 'OUTROS'
         filtroSemControle: false,
-        visualizacaoExames: 'cards',     // 'cards' | 'tabela'
+        visualizacaoExames: 'cards',
         carregandoFila: false,
-        carregandoExames: false
+        carregandoExames: false,
+        // Scheduling modal
+        modalAgendPresc: null,           // prescrição selecionada
+        modalAgendSlotId: null,          // slot selecionado
+        slotsDisponiveis: []
     };
 
     var DOM = {};
@@ -81,6 +88,32 @@
         var el = document.getElementById('status-dot');
         if (!el) return;
         el.className = offline ? 'status-dot offline' : 'status-dot';
+    }
+
+    // ── Badges auxiliares ──────────────────────────
+    function badgeTipoExame(tipo) {
+        var cores = {
+            'RX':    ['#0d6efd', '#cfe2ff'],
+            'RM':    ['#6f42c1', '#e2d9f3'],
+            'TC':    ['#0dcaf0', '#cff4fc'],
+            'USG':   ['#198754', '#d1e7dd'],
+            'MAM':   ['#fd7e14', '#ffe5d0'],
+            'OUTROS':['#6c757d', '#e2e3e5']
+        };
+        if (!tipo) return '';
+        var c = cores[tipo] || cores['OUTROS'];
+        return '<span class="badge-tipo-ex" style="background:' + c[1] + ';color:' + c[0] + ';border-color:' + c[0] + '">'
+             + escHtml(tipo) + '</span>';
+    }
+
+    function badgeStatusEnf(enf) {
+        if (!enf || enf === 'pendente')
+            return '<span class="badge-enf badge-enf-pendente"><i class="fas fa-clock"></i> Aguard. Ciência</span>';
+        if (enf === 'ciente')
+            return '<span class="badge-enf badge-enf-ciente"><i class="fas fa-check"></i> Ciente</span>';
+        if (enf === 'recusado')
+            return '<span class="badge-enf badge-enf-recusado"><i class="fas fa-times"></i> Recusado</span>';
+        return '';
     }
 
     // ── Tabs ───────────────────────────────────────
@@ -154,7 +187,8 @@
         html += '</div>';
 
         html += '<div class="card-body-p">'
-              + '<div class="card-exame"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-') + '</div>';
+              + '<div class="card-exame"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-')
+              + (item.tipo_exame ? ' ' + badgeTipoExame(item.tipo_exame) : '') + '</div>';
         if (item.leito_origem)
             html += '<div class="card-linha"><i class="fas fa-bed"></i><span>' + escHtml(item.leito_origem) + '</span></div>';
         if (item.setor_origem_nome)
@@ -162,7 +196,10 @@
         if (item.slot_data_hora)
             html += '<div class="card-linha"><i class="fas fa-clock"></i><span><strong>' + formatarHora(item.slot_data_hora) + '</strong>'
                   + (item.slot_modalidade ? ' — ' + escHtml(item.slot_modalidade) : '') + '</span></div>';
-        html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeTransporte(item) + '</div>';
+        html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeStatusEnf(item.status_enfermagem) + badgeTransporte(item) + '</div>';
+        if (item.status_enfermagem === 'recusado' && item.motivo_recusa)
+            html += '<div class="card-motivo-recusa"><i class="fas fa-exclamation-circle"></i> '
+                  + escHtml(item.motivo_recusa) + '</div>';
         html += '</div>';
 
         html += '<div class="card-footer-p">';
@@ -271,14 +308,16 @@
         }
     }
 
-    // ── Card Exame (aba exames) ─────────────────────
+    // ── Card Prescrição (aba exames/prescrições) ────
     function cardExameHtml(ex) {
         var radioId  = ex.radio_id;
         var radioSt  = ex.radio_status || '';
+        var enfSt    = ex.status_enfermagem || '';
         var slotHora = ex.slot_data_hora ? formatarHora(ex.slot_data_hora) : '';
+        var urgente  = ex.ie_urgente === 'S' || ex.radio_prioridade === 'urgente';
 
         var cls = 'card-ex';
-        if (ex.radio_prioridade === 'urgente') cls += ' card-ex-urgente';
+        if (urgente) cls += ' card-ex-urgente';
         else if (radioSt === 'concluido') cls += ' card-ex-concluido';
         else if (radioId) cls += ' card-ex-registrado';
 
@@ -286,7 +325,7 @@
 
         html += '<div class="card-ex-header">'
               + '<span class="card-ex-setor">' + escHtml(ex.nm_setor || '') + '</span>'
-              + (ex.radio_prioridade === 'urgente' ? '<span class="badge-urgente">URGENTE</span>' : '')
+              + (urgente ? '<span class="badge-urgente">URGENTE</span>' : '')
               + '</div>';
 
         html += '<div class="card-ex-body">'
@@ -296,13 +335,21 @@
               + '<div class="card-ex-leito"><i class="fas fa-bed"></i> ' + escHtml(ex.leito || ex.leito_base || '-') + '</div>';
 
         html += '<div class="card-ex-badges">';
+        html += badgeTipoExame(ex.tipo_exame);
         if (radioId) {
-            html += badgeStatus(radioSt);
-            if (slotHora) html += '<span style="font-size:11px;color:#0c5460"><i class="fas fa-clock"></i> ' + slotHora + '</span>';
+            html += ' ' + badgeStatus(radioSt);
+            html += ' ' + badgeStatusEnf(enfSt);
+            if (slotHora) html += '<span class="badge-slot-hora"><i class="fas fa-clock"></i> ' + slotHora + '</span>';
         } else {
-            html += '<span class="badge-status badge-pendente" style="opacity:.6"><i class="fas fa-minus"></i> Sem controle</span>';
+            html += '<span class="badge-status badge-presc-sem-ag"><i class="fas fa-calendar-plus"></i> Sem agendamento</span>';
         }
-        html += '</div></div>';
+        html += '</div>';
+
+        if (enfSt === 'recusado' && ex.motivo_recusa) {
+            html += '<div class="card-ex-recusa"><i class="fas fa-exclamation-circle"></i> ' + escHtml(ex.motivo_recusa) + '</div>';
+        }
+
+        html += '</div>';  // card-ex-body
 
         html += '<div class="card-ex-footer">';
         if (radioId) {
@@ -313,12 +360,40 @@
             if (radioSt === 'executando')
                 html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + radioId + ',\'concluido\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-check"></i> Concluir</button>';
             if (radioSt !== 'concluido' && radioSt !== 'cancelado')
+                html += '<button class="btn-card-acao btn-agendar-presc" onclick="P46.abrirAgendarPresc(\''
+                      + escHtml(String(ex.nr_atendimento || '')) + '\',\''
+                      + escHtml(String(ex.nr_prescricao || '')) + '\')" style="font-size:11px;padding:5px 9px">'
+                      + '<i class="fas fa-calendar-alt"></i> ' + (enfSt === 'recusado' ? 'Reagendar' : 'Reagendar') + '</button>';
+            if (radioSt !== 'concluido' && radioSt !== 'cancelado')
                 html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + radioId + ',\'cancelado\')" style="font-size:11px;padding:5px 9px"><i class="fas fa-times"></i></button>';
         } else {
-            html += '<span style="font-size:11px;color:#6c757d;">Aguardando registro</span>';
+            html += '<button class="btn-card-acao btn-agendar-presc-novo" onclick="P46.abrirAgendarPresc(\''
+                  + escHtml(String(ex.nr_atendimento || '')) + '\',\''
+                  + escHtml(String(ex.nr_prescricao || '')) + '\')">'
+                  + '<i class="fas fa-calendar-plus"></i> Agendar</button>';
         }
         html += '</div></div>';
         return html;
+    }
+
+    // ── Pills Tipo Exame ───────────────────────────
+    function inicializarPillsTipo() {
+        var container = document.getElementById('exames-pills-tipo');
+        if (!container) return;
+        var btns = container.querySelectorAll('.pill-tipo');
+        for (var i = 0; i < btns.length; i++) {
+            (function(btn) {
+                btn.addEventListener('click', function() {
+                    Estado.filtroTipoExame = btn.getAttribute('data-tipo') || '';
+                    var todos = container.querySelectorAll('.pill-tipo');
+                    for (var j = 0; j < todos.length; j++) {
+                        todos[j].className = todos[j].className.replace(' ativo', '')
+                            + (todos[j].getAttribute('data-tipo') === Estado.filtroTipoExame ? ' ativo' : '');
+                    }
+                    renderizarExamesRadio();
+                });
+            })(btns[i]);
+        }
     }
 
     // ── Renderizar Exames ──────────────────────────
@@ -334,6 +409,7 @@
         for (var i = 0; i < dados.length; i++) {
             var ex = dados[i];
             if (Estado.setoresExamesSelecionados.length && Estado.setoresExamesSelecionados.indexOf(ex.nm_setor || '') < 0) continue;
+            if (Estado.filtroTipoExame && ex.tipo_exame !== Estado.filtroTipoExame) continue;
             if (Estado.filtroSemControle && ex.radio_id) continue;
             filtrados.push(ex);
         }
@@ -579,7 +655,7 @@
         if (vazio)    vazio.style.display = 'none';
         if (conteudo) conteudo.style.display = 'none';
 
-        fetch(CONFIG.api.todosExames, {credentials: 'same-origin'})
+        fetch(CONFIG.api.prescricoes, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) {
@@ -587,7 +663,7 @@
                     popularPillsExames(Estado.exames);
                 } else {
                     Estado.exames = [];
-                    toast('Erro ao carregar exames: ' + (d.error || 'Falha'), 'error');
+                    toast('Erro ao carregar prescrições: ' + (d.error || 'Falha'), 'error');
                 }
                 renderizarExamesRadio();
             })
@@ -788,6 +864,139 @@
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
     }
 
+    // ── Modal Agendar Prescrição ───────────────────
+    function abrirAgendarPresc(nrAtendimento, nrPrescricao) {
+        var presc = null;
+        for (var i = 0; i < Estado.exames.length; i++) {
+            var ex = Estado.exames[i];
+            if (String(ex.nr_atendimento) === String(nrAtendimento)
+                && String(ex.nr_prescricao || '') === String(nrPrescricao || '')) {
+                presc = ex; break;
+            }
+        }
+        if (!presc) { toast('Prescrição não encontrada.', 'error'); return; }
+
+        Estado.modalAgendPresc   = presc;
+        Estado.modalAgendSlotId  = null;
+
+        var infoEl = document.getElementById('modal-ag-info');
+        if (infoEl) {
+            infoEl.innerHTML = '<strong>' + escHtml(formatarNome(presc.nm_pessoa_fisica)) + '</strong><br>'
+                + '<small>' + escHtml(presc.ds_procedimento || '-') + '</small>'
+                + (presc.leito || presc.leito_base ? '<br><small><i class="fas fa-bed"></i> ' + escHtml(presc.leito || presc.leito_base || '') + '</small>' : '');
+        }
+        var tipoEl = document.getElementById('ag-tipo');
+        if (tipoEl) tipoEl.value = presc.tipo_exame || 'OUTROS';
+        var dataEl = document.getElementById('ag-data');
+        if (dataEl) dataEl.value = new Date().toISOString().slice(0, 10);
+        var obsEl = document.getElementById('ag-obs');
+        if (obsEl) obsEl.value = '';
+        var priEl = document.getElementById('ag-prioridade');
+        if (priEl) priEl.value = presc.radio_prioridade || 'normal';
+        var btnOk = document.getElementById('modal-ag-confirmar');
+        if (btnOk) btnOk.disabled = true;
+
+        renderizarSlotsDaModal([]);
+        buscarSlotsPorTipo();
+        abrirModal('modal-agendar-presc');
+    }
+
+    function buscarSlotsPorTipo() {
+        var presc = Estado.modalAgendPresc;
+        if (!presc) return;
+        var tipo    = presc.tipo_exame || '';
+        var dataEl  = document.getElementById('ag-data');
+        var data    = dataEl ? dataEl.value : new Date().toISOString().slice(0, 10);
+        var loadEl  = document.getElementById('ag-slots-loading');
+        if (loadEl) loadEl.style.display = '';
+        Estado.modalAgendSlotId = null;
+        var btnOk = document.getElementById('modal-ag-confirmar');
+        if (btnOk) btnOk.disabled = true;
+        fetch(CONFIG.api.slotsPorTipo + '?tipo=' + encodeURIComponent(tipo) + '&data=' + encodeURIComponent(data),
+              {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                Estado.slotsDisponiveis = (d.success && d.data) ? d.data : [];
+                renderizarSlotsDaModal(Estado.slotsDisponiveis);
+            })
+            .catch(function(e) {
+                console.error('[P46] slots-por-tipo:', e);
+                Estado.slotsDisponiveis = [];
+                renderizarSlotsDaModal([]);
+            })
+            .finally(function() { if (loadEl) loadEl.style.display = 'none'; });
+    }
+
+    function renderizarSlotsDaModal(slots) {
+        var listaEl = document.getElementById('ag-lista-slots');
+        if (!listaEl) return;
+        if (!slots.length) {
+            listaEl.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;font-size:13px;">'
+                + '<i class="fas fa-calendar-times"></i> Nenhuma vaga disponível para esta data e tipo.</div>';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < slots.length; i++) {
+            var s = slots[i];
+            html += '<div class="slot-opcao" data-slot-id="' + s.id + '" onclick="P46.selecionarSlot(' + s.id + ')">'
+                  + '<span class="slot-opcao-hora">' + formatarHora(s.data_hora) + '</span>'
+                  + '<span class="slot-opcao-dur">' + (s.duracao_min || 30) + ' min</span>'
+                  + (s.modalidade ? '<span class="slot-opcao-modal">' + escHtml(s.modalidade) + '</span>' : '')
+                  + '</div>';
+        }
+        listaEl.innerHTML = html;
+    }
+
+    function selecionarSlot(slotId) {
+        Estado.modalAgendSlotId = slotId;
+        var items = document.querySelectorAll('.slot-opcao');
+        for (var i = 0; i < items.length; i++) {
+            var sid = parseInt(items[i].getAttribute('data-slot-id'));
+            items[i].className = sid === slotId ? 'slot-opcao slot-opcao-ativo' : 'slot-opcao';
+        }
+        var btnOk = document.getElementById('modal-ag-confirmar');
+        if (btnOk) btnOk.disabled = false;
+    }
+
+    function confirmarAgendamento() {
+        var presc   = Estado.modalAgendPresc;
+        var slotId  = Estado.modalAgendSlotId;
+        if (!presc || !slotId) { toast('Selecione um horário.', 'warning'); return; }
+        var priEl = document.getElementById('ag-prioridade');
+        var obsEl = document.getElementById('ag-obs');
+        var btnOk = document.getElementById('modal-ag-confirmar');
+        if (btnOk) btnOk.disabled = true;
+        fetch(CONFIG.api.agendarPrescricao, {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                nr_atendimento:       String(presc.nr_atendimento || ''),
+                nr_prescricao:        String(presc.nr_prescricao || ''),
+                slot_id:              slotId,
+                nm_paciente:          presc.nm_pessoa_fisica || '',
+                ds_procedimento:      presc.ds_procedimento || '',
+                leito_origem:         presc.leito || presc.leito_base || '',
+                setor_origem_nome:    presc.nm_setor || '',
+                cd_setor_atendimento: presc.cd_setor_atendimento || null,
+                prioridade:           priEl ? priEl.value : 'normal',
+                requer_transporte:    true,
+                observacao:           obsEl ? obsEl.value.trim() : '',
+                nm_medico_solicitante: presc.nm_medico_solicitante || ''
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            fecharModal('modal-agendar-presc');
+            if (d.success) {
+                toast('Exame agendado com sucesso!', 'success');
+                carregarExamesRadio();
+                carregarFila();
+            } else toast('Erro: ' + (d.error || 'Falha ao agendar'), 'error');
+        })
+        .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); })
+        .finally(function() { if (btnOk) btnOk.disabled = false; });
+    }
+
     // ── Helpers modal ──────────────────────────────
     function fecharModal(modalId) {
         var el = document.getElementById(modalId);
@@ -806,6 +1015,9 @@
 
         // Restaurar preferências
         Estado.visualizacaoExames = localStorage.getItem('p46_view_exames') || 'cards';
+
+        // Pills de tipo de exame
+        inicializarPillsTipo();
 
         // Tabs
         var abasBtns = document.querySelectorAll('.aba');
@@ -893,6 +1105,13 @@
         var btnLoteOk = document.getElementById('modal-lote-confirmar');
         if (btnLoteOk) btnLoteOk.addEventListener('click', criarLote);
 
+        // Modal agendar prescrição
+        var btnAgOk = document.getElementById('modal-ag-confirmar');
+        if (btnAgOk) btnAgOk.addEventListener('click', confirmarAgendamento);
+        // Recarregar slots quando muda a data
+        var agDataEl = document.getElementById('ag-data');
+        if (agDataEl) agDataEl.addEventListener('change', buscarSlotsPorTipo);
+
         // Modal avulso
         var btnAv = document.getElementById('btn-criar-avulso');
         if (btnAv) btnAv.addEventListener('click', function() {
@@ -916,7 +1135,9 @@
         abrirAgendar:        abrirAgendar,
         vincularPaciente:    vincularPaciente,
         carregarExamesRadio: carregarExamesRadio,
-        toggleSemEnvio:      toggleSemEnvio
+        toggleSemEnvio:      toggleSemEnvio,
+        abrirAgendarPresc:   abrirAgendarPresc,
+        selecionarSlot:      selecionarSlot
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);

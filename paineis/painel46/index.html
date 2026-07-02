@@ -33,7 +33,7 @@
     <div class="abas-bar">
         <div class="abas-content">
             <button class="aba aba-ativa" data-aba="fila"><i class="fas fa-list-ol"></i> Fila do Dia</button>
-            <button class="aba" data-aba="exames"><i class="fas fa-clipboard-list"></i> Exames</button>
+            <button class="aba" data-aba="exames"><i class="fas fa-clipboard-list"></i> Prescrições</button>
             <button class="aba" data-aba="agenda"><i class="fas fa-calendar-alt"></i> Agenda</button>
             <!-- Navegação de data (visível só na aba agenda) -->
             <div id="nav-data" class="nav-data" style="display:none;margin-left:12px;">
@@ -84,16 +84,27 @@
             </div>
         </div>
 
-        <!-- ABA: EXAMES -->
+        <!-- ABA: PRESCRIÇÕES -->
         <div id="aba-exames" class="aba-conteudo" style="display:none;">
             <div class="exames-filtro-bar">
+                <div class="pills-tipo" id="exames-pills-tipo">
+                    <button class="pill-tipo ativo" data-tipo="">Todos</button>
+                    <button class="pill-tipo pill-tipo-rx" data-tipo="RX">RX</button>
+                    <button class="pill-tipo pill-tipo-rm" data-tipo="RM">RM</button>
+                    <button class="pill-tipo pill-tipo-tc" data-tipo="TC">TC</button>
+                    <button class="pill-tipo pill-tipo-usg" data-tipo="USG">USG</button>
+                    <button class="pill-tipo pill-tipo-mam" data-tipo="MAM">MAM</button>
+                    <button class="pill-tipo pill-tipo-outros" data-tipo="OUTROS">Outros</button>
+                </div>
+            </div>
+            <div class="exames-filtro-bar exames-filtro-bar-sec">
                 <div class="pills-setor" id="exames-pills-setor">
                     <button class="pill ativo" data-pill="todos">Todos</button>
                 </div>
                 <div class="filtros-right">
                     <label class="exames-filtro-toggle">
                         <input type="checkbox" id="exames-toggle-sem-controle">
-                        Apenas sem controle
+                        Apenas sem agendar
                     </label>
                     <div class="view-toggle">
                         <button class="btn-view ativo" id="exames-btn-cards" title="Cards"><i class="fas fa-th-large"></i> Cards</button>
@@ -223,6 +234,54 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-modal" data-fecha="modal-vincular">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: AGENDAR PRESCRIÇÃO -->
+    <div id="modal-agendar-presc" class="modal-overlay" style="display:none;">
+        <div class="modal-box modal-box-wide">
+            <div class="modal-header">
+                <h3><i class="fas fa-calendar-plus"></i> Agendar Exame</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-agendar-presc"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info" id="modal-ag-info"></div>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>Data do Agendamento</label>
+                        <input type="date" id="ag-data">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo Detectado</label>
+                        <input type="text" id="ag-tipo" readonly style="background:#f8f9fa;font-weight:700;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Prioridade</label>
+                    <select id="ag-prioridade">
+                        <option value="normal">Normal</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Observação (opcional)</label>
+                    <textarea id="ag-obs" rows="2" placeholder="Informações adicionais..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Horário Disponível <span id="ag-slots-loading" style="font-size:11px;color:#6c757d;display:none;">(buscando...)</span></label>
+                    <div id="ag-lista-slots" class="lista-slots-ag">
+                        <div style="text-align:center;padding:20px;color:#6c757d;font-size:13px;">
+                            Selecione uma data para ver os horários disponíveis.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal" data-fecha="modal-agendar-presc">Cancelar</button>
+                <button class="btn-modal btn-modal-prim" id="modal-ag-confirmar" disabled>
+                    <i class="fas fa-calendar-check"></i> Confirmar Agendamento
+                </button>
             </div>
         </div>
     </div>

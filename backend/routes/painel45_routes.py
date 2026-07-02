@@ -1,23 +1,32 @@
 """
-Painel 45 - Radiologia / Enfermagem
-Visualização e registro de exames de radiologia que precisam de controle de fluxo.
-Lê de painel19_radiologia_pendencias e gerencia radio_agenda.
+Painel 45 - Enfermagem / Radiologia
+Nova função: enfermagem vê os exames agendados pela radiologia e dá ciência ou recusa.
+Não envia mais pacientes — a radiologia cria o agendamento.
 """
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from decimal import Decimal
-from psycopg2.extras import RealDictCursor
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
-from backend.cache import cache_route, cache_delete_pattern
+from backend.cache import cache_delete_pattern
 
 painel45_bp = Blueprint('painel45', __name__)
 
-# Exames portáteis (feitos no leito, sem transporte)
-def _requer_transporte(ds_procedimento):
-    if not ds_procedimento:
-        return True
-    return not ds_procedimento.upper().strip().startswith('RX')
+_SQL_TIPO_EXAME = """
+    CASE
+        WHEN ra.ds_procedimento ILIKE 'RX%'
+          OR ra.ds_procedimento ILIKE '%RADIOGRAF%'     THEN 'RX'
+        WHEN ra.ds_procedimento ILIKE '%RESSONANCI%'
+          OR ra.ds_procedimento ILIKE 'RM %'            THEN 'RM'
+        WHEN ra.ds_procedimento ILIKE '%TOMOGRAF%'
+          OR ra.ds_procedimento ILIKE 'TC %'
+          OR ra.ds_procedimento ILIKE 'CT %'            THEN 'TC'
+        WHEN ra.ds_procedimento ILIKE '%ULTRASSOM%'
+          OR ra.ds_procedimento ILIKE 'USG%'            THEN 'USG'
+        WHEN ra.ds_procedimento ILIKE '%MAMOGRAF%'      THEN 'MAM'
+        ELSE 'OUTROS'
+    END
+"""
 
 
 def _serial(row):
@@ -41,20 +50,216 @@ def painel45():
     return send_from_directory('paineis/painel45', 'index.html')
 
 
-# ── Setores disponíveis ──────────────────────────────────────
+# ── Agendamentos para a enfermagem ──────────────────────────
+
+@painel45_bp.route('/api/paineis/painel45/agendamentos')
+@login_required
+@panel_permission_required('painel45')
+def api_p45_agendamentos():
+    """
+    Retorna exames agendados pela radiologia para a enfermagem ver e confirmar/recusar.
+    Mostra: aguardando ciência, cientes e recusados dos últimos 2 dias.
+    """
+    try:
+        filtro_enf = request.args.get('status_enf', '')  # pendente|ciente|recusado
+
+        filtros = ["ra.status NOT IN ('cancelado')"]
+        params = []
+
+        if filtro_enf:
+            filtros.append("ra.status_enfermagem = %s")
+            params.append(filtro_enf)
+        else:
+            # Por padrão: últimas 48h e excluindo concluídos antigos
+            filtros.append("""
+                (ra.status NOT IN ('concluido')
+                 OR (ra.status = 'concluido' AND ra.atualizado_em >= NOW() - INTERVAL '24 hours'))
+            """)
+
+        where = 'WHERE ' + ' AND '.join(filtros)
+
+        with get_db_cursor() as cursor:
+            cursor.execute(f"""
+                SELECT
+                    ra.id,
+                    ra.nr_atendimento,
+                    ra.nm_paciente,
+                    ra.ds_procedimento,
+                    ra.leito_origem,
+                    ra.setor_origem_nome,
+                    ra.cd_setor_atendimento,
+                    ra.prioridade,
+                    ra.status,
+                    ra.status_enfermagem,
+                    ra.motivo_recusa,
+                    ra.observacao,
+                    ra.criado_em,
+                    ra.atualizado_em,
+                    ra.dt_ciencia,
+                    ra.dt_recusa,
+                    ra.dt_no_local,
+                    ra.dt_inicio_exame,
+                    ra.dt_conclusao_exame,
+                    -- Slot
+                    rs.id           AS slot_id,
+                    rs.data_hora    AS slot_data_hora,
+                    rs.duracao_min  AS slot_duracao,
+                    rs.modalidade   AS slot_modalidade,
+                    -- Tipo do exame (derivado do procedimento)
+                    {_SQL_TIPO_EXAME} AS tipo_exame,
+                    -- Padioleiro ativo
+                    pc.id           AS chamado_id,
+                    pc.status       AS chamado_status,
+                    pc.padioleiro_nome AS chamado_padioleiro
+                FROM radio_agenda ra
+                LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
+                LEFT JOIN LATERAL (
+                    SELECT id, status, padioleiro_nome
+                    FROM padioleiro_chamados
+                    WHERE nr_atendimento = ra.nr_atendimento
+                      AND status NOT IN ('concluido', 'cancelado')
+                    ORDER BY criado_em DESC LIMIT 1
+                ) pc ON TRUE
+                {where}
+                ORDER BY
+                    CASE ra.status_enfermagem
+                        WHEN 'pendente'  THEN 1
+                        WHEN 'recusado'  THEN 2
+                        WHEN 'ciente'    THEN 3
+                        ELSE 4
+                    END,
+                    rs.data_hora NULLS LAST,
+                    ra.setor_origem_nome,
+                    ra.criado_em DESC
+            """, params)
+            dados = [_serial(dict(r)) for r in cursor.fetchall()]
+
+        return jsonify({'success': True, 'data': dados, 'total': len(dados),
+                        'timestamp': datetime.now().isoformat()})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro agendamentos p45: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar agendamentos'}), 500
+
+
+# ── Dar ciência ──────────────────────────────────────────────
+
+@painel45_bp.route('/api/paineis/painel45/exames/<int:radio_id>/ciencia', methods=['PUT'])
+@login_required
+@panel_permission_required('painel45')
+def api_p45_ciencia(radio_id):
+    """Enfermagem confirma ciência do agendamento."""
+    try:
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            cursor.execute("""
+                SELECT id, status, status_enfermagem
+                FROM radio_agenda WHERE id = %s
+            """, (radio_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'Registro não encontrado'}), 404
+            if row[1] in ('concluido', 'cancelado'):
+                return jsonify({'success': False, 'error': 'Exame já finalizado'}), 409
+            if row[2] == 'ciente':
+                return jsonify({'success': True})  # idempotente
+
+            cursor.execute("""
+                UPDATE radio_agenda
+                SET status_enfermagem = 'ciente',
+                    dt_ciencia        = NOW(),
+                    atualizado_em     = NOW()
+                WHERE id = %s
+            """, (radio_id,))
+
+        cache_delete_pattern('painel45:*')
+        cache_delete_pattern('painel46:*')
+        usuario = session.get('nome_completo') or session.get('usuario', '')
+        current_app.logger.info(f'P45 ciência: id={radio_id} por {usuario}')
+        return jsonify({'success': True})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro ciência p45: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao registrar ciência'}), 500
+
+
+# ── Recusar agendamento ──────────────────────────────────────
+
+@painel45_bp.route('/api/paineis/painel45/exames/<int:radio_id>/recusar', methods=['PUT'])
+@login_required
+@panel_permission_required('painel45')
+def api_p45_recusar(radio_id):
+    """
+    Enfermagem recusa o agendamento com motivo obrigatório.
+    Libera o slot e retorna o radio_agenda a 'pendente' para que a radiologia reagende.
+    """
+    try:
+        dados = request.get_json() or {}
+        motivo = (dados.get('motivo') or '').strip()
+        if len(motivo) < 5:
+            return jsonify({'success': False,
+                            'error': 'Informe o motivo da recusa (mínimo 5 caracteres)'}), 400
+
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            cursor.execute("""
+                SELECT id, status, slot_id FROM radio_agenda WHERE id = %s
+            """, (radio_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'Registro não encontrado'}), 404
+            if row[1] in ('concluido', 'cancelado'):
+                return jsonify({'success': False, 'error': 'Exame já finalizado'}), 409
+
+            slot_id = row[2]
+
+            # Libera o slot
+            if slot_id:
+                cursor.execute("""
+                    UPDATE radio_slots
+                    SET status = 'livre', radio_agenda_id = NULL, atualizado_em = NOW()
+                    WHERE id = %s
+                """, (slot_id,))
+
+            # Recusa: retorna a pendente para reagendamento
+            cursor.execute("""
+                UPDATE radio_agenda
+                SET status_enfermagem = 'recusado',
+                    motivo_recusa     = %s,
+                    dt_recusa         = NOW(),
+                    slot_id           = NULL,
+                    status            = 'pendente',
+                    atualizado_em     = NOW()
+                WHERE id = %s
+            """, (motivo, radio_id))
+
+        cache_delete_pattern('painel45:*')
+        cache_delete_pattern('painel46:*')
+        usuario = session.get('nome_completo') or session.get('usuario', '')
+        current_app.logger.info(f'P45 recusa: id={radio_id} por {usuario}: {motivo}')
+        return jsonify({'success': True})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro recusar p45: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao registrar recusa'}), 500
+
+
+# ── Setores com exames agendados ─────────────────────────────
 
 @painel45_bp.route('/api/paineis/painel45/setores')
 @login_required
 @panel_permission_required('painel45')
-@cache_route(ttl=120, key_prefix='painel45:setores')
 def api_p45_setores():
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT DISTINCT cd_setor_atendimento, nm_setor, COUNT(*) AS qt_exames
-                FROM painel19_radiologia_pendencias
-                GROUP BY cd_setor_atendimento, nm_setor
-                ORDER BY nm_setor
+                SELECT DISTINCT setor_origem_nome AS nm_setor,
+                       cd_setor_atendimento,
+                       COUNT(*) FILTER (WHERE status_enfermagem = 'pendente') AS qt_pendentes,
+                       COUNT(*) AS qt_total
+                FROM radio_agenda
+                WHERE status NOT IN ('cancelado', 'concluido')
+                  AND setor_origem_nome IS NOT NULL
+                GROUP BY setor_origem_nome, cd_setor_atendimento
+                ORDER BY setor_origem_nome
             """)
             return jsonify({'success': True, 'data': [dict(r) for r in cursor.fetchall()]})
     except Exception as e:
@@ -62,253 +267,12 @@ def api_p45_setores():
         return jsonify({'success': False, 'error': 'Erro ao buscar setores'}), 500
 
 
-# ── Lista principal de exames ────────────────────────────────
-
-@painel45_bp.route('/api/paineis/painel45/exames')
-@login_required
-@panel_permission_required('painel45')
-def api_p45_exames():
-    """
-    Lista todos os exames de radiologia do painel19 com status de:
-    - radio_agenda (se já registrado)
-    - slot agendado (se houver)
-    - padioleiro chamado ativo (qualquer tipo, para o nr_atendimento)
-    """
-    try:
-        setor = request.args.get('setor', '')
-        apenas_pendentes = request.args.get('pendentes', '').lower() == '1'
-
-        filtros = []
-        params = []
-
-        if setor:
-            filtros.append("p.cd_setor_atendimento = %s")
-            params.append(int(setor))
-
-        if apenas_pendentes:
-            filtros.append("p.status_radiologia = 'AGUARDANDO'")
-
-        where = ('WHERE ' + ' AND '.join(filtros)) if filtros else ''
-
-        with get_db_cursor() as cursor:
-            cursor.execute(f"""
-                SELECT
-                    p.nr_atendimento,
-                    p.nm_pessoa_fisica,
-                    p.leito,
-                    p.leito_base,
-                    p.nm_setor,
-                    p.cd_setor_atendimento,
-                    p.nr_prescricao,
-                    p.ds_procedimento,
-                    p.status_radiologia,
-                    p.dt_pedido,
-                    p.dt_execucao,
-                    p.horas_espera,
-                    p.prioridade_ordem,
-                    p.ds_convenio,
-                    -- Radio agenda
-                    ra.id               AS radio_id,
-                    ra.status           AS radio_status,
-                    ra.prioridade       AS radio_prioridade,
-                    ra.requer_transporte,
-                    ra.observacao       AS radio_obs,
-                    ra.criado_em        AS radio_criado_em,
-                    -- Slot agendado
-                    rs.id               AS slot_id,
-                    rs.data_hora        AS slot_data_hora,
-                    rs.duracao_min      AS slot_duracao,
-                    -- Padioleiro: qualquer chamado ativo para este atendimento
-                    pc.id               AS chamado_id,
-                    pc.status           AS chamado_status,
-                    pc.padioleiro_nome  AS chamado_padioleiro,
-                    pc.tipo_movimento_nome AS chamado_tipo,
-                    -- Realizado no Tasy sem envio prévio da enfermagem
-                    (p.status_radiologia <> 'AGUARDANDO'
-                     AND ra_hist.nr_prescricao IS NULL)  AS sem_envio_previo
-                FROM vw_painel19_radiologia p
-                LEFT JOIN radio_agenda ra ON (
-                    ra.nr_atendimento = p.nr_atendimento::varchar
-                    AND ra.nr_prescricao = p.nr_prescricao::varchar
-                    AND ra.status NOT IN ('concluido', 'cancelado')
-                )
-                LEFT JOIN (
-                    SELECT DISTINCT nr_atendimento, nr_prescricao
-                    FROM radio_agenda
-                ) ra_hist ON ra_hist.nr_atendimento = p.nr_atendimento::varchar
-                         AND ra_hist.nr_prescricao = p.nr_prescricao::varchar
-                LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
-                LEFT JOIN LATERAL (
-                    SELECT id, status, padioleiro_nome, tipo_movimento_nome
-                    FROM padioleiro_chamados
-                    WHERE nr_atendimento = p.nr_atendimento::varchar
-                      AND status NOT IN ('concluido', 'cancelado')
-                    ORDER BY criado_em DESC
-                    LIMIT 1
-                ) pc ON TRUE
-                {where}
-                ORDER BY p.cd_setor_atendimento, p.leito_base, p.prioridade_ordem, p.dt_pedido
-            """, params)
-
-            rows = cursor.fetchall()
-            exames = []
-            for r in rows:
-                item = _serial(dict(r))
-                # Detecta se é portátil pelo nome caso radio_agenda ainda não exista
-                if item.get('requer_transporte') is None:
-                    item['requer_transporte'] = _requer_transporte(item.get('ds_procedimento'))
-                exames.append(item)
-
-        return jsonify({'success': True, 'data': exames, 'total': len(exames),
-                        'timestamp': datetime.now().isoformat()})
-
-    except Exception as e:
-        current_app.logger.error(f'Erro exames p45: {e}', exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao buscar exames'}), 500
-
-
-# ── Registrar exame no radio_agenda ─────────────────────────
-
-@painel45_bp.route('/api/paineis/painel45/registrar', methods=['POST'])
-@login_required
-@panel_permission_required('painel45')
-def api_p45_registrar():
-    """Cria entrada em radio_agenda para um exame do painel19."""
-    try:
-        dados = request.get_json() or {}
-        nr_atendimento = str(dados.get('nr_atendimento') or '').strip()
-        nr_prescricao  = str(dados.get('nr_prescricao')  or '').strip()
-
-        if not nr_atendimento:
-            return jsonify({'success': False, 'error': 'nr_atendimento obrigatório'}), 400
-        if not nr_prescricao:
-            return jsonify({'success': False, 'error': 'nr_prescricao obrigatório'}), 400
-
-        ds_procedimento = dados.get('ds_procedimento', '')
-        requer = _requer_transporte(ds_procedimento)
-
-        with get_db_cursor(use_dict_cursor=False) as cursor:
-            # Evita duplicata ativa
-            cursor.execute("""
-                SELECT id FROM radio_agenda
-                WHERE nr_atendimento = %s AND nr_prescricao = %s
-                  AND status NOT IN ('concluido', 'cancelado')
-            """, (nr_atendimento, nr_prescricao))
-            if cursor.fetchone():
-                return jsonify({'success': False, 'error': 'Exame já registrado e em andamento'}), 409
-
-            cursor.execute("""
-                INSERT INTO radio_agenda (
-                    nr_atendimento, nr_prescricao, ds_procedimento,
-                    requer_transporte, nm_paciente, leito_origem,
-                    setor_origem_nome, cd_setor_atendimento,
-                    nm_medico_solicitante, prioridade,
-                    solicitante_id, solicitante_nome, observacao
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                RETURNING id
-            """, (
-                nr_atendimento, nr_prescricao, ds_procedimento,
-                requer,
-                dados.get('nm_paciente', ''),
-                dados.get('leito_origem', ''),
-                dados.get('setor_origem_nome', ''),
-                dados.get('cd_setor_atendimento'),
-                dados.get('nm_medico_solicitante', ''),
-                dados.get('prioridade', 'normal'),
-                session.get('usuario_id'),
-                session.get('nome_completo', session.get('usuario', '')),
-                dados.get('observacao', '')
-            ))
-            novo_id = cursor.fetchone()[0]
-
-        cache_delete_pattern('painel45:*')
-        cache_delete_pattern('painel46:*')
-        current_app.logger.info(f'P45: Exame registrado id={novo_id} atend={nr_atendimento}')
-        return jsonify({'success': True, 'id': novo_id})
-
-    except Exception as e:
-        current_app.logger.error(f'Erro registrar p45: {e}', exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao registrar exame'}), 500
-
-
-# ── Alterar prioridade ───────────────────────────────────────
-
-@painel45_bp.route('/api/paineis/painel45/exames/<int:radio_id>/prioridade', methods=['PUT'])
-@login_required
-@panel_permission_required('painel45')
-def api_p45_prioridade(radio_id):
-    try:
-        dados = request.get_json() or {}
-        prioridade = dados.get('prioridade', 'normal')
-        if prioridade not in ('normal', 'urgente'):
-            return jsonify({'success': False, 'error': 'Prioridade inválida'}), 400
-
-        with get_db_cursor(use_dict_cursor=False) as cursor:
-            cursor.execute("""
-                UPDATE radio_agenda SET prioridade = %s, atualizado_em = NOW()
-                WHERE id = %s AND status NOT IN ('concluido','cancelado')
-            """, (prioridade, radio_id))
-            if cursor.rowcount == 0:
-                return jsonify({'success': False, 'error': 'Registro não encontrado ou já finalizado'}), 404
-
-        cache_delete_pattern('painel45:*')
-        cache_delete_pattern('painel46:*')
-        return jsonify({'success': True})
-
-    except Exception as e:
-        current_app.logger.error(f'Erro prioridade p45: {e}', exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao atualizar prioridade'}), 500
-
-
-# ── Cancelar registro ────────────────────────────────────────
-
-@painel45_bp.route('/api/paineis/painel45/exames/<int:radio_id>/cancelar', methods=['PUT'])
-@login_required
-@panel_permission_required('painel45')
-def api_p45_cancelar(radio_id):
-    try:
-        dados = request.get_json() or {}
-        motivo = (dados.get('motivo') or '').strip()
-        if len(motivo) < 5:
-            return jsonify({'success': False, 'error': 'Informe o motivo do cancelamento (mínimo 5 caracteres)'}), 400
-
-        with get_db_cursor(use_dict_cursor=False) as cursor:
-            # Libera slot se houver
-            cursor.execute("SELECT slot_id FROM radio_agenda WHERE id = %s", (radio_id,))
-            row = cursor.fetchone()
-            if not row:
-                return jsonify({'success': False, 'error': 'Registro não encontrado'}), 404
-
-            if row[0]:
-                cursor.execute("""
-                    UPDATE radio_slots
-                    SET status = 'livre', radio_agenda_id = NULL, atualizado_em = NOW()
-                    WHERE id = %s
-                """, (row[0],))
-
-            cursor.execute("""
-                UPDATE radio_agenda
-                SET status = 'cancelado', motivo_cancelamento = %s,
-                    slot_id = NULL, atualizado_em = NOW()
-                WHERE id = %s
-            """, (motivo, radio_id))
-
-        cache_delete_pattern('painel45:*')
-        cache_delete_pattern('painel46:*')
-        return jsonify({'success': True})
-
-    except Exception as e:
-        current_app.logger.error(f'Erro cancelar p45: {e}', exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao cancelar'}), 500
-
-
-# ── Slots disponíveis para uma data (informativo) ────────────
+# ── Slots disponíveis (informativo para a enfermagem) ────────
 
 @painel45_bp.route('/api/paineis/painel45/slots-disponiveis')
 @login_required
 @panel_permission_required('painel45')
 def api_p45_slots_disponiveis():
-    """Retorna slots livres de uma data para exibição informativa na enfermagem."""
     try:
         data_str = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
         with get_db_cursor() as cursor:
@@ -318,7 +282,8 @@ def api_p45_slots_disponiveis():
                 WHERE DATE(data_hora) = %s AND status = 'livre'
                 ORDER BY data_hora
             """, (data_str,))
-            return jsonify({'success': True, 'data': [_serial(dict(r)) for r in cursor.fetchall()]})
+            return jsonify({'success': True,
+                            'data': [_serial(dict(r)) for r in cursor.fetchall()]})
     except Exception as e:
         current_app.logger.error(f'Erro slots p45: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar slots'}), 500
