@@ -63,7 +63,7 @@ _SUBSISTEMAS = [
         'icone': 'fa-x-ray',
         'cor': '#6F42C1',
         'paineis': [
-            {'nome': 'Solicitar Exame',      'icone': 'fa-circle-plus',    'url': '/painel/painel45', 'permissao': 'painel45'},
+            {'nome': 'Acompanhar Exames',    'icone': 'fa-circle-plus',    'url': '/painel/painel45', 'permissao': 'painel45'},
             {'nome': 'Tela da Radiologia',   'icone': 'fa-x-ray',          'url': '/painel/painel46', 'permissao': 'painel46'},
             {'nome': 'Gestão e Relatórios',  'icone': 'fa-chart-bar',      'url': '/painel/painel47', 'permissao': 'painel47'},
         ]

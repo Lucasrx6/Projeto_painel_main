@@ -1095,6 +1095,24 @@
         var btnV = document.getElementById('btn-voltar');
         if (btnV) btnV.addEventListener('click', function() { window.history.back(); });
 
+        // Máscara automática HH:MM nos campos de horário (24h)
+        var idsHora = ['lote-inicio', 'lote-fim', 'avulso-hora'];
+        for (var hi = 0; hi < idsHora.length; hi++) {
+            (function(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('input', function() {
+                    var digits = this.value.replace(/\D/g, '').slice(0, 4);
+                    this.value = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
+                });
+                el.addEventListener('blur', function() {
+                    // Garante formato HH:MM ao sair do campo
+                    var m = this.value.match(/^(\d{1,2}):?(\d{2})$/);
+                    if (m) this.value = ('0' + m[1]).slice(-2) + ':' + m[2];
+                });
+            })(idsHora[hi]);
+        }
+
         // Modal lote
         var btnLote = document.getElementById('btn-criar-lote');
         if (btnLote) btnLote.addEventListener('click', function() {

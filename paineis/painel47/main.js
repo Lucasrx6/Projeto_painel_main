@@ -710,6 +710,36 @@
         setInterval(function() {
             if (Estado.tabAtiva === 'dashboard') carregarDashboard();
         }, CONFIG.intervalo);
+
+        agendarSincronizacaoAutomatica();
+    }
+
+    // Sincroniza produção automaticamente às 00h, 06h, 12h, 18h
+    function agendarSincronizacaoAutomatica() {
+        var HORARIOS = [0, 6, 12, 18];
+
+        function proximoDisparo() {
+            var agora = new Date();
+            var hAtual = agora.getHours() * 60 + agora.getMinutes();
+            var minutos = null;
+            for (var i = 0; i < HORARIOS.length; i++) {
+                var hAlvo = HORARIOS[i] * 60;
+                if (hAlvo > hAtual) { minutos = hAlvo - hAtual; break; }
+            }
+            // Se passou de 18h, próximo disparo é 00h do dia seguinte
+            if (minutos === null) minutos = (24 * 60) - hAtual;
+            return minutos * 60 * 1000 - agora.getSeconds() * 1000 - agora.getMilliseconds();
+        }
+
+        function programar() {
+            var ms = proximoDisparo();
+            setTimeout(function() {
+                sincronizarProducao();
+                programar(); // reagenda para o próximo horário
+            }, ms);
+        }
+
+        programar();
     }
 
     window.P47 = { abrirCancelar: abrirCancelar, selecionarItem: selecionarItem };
