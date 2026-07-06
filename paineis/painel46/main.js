@@ -5,7 +5,6 @@
     var CONFIG = {
         api: {
             fila:            '/api/paineis/painel46/fila',
-            semEnvio:        '/api/paineis/painel46/sem-envio',
             slots:           '/api/paineis/painel46/slots',
             slotsLote:       '/api/paineis/painel46/slots/lote',
             exameStatus:     '/api/paineis/painel46/exames/{id}/status',
@@ -198,6 +197,7 @@
         else if (item.status === 'no_local')   statusCls = ' card-no_local';
         else if (item.status === 'executando') statusCls = ' card-executando';
         else if (item.status === 'concluido')  statusCls = ' card-concluido';
+        if (item.status_enfermagem === 'recusado') statusCls += ' card-enf-recusado';
 
         var html = '<div class="card-paciente' + statusCls + '">';
         html += '<div class="card-header-p">'
@@ -218,6 +218,16 @@
             html += '<div class="card-linha"><i class="fas fa-clock"></i><span><strong>' + formatarHora(item.slot_data_hora) + '</strong>'
                   + (item.slot_modalidade ? ' — ' + escHtml(item.slot_modalidade) : '') + '</span></div>';
         html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeTransporte(item) + '</div>';
+        var enfSt = item.status_enfermagem;
+        if (enfSt === 'ciente' || enfSt === 'recusado') {
+            html += '<div class="card-enf-row">' + badgeStatusEnf(enfSt) + '</div>';
+            if (enfSt === 'recusado' && item.motivo_recusa) {
+                html += '<div class="card-motivo-recusa"><i class="fas fa-exclamation-circle"></i> '
+                      + escHtml(item.motivo_recusa) + '</div>';
+            }
+        } else if (item.status === 'agendado' && enfSt === 'pendente') {
+            html += '<div class="card-enf-row">' + badgeStatusEnf('pendente') + '</div>';
+        }
         html += '</div>';
 
         html += '<div class="card-footer-p">';
@@ -339,6 +349,7 @@
         else if (urgente) cls += ' card-ex-urgente';
         else if (radioSt === 'concluido') cls += ' card-ex-concluido';
         else if (radioId) cls += ' card-ex-registrado';
+        if (!concluidoInterno && ex.status_enfermagem === 'recusado') cls += ' card-ex-enf-recusado';
 
         var html = '<div class="' + cls + '">';
 
@@ -366,6 +377,17 @@
             html += '<span class="badge-status badge-presc-sem-ag"><i class="fas fa-calendar-plus"></i> Sem agendamento</span>';
         }
         html += '</div>';
+
+        if (!concluidoInterno && radioId) {
+            var enfStEx = ex.status_enfermagem;
+            if (enfStEx === 'ciente' || enfStEx === 'recusado') {
+                html += '<div class="card-enf-row" style="margin-top:2px">' + badgeStatusEnf(enfStEx) + '</div>';
+                if (enfStEx === 'recusado' && ex.motivo_recusa) {
+                    html += '<div class="card-ex-recusa"><i class="fas fa-exclamation-circle"></i> '
+                          + escHtml(ex.motivo_recusa) + '</div>';
+                }
+            }
+        }
 
         html += '</div>';  // card-ex-body
 
@@ -554,6 +576,9 @@
             html += '<div class="slot-paciente"><i class="fas fa-user"></i> ' + escHtml(formatarNome(slot.nm_paciente)) + '</div>';
             if (slot.ds_procedimento)
                 html += '<div class="slot-exame-s">' + escHtml(slot.ds_procedimento) + '</div>';
+            if (slot.status_enfermagem) {
+                html += '<div class="slot-enf-row">' + badgeStatusEnf(slot.status_enfermagem) + '</div>';
+            }
         }
         if (slot.status === 'bloqueado' && slot.obs_bloqueio)
             html += '<div class="slot-bloqueio-obs"><i class="fas fa-lock"></i> ' + escHtml(slot.obs_bloqueio) + '</div>';
@@ -580,8 +605,6 @@
         html += '</div></div>';
         return html;
     }
-
-    var _AGENDA_TIPOS = ['RM', 'TC', 'USG', 'RX', 'MAM', 'OUTROS'];
 
     function atualizarInfoSlots() {
         var livres = 0, ocupados = 0, bloqueados = 0;
@@ -635,66 +658,6 @@
         for (var i = 0; i < lista.length; i++) html += slotCardHtml(lista[i]);
         if (grade) { grade.innerHTML = html; grade.style.display = ''; }
         atualizarInfoSlots();
-    }
-
-    // ── Sem Envio Prévio ───────────────────────────
-    function cardSemEnvioHtml(ex) {
-        var stTasy = (ex.status_radiologia || '').toUpperCase();
-        var badgeSt = stTasy === 'LAUDADO'
-            ? '<span class="badge-status badge-laudado"><i class="fas fa-check"></i> Laudado</span>'
-            : '<span class="badge-status badge-sem-laudo"><i class="fas fa-hourglass-half"></i> Sem laudo</span>';
-        var html = '<div class="card-sem-envio">';
-        html += '<div class="card-sem-envio-top">';
-        html += '<span class="card-sem-envio-nome">' + escHtml(formatarNome(ex.nm_pessoa_fisica)) + '</span>';
-        html += '<span class="card-sem-envio-setor">' + escHtml(ex.nm_setor || '') + '</span>';
-        html += '</div>';
-        html += '<div class="card-sem-envio-info">';
-        html += '<span><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-') + '</span>';
-        html += '<span><i class="fas fa-bed"></i> ' + escHtml(ex.leito_base || ex.leito || '-') + '</span>';
-        if (ex.dt_execucao)
-            html += '<span><i class="fas fa-clock"></i> ' + formatarHora(ex.dt_execucao) + '</span>';
-        html += '</div>';
-        html += '<div style="margin-top:4px;">' + badgeSt + '</div>';
-        html += '</div>';
-        return html;
-    }
-
-    function renderizarSemEnvio() {
-        var lista = Estado.semEnvioPrevio;
-        var secao = document.getElementById('secao-sem-envio');
-        var cnt   = document.getElementById('count-sem-envio');
-        var grid  = document.getElementById('grid-sem-envio');
-        var icone = document.getElementById('icone-sem-envio');
-        if (!secao) return;
-
-        if (!lista.length) { secao.style.display = 'none'; return; }
-        secao.style.display = '';
-        if (cnt) cnt.textContent = lista.length;
-
-        var html = '';
-        for (var i = 0; i < lista.length; i++) html += cardSemEnvioHtml(lista[i]);
-        if (grid) grid.innerHTML = html;
-
-        if (grid) grid.style.display = Estado.semEnvioAberto ? '' : 'none';
-        if (icone) icone.style.transform = Estado.semEnvioAberto ? 'rotate(180deg)' : '';
-    }
-
-    function toggleSemEnvio() {
-        Estado.semEnvioAberto = !Estado.semEnvioAberto;
-        var grid  = document.getElementById('grid-sem-envio');
-        var icone = document.getElementById('icone-sem-envio');
-        if (grid) grid.style.display = Estado.semEnvioAberto ? '' : 'none';
-        if (icone) icone.style.transform = Estado.semEnvioAberto ? 'rotate(180deg)' : '';
-    }
-
-    function carregarSemEnvio() {
-        fetch(CONFIG.api.semEnvio + '?data=' + Estado.dataConsulta, {credentials: 'same-origin'})
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-                Estado.semEnvioPrevio = (d.success && d.data) ? d.data : [];
-                renderizarSemEnvio();
-            })
-            .catch(function(e) { console.error('[P46 sem-envio]', e); });
     }
 
     // ── Carregar ───────────────────────────────────

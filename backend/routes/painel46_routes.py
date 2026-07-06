@@ -55,26 +55,6 @@ _SQL_TIPO_EXAME_RA = """
     END
 """
 
-# Mapeamento tipo → modalidade dos slots
-_TIPO_TO_MODAL = {'RX': 'RX', 'RM': 'RM', 'TC': 'TC', 'USG': 'USG', 'MAM': 'MAM', 'OUTROS': 'OUTROS'}
-
-def _tipo_exame(ds_procedimento):
-    if not ds_procedimento:
-        return 'OUTROS'
-    p = ds_procedimento.upper().strip()
-    if p.startswith('RX') or 'RADIOGRAF' in p:
-        return 'RX'
-    if ('RESSONANCI' in p or p.startswith('RM ') or p.startswith('RM-')
-            or ('ANGIO' in p and 'RM' in p) or ('HIDRO' in p and 'RM' in p)):
-        return 'RM'
-    if 'TOMOGRAF' in p or p.startswith('TC ') or p.startswith('CT '):
-        return 'TC'
-    if 'ULTRASSOM' in p or p.startswith('USG') or p.startswith('US ') or p.startswith('US-'):
-        return 'USG'
-    if 'MAMOGRAF' in p:
-        return 'MAM'
-    return 'OUTROS'
-
 # Transições de status permitidas
 _TRANSICOES = {
     'pendente':  ['agendado', 'no_local', 'cancelado'],
@@ -372,9 +352,13 @@ def api_p46_agendar(radio_id):
                 """, (radio_id, slot_id))
                 cursor.execute("""
                     UPDATE radio_agenda
-                    SET slot_id       = %s,
-                        status        = 'agendado',
-                        atualizado_em = NOW()
+                    SET slot_id           = %s,
+                        status            = 'agendado',
+                        status_enfermagem = 'pendente',
+                        motivo_recusa     = NULL,
+                        dt_recusa         = NULL,
+                        dt_ciencia        = NULL,
+                        atualizado_em     = NOW()
                     WHERE id = %s
                 """, (slot_id, radio_id))
             else:
@@ -422,6 +406,7 @@ def api_p46_slots_get():
                 ra.setor_origem_nome,
                 ra.prioridade,
                 ra.status       AS radio_status,
+                ra.status_enfermagem,
                 ra.requer_preparo,
                 ra.tipo_preparo
             FROM radio_slots rs
@@ -865,11 +850,15 @@ def api_p46_agendar_prescricao():
 
                 cursor.execute("""
                     UPDATE radio_agenda
-                    SET slot_id        = %s,
-                        status         = 'agendado',
-                        requer_preparo = %s,
-                        tipo_preparo   = %s,
-                        atualizado_em  = NOW()
+                    SET slot_id           = %s,
+                        status            = 'agendado',
+                        status_enfermagem = 'pendente',
+                        motivo_recusa     = NULL,
+                        dt_recusa         = NULL,
+                        dt_ciencia        = NULL,
+                        requer_preparo    = %s,
+                        tipo_preparo      = %s,
+                        atualizado_em     = NOW()
                     WHERE id = %s
                 """, (slot_id, requer_preparo, tipo_preparo, radio_id))
             else:
@@ -937,8 +926,8 @@ def api_p46_slots_por_tipo():
         data_str      = request.args.get('data', '').strip()
         primeira_data = request.args.get('primeira_data', 'false').lower() == 'true'
 
-        # Mapeamento identidade — OUTROS/vazio não filtra por modalidade
-        modal = _TIPO_TO_MODAL.get(tipo) if (tipo and tipo != 'OUTROS') else None
+        # OUTROS/vazio não filtra por modalidade — aceita qualquer slot
+        modal = tipo if (tipo and tipo != 'OUTROS') else None
 
         with get_db_cursor() as cursor:
             if primeira_data:

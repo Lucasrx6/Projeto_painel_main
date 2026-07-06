@@ -152,6 +152,7 @@ def api_p47_chamados():
                     ra.leito_origem, ra.setor_origem_nome, ra.prioridade,
                     ra.status, ra.requer_transporte,
                     ra.solicitante_nome, ra.observacao, ra.motivo_cancelamento,
+                    ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
                     ra.criado_em,
                     ra.dt_no_local,
                     ra.dt_inicio_exame,

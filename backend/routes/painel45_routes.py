@@ -200,9 +200,9 @@ def api_p45_recusar(radio_id):
     try:
         dados = request.get_json() or {}
         motivo = (dados.get('motivo') or '').strip()
-        if len(motivo) < 5:
+        if len(motivo) < 10:
             return jsonify({'success': False,
-                            'error': 'Informe o motivo da recusa (mínimo 5 caracteres)'}), 400
+                            'error': 'Informe o motivo da recusa (mínimo 10 caracteres)'}), 400
 
         with get_db_cursor(use_dict_cursor=False) as cursor:
             cursor.execute("""

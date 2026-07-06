@@ -390,8 +390,12 @@
         }
         var motivo = document.getElementById('modal-rec-motivo');
         if (motivo) motivo.value = '';
+        var btn = document.getElementById('modal-rec-confirmar');
+        if (btn) btn.disabled = true;
+        var contador = document.getElementById('modal-rec-contador');
+        if (contador) contador.textContent = '0 / 10 mínimo';
         var hint = document.getElementById('modal-rec-hint');
-        if (hint) hint.style.display = 'none';
+        if (hint) hint.style.color = '#dc3545';
         var modal = document.getElementById('modal-recusar');
         if (modal) modal.style.display = 'flex';
     }
@@ -405,13 +409,8 @@
     function confirmarRecusar() {
         if (!Estado.modalId) return;
         var motivoEl = document.getElementById('modal-rec-motivo');
-        var hint     = document.getElementById('modal-rec-hint');
         var motivo   = motivoEl ? motivoEl.value.trim() : '';
-        if (motivo.length < 5) {
-            if (hint) hint.style.display = '';
-            return;
-        }
-        if (hint) hint.style.display = 'none';
+        if (motivo.length < 10) { return; }
         var btn = document.getElementById('modal-rec-confirmar');
         if (btn) btn.disabled = true;
         var url = CONFIG.api.recusar.replace('{id}', Estado.modalId);
@@ -483,6 +482,19 @@
         document.getElementById('modal-recusar').addEventListener('click', function(e) {
             if (e.target === this) fecharRecusar();
         });
+        // Contador de caracteres — motivo de recusa
+        var motivoRecusaEl = document.getElementById('modal-rec-motivo');
+        if (motivoRecusaEl) {
+            motivoRecusaEl.addEventListener('input', function() {
+                var len = motivoRecusaEl.value.trim().length;
+                var btnConf = document.getElementById('modal-rec-confirmar');
+                var cnt = document.getElementById('modal-rec-contador');
+                var hnt = document.getElementById('modal-rec-hint');
+                if (cnt) cnt.textContent = len + ' / 10 mínimo';
+                if (hnt) hnt.style.color = len >= 10 ? '#28a745' : '#dc3545';
+                if (btnConf) btnConf.disabled = len < 10;
+            });
+        }
 
         carregar();
         setInterval(carregar, CONFIG.intervalo);

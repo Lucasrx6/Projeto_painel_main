@@ -81,6 +81,16 @@
         return '<span class="badge-status ' + m[0] + '"><i class="fas ' + m[1] + '"></i> ' + m[2] + '</span>';
     }
 
+    function badgeStatusEnf(enf) {
+        if (!enf || enf === 'pendente')
+            return '<span class="badge-enf badge-enf-pendente"><i class="fas fa-clock"></i> Aguard. Ciência</span>';
+        if (enf === 'ciente')
+            return '<span class="badge-enf badge-enf-ciente"><i class="fas fa-check"></i> Ciente</span>';
+        if (enf === 'recusado')
+            return '<span class="badge-enf badge-enf-recusado"><i class="fas fa-times"></i> Recusado Enf.</span>';
+        return '';
+    }
+
     // ── Tabs ───────────────────────────────────────
     function mudarTab(tab) {
         Estado.tabAtiva = tab;
@@ -219,7 +229,8 @@
                 + '<td>' + escHtml(item.ds_procedimento || '-') + '</td>'
                 + '<td>' + escHtml(item.setor_origem_nome || '-') + '</td>'
                 + '<td>' + escHtml(item.leito_origem || '-') + '</td>'
-                + '<td>' + badgeStatus(item.status) + '</td>'
+                + '<td>' + badgeStatus(item.status)
+                + (item.status_enfermagem === 'recusado' ? ' ' + badgeStatusEnf('recusado') : '') + '</td>'
                 + '<td style="white-space:nowrap;font-size:12px">' + (item.slot_data_hora ? formatarDataHora(item.slot_data_hora) : '-') + '</td>'
                 + '<td style="white-space:nowrap">';
             if (item.status !== 'concluido' && item.status !== 'cancelado') {
@@ -289,7 +300,22 @@
         html += step('fa-paper-plane', '#6c757d', 'Enviado', item.criado_em);
         html += '</div>';
 
-        // Seta + Grupo 2: Transporte
+        // Seta + Grupo 2: Enfermagem
+        html += '<span class="tl-seta"><i class="fas fa-chevron-right"></i></span>';
+        html += '<div class="tl-grupo">';
+        html += '<span class="tl-grupo-label"><i class="fas fa-user-nurse"></i> Enfermagem</span>';
+        if (item.status_enfermagem === 'recusado') {
+            html += step('fa-times-circle', '#dc3545', 'Recusado', item.dt_recusa);
+            if (item.motivo_recusa) {
+                html += '<div style="font-size:10px;color:#842029;background:#f8d7da;border-radius:6px;padding:3px 6px;margin-top:3px;max-width:180px;word-break:break-word">'
+                      + '<i class="fas fa-exclamation-circle"></i> ' + escHtml(item.motivo_recusa) + '</div>';
+            }
+        } else {
+            html += step('fa-check-circle', '#28a745', 'Ciência', item.dt_ciencia);
+        }
+        html += '</div>';
+
+        // Seta + Grupo 3: Transporte
         html += '<span class="tl-seta"><i class="fas fa-chevron-right"></i></span>';
         html += '<div class="tl-grupo">';
         if (item.transp_solicitado) {
@@ -376,23 +402,6 @@
     }
 
     // ── Produção ───────────────────────────────────
-
-    function formatarDataHora(iso) {
-        if (!iso) return '-';
-        try {
-            var d = new Date(iso);
-            return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' '
-                 + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-        } catch(e) { return iso; }
-    }
-
-    function formatarHoraSimples(iso) {
-        if (!iso) return '-';
-        try {
-            var d = new Date(iso);
-            return d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-        } catch(e) { return iso; }
-    }
 
     function badgeProdStatus(status) {
         if (status === 'LAUDADO')

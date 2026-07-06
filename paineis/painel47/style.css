@@ -155,6 +155,12 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 .badge-urgente { background: #f8d7da; color: #721c24; font-size: 10px; padding: 2px 7px; border-radius: 10px; margin-left: 4px; }
 
+/* Badges enfermagem */
+.badge-enf { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+.badge-enf-pendente { background: #fff3cd; color: #856404; }
+.badge-enf-ciente   { background: #d1e7dd; color: #0f5132; }
+.badge-enf-recusado { background: #f8d7da; color: #842029; }
+
 /* Barra de progresso */
 .barra-container { width: 120px; }
 .barra-bg { background: #e9ecef; border-radius: 4px; height: 6px; overflow: hidden; }
