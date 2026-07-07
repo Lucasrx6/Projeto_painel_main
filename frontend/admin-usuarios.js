@@ -41,9 +41,27 @@ var CONFIG = {
 var Estado = {
     usuarios: [],
     usuariosFiltrados: [],
+    usuariosCarregados: false,
     usuarioAtual: null,
-    carregando: false
+    carregando: false,
+    // estado do modal de permissoes
+    permFiltro: 'todos',
+    permBusca: '',
+    paineisCache: [],
+    permissoesCache: []
 };
+
+// Categorias de paineis — mapeamento para agrupamento visual no modal
+var CATEGORIAS_PAINEIS = [
+    { id: 'clinico',       titulo: 'Clinico / PS',                icone: 'fa-stethoscope',  cor: '#0d6efd' },
+    { id: 'gestao',        titulo: 'Gestao / Ocupacao',           icone: 'fa-chart-bar',    cor: '#198754' },
+    { id: 'ia',            titulo: 'IA / Analytics',              icone: 'fa-brain',         cor: '#6f42c1' },
+    { id: 'radiologia',    titulo: 'Radiologia',                  icone: 'fa-x-ray',         cor: '#0dcaf0' },
+    { id: 'farmacia',      titulo: 'Farmacia / Nutricao',         icone: 'fa-pills',         cor: '#fd7e14' },
+    { id: 'qualidade',     titulo: 'Sentir e Agir / Qualidade',   icone: 'fa-heart',         cor: '#e91e63' },
+    { id: 'administrativo',titulo: 'Administrativo',              icone: 'fa-file-invoice',  cor: '#6c757d' },
+    { id: 'auxiliar',      titulo: 'Sistemas Auxiliares',         icone: 'fa-cogs',          cor: '#20c997' }
+];
 
 // ==============================================================================
 // INICIALIZACAO
@@ -153,13 +171,34 @@ function configurarEventos() {
     if (btnRefresh) {
         btnRefresh.addEventListener('click', function() {
             carregarEstatisticas();
-            carregarUsuarios();
+            Estado.usuariosCarregados = false;
+            executarBusca();
         });
+    }
+
+    var btnVerTodos = document.getElementById('btn-ver-todos');
+    if (btnVerTodos) {
+        btnVerTodos.addEventListener('click', function() {
+            var searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = '';
+            executarBusca();
+        });
+    }
+
+    var btnBuscar = document.getElementById('btn-buscar');
+    if (btnBuscar) {
+        btnBuscar.addEventListener('click', executarBusca);
     }
 
     var searchInput = document.getElementById('search-input');
     if (searchInput) {
-        searchInput.addEventListener('input', debounce(filtrarUsuarios, CONFIG.debounceDelay));
+        // Filtro ao vivo somente se usuarios ja foram carregados; Enter sempre executa busca
+        searchInput.addEventListener('input', debounce(function() {
+            if (Estado.usuariosCarregados) filtrarUsuarios();
+        }, CONFIG.debounceDelay));
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') executarBusca();
+        });
     }
 
     // Formularios
@@ -202,7 +241,55 @@ function configurarEventos() {
 
 function carregarDadosIniciais() {
     carregarEstatisticas();
-    carregarUsuarios();
+    mostrarPromptBusca();
+}
+
+function mostrarPromptBusca() {
+    var tbody = document.getElementById('usuarios-tbody');
+    if (!tbody) return;
+    tbody.innerHTML =
+        '<tr>' +
+            '<td colspan="9" class="search-prompt-state">' +
+                '<i class="fas fa-users" aria-hidden="true"></i>' +
+                '<p>Pesquise por nome, email ou cargo</p>' +
+                '<small>Deixe em branco e clique em <strong>Ver Todos</strong> para listar todos os usuarios</small>' +
+            '</td>' +
+        '</tr>';
+}
+
+function executarBusca() {
+    if (Estado.usuariosCarregados) {
+        filtrarUsuarios();
+    } else {
+        carregarEFiltrar();
+    }
+}
+
+function carregarEFiltrar() {
+    if (Estado.carregando) return;
+    Estado.carregando = true;
+    mostrarLoading();
+
+    fetch(CONFIG.endpoints.usuarios + '?incluir_inativos=true', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        Estado.carregando = false;
+        if (data.success) {
+            Estado.usuarios = data.usuarios || [];
+            Estado.usuariosCarregados = true;
+            filtrarUsuarios();
+        } else {
+            mostrarErro('Erro ao carregar usuarios: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(function(erro) {
+        Estado.carregando = false;
+        console.error('[USERS] Erro ao carregar usuarios:', erro);
+        mostrarErro(CONFIG.mensagens.erroConexao);
+    });
 }
 
 function carregarEstatisticas() {
@@ -227,38 +314,12 @@ function carregarEstatisticas() {
     });
 }
 
-function carregarUsuarios() {
-    if (Estado.carregando) return;
-    Estado.carregando = true;
-
-    mostrarLoading();
-
-    fetch(CONFIG.endpoints.usuarios + '?incluir_inativos=true', {
-        method: 'GET',
-        credentials: 'include'
-    })
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(data) {
-        Estado.carregando = false;
-
-        if (data.success) {
-            Estado.usuarios = data.usuarios || [];
-            Estado.usuariosFiltrados = Estado.usuarios.slice();
-            renderizarTabela();
-        } else {
-            mostrarErro('Erro ao carregar usuarios: ' + (data.error || 'Erro desconhecido'));
-        }
-    })
-    .catch(function(erro) {
-        Estado.carregando = false;
-        console.error('[USERS] Erro ao carregar usuarios:', erro);
-        mostrarErro(CONFIG.mensagens.erroConexao);
-    });
-}
-
 function filtrarUsuarios() {
+    if (!Estado.usuariosCarregados) {
+        mostrarPromptBusca();
+        return;
+    }
+
     var busca = document.getElementById('search-input').value.toLowerCase().trim();
 
     if (!busca) {
@@ -449,7 +510,8 @@ function criarUsuario(e) {
 
             setTimeout(function() {
                 fecharModalNovoUsuario();
-                carregarUsuarios();
+                Estado.usuariosCarregados = false;
+                executarBusca();
                 carregarEstatisticas();
                 if (btnCriar) btnCriar.disabled = false;
             }, 1500);
@@ -466,24 +528,23 @@ function criarUsuario(e) {
 }
 
 function atualizarDadosAdicionais(usuarioId, usuarioNome, nomeCompleto, cargo) {
-    // Busca o ID se nao tiver
     if (!usuarioId) {
-        fetch(CONFIG.endpoints.usuarios + '?incluir_inativos=true', {
-            method: 'GET',
-            credentials: 'include'
-        })
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-            if (data.success) {
-                var usuarioCriado = data.usuarios.find(function(u) {
-                    return u.usuario === usuarioNome;
-                });
-                if (usuarioCriado) {
-                    enviarAtualizacao(usuarioCriado.id, nomeCompleto, cargo);
+        // Busca o usuario recem-criado na lista ja carregada (ou via API)
+        var encontrado = Estado.usuarios.filter(function(u) { return u.usuario === usuarioNome; });
+        if (encontrado.length > 0) {
+            enviarAtualizacao(encontrado[0].id, nomeCompleto, cargo);
+        } else {
+            // Fallback: busca direta na API
+            fetch(CONFIG.endpoints.usuarios + '?incluir_inativos=true', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var u = data.usuarios.filter(function(x) { return x.usuario === usuarioNome; });
+                    if (u.length > 0) enviarAtualizacao(u[0].id, nomeCompleto, cargo);
                 }
-            }
-        })
-        .catch(function() {});
+            })
+            .catch(function() {});
+        }
     } else {
         enviarAtualizacao(usuarioId, nomeCompleto, cargo);
     }
@@ -580,7 +641,8 @@ function salvarEdicaoUsuario(e) {
 
             setTimeout(function() {
                 fecharModalEditarUsuario();
-                carregarUsuarios();
+                Estado.usuariosCarregados = false;
+                executarBusca();
                 carregarEstatisticas();
                 if (btnSalvar) btnSalvar.disabled = false;
             }, 1500);
@@ -693,7 +755,8 @@ function alterarStatusUsuario(usuarioId, ativo) {
     .then(function(data) {
         if (data.success) {
             alert(data.message || 'Status alterado com sucesso');
-            carregarUsuarios();
+            Estado.usuariosCarregados = false;
+            executarBusca();
             carregarEstatisticas();
         } else {
             alert('Erro: ' + (data.error || 'Erro desconhecido'));
@@ -714,6 +777,20 @@ function abrirModalPermissoes(usuarioId, usuarioNome) {
     document.getElementById('permissoes-usuario-nome').textContent = usuarioNome;
     ocultarMensagem('mensagem-permissoes');
 
+    // Resetar estado do modal
+    Estado.permFiltro = 'todos';
+    Estado.permBusca = '';
+    Estado.paineisCache = [];
+    Estado.permissoesCache = [];
+
+    var inputBusca = document.getElementById('perm-search');
+    if (inputBusca) inputBusca.value = '';
+
+    var filtros = document.querySelectorAll('.perm-filtro');
+    filtros.forEach(function(f) { f.classList.remove('ativo'); });
+    var filtroTodos = document.querySelector('.perm-filtro[data-filtro="todos"]');
+    if (filtroTodos) filtroTodos.classList.add('ativo');
+
     var listaPaineis = document.getElementById('lista-paineis');
     listaPaineis.innerHTML =
         '<div class="loading">' +
@@ -732,32 +809,9 @@ function abrirModalPermissoes(usuarioId, usuarioNome) {
         var permissoesData = results[1];
 
         if (paineisData.success && permissoesData.success) {
-            var paineis = paineisData.paineis || [];
-            var permissoes = (permissoesData.permissoes || []).map(function(p) { return p.painel; });
-
-            if (paineis.length === 0) {
-                listaPaineis.innerHTML = '<p>Nenhum painel cadastrado.</p>';
-                return;
-            }
-
-            listaPaineis.innerHTML = paineis.map(function(painel) {
-                var temPermissao = permissoes.indexOf(painel.nome) !== -1;
-                var classeAtivo = temPermissao ? 'ativo' : '';
-                var checked = temPermissao ? 'checked' : '';
-
-                return '<div class="painel-item ' + classeAtivo + '" data-painel="' + escapeHtml(painel.nome) + '">' +
-                    '<div class="painel-info">' +
-                        '<h4>' + escapeHtml(painel.titulo) + '</h4>' +
-                        '<p>' + escapeHtml(painel.descricao || '') + '</p>' +
-                    '</div>' +
-                    '<div class="painel-toggle">' +
-                        '<label class="switch">' +
-                            '<input type="checkbox" ' + checked + ' onchange="togglePermissao(' + usuarioId + ', \'' + escapeHtml(painel.nome) + '\', this.checked, this)">' +
-                            '<span class="slider"></span>' +
-                        '</label>' +
-                    '</div>' +
-                '</div>';
-            }).join('');
+            Estado.paineisCache = paineisData.paineis || [];
+            Estado.permissoesCache = (permissoesData.permissoes || []).map(function(p) { return p.painel; });
+            renderizarPaineisModal(usuarioId);
         } else {
             listaPaineis.innerHTML = '<div class="alert alert-danger">Erro ao carregar paineis</div>';
         }
@@ -766,6 +820,158 @@ function abrirModalPermissoes(usuarioId, usuarioNome) {
         console.error('[PERM] Erro ao carregar permissoes:', erro);
         listaPaineis.innerHTML = '<div class="alert alert-danger">' + CONFIG.mensagens.erroConexao + '</div>';
     });
+}
+
+function renderizarPaineisModal(usuarioId) {
+    var listaPaineis = document.getElementById('lista-paineis');
+    if (!listaPaineis) return;
+
+    var busca = Estado.permBusca.toLowerCase();
+    var filtro = Estado.permFiltro;
+
+    // Filtrar paineis conforme busca + aba ativa
+    var paineisFiltrados = Estado.paineisCache.filter(function(p) {
+        var matchBusca = !busca ||
+            p.titulo.toLowerCase().indexOf(busca) !== -1 ||
+            (p.descricao && p.descricao.toLowerCase().indexOf(busca) !== -1) ||
+            p.nome.toLowerCase().indexOf(busca) !== -1;
+
+        var temPermissao = Estado.permissoesCache.indexOf(p.nome) !== -1;
+        var matchFiltro = filtro === 'todos' ||
+            (filtro === 'com-acesso' && temPermissao) ||
+            (filtro === 'sem-acesso' && !temPermissao);
+
+        return matchBusca && matchFiltro;
+    });
+
+    if (paineisFiltrados.length === 0) {
+        listaPaineis.innerHTML =
+            '<div class="perm-empty">' +
+                '<i class="fas fa-search" aria-hidden="true"></i>' +
+                '<p>Nenhum painel encontrado</p>' +
+            '</div>';
+        atualizarResumoPerm();
+        return;
+    }
+
+    // Agrupar por categoria
+    var grupos = {};
+    paineisFiltrados.forEach(function(p) {
+        var cat = p.categoria || 'auxiliar';
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push(p);
+    });
+
+    var html = '';
+    CATEGORIAS_PAINEIS.forEach(function(cat) {
+        if (!grupos[cat.id] || grupos[cat.id].length === 0) return;
+        var paineisDoCat = grupos[cat.id];
+        var comAcesso = paineisDoCat.filter(function(p) {
+            return Estado.permissoesCache.indexOf(p.nome) !== -1;
+        }).length;
+
+        html +=
+            '<div class="perm-grupo" data-categoria="' + cat.id + '">' +
+                '<div class="perm-grupo-header">' +
+                    '<div class="perm-grupo-titulo">' +
+                        '<span class="perm-cat-icon" style="background:' + cat.cor + '"><i class="fas ' + cat.icone + '" aria-hidden="true"></i></span>' +
+                        '<span class="perm-cat-nome">' + cat.titulo + '</span>' +
+                        '<span class="perm-cat-badge">' + comAcesso + ' / ' + paineisDoCat.length + '</span>' +
+                    '</div>' +
+                    '<div class="perm-grupo-acoes">' +
+                        '<button type="button" class="btn-perm-grupo" onclick="marcarTodosGrupo(\'' + cat.id + '\', true, ' + usuarioId + ')">Marcar todos</button>' +
+                        '<button type="button" class="btn-perm-grupo btn-perm-grupo-clear" onclick="marcarTodosGrupo(\'' + cat.id + '\', false, ' + usuarioId + ')">Limpar</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="perm-grupo-body">' +
+                    paineisDoCat.map(function(painel) {
+                        var temPermissao = Estado.permissoesCache.indexOf(painel.nome) !== -1;
+                        return '<div class="painel-item' + (temPermissao ? ' ativo' : '') + '" data-painel="' + escapeHtml(painel.nome) + '">' +
+                            '<div class="painel-info">' +
+                                '<h4>' + escapeHtml(painel.titulo) + '</h4>' +
+                                '<p>' + escapeHtml(painel.descricao || '') + '</p>' +
+                            '</div>' +
+                            '<div class="painel-toggle">' +
+                                '<label class="switch">' +
+                                    '<input type="checkbox" ' + (temPermissao ? 'checked' : '') +
+                                    ' onchange="togglePermissao(' + usuarioId + ', \'' + escapeHtml(painel.nome) + '\', this.checked, this)">' +
+                                    '<span class="slider"></span>' +
+                                '</label>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('') +
+                '</div>' +
+            '</div>';
+    });
+
+    listaPaineis.innerHTML = html;
+    atualizarResumoPerm();
+}
+
+function filtrarPaineisModal() {
+    var input = document.getElementById('perm-search');
+    Estado.permBusca = input ? input.value.trim() : '';
+    var usuarioId = document.getElementById('permissoes-usuario-id').value;
+    renderizarPaineisModal(usuarioId);
+}
+
+function mudarFiltroPermissao(btn) {
+    var filtros = document.querySelectorAll('.perm-filtro');
+    filtros.forEach(function(f) { f.classList.remove('ativo'); });
+    btn.classList.add('ativo');
+    Estado.permFiltro = btn.getAttribute('data-filtro');
+    var usuarioId = document.getElementById('permissoes-usuario-id').value;
+    renderizarPaineisModal(usuarioId);
+}
+
+function marcarTodosGrupo(categoriaId, marcar, usuarioId) {
+    var paineisDoCat = Estado.paineisCache.filter(function(p) { return p.categoria === categoriaId; });
+    var promessas = [];
+
+    paineisDoCat.forEach(function(painel) {
+        var temPermissao = Estado.permissoesCache.indexOf(painel.nome) !== -1;
+        if (marcar === temPermissao) return; // ja esta no estado desejado
+
+        var url, options;
+        if (marcar) {
+            url = CONFIG.endpoints.usuarios + '/' + usuarioId + '/permissoes';
+            options = { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ painel_nome: painel.nome }) };
+        } else {
+            url = CONFIG.endpoints.usuarios + '/' + usuarioId + '/permissoes/' + encodeURIComponent(painel.nome);
+            options = { method: 'DELETE', credentials: 'include' };
+        }
+
+        promessas.push(
+            fetch(url, options).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    if (marcar) {
+                        if (Estado.permissoesCache.indexOf(painel.nome) === -1) Estado.permissoesCache.push(painel.nome);
+                    } else {
+                        var idx = Estado.permissoesCache.indexOf(painel.nome);
+                        if (idx !== -1) Estado.permissoesCache.splice(idx, 1);
+                    }
+                }
+            })
+        );
+    });
+
+    if (promessas.length === 0) return;
+
+    Promise.all(promessas).then(function() {
+        renderizarPaineisModal(usuarioId);
+        mostrarMensagemModal('mensagem-permissoes', (marcar ? 'Permissoes adicionadas' : 'Permissoes removidas') + ' com sucesso', 'success');
+    }).catch(function() {
+        mostrarMensagemModal('mensagem-permissoes', 'Erro ao alterar algumas permissoes', 'danger');
+        renderizarPaineisModal(usuarioId);
+    });
+}
+
+function atualizarResumoPerm() {
+    var resumo = document.getElementById('perm-resumo');
+    if (!resumo) return;
+    var total = Estado.paineisCache.length;
+    var ativos = Estado.permissoesCache.length;
+    resumo.textContent = ativos + ' de ' + total + ' paineis com acesso';
 }
 
 function fecharModalPermissoes() {
@@ -783,10 +989,7 @@ function togglePermissao(usuarioId, painelNome, adicionar, checkbox) {
         method = 'DELETE';
     }
 
-    var options = {
-        method: method,
-        credentials: 'include'
-    };
+    var options = { method: method, credentials: 'include' };
 
     if (adicionar) {
         options.headers = { 'Content-Type': 'application/json' };
@@ -794,21 +997,35 @@ function togglePermissao(usuarioId, painelNome, adicionar, checkbox) {
     }
 
     fetch(url, options)
-    .then(function(response) {
-        return response.json();
-    })
+    .then(function(response) { return response.json(); })
     .then(function(data) {
         if (data.success) {
+            // Sincronizar cache local de permissoes
+            if (adicionar) {
+                if (Estado.permissoesCache.indexOf(painelNome) === -1) Estado.permissoesCache.push(painelNome);
+            } else {
+                var idx = Estado.permissoesCache.indexOf(painelNome);
+                if (idx !== -1) Estado.permissoesCache.splice(idx, 1);
+            }
+
             mostrarMensagemModal('mensagem-permissoes', data.message || 'Permissao atualizada', 'success');
 
             var painelItem = checkbox.closest('.painel-item');
             if (painelItem) {
-                if (adicionar) {
-                    painelItem.classList.add('ativo');
-                } else {
-                    painelItem.classList.remove('ativo');
-                }
+                if (adicionar) painelItem.classList.add('ativo');
+                else painelItem.classList.remove('ativo');
             }
+
+            // Atualizar badge do grupo e resumo
+            var grupo = checkbox.closest('.perm-grupo');
+            if (grupo) {
+                var catId = grupo.getAttribute('data-categoria');
+                var paineisDoCat = Estado.paineisCache.filter(function(p) { return p.categoria === catId; });
+                var comAcesso = paineisDoCat.filter(function(p) { return Estado.permissoesCache.indexOf(p.nome) !== -1; }).length;
+                var badge = grupo.querySelector('.perm-cat-badge');
+                if (badge) badge.textContent = comAcesso + ' / ' + paineisDoCat.length;
+            }
+            atualizarResumoPerm();
         } else {
             mostrarMensagemModal('mensagem-permissoes', data.error || 'Erro ao alterar permissao', 'danger');
             checkbox.checked = !adicionar;

@@ -52,7 +52,6 @@ var PAINEL_VERSAO = '1.0.25';
 
     var Estado = {
         dados: [],
-        dadosVisaoGeral: null,
         carregando: false,
         carregandoVG: false,
         abaAtiva: 'visao-geral',
@@ -82,7 +81,6 @@ var PAINEL_VERSAO = '1.0.25';
         vgTipo: [],
         vgEtapa: [],
         excluirZerados: false,
-        filtrosRecolhidos: false,
         modoScroll: 'rolar',
         paginaAtual: 0,
         totalPaginas: 0,
@@ -128,7 +126,6 @@ var PAINEL_VERSAO = '1.0.25';
         DOM.btnAutoScroll = document.getElementById('btn-auto-scroll');
         DOM.btnModoScroll = document.getElementById('btn-modo-scroll');
         DOM.btnToggleFiltros = document.getElementById('btn-toggle-filtros');
-        DOM.headerControls = document.getElementById('header-controls');
 
         // Abas
         DOM.tabVisaoGeralBtn  = document.querySelector('[data-tab="visao-geral"]');
@@ -433,7 +430,6 @@ var PAINEL_VERSAO = '1.0.25';
             atualizarContadores();
 
             if (vgResp && vgResp.success) {
-                Estado.dadosVisaoGeral = vgResp;
                 renderizarConvenios(vgResp.por_convenio || []);
                 renderizarVencimento(vgResp.vencimento  || {});
                 renderizarEtapas(vgResp.por_etapa       || []);
@@ -869,7 +865,6 @@ var PAINEL_VERSAO = '1.0.25';
         return fetchComRetry(construirUrlVisaoGeral())
             .then(function(resp) {
                 if (!resp.success) return;
-                Estado.dadosVisaoGeral = resp;
                 renderizarConvenios(resp.por_convenio || []);
                 renderizarVencimento(resp.vencimento || {});
                 renderizarEtapas(resp.por_etapa || []);
@@ -1285,17 +1280,23 @@ var PAINEL_VERSAO = '1.0.25';
         // Botoes
         if (DOM.btnVoltar) DOM.btnVoltar.addEventListener('click', function() { window.location.href = '/frontend/dashboard.html'; });
         if (DOM.btnRefresh) DOM.btnRefresh.addEventListener('click', function() { DOM.btnRefresh.classList.add('girando'); carregarDados().then(function() { setTimeout(function() { DOM.btnRefresh.classList.remove('girando'); }, 500); }); });
-        if (DOM.btnAutoScroll) DOM.btnAutoScroll.addEventListener('click', function() { Estado.autoScrollAtivo = !Estado.autoScrollAtivo; Estado.autoScrollIniciado = true; atualizarBotaoScroll(); if (Estado.autoScrollAtivo) iniciarAutoScrollModo(); else pararAutoScroll(); });
+        if (DOM.btnAutoScroll) DOM.btnAutoScroll.addEventListener('click', function() {
+            Estado.autoScrollAtivo = !Estado.autoScrollAtivo;
+            Estado.autoScrollIniciado = true;
+            salvar('autoScroll', Estado.autoScrollAtivo ? '1' : '0');
+            atualizarBotaoScroll();
+            if (Estado.autoScrollAtivo) iniciarAutoScrollModo(); else pararAutoScroll();
+        });
 
         // Teclado
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 if (DOM.modalExportar && DOM.modalExportar.classList.contains('ativo')) { fecharModalExportar(); return; }
                 if (Estado.dropdownAberto) fecharTodosDropdowns();
-                else if (Estado.autoScrollAtivo) { Estado.autoScrollAtivo = false; atualizarBotaoScroll(); pararAutoScroll(); }
+                else if (Estado.autoScrollAtivo) { Estado.autoScrollAtivo = false; salvar('autoScroll', '0'); atualizarBotaoScroll(); pararAutoScroll(); }
             }
             if (e.key === 'F5') { e.preventDefault(); carregarDados(); }
-            if (e.key === ' ' && e.target === document.body) { e.preventDefault(); Estado.autoScrollAtivo = !Estado.autoScrollAtivo; Estado.autoScrollIniciado = true; atualizarBotaoScroll(); if (Estado.autoScrollAtivo) iniciarAutoScrollModo(); else pararAutoScroll(); }
+            if (e.key === ' ' && e.target === document.body) { e.preventDefault(); Estado.autoScrollAtivo = !Estado.autoScrollAtivo; Estado.autoScrollIniciado = true; salvar('autoScroll', Estado.autoScrollAtivo ? '1' : '0'); atualizarBotaoScroll(); if (Estado.autoScrollAtivo) iniciarAutoScrollModo(); else pararAutoScroll(); }
             if (Estado.modoScroll === 'paginar') {
                 if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); proximaPagina(); }
                 if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); mostrarPagina(Estado.paginaAtual - 1 < 0 ? Estado.totalPaginas - 1 : Estado.paginaAtual - 1); }
@@ -1328,7 +1329,12 @@ var PAINEL_VERSAO = '1.0.25';
         Estado.excluirZerados = recuperar('excluirZerados') === '1';
         atualizarBotaoExcluirZerados();
 
-        Estado.filtrosRecolhidos = false;
+        // Restaurar preferencia de autoscroll: se o usuario desativou, nao auto-iniciar
+        var autoScrollSalvo = recuperar('autoScroll');
+        if (autoScrollSalvo === '0') {
+            Estado.autoScrollIniciado = true; // bloqueia agendarAutoScrollInicial
+        }
+        // se '1' ou null (primeira visita): agendarAutoScrollInicial dispara normalmente
 
         var modoSalvo = recuperar('modoScroll');
         if (modoSalvo) Estado.modoScroll = modoSalvo;

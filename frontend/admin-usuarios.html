@@ -105,16 +105,22 @@
             <i class="fas fa-search" aria-hidden="true"></i>
             <input type="text"
                    id="search-input"
-                   placeholder="Buscar usuario por nome, email ou cargo..."
+                   placeholder="Buscar por nome, email ou cargo... (Enter para pesquisar)"
                    aria-label="Buscar usuarios"
                    autocomplete="off">
+            <button type="button" id="btn-buscar" class="btn-buscar" aria-label="Executar busca">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </button>
         </div>
         <div class="controls-buttons">
+            <button type="button" id="btn-ver-todos" class="btn-secondary">
+                <i class="fas fa-users" aria-hidden="true"></i> Ver Todos
+            </button>
             <button type="button" id="btn-novo-usuario" class="btn-primary">
                 <i class="fas fa-user-plus" aria-hidden="true"></i> Novo Usuario
             </button>
-            <button type="button" id="btn-refresh" class="btn-secondary" aria-label="Atualizar lista">
-                <i class="fas fa-sync-alt" aria-hidden="true"></i> Atualizar
+            <button type="button" id="btn-refresh" class="btn-secondary" aria-label="Recarregar do servidor">
+                <i class="fas fa-sync-alt" aria-hidden="true"></i>
             </button>
         </div>
     </section>
@@ -301,28 +307,41 @@
          MODAL: PERMISSOES
          ============================================================ -->
     <div id="modal-permissoes" class="modal" role="dialog" aria-labelledby="titulo-modal-permissoes" aria-modal="true">
-        <div class="modal-content">
+        <div class="modal-content modal-permissoes">
             <div class="modal-header">
-                <h2 id="titulo-modal-permissoes"><i class="fas fa-shield-alt" aria-hidden="true"></i> Gerenciar Permissoes</h2>
+                <div>
+                    <h2 id="titulo-modal-permissoes"><i class="fas fa-shield-alt" aria-hidden="true"></i> Gerenciar Permissoes</h2>
+                    <p class="modal-subtitulo">Usuario: <strong id="permissoes-usuario-nome"></strong></p>
+                </div>
                 <button type="button" class="btn-close-modal" onclick="fecharModalPermissoes()" aria-label="Fechar">&times;</button>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="permissoes-usuario-id">
-                <p>Usuario: <strong id="permissoes-usuario-nome"></strong></p>
 
-                <div class="paineis-lista">
-                    <h3>Paineis Disponiveis</h3>
-                    <div id="lista-paineis">
-                        <div class="loading">
-                            <div class="loading-spinner" aria-hidden="true"></div>
-                            <p>Carregando paineis...</p>
-                        </div>
+            <!-- Barra de ferramentas: busca + filtro -->
+            <div class="perm-toolbar">
+                <div class="perm-search-box">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="text" id="perm-search" placeholder="Buscar painel..." autocomplete="off"
+                           oninput="filtrarPaineisModal()" aria-label="Buscar painel">
+                </div>
+                <div class="perm-filtros" role="group" aria-label="Filtrar por acesso">
+                    <button type="button" class="perm-filtro ativo" data-filtro="todos"      onclick="mudarFiltroPermissao(this)">Todos</button>
+                    <button type="button" class="perm-filtro"       data-filtro="com-acesso" onclick="mudarFiltroPermissao(this)"><i class="fas fa-check" aria-hidden="true"></i> Com acesso</button>
+                    <button type="button" class="perm-filtro"       data-filtro="sem-acesso" onclick="mudarFiltroPermissao(this)"><i class="fas fa-ban" aria-hidden="true"></i> Sem acesso</button>
+                </div>
+            </div>
+
+            <div class="modal-body perm-body">
+                <input type="hidden" id="permissoes-usuario-id">
+                <div id="lista-paineis">
+                    <div class="loading">
+                        <div class="loading-spinner" aria-hidden="true"></div>
+                        <p>Carregando paineis...</p>
                     </div>
                 </div>
-
                 <div id="mensagem-permissoes" class="alert" style="display: none;" role="alert"></div>
             </div>
             <div class="modal-buttons">
+                <span id="perm-resumo" class="perm-resumo"></span>
                 <button type="button" class="btn-secondary" onclick="fecharModalPermissoes()">Fechar</button>
             </div>
         </div>
