@@ -105,6 +105,8 @@ def api_p45_agendamentos():
                     ra.dt_no_local,
                     ra.dt_inicio_exame,
                     ra.dt_conclusao_exame,
+                    ra.requer_preparo,
+                    ra.tipo_preparo,
                     -- Slot
                     rs.id           AS slot_id,
                     rs.data_hora    AS slot_data_hora,

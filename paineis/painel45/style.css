@@ -182,6 +182,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     border-radius: 6px; padding: 5px 9px; display: flex; align-items: flex-start; gap: 5px;
 }
 .card-ag-obs { font-size: 11px; color: var(--texto-sec); font-style: italic; display: flex; align-items: center; gap: 4px; }
+.card-ag-preparo { font-size: 11px; color: #5a3e00; background: #fff3cd; border-radius: 6px; padding: 5px 9px; display: flex; align-items: flex-start; gap: 5px; margin-top: 2px; }
 .card-ag-medico { font-size: 11px; color: var(--texto-sec); display: flex; align-items: center; gap: 4px; }
 
 .card-ag-footer {

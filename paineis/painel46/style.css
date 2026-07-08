@@ -437,6 +437,12 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     font-size: 11px; color: #842029; background: #f8d7da;
     border-radius: 6px; padding: 4px 8px; display: flex; align-items: flex-start; gap: 4px; margin-top: 4px;
 }
+.card-ex-preparo {
+    font-size: 11px; color: #5a3e00; background: #fff3cd;
+    border-radius: 6px; padding: 4px 8px; display: flex; align-items: flex-start; gap: 4px; margin-top: 4px;
+}
+.card-linha-preparo { color: #5a3e00; background: #fff3cd; border-radius: 4px; padding: 2px 6px; }
+.slot-preparo { font-size: 11px; color: #5a3e00; background: #fff3cd; border-radius: 4px; padding: 2px 7px; margin-top: 3px; }
 .card-motivo-recusa {
     font-size: 11px; color: #842029; background: #f8d7da;
     border-radius: 6px; padding: 4px 8px; display: flex; align-items: flex-start; gap: 4px; margin-top: 4px;

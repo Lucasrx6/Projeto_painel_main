@@ -217,6 +217,8 @@
         if (item.slot_data_hora)
             html += '<div class="card-linha"><i class="fas fa-clock"></i><span><strong>' + formatarHora(item.slot_data_hora) + '</strong>'
                   + (item.slot_modalidade ? ' — ' + escHtml(item.slot_modalidade) : '') + '</span></div>';
+        if (item.requer_preparo && item.tipo_preparo)
+            html += '<div class="card-linha card-linha-preparo"><i class="fas fa-flask"></i><span><strong>Preparo:</strong> ' + escHtml(item.tipo_preparo) + '</span></div>';
         html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeTransporte(item) + '</div>';
         var enfSt = item.status_enfermagem;
         if (enfSt === 'ciente' || enfSt === 'recusado') {
@@ -377,6 +379,10 @@
             html += '<span class="badge-status badge-presc-sem-ag"><i class="fas fa-calendar-plus"></i> Sem agendamento</span>';
         }
         html += '</div>';
+
+        if (!concluidoInterno && radioId && ex.requer_preparo && ex.radio_preparo) {
+            html += '<div class="card-ex-preparo"><i class="fas fa-flask"></i> <strong>Preparo:</strong> ' + escHtml(ex.radio_preparo) + '</div>';
+        }
 
         if (!concluidoInterno && radioId) {
             var enfStEx = ex.status_enfermagem;
@@ -576,6 +582,8 @@
             html += '<div class="slot-paciente"><i class="fas fa-user"></i> ' + escHtml(formatarNome(slot.nm_paciente)) + '</div>';
             if (slot.ds_procedimento)
                 html += '<div class="slot-exame-s">' + escHtml(slot.ds_procedimento) + '</div>';
+            if (slot.requer_preparo && slot.tipo_preparo)
+                html += '<div class="slot-preparo"><i class="fas fa-flask"></i> ' + escHtml(slot.tipo_preparo) + '</div>';
             if (slot.status_enfermagem) {
                 html += '<div class="slot-enf-row">' + badgeStatusEnf(slot.status_enfermagem) + '</div>';
             }

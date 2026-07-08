@@ -223,6 +223,11 @@
             html += '<div class="card-ag-obs"><i class="fas fa-comment-alt"></i> ' + escHtml(item.observacao) + '</div>';
         }
 
+        // Preparo necessário
+        if (item.requer_preparo && item.tipo_preparo) {
+            html += '<div class="card-ag-preparo"><i class="fas fa-flask"></i> <strong>Preparo:</strong> ' + escHtml(item.tipo_preparo) + '</div>';
+        }
+
         // Médico solicitante
         if (item.nm_medico_solicitante) {
             html += '<div class="card-ag-medico"><i class="fas fa-user-md"></i> ' + escHtml(item.nm_medico_solicitante) + '</div>';

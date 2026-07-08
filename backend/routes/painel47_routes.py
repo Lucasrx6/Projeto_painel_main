@@ -153,6 +153,7 @@ def api_p47_chamados():
                     ra.status, ra.requer_transporte,
                     ra.solicitante_nome, ra.observacao, ra.motivo_cancelamento,
                     ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
+                    ra.requer_preparo, ra.tipo_preparo,
                     ra.criado_em,
                     ra.dt_no_local,
                     ra.dt_inicio_exame,
@@ -260,6 +261,7 @@ def api_p47_exportar():
                     ra.nr_atendimento, ra.nm_paciente,
                     ra.leito_origem, ra.setor_origem_nome,
                     ra.ds_procedimento, ra.requer_transporte,
+                    ra.requer_preparo, ra.tipo_preparo,
                     ra.prioridade, ra.status,
                     ra.solicitante_nome,
                     rs.data_hora AS slot_agendado,
@@ -296,7 +298,7 @@ def api_p47_exportar():
         writer = csv.writer(output, delimiter=';')
         writer.writerow([
             'ID', 'Enviado (Enfermagem)', 'Slot Agendado', 'Atendimento', 'Paciente',
-            'Leito', 'Setor', 'Exame', 'Requer Transporte',
+            'Leito', 'Setor', 'Exame', 'Requer Transporte', 'Requer Preparo', 'Tipo de Preparo',
             'Prioridade', 'Status',
             'Chegou (No Local)', 'Exame Iniciado', 'Exame Concluído',
             'Transporte Solicitado', 'Transporte Aceito', 'Transporte Iniciado', 'Transporte Concluído',
@@ -312,6 +314,8 @@ def api_p47_exportar():
                 r['leito_origem'], r['setor_origem_nome'],
                 r['ds_procedimento'],
                 'Não' if not r['requer_transporte'] else 'Sim',
+                'Sim' if r['requer_preparo'] else 'Não',
+                r['tipo_preparo'] or '',
                 r['prioridade'], r['status'],
                 _fmt(r['dt_no_local']),
                 _fmt(r['dt_inicio_exame']),
