@@ -1304,22 +1304,22 @@ var PAINEL_VERSAO = '1.0.85';
 
             // Categorias
             if (r.categorias && r.categorias.length > 0) {
-                html += '<td class="resp-td-badges">';
+                html += '<td><div class="resp-badges-wrap">';
                 for (var j = 0; j < r.categorias.length; j++) {
                     html += '<span class="resp-badge cat">' + escapeHtml(r.categorias[j].nome) + '</span>';
                 }
-                html += '</td>';
+                html += '</div></td>';
             } else {
                 html += '<td class="resp-td-vazio">—</td>';
             }
 
             // Setores
             if (r.setores && r.setores.length > 0) {
-                html += '<td class="resp-td-badges">';
+                html += '<td><div class="resp-badges-wrap">';
                 for (var k = 0; k < r.setores.length; k++) {
                     html += '<span class="resp-badge set">' + escapeHtml(r.setores[k].nome) + '</span>';
                 }
-                html += '</td>';
+                html += '</div></td>';
             } else {
                 html += '<td class="resp-td-vazio">—</td>';
             }

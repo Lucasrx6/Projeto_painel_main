@@ -2035,10 +2035,20 @@ body {
 .resp-td-tel { font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .resp-td-vazio { color: #ccc; font-size: 0.78rem; }
 
-.resp-td-badges {
+.resp-badges-wrap {
     display: flex; flex-wrap: wrap; gap: 3px;
-    overflow: hidden;
+    overflow: hidden; max-height: 56px;
 }
+
+.resp-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.67rem; font-weight: 600;
+    white-space: nowrap;
+}
+.resp-badge.cat { background: #e3f2fd; color: #1565c0; }
+.resp-badge.set { background: #e8f5e9; color: #2e7d32; }
 
 .resp-td-acoes { white-space: nowrap; overflow: hidden; }
 
