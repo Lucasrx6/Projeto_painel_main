@@ -1997,24 +1997,26 @@ body {
 
 .resp-tab-table {
     width: 100%; border-collapse: collapse; font-size: 0.82rem;
+    table-layout: fixed;
 }
 
 .resp-tab-table th {
-    padding: 10px 14px;
+    padding: 10px 12px;
     background: #f8f9fa;
-    font-size: 0.7rem; font-weight: 700;
+    font-size: 0.68rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.4px;
     color: var(--cor-texto-sec);
     border-bottom: 2px solid #e0e0e0;
-    text-align: left; white-space: nowrap;
+    text-align: left; white-space: nowrap; overflow: hidden;
     position: sticky; top: 0; z-index: 1;
 }
 
 .resp-tab-table td {
-    padding: 10px 14px;
+    padding: 9px 12px;
     border-bottom: 1px solid #f5f5f5;
     color: var(--cor-texto);
     vertical-align: middle;
+    overflow: hidden;
 }
 
 .resp-tab-table tr:last-child td { border-bottom: none; }
@@ -2022,19 +2024,23 @@ body {
 .resp-tab-row.resp-row-inativo td { opacity: 0.55; }
 .resp-tab-row.resp-row-inativo { background: #fafafa; }
 
+.resp-td-nome {
+    overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis;
+}
 .resp-td-nome strong { font-size: 0.88rem; font-weight: 700; }
-.resp-td-cargo { font-size: 0.7rem; color: var(--cor-texto-sec); margin-top: 2px; display: block; }
-.resp-link-email { color: var(--cor-info); text-decoration: none; font-size: 0.8rem; }
+.resp-td-cargo { font-size: 0.7rem; color: var(--cor-texto-sec); margin-top: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.resp-link-email { color: var(--cor-info); text-decoration: none; font-size: 0.78rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .resp-link-email:hover { text-decoration: underline; }
-.resp-td-tel { font-size: 0.8rem; white-space: nowrap; }
+.resp-td-tel { font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .resp-td-vazio { color: #ccc; font-size: 0.78rem; }
 
 .resp-td-badges {
-    max-width: 180px;
     display: flex; flex-wrap: wrap; gap: 3px;
+    overflow: hidden;
 }
 
-.resp-td-acoes { white-space: nowrap; }
+.resp-td-acoes { white-space: nowrap; overflow: hidden; }
 
 .resp-status-badge {
     display: inline-flex; align-items: center; gap: 4px;
