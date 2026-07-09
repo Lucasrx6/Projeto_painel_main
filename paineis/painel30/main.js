@@ -29,7 +29,9 @@ var PAINEL_VERSAO = '1.0.85';
         responsaveisCache: [],
         responsaveisLista: [],
         abaAtiva: 'resumo',
-        resumoCarregado: false
+        resumoCarregado: false,
+        respSelectsPopulados: false,
+        respBuscaTimer: null
     };
 
     var _categoriasItensCache = null;
@@ -52,6 +54,8 @@ var PAINEL_VERSAO = '1.0.85';
         estado.refreshInterval = setInterval(function () {
             if (estado.abaAtiva === 'resumo') {
                 carregarResumo();
+            } else if (estado.abaAtiva === 'responsaveis') {
+                carregarResponsaveis();
             } else {
                 carregarTudo();
             }
@@ -97,6 +101,12 @@ var PAINEL_VERSAO = '1.0.85';
             carregarResumo();
         } else if (nomeTab === 'tratativas') {
             carregarTudo();
+        } else if (nomeTab === 'responsaveis') {
+            if (!estado.respSelectsPopulados) {
+                popularSelectsResponsaveis();
+                estado.respSelectsPopulados = true;
+            }
+            carregarResponsaveis();
         }
     }
 
@@ -124,13 +134,6 @@ var PAINEL_VERSAO = '1.0.85';
         var btnGestao = document.getElementById('btn-gestao');
         if (btnGestao) btnGestao.addEventListener('click', function () {
             window.location.href = '/painel/painel29';
-        });
-
-        var btnResp = document.getElementById('btn-responsaveis');
-        if (btnResp) btnResp.addEventListener('click', function () {
-            abrirModal('modal-responsaveis');
-            carregarResponsaveis();
-            popularSelectsResponsaveis();
         });
 
         var btnToggleFiltros = document.getElementById('btn-toggle-filtros');
@@ -254,6 +257,11 @@ var PAINEL_VERSAO = '1.0.85';
                         opt.textContent = r.nome;
                         selResp.appendChild(opt);
                     });
+                }
+
+                if (d.is_admin !== undefined) {
+                    estado.isAdmin = d.is_admin;
+                    _atualizarVisibilidadeAdmin();
                 }
             })
             .catch(function (err) { console.warn('Erro ao carregar filtros:', err); });
@@ -1028,16 +1036,31 @@ var PAINEL_VERSAO = '1.0.85';
     // ========================================
 
     function configurarResponsaveis() {
-        var btnFechar = document.getElementById('btn-fechar-responsaveis');
-        if (btnFechar) btnFechar.addEventListener('click', function () { fecharModal('modal-responsaveis'); });
-        var btnFecharBottom = document.getElementById('btn-fechar-responsaveis-bottom');
-        if (btnFecharBottom) btnFecharBottom.addEventListener('click', function () { fecharModal('modal-responsaveis'); });
+        var btnNovo = document.getElementById('resp-tab-btn-novo');
+        if (btnNovo) btnNovo.addEventListener('click', function () {
+            _limparFormResponsavel();
+            _exibirFormResponsavel();
+        });
+
+        var btnFecharForm = document.getElementById('resp-tab-form-fechar');
+        if (btnFecharForm) btnFecharForm.addEventListener('click', _limparFormResponsavel);
 
         var btnAdd = document.getElementById('btn-add-resp');
         if (btnAdd) btnAdd.addEventListener('click', salvarResponsavel);
 
         var btnCancelar = document.getElementById('btn-cancelar-resp-edicao');
         if (btnCancelar) btnCancelar.addEventListener('click', cancelarEdicaoResponsavel);
+
+        var inputBusca = document.getElementById('resp-tab-busca');
+        if (inputBusca) {
+            inputBusca.addEventListener('input', function () {
+                clearTimeout(estado.respBuscaTimer);
+                estado.respBuscaTimer = setTimeout(_filtrarRenderResponsaveis, 300);
+            });
+        }
+
+        var checkInativos = document.getElementById('resp-tab-mostrar-inativos');
+        if (checkInativos) checkInativos.addEventListener('change', _filtrarRenderResponsaveis);
     }
 
     function popularSelectsResponsaveis() {
@@ -1180,71 +1203,142 @@ var PAINEL_VERSAO = '1.0.85';
     // ========================================
 
     function carregarResponsaveis() {
-        var lista = document.getElementById('resp-lista');
-        if (!lista) return;
-        lista.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+        var tbody = document.getElementById('resp-tab-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999;"><div class="loading-spinner" style="margin:auto;"></div></td></tr>';
 
-        fetch(CONFIG.apiResponsaveis + '?todas=1')
+        fetch(CONFIG.apiResponsaveis + '?todas=1', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (d.success) {
+                    if (d.is_admin !== undefined) {
+                        estado.isAdmin = d.is_admin;
+                        _atualizarVisibilidadeAdmin();
+                    }
                     estado.responsaveisLista = d.data || [];
-                    renderizarResponsaveis(estado.responsaveisLista);
+                    _atualizarStatsResponsaveis();
+                    _filtrarRenderResponsaveis();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="resp-tab-vazio">Erro ao carregar</td></tr>';
                 }
             })
             .catch(function () {
-                lista.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Erro ao carregar</p>';
+                tbody.innerHTML = '<tr><td colspan="7" class="resp-tab-vazio">Erro ao carregar</td></tr>';
             });
     }
 
-    function renderizarResponsaveis(resps) {
-        var lista = document.getElementById('resp-lista');
-        if (!lista) return;
+    function _atualizarVisibilidadeAdmin() {
+        var tabBtn = document.getElementById('tab-btn-responsaveis');
+        if (tabBtn) tabBtn.style.display = estado.isAdmin ? 'flex' : 'none';
+    }
 
-        if (resps.length === 0) {
-            lista.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Nenhum responsavel cadastrado</p>';
+    function _exibirFormResponsavel() {
+        var card = document.getElementById('resp-tab-form-card');
+        if (card) {
+            card.style.display = 'block';
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function _atualizarStatsResponsaveis() {
+        var lista = estado.responsaveisLista;
+        var total = lista.length;
+        var ativos = 0, inativos = 0, comEmail = 0;
+        for (var i = 0; i < lista.length; i++) {
+            if (lista[i].ativo) { ativos++; } else { inativos++; }
+            if (lista[i].email) { comEmail++; }
+        }
+        setTexto('rst-total', total);
+        setTexto('rst-ativos', ativos);
+        setTexto('rst-inativos', inativos);
+        setTexto('rst-com-email', comEmail);
+    }
+
+    function _filtrarRenderResponsaveis() {
+        var buscaEl = document.getElementById('resp-tab-busca');
+        var checkEl = document.getElementById('resp-tab-mostrar-inativos');
+        var busca = buscaEl ? buscaEl.value.toLowerCase() : '';
+        var mostrarInativos = checkEl ? checkEl.checked : true;
+
+        var lista = [];
+        for (var i = 0; i < estado.responsaveisLista.length; i++) {
+            var r = estado.responsaveisLista[i];
+            if (!mostrarInativos && !r.ativo) { continue; }
+            if (busca) {
+                var haystack = (r.nome || '') + ' ' + (r.email || '') + ' ' + (r.cargo || '') + ' ' + (r.telefone || '');
+                if (haystack.toLowerCase().indexOf(busca) === -1) { continue; }
+            }
+            lista.push(r);
+        }
+        _renderizarTabelaResponsaveis(lista);
+    }
+
+    function _renderizarTabelaResponsaveis(lista) {
+        var tbody = document.getElementById('resp-tab-tbody');
+        if (!tbody) return;
+
+        if (lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="resp-tab-vazio">Nenhum responsavel encontrado</td></tr>';
             return;
         }
 
-        lista.innerHTML = resps.map(function (r) {
-            var cls = r.ativo ? 'resp-item' : 'resp-item inativo';
-            var html = '<div class="' + cls + '" data-id="' + r.id + '">';
-            html += '<div class="resp-info">';
-            html += '<div class="resp-nome">' + escapeHtml(r.nome) + (r.cargo ? ' <small style="font-weight:400;color:#999;">- ' + escapeHtml(r.cargo) + '</small>' : '') + '</div>';
-            html += '<div class="resp-detalhes">';
-            if (r.email) html += '<span><i class="fas fa-envelope"></i> ' + escapeHtml(r.email) + '</span>';
-            if (r.telefone) html += '<span><i class="fas fa-phone"></i> ' + escapeHtml(r.telefone) + '</span>';
+        var html = '';
+        for (var i = 0; i < lista.length; i++) {
+            var r = lista[i];
+            html += '<tr class="resp-tab-row' + (r.ativo ? '' : ' resp-row-inativo') + '">';
 
-            // Mostrar multiplas categorias como badges
+            // Nome / Cargo
+            html += '<td class="resp-td-nome">' + escapeHtml(r.nome);
+            if (r.cargo) { html += '<div class="resp-td-cargo">' + escapeHtml(r.cargo) + '</div>'; }
+            html += '</td>';
+
+            // Email
+            if (r.email) {
+                html += '<td><a class="resp-link-email" href="mailto:' + escapeHtml(r.email) + '">' + escapeHtml(r.email) + '</a></td>';
+            } else {
+                html += '<td class="resp-td-vazio">—</td>';
+            }
+
+            // Telefone
+            html += '<td class="resp-td-tel">' + (r.telefone ? escapeHtml(r.telefone) : '<span class="resp-td-vazio">—</span>') + '</td>';
+
+            // Categorias
             if (r.categorias && r.categorias.length > 0) {
-                html += '<span class="resp-multi-badges"><i class="fas fa-tags"></i> ';
-                r.categorias.forEach(function (c) {
-                    html += '<span class="resp-tag-badge cat">' + escapeHtml(c.nome) + '</span>';
-                });
-                html += '</span>';
+                html += '<td class="resp-td-badges">';
+                for (var j = 0; j < r.categorias.length; j++) {
+                    html += '<span class="resp-badge cat">' + escapeHtml(r.categorias[j].nome) + '</span>';
+                }
+                html += '</td>';
+            } else {
+                html += '<td class="resp-td-vazio">—</td>';
             }
 
-            // Mostrar multiplos setores como badges
+            // Setores
             if (r.setores && r.setores.length > 0) {
-                html += '<span class="resp-multi-badges"><i class="fas fa-building"></i> ';
-                r.setores.forEach(function (s) {
-                    html += '<span class="resp-tag-badge set">' + escapeHtml(s.nome) + '</span>';
-                });
-                html += '</span>';
+                html += '<td class="resp-td-badges">';
+                for (var k = 0; k < r.setores.length; k++) {
+                    html += '<span class="resp-badge set">' + escapeHtml(r.setores[k].nome) + '</span>';
+                }
+                html += '</td>';
+            } else {
+                html += '<td class="resp-td-vazio">—</td>';
             }
 
-            html += '</div>';
-            html += '</div>';
-            html += '<div class="resp-acoes">';
+            // Status
+            html += '<td><span class="resp-status-badge ' + (r.ativo ? 'resp-status-ativo' : 'resp-status-inativo') + '">' + (r.ativo ? 'Ativo' : 'Inativo') + '</span></td>';
+
+            // Acoes
+            html += '<td class="resp-td-acoes">';
             if (estado.isAdmin) {
-                html += '<button class="r-btn r-btn-editar" onclick="window.P30.editarResponsavel(' + r.id + ')" title="Editar"><i class="fas fa-edit"></i></button>';
-                html += '<button class="r-btn r-btn-toggle ' + (r.ativo ? 'ativo' : '') + '" onclick="window.P30.toggleResponsavel(' + r.id + ')" title="' + (r.ativo ? 'Desativar' : 'Ativar') + '"><i class="fas fa-' + (r.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
-                html += '<button class="r-btn r-btn-excluir" onclick="window.P30.excluirResponsavel(' + r.id + ', \'' + escapeHtml(r.nome).replace(/'/g, "\\'") + '\')" title="Excluir responsavel"><i class="fas fa-trash"></i></button>';
+                html += '<button class="rtb-btn rtb-btn-editar" onclick="window.P30.editarResponsavel(' + r.id + ')" title="Editar"><i class="fas fa-edit"></i></button>';
+                html += '<button class="rtb-btn rtb-btn-toggle ' + (r.ativo ? 'ativo' : '') + '" onclick="window.P30.toggleResponsavel(' + r.id + ')" title="' + (r.ativo ? 'Desativar' : 'Ativar') + '"><i class="fas fa-' + (r.ativo ? 'toggle-on' : 'toggle-off') + '"></i></button>';
+                html += '<button class="rtb-btn rtb-btn-excluir" onclick="window.P30.excluirResponsavel(' + r.id + ', \'' + escapeHtml(r.nome).replace(/'/g, "\\'") + '\')" title="Excluir"><i class="fas fa-trash"></i></button>';
             }
-            html += '</div>';
-            html += '</div>';
-            return html;
-        }).join('');
+            html += '</td>';
+
+            html += '</tr>';
+        }
+        tbody.innerHTML = html;
     }
 
     function salvarResponsavel() {
@@ -1309,7 +1403,7 @@ var PAINEL_VERSAO = '1.0.85';
         _setMultiSelectValues('resp-categorias', catIds);
         _setMultiSelectValues('resp-setores', setIds);
 
-        var titulo = document.querySelector('.resp-form h4');
+        var titulo = document.getElementById('resp-tab-form-titulo');
         if (titulo) titulo.innerHTML = '<i class="fas fa-edit"></i> Editando: ' + escapeHtml(r.nome);
 
         var btnAdd = document.getElementById('btn-add-resp');
@@ -1318,8 +1412,7 @@ var PAINEL_VERSAO = '1.0.85';
         var btnCanc = document.getElementById('btn-cancelar-resp-edicao');
         if (btnCanc) btnCanc.style.display = 'flex';
 
-        var form = document.querySelector('.resp-form');
-        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        _exibirFormResponsavel();
     }
 
     function cancelarEdicaoResponsavel() {
@@ -1335,7 +1428,7 @@ var PAINEL_VERSAO = '1.0.85';
         _clearMultiSelect('resp-categorias');
         _clearMultiSelect('resp-setores');
 
-        var titulo = document.querySelector('.resp-form h4');
+        var titulo = document.getElementById('resp-tab-form-titulo');
         if (titulo) titulo.innerHTML = '<i class="fas fa-plus-circle"></i> Adicionar Responsavel';
 
         var btnAdd = document.getElementById('btn-add-resp');
@@ -1343,6 +1436,9 @@ var PAINEL_VERSAO = '1.0.85';
 
         var btnCanc = document.getElementById('btn-cancelar-resp-edicao');
         if (btnCanc) btnCanc.style.display = 'none';
+
+        var card = document.getElementById('resp-tab-form-card');
+        if (card) card.style.display = 'none';
     }
 
     function toggleResponsavel(id) {

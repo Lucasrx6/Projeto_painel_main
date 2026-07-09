@@ -24,9 +24,6 @@
                     <button id="btn-toggle-filtros" class="btn-header" title="Filtros">
                         <i class="fas fa-filter"></i> <span class="btn-text">Filtros</span>
                     </button>
-                    <button id="btn-responsaveis" class="btn-header" title="Gerenciar Responsaveis">
-                        <i class="fas fa-users-cog"></i> <span class="btn-text">Responsaveis</span>
-                    </button>
                     <button id="btn-formulario" class="btn-header" title="Formulario Sentir e Agir">
                         <i class="fas fa-heart-pulse"></i> <span class="btn-text">Formulario</span>
                     </button>
@@ -104,6 +101,9 @@
             </button>
             <button class="tab-nav-btn" data-tab="tratativas">
                 <i class="fas fa-tasks"></i> <span>Tratativas</span>
+            </button>
+            <button class="tab-nav-btn" data-tab="responsaveis" id="tab-btn-responsaveis" style="display:none;">
+                <i class="fas fa-users-cog"></i> <span>Responsáveis</span>
             </button>
         </div>
 
@@ -220,6 +220,132 @@
                 </div>
             </div>
 
+            <!-- ABA: Responsáveis (apenas admin) -->
+            <div class="tab-panel" id="tab-responsaveis">
+                <div class="resp-tab-content">
+
+                    <!-- Stats -->
+                    <div class="resp-tab-stats-row">
+                        <div class="resp-stat-card">
+                            <div class="resp-stat-icon" style="background:linear-gradient(135deg,#17a2b8,#138496)"><i class="fas fa-users-cog"></i></div>
+                            <div><h3 id="rst-total">0</h3><p>Total</p></div>
+                        </div>
+                        <div class="resp-stat-card">
+                            <div class="resp-stat-icon" style="background:linear-gradient(135deg,#28a745,#1e7e34)"><i class="fas fa-user-check"></i></div>
+                            <div><h3 id="rst-ativos">0</h3><p>Ativos</p></div>
+                        </div>
+                        <div class="resp-stat-card">
+                            <div class="resp-stat-icon" style="background:linear-gradient(135deg,#6c757d,#5a6268)"><i class="fas fa-user-slash"></i></div>
+                            <div><h3 id="rst-inativos">0</h3><p>Inativos</p></div>
+                        </div>
+                        <div class="resp-stat-card">
+                            <div class="resp-stat-icon" style="background:linear-gradient(135deg,#fd7e14,#e8590c)"><i class="fas fa-envelope"></i></div>
+                            <div><h3 id="rst-com-email">0</h3><p>Com Email</p></div>
+                        </div>
+                    </div>
+
+                    <!-- Toolbar -->
+                    <div class="resp-tab-toolbar">
+                        <div class="resp-tab-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="resp-tab-busca" placeholder="Buscar por nome, email, cargo...">
+                        </div>
+                        <label class="resp-tab-toggle-label">
+                            <input type="checkbox" id="resp-tab-mostrar-inativos"> Mostrar inativos
+                        </label>
+                        <button type="button" class="resp-tab-btn-novo" id="resp-tab-btn-novo">
+                            <i class="fas fa-user-plus"></i> Novo Responsável
+                        </button>
+                    </div>
+
+                    <!-- Formulário inline (colapsável) -->
+                    <div class="resp-tab-form-card" id="resp-tab-form-card" style="display:none;">
+                        <div class="resp-tab-form-header">
+                            <h4 id="resp-tab-form-titulo"><i class="fas fa-plus-circle"></i> Adicionar Responsável</h4>
+                            <button type="button" class="resp-tab-form-fechar" id="resp-tab-form-fechar">&times;</button>
+                        </div>
+                        <div class="resp-tab-form-body">
+                            <div class="resp-form-row">
+                                <div class="resp-form-field">
+                                    <label>Nome *</label>
+                                    <input type="text" id="resp-nome" placeholder="Nome completo" maxlength="200">
+                                </div>
+                                <div class="resp-form-field">
+                                    <label>Cargo</label>
+                                    <input type="text" id="resp-cargo" placeholder="Cargo ou função" maxlength="150">
+                                </div>
+                            </div>
+                            <div class="resp-form-row">
+                                <div class="resp-form-field">
+                                    <label>Email</label>
+                                    <input type="email" id="resp-email" placeholder="email@hospital.com" maxlength="200">
+                                </div>
+                                <div class="resp-form-field">
+                                    <label>Telefone</label>
+                                    <input type="text" id="resp-telefone" placeholder="(61) 99999-9999" maxlength="50">
+                                </div>
+                            </div>
+                            <div class="resp-form-row">
+                                <div class="multi-select-wrapper" id="wrap-resp-categorias">
+                                    <label class="multi-select-label"><i class="fas fa-tags"></i> Categorias</label>
+                                    <div class="multi-select-trigger" id="trigger-resp-categorias" tabindex="0">
+                                        <span class="multi-select-placeholder">Selecione categorias...</span>
+                                        <span class="multi-select-badges" id="badges-resp-categorias"></span>
+                                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                                    </div>
+                                    <div class="multi-select-dropdown" id="dropdown-resp-categorias"></div>
+                                </div>
+                                <div class="multi-select-wrapper" id="wrap-resp-setores">
+                                    <label class="multi-select-label"><i class="fas fa-building"></i> Setores</label>
+                                    <div class="multi-select-trigger" id="trigger-resp-setores" tabindex="0">
+                                        <span class="multi-select-placeholder">Selecione setores...</span>
+                                        <span class="multi-select-badges" id="badges-resp-setores"></span>
+                                        <i class="fas fa-chevron-down multi-select-arrow"></i>
+                                    </div>
+                                    <div class="multi-select-dropdown" id="dropdown-resp-setores"></div>
+                                </div>
+                            </div>
+                            <input type="hidden" id="resp-edit-id" value="">
+                            <div class="resp-tab-form-acoes">
+                                <button type="button" class="resp-tab-btn-cancelar" id="btn-cancelar-resp-edicao">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                                <button type="button" class="resp-tab-btn-salvar" id="btn-add-resp">
+                                    <i class="fas fa-plus"></i> Adicionar Responsável
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de responsáveis -->
+                    <div class="resp-tab-table-card">
+                        <div class="resp-tab-table-header">
+                            <span><i class="fas fa-list"></i> Responsáveis Cadastrados</span>
+                            <span class="resp-tab-total-label" id="resp-tab-total-label">0 registros</span>
+                        </div>
+                        <div class="resp-tab-table-wrapper">
+                            <table class="resp-tab-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome / Cargo</th>
+                                        <th>Email</th>
+                                        <th>Telefone</th>
+                                        <th>Categorias</th>
+                                        <th>Setores</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resp-tab-tbody">
+                                    <tr><td colspan="7" class="loading"><div class="loading-spinner"></div><p>Carregando...</p></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -238,70 +364,6 @@
                 <button class="btn-salvar-tratativa" id="btn-salvar-tratativa" style="display:none;">
                     <i class="fas fa-save"></i> Salvar Alteracoes
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Gerenciar Responsaveis -->
-    <div class="modal-overlay" id="modal-responsaveis">
-        <div class="modal modal-xl">
-            <div class="modal-header modal-header-gerenciar">
-                <h2><i class="fas fa-users-cog"></i> Gerenciar Responsaveis</h2>
-                <button class="modal-fechar" id="btn-fechar-responsaveis">&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- Formulario de adicionar -->
-                <div class="resp-form">
-                    <h4><i class="fas fa-plus-circle"></i> Adicionar Responsavel</h4>
-                    <div class="resp-form-row">
-                        <input type="text" id="resp-nome" placeholder="Nome *" maxlength="200">
-                        <input type="text" id="resp-cargo" placeholder="Cargo" maxlength="150">
-                    </div>
-                    <div class="resp-form-row">
-                        <input type="email" id="resp-email" placeholder="Email" maxlength="200">
-                        <input type="text" id="resp-telefone" placeholder="Telefone" maxlength="50">
-                    </div>
-                    <div class="resp-form-row">
-                        <div class="multi-select-wrapper" id="wrap-resp-categorias">
-                            <label class="multi-select-label"><i class="fas fa-tags"></i> Categorias</label>
-                            <div class="multi-select-trigger" id="trigger-resp-categorias" tabindex="0">
-                                <span class="multi-select-placeholder">Selecione categorias...</span>
-                                <span class="multi-select-badges" id="badges-resp-categorias"></span>
-                                <i class="fas fa-chevron-down multi-select-arrow"></i>
-                            </div>
-                            <div class="multi-select-dropdown" id="dropdown-resp-categorias"></div>
-                        </div>
-                        <div class="multi-select-wrapper" id="wrap-resp-setores">
-                            <label class="multi-select-label"><i class="fas fa-building"></i> Setores</label>
-                            <div class="multi-select-trigger" id="trigger-resp-setores" tabindex="0">
-                                <span class="multi-select-placeholder">Selecione setores...</span>
-                                <span class="multi-select-badges" id="badges-resp-setores"></span>
-                                <i class="fas fa-chevron-down multi-select-arrow"></i>
-                            </div>
-                            <div class="multi-select-dropdown" id="dropdown-resp-setores"></div>
-                        </div>
-                    </div>
-                    <input type="hidden" id="resp-edit-id" value="">
-                    <div class="resp-form-acoes">
-                        <button class="btn-add-resp" id="btn-add-resp">
-                            <i class="fas fa-plus"></i> Adicionar Responsavel
-                        </button>
-                        <button type="button" class="btn-cancelar-resp-edicao" id="btn-cancelar-resp-edicao" style="display:none;">
-                            <i class="fas fa-times"></i> Cancelar Edicao
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Lista -->
-                <div class="resp-lista-titulo">
-                    <i class="fas fa-list"></i> Responsaveis Cadastrados
-                </div>
-                <div class="resp-lista" id="resp-lista">
-                    <div class="loading"><div class="loading-spinner"></div></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-cancelar" id="btn-fechar-responsaveis-bottom">Fechar</button>
             </div>
         </div>
     </div>

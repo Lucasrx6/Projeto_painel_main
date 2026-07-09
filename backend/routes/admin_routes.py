@@ -45,8 +45,8 @@ def api_minhas_permissoes():
                     'painel22', 'painel23', 'painel24', 'painel25',
                     'painel26', 'painel27', 'painel28', 'painel29',
                     'painel30', 'painel31', 'painel32', 'painel33',
-                    'painel34', 'painel35', 'painel36', 'painel37', 'painel38', 'painel39',
-                    'painel40',
+                    'painel34', 'painel35', 'painel36', 'painel37', 
+                    'painel38', 'painel39', 'painel40',
                     'painel41', 'painel42', 'painel43', 'painel44',
                     'painel45', 'painel46', 'painel47'
                 ],

@@ -1261,7 +1261,8 @@ def filtros():
                     'categorias': [serializar_linha(c) for c in categorias],
                     'setores': [serializar_linha(s) for s in setores],
                     'responsaveis': [serializar_linha(r) for r in responsaveis],
-                    'status': ['pendente', 'em_tratativa', 'regularizado', 'cancelado']
+                    'status': ['pendente', 'em_tratativa', 'regularizado', 'cancelado'],
+                    'is_admin': _is_admin()
                 }
             })
     except Exception as e:
@@ -1326,7 +1327,7 @@ def listar_responsaveis():
                 resultado.append(item)
 
 
-            return jsonify({'success': True, 'data': resultado})
+            return jsonify({'success': True, 'data': resultado, 'is_admin': _is_admin()})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
