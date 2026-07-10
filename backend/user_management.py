@@ -838,19 +838,18 @@ def verificar_permissao_painel(
 
     painel_nome = painel_nome.strip()
 
-    # Verifica cache de sessao (evita consulta ao banco por requisicao)
+    # Verifica is_admin no cache de sessao (admins passam sem consultar o banco)
     try:
         from flask import session, has_request_context
         if has_request_context():
             if session.get('is_admin', False):
                 return True
-            permissoes_cache = session.get('permissoes')
-            if permissoes_cache is not None:
-                return painel_nome in permissoes_cache
     except Exception:
         pass
 
-    # Fallback: consulta direta ao banco
+    # Consulta direta ao banco — permissoes nao sao cacheadas em sessao para
+    # garantir que alteracoes feitas pelo admin entrem em vigor imediatamente,
+    # sem exigir que o usuario faca logout/login
     try:
         with get_db_cursor() as (cursor, conn):
             cursor.execute(
