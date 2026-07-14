@@ -726,14 +726,10 @@ var PAINEL_VERSAO = '1.0.52';
         fetch('/api/paineis/painel43/config/etiqueta', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (cfg) {
-                if (cfg.modo_impressao === 'zpl') {
-                    _imprimirZPL(sol, cfg.zpl_template || '');
-                } else {
-                    _imprimirPDF(sol, cfg.pdf_template || '');
-                }
+                _imprimirZPL(sol, cfg.zpl_template || '');
             })
             .catch(function () {
-                _imprimirPDF(sol, '');
+                _imprimirZPL(sol, '');
             });
     }
 
@@ -756,14 +752,23 @@ var PAINEL_VERSAO = '1.0.52';
             return;
         }
         var zpl = _preencherVarsZPL(template, sol);
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://localhost:9100/write', true);
-        xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
-        xhr.timeout = 3000;
-        xhr.onerror = xhr.ontimeout = function () {
+        fetch('/api/paineis/painel42/imprimir-zpl', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ zpl: zpl })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.success) {
+                console.error('Erro impressao ZPL: ' + (data.error || ''));
+                _downloadZPL(zpl, sol.nr_atendimento);
+            }
+        })
+        .catch(function (e) {
+            console.error('Falha ao comunicar com servidor de impressao', e);
             _downloadZPL(zpl, sol.nr_atendimento);
-        };
-        xhr.send(zpl);
+        });
     }
 
     function _downloadZPL(zpl, nr) {
@@ -799,7 +804,7 @@ var PAINEL_VERSAO = '1.0.52';
         var html = pdfTemplate
             ? _preencherVarsPDF(pdfTemplate, sol)
             : _gerarHTMLEtiqueta(sol);
-        var w = window.open('', '_blank', 'width=440,height=580,toolbar=0,menubar=0,location=0,scrollbars=0');
+        var w = window.open('', '_blank', 'width=300,height=480,toolbar=0,menubar=0,location=0,scrollbars=0');
         if (!w) { alert('Permita pop-ups para imprimir a etiqueta.'); return; }
         w.document.open();
         w.document.write(html);
@@ -826,17 +831,18 @@ var PAINEL_VERSAO = '1.0.52';
             '<title>Etiqueta Dieta</title>' +
             '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>' +
             '<style>' +
-                '@page{size:10cm 6cm;margin:3mm}' +
+                '@page{size:7cm 10cm;margin:3mm}' +
                 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:0;}' +
-                'svg{max-width:100%;height:35px;display:block;margin:0 auto;}' +
+                'svg{max-width:100%;height:45px;display:block;margin:0 auto;}' +
                 '@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}' +
             '</style>' +
             '</head><body>' +
             '<div style="padding: 2mm">' +
                 '<div style="font-size: 12px; font-weight: bold; text-align: center; border-bottom: 1px solid #000; padding-bottom: 2mm; margin-bottom: 2mm">Hospital Anchieta Ceilândia</div>' +
-                '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: -7px;">' +
-                    '<span><span style="font-weight: bold">Paciente:</span> ' + pac + '</span>' +
-                    '<span style="font-size: 8px; color: #666; text-align: right; line-height: 1.4; white-space: nowrap; margin-left: 6px; flex-shrink: 0;">Cód: ' + cod + '<br>' + data + ' ' + hora + '</span>' +
+                '<div style="font-weight: bold; font-size: 11px; margin-bottom: 2px; word-break: break-word;"><span style="font-weight: normal">Paciente: </span>' + pac + '</div>' +
+                '<div style="display: flex; justify-content: space-between; font-size: 8px; color: #555; margin-bottom: 5px;">' +
+                    '<span>Cód: ' + cod + '</span>' +
+                    '<span>' + data + ' ' + hora + '</span>' +
                 '</div>' +
                 '<div style="margin-bottom: 5px"><span style="font-weight: bold">Leito:</span> ' + leito + ' &nbsp; <span style="font-weight: bold">Setor:</span> ' + setor + '</div>' +
                 '<div style="margin-bottom: 5px"><span style="font-weight: bold">Dieta:</span> ' + dieta + ' &mdash; ' + ref + '</div>' +
@@ -849,7 +855,7 @@ var PAINEL_VERSAO = '1.0.52';
                 'window.onload=function(){' +
                     'if(typeof JsBarcode!=="undefined"){' +
                         'JsBarcode("#bc","' + nr.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '",' +
-                        '{format:"CODE128",width:1.8,height:35,displayValue:false,margin:0});' +
+                        '{format:"CODE128",width:1.8,height:45,displayValue:false,margin:0});' +
                     '}' +
                 '};' +
             '<\/script>' +

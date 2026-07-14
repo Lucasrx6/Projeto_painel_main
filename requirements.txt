@@ -50,6 +50,9 @@ PyYAML==6.0.3
 # ── Monitoramento do Sistema ─────────────────────────────────────
 psutil==7.2.2
 
+# ── Impressão Windows (envia ZPL/RAW direto à impressora padrão) ─
+pywin32==307
+
 # ── Testes ───────────────────────────────────────────────────────
 pytest==9.0.3
 pytest-flask==1.3.0

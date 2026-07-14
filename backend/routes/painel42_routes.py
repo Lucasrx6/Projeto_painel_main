@@ -341,3 +341,38 @@ def api_p42_historico_hoje():
     except Exception as e:
         current_app.logger.error('Erro historico-hoje p42: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar histórico'}), 500
+
+
+# =========================================================
+# IMPRESSÃO ZPL — IMPRESSORA PADRÃO WINDOWS
+# =========================================================
+
+@painel42_bp.route('/api/paineis/painel42/imprimir-zpl', methods=['POST'])
+@login_required
+def api_p42_imprimir_zpl():
+    """Envia ZPL direto para a impressora padrão do servidor (sem diálogo no browser)."""
+    data = request.get_json() or {}
+    zpl = (data.get('zpl') or '').strip()
+    if not zpl:
+        return jsonify({'success': False, 'error': 'ZPL não informado'}), 400
+
+    try:
+        import win32print
+        printer_name = win32print.GetDefaultPrinter()
+        h = win32print.OpenPrinter(printer_name)
+        try:
+            j = win32print.StartDocPrinter(h, 1, ('Etiqueta HAC', None, 'RAW'))
+            try:
+                win32print.StartPagePrinter(h)
+                win32print.WritePrinter(h, zpl.encode('utf-8'))
+                win32print.EndPagePrinter(h)
+            finally:
+                win32print.EndDocPrinter(h)
+        finally:
+            win32print.ClosePrinter(h)
+        current_app.logger.info('Etiqueta ZPL → %s (usuario: %s)',
+                                printer_name, session.get('usuario', '?'))
+        return jsonify({'success': True, 'impressora': printer_name})
+    except Exception as e:
+        current_app.logger.error('Erro impressao ZPL: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
