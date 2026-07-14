@@ -8,7 +8,7 @@ from datetime import datetime, date
 
 from flask import Blueprint, jsonify, request, send_from_directory, session, current_app, Response
 from backend.database import get_db_cursor
-from backend.middleware.decorators import login_required, panel_permission_required
+from backend.middleware.decorators import login_required, panel_permission_required, admin_required
 from backend.cache import cache_delete_pattern
 
 painel43_bp = Blueprint('painel43', __name__)
@@ -714,3 +714,115 @@ def api_p43_restricoes_delete(rid):
     except Exception as e:
         current_app.logger.error('Erro config/restricoes DELETE p43 id=%s: %s', rid, e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao deletar'}), 500
+
+
+# =========================================================
+# CONFIG — ETIQUETA (Impressão)
+# =========================================================
+
+_SQL_ETIQUETA_INIT = """
+    CREATE TABLE IF NOT EXISTS nutricao_etiqueta_config (
+        id              INT PRIMARY KEY,
+        modo_impressao  VARCHAR(10) NOT NULL DEFAULT 'pdf',
+        zpl_template    TEXT NOT NULL DEFAULT '',
+        pdf_template    TEXT NOT NULL DEFAULT '',
+        atualizado_em   TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+"""
+_SQL_ETIQUETA_MIGRAR = """
+    ALTER TABLE nutricao_etiqueta_config
+    ADD COLUMN IF NOT EXISTS pdf_template TEXT NOT NULL DEFAULT ''
+"""
+
+
+def _etiqueta_init(cursor):
+    cursor.execute(_SQL_ETIQUETA_INIT)
+    cursor.execute(_SQL_ETIQUETA_MIGRAR)
+
+
+@painel43_bp.route('/api/paineis/painel43/config/etiqueta', methods=['GET'])
+@login_required
+def api_p43_etiqueta_get():
+    try:
+        with get_db_cursor() as cursor:
+            _etiqueta_init(cursor)
+            cursor.execute(
+                "SELECT modo_impressao, zpl_template, pdf_template FROM nutricao_etiqueta_config WHERE id = 1"
+            )
+            row = cursor.fetchone()
+            if not row:
+                cursor.execute(
+                    "INSERT INTO nutricao_etiqueta_config (id, modo_impressao, zpl_template, pdf_template)"
+                    " VALUES (1, 'pdf', '', '')"
+                )
+                return jsonify({'success': True, 'modo_impressao': 'pdf', 'zpl_template': '', 'pdf_template': ''})
+        return jsonify({
+            'success': True,
+            'modo_impressao': row['modo_impressao'],
+            'zpl_template':   row['zpl_template']   or '',
+            'pdf_template':   row['pdf_template']   or ''
+        })
+    except Exception as e:
+        current_app.logger.error('Erro config/etiqueta GET p43: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar configuração'}), 500
+
+
+@painel43_bp.route('/api/paineis/painel43/etiqueta-admin-check')
+@login_required
+@admin_required
+def api_p43_etiqueta_admin_check():
+    """Usado pelo painel43 JS para verificar se o usuário é admin (esconde/mostra aba Etiqueta)."""
+    return jsonify({'ok': True})
+
+
+@painel43_bp.route('/api/paineis/painel43/config/etiqueta', methods=['POST'])
+@login_required
+@admin_required
+def api_p43_etiqueta_save():
+    dados = request.get_json(silent=True) or {}
+    modo  = (dados.get('modo_impressao') or 'pdf').strip()
+    if modo not in ('pdf', 'zpl'):
+        modo = 'pdf'
+    zpl = (dados.get('zpl_template') or '').strip()
+    pdf = (dados.get('pdf_template')  or '').strip()
+    try:
+        with get_db_cursor() as cursor:
+            _etiqueta_init(cursor)
+            cursor.execute("""
+                INSERT INTO nutricao_etiqueta_config (id, modo_impressao, zpl_template, pdf_template, atualizado_em)
+                VALUES (1, %s, %s, %s, NOW())
+                ON CONFLICT (id) DO UPDATE
+                    SET modo_impressao = EXCLUDED.modo_impressao,
+                        zpl_template   = EXCLUDED.zpl_template,
+                        pdf_template   = EXCLUDED.pdf_template,
+                        atualizado_em  = NOW()
+            """, (modo, zpl, pdf))
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro config/etiqueta POST p43: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao salvar configuração'}), 500
+
+
+@painel43_bp.route('/api/paineis/painel43/preview-zpl', methods=['POST'])
+@login_required
+@admin_required
+def api_p43_preview_zpl():
+    """Proxy server-side para Labelary API — evita bloqueio de CORS/internet no browser."""
+    try:
+        import urllib.request
+        import urllib.parse
+        zpl = request.get_data(as_text=True)
+        if not zpl or not zpl.strip():
+            return jsonify({'error': 'ZPL vazio'}), 400
+        body = urllib.parse.urlencode({'data': zpl}).encode('utf-8')
+        req  = urllib.request.Request(
+            'https://api.labelary.com/v1/printers/8dpmm/labels/4x3/0/',
+            data=body,
+            headers={'Accept': 'image/png'}
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            img_bytes = resp.read()
+        return Response(img_bytes, mimetype='image/png')
+    except Exception as e:
+        current_app.logger.warning('Preview ZPL (Labelary) indisponível: %s', e)
+        return jsonify({'error': 'sem_internet'}), 503

@@ -22,12 +22,21 @@ var PAINEL_VERSAO = '1.0.52';
     var DOM = {};
 
     // =========================================================
-    // ESCAPE HTML
+    // ESCAPE HTML / TEMPO
     // =========================================================
     function escHtml(s) {
         return String(s || '')
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function fmtMin(n) {
+        var total = Math.round(Number(n) || 0);
+        if (total <= 0) return '0min';
+        if (total < 60) return total + 'min';
+        var h = Math.floor(total / 60);
+        var m = total % 60;
+        return m > 0 ? (h + 'h ' + m + 'min') : (h + 'h');
     }
 
     // =========================================================
@@ -54,7 +63,7 @@ var PAINEL_VERSAO = '1.0.52';
     function inicializar() {
         var btnVoltar = document.getElementById('btn-voltar-hub');
         if (btnVoltar) {
-            btnVoltar.addEventListener('click', function () { window.history.back(); });
+            btnVoltar.addEventListener('click', function () { window.location.href = '/painel/painel44'; });
         }
 
         DOM.selMembro         = document.getElementById('sel-membro');
@@ -65,7 +74,9 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.tbodyHistorico    = document.getElementById('tbody-historico');
         DOM.histEmpty         = document.getElementById('hist-empty');
         DOM.badgeHistorico    = document.getElementById('badge-historico');
-        DOM.audioAlerta       = document.getElementById('audio-alerta');
+        DOM.filtroSetor42         = document.getElementById('filtro-setor-42');
+        DOM.audioAlerta           = document.getElementById('audio-alerta');
+        DOM.chkImprimirAceitar    = document.getElementById('chk-imprimir-aceitar');
 
         // Modal aceitar
         DOM.modalAceitar      = document.getElementById('modal-aceitar');
@@ -100,6 +111,14 @@ var PAINEL_VERSAO = '1.0.52';
         var membroSalvo = localStorage.getItem(CONFIG.storageKeyMembro);
         if (membroSalvo) Estado.membroId = membroSalvo;
 
+        // Restaurar preferência de impressão
+        if (DOM.chkImprimirAceitar) {
+            DOM.chkImprimirAceitar.checked = (localStorage.getItem('p42_imprimir_aceitar') === '1');
+            DOM.chkImprimirAceitar.addEventListener('change', function () {
+                localStorage.setItem('p42_imprimir_aceitar', this.checked ? '1' : '0');
+            });
+        }
+
         // Eventos
         DOM.selMembro.addEventListener('change', function () {
             Estado.membroId = this.value || null;
@@ -111,6 +130,10 @@ var PAINEL_VERSAO = '1.0.52';
         });
 
         DOM.btnToggleHist.addEventListener('click', toggleHistorico);
+        if (DOM.filtroSetor42) {
+            DOM.filtroSetor42.addEventListener('change', renderHistorico);
+            DOM.filtroSetor42.addEventListener('click', function (e) { e.stopPropagation(); });
+        }
         DOM.btnAccFechar.addEventListener('click', function () { fecharModal(DOM.modalAceitar); });
         DOM.btnAccConfirmar.addEventListener('click', confirmarAceitar);
         DOM.btnEntrFechar.addEventListener('click', function () { fecharModal(DOM.modalEntregar); });
@@ -286,7 +309,7 @@ var PAINEL_VERSAO = '1.0.52';
                     '<i class="fa-solid fa-xmark"></i></button>';
         } else if (s.status === 'em_entrega') {
             acoes = '<button class="btn-card btn-confirmar-entrega" data-id="' + s.id +
-                    '" data-codigo="' + escHtml(s.codigo_entrega) + '" data-desc="' +
+                    '" data-codigo="' + escHtml(s.nr_atendimento) + '" data-desc="' +
                     escHtml(s.nm_paciente) + '">' +
                     '<i class="fa-solid fa-box-open"></i> Confirmar Entrega</button>' +
                     '<button class="btn-card btn-cancelar" data-id="' + s.id + '" data-desc="' +
@@ -298,6 +321,9 @@ var PAINEL_VERSAO = '1.0.52';
             '<div class="card-topo">' +
                 (urgente ? '<span class="tag-urgente"><i class="fa-solid fa-bolt"></i> URGENTE</span>' : '') +
                 '<span class="card-codigo">' + escHtml(s.codigo_entrega) + '</span>' +
+                '<button class="btn-reimprimir" data-id="' + s.id + '" title="Reimprimir etiqueta">' +
+                    '<i class="fa-solid fa-print"></i>' +
+                '</button>' +
             '</div>' +
             '<div class="card-paciente">' + escHtml(s.nm_paciente) + '</div>' +
             '<div class="card-info">' +
@@ -314,7 +340,7 @@ var PAINEL_VERSAO = '1.0.52';
             '<div class="card-footer">' +
                 '<span class="card-tempo"><i class="fa-regular fa-clock"></i> ' +
                     escHtml(s.criado_em || '--') +
-                    (s.minutos_espera > 0 ? ' (' + s.minutos_espera + 'min)' : '') +
+                    (s.minutos_espera > 0 ? ' (' + fmtMin(s.minutos_espera) + ')' : '') +
                 '</span>' +
                 (s.responsavel_nome ? '<span class="card-resp"><i class="fa-solid fa-user"></i> ' + escHtml(s.responsavel_nome) + '</span>' : '') +
             '</div>' +
@@ -341,6 +367,15 @@ var PAINEL_VERSAO = '1.0.52';
                 el.getAttribute('data-codigo'),
                 el.getAttribute('data-desc')
             );
+        });
+        bindBtn('.btn-reimprimir', function (el) {
+            var sid = el.getAttribute('data-id');
+            for (var i = 0; i < Estado.fila.length; i++) {
+                if (String(Estado.fila[i].id) === String(sid)) {
+                    imprimirEtiqueta(Estado.fila[i]);
+                    break;
+                }
+            }
         });
         bindBtn('.btn-cancelar', function (el) {
             abrirModalCancelar(el.getAttribute('data-id'), el.getAttribute('data-desc'));
@@ -443,8 +478,16 @@ var PAINEL_VERSAO = '1.0.52';
             .then(function (data) {
                 DOM.btnAccConfirmar.disabled = false;
                 if (data.success) {
+                    // captura dados antes de recarregar fila
+                    var sol = null;
+                    for (var i = 0; i < Estado.fila.length; i++) {
+                        if (String(Estado.fila[i].id) === String(sid)) { sol = Estado.fila[i]; break; }
+                    }
                     fecharModal(DOM.modalAceitar);
                     carregarFila();
+                    if (DOM.chkImprimirAceitar && DOM.chkImprimirAceitar.checked && sol) {
+                        imprimirEtiqueta(sol);
+                    }
                 } else {
                     DOM.accErro.textContent = data.error || 'Erro.';
                     DOM.accErro.style.display = 'block';
@@ -475,8 +518,8 @@ var PAINEL_VERSAO = '1.0.52';
     }
 
     function validarCodigoInput() {
-        var digitado  = DOM.inpCodigoConfirm.value.trim().toUpperCase();
-        var esperado  = (DOM.entrSid.getAttribute('data-codigo') || '').toUpperCase();
+        var digitado  = DOM.inpCodigoConfirm.value.trim();
+        var esperado  = (DOM.entrSid.getAttribute('data-codigo') || '').trim();
 
         if (!digitado) {
             DOM.codigoFeedback.textContent  = '';
@@ -486,11 +529,11 @@ var PAINEL_VERSAO = '1.0.52';
         }
 
         if (digitado === esperado) {
-            DOM.codigoFeedback.textContent  = '✓ Código correto';
+            DOM.codigoFeedback.textContent  = '✓ Nº de atendimento correto';
             DOM.codigoFeedback.className    = 'codigo-feedback codigo-ok';
             DOM.btnEntrConfirmar.disabled   = false;
         } else {
-            DOM.codigoFeedback.textContent  = '✗ Código incorreto';
+            DOM.codigoFeedback.textContent  = '✗ Nº de atendimento incorreto';
             DOM.codigoFeedback.className    = 'codigo-feedback codigo-erro';
             DOM.btnEntrConfirmar.disabled   = true;
         }
@@ -508,7 +551,7 @@ var PAINEL_VERSAO = '1.0.52';
             method: 'PUT',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ codigo_confirmacao: codigo, observacao_entrega: obs })
+            body: JSON.stringify({ nr_atendimento_confirmacao: codigo, observacao_entrega: obs })
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -593,13 +636,37 @@ var PAINEL_VERSAO = '1.0.52';
             .catch(function (e) { console.error('historico', e); });
     }
 
+    function _popularFiltroSetor42() {
+        if (!DOM.filtroSetor42) return;
+        var atual = DOM.filtroSetor42.value;
+        var setores = {};
+        for (var i = 0; i < Estado.historico.length; i++) {
+            var s = Estado.historico[i].setor_nome;
+            if (s) setores[s] = true;
+        }
+        var html = '<option value="">Todos</option>';
+        var chaves = Object.keys(setores).sort();
+        for (var j = 0; j < chaves.length; j++) {
+            html += '<option value="' + escHtml(chaves[j]) + '"' +
+                (chaves[j] === atual ? ' selected' : '') + '>' + escHtml(chaves[j]) + '</option>';
+        }
+        DOM.filtroSetor42.innerHTML = html;
+    }
+
     function renderHistorico() {
-        var lista = Estado.historico;
-        DOM.badgeHistorico.textContent = lista.length;
+        var setorFiltro = DOM.filtroSetor42 ? DOM.filtroSetor42.value : '';
+        var lista = Estado.historico.filter(function (h) {
+            return !setorFiltro || h.setor_nome === setorFiltro;
+        });
+
+        _popularFiltroSetor42();
+        DOM.badgeHistorico.textContent = Estado.historico.length;
 
         if (!lista.length) {
-            DOM.tbodyHistorico.innerHTML = '';
-            DOM.histEmpty.style.display  = 'block';
+            DOM.tbodyHistorico.innerHTML = Estado.historico.length
+                ? '<tr><td colspan="11" style="text-align:center;color:#aaa;padding:16px;">Nenhum resultado para este setor.</td></tr>'
+                : '';
+            DOM.histEmpty.style.display = Estado.historico.length ? 'none' : 'block';
             return;
         }
         DOM.histEmpty.style.display = 'none';
@@ -617,7 +684,10 @@ var PAINEL_VERSAO = '1.0.52';
                 '<td>' + badgeStatus(h.status) + '</td>' +
                 '<td>' + escHtml(h.criado_em || '--') + '</td>' +
                 '<td>' + escHtml(h.dt_entrega || h.dt_cancelamento || '--') + '</td>' +
-                '<td>' + (h.t_total_min != null ? h.t_total_min + 'min' : '--') + '</td>' +
+                '<td>' + (h.t_total_min != null ? fmtMin(h.t_total_min) : '--') + '</td>' +
+                '<td class="td-motivo-cancel">' +
+                    (h.motivo_cancelamento ? escHtml(h.motivo_cancelamento) : '--') +
+                '</td>' +
             '</tr>';
         }
         DOM.tbodyHistorico.innerHTML = html;
@@ -647,6 +717,143 @@ var PAINEL_VERSAO = '1.0.52';
             (h < 10 ? '0' : '') + h + ':' +
             (m < 10 ? '0' : '') + m + ':' +
             (s < 10 ? '0' : '') + s;
+    }
+
+    // =========================================================
+    // IMPRESSÃO DE ETIQUETA
+    // =========================================================
+    function imprimirEtiqueta(sol) {
+        fetch('/api/paineis/painel43/config/etiqueta', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (cfg) {
+                if (cfg.modo_impressao === 'zpl') {
+                    _imprimirZPL(sol, cfg.zpl_template || '');
+                } else {
+                    _imprimirPDF(sol, cfg.pdf_template || '');
+                }
+            })
+            .catch(function () {
+                _imprimirPDF(sol, '');
+            });
+    }
+
+    function _preencherVarsZPL(template, sol) {
+        return template
+            .replace(/\{\{NR_ATENDIMENTO\}\}/g, sol.nr_atendimento    || '')
+            .replace(/\{\{PACIENTE\}\}/g,       sol.nm_paciente        || '')
+            .replace(/\{\{LEITO\}\}/g,          sol.leito              || '')
+            .replace(/\{\{SETOR\}\}/g,          sol.setor_nome         || '')
+            .replace(/\{\{DIETA\}\}/g,          sol.tipo_dieta_nome    || '')
+            .replace(/\{\{REFEICAO\}\}/g,       sol.refeicao_nome      || '')
+            .replace(/\{\{RESTRICOES\}\}/g,     sol.restricoes         || '')
+            .replace(/\{\{OBS\}\}/g,            sol.observacao         || '')
+            .replace(/\{\{CODIGO\}\}/g,         sol.codigo_entrega     || '');
+    }
+
+    function _imprimirZPL(sol, template) {
+        if (!template) {
+            alert('Configure o template ZPL no Painel 43 → Configurações → Etiqueta.');
+            return;
+        }
+        var zpl = _preencherVarsZPL(template, sol);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'http://localhost:9100/write', true);
+        xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+        xhr.timeout = 3000;
+        xhr.onerror = xhr.ontimeout = function () {
+            _downloadZPL(zpl, sol.nr_atendimento);
+        };
+        xhr.send(zpl);
+    }
+
+    function _downloadZPL(zpl, nr) {
+        var blob = new Blob([zpl], { type: 'text/plain;charset=utf-8' });
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'etiqueta_' + (nr || 'dieta') + '.zpl';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function _preencherVarsPDF(template, sol) {
+        var agora = new Date();
+        var nr    = sol.nr_atendimento || '';
+        return template
+            .replace(/\{\{NR_ATENDIMENTO\}\}/g, nr)
+            .replace(/\{\{PACIENTE\}\}/g,       sol.nm_paciente     || '')
+            .replace(/\{\{LEITO\}\}/g,          sol.leito           || '')
+            .replace(/\{\{SETOR\}\}/g,          sol.setor_nome      || '')
+            .replace(/\{\{DIETA\}\}/g,          sol.tipo_dieta_nome || '')
+            .replace(/\{\{REFEICAO\}\}/g,       sol.refeicao_nome   || '')
+            .replace(/\{\{RESTRICOES\}\}/g,     sol.restricoes      || '')
+            .replace(/\{\{OBS\}\}/g,            sol.observacao      || '')
+            .replace(/\{\{CODIGO\}\}/g,         sol.codigo_entrega  || '')
+            .replace(/\{\{DATA\}\}/g,           agora.toLocaleDateString('pt-BR'))
+            .replace(/\{\{HORA\}\}/g,           agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    }
+
+    function _imprimirPDF(sol, pdfTemplate) {
+        var html = pdfTemplate
+            ? _preencherVarsPDF(pdfTemplate, sol)
+            : _gerarHTMLEtiqueta(sol);
+        var w = window.open('', '_blank', 'width=440,height=580,toolbar=0,menubar=0,location=0,scrollbars=0');
+        if (!w) { alert('Permita pop-ups para imprimir a etiqueta.'); return; }
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        setTimeout(function () { w.print(); }, 700);
+    }
+
+    function _gerarHTMLEtiqueta(sol) {
+        var nr    = sol.nr_atendimento  || '';
+        var pac   = sol.nm_paciente     || '';
+        var leito = sol.leito           || '';
+        var setor = sol.setor_nome      || '';
+        var dieta = sol.tipo_dieta_nome || '';
+        var ref   = sol.refeicao_nome   || '';
+        var rest  = sol.restricoes      || '';
+        var obs   = sol.observacao      || '';
+        var cod   = sol.codigo_entrega  || '';
+        var agora = new Date();
+        var data  = agora.toLocaleDateString('pt-BR');
+        var hora  = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+            '<title>Etiqueta Dieta</title>' +
+            '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>' +
+            '<style>' +
+                '@page{size:10cm 6cm;margin:3mm}' +
+                'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:0;}' +
+                'svg{max-width:100%;height:35px;display:block;margin:0 auto;}' +
+                '@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}' +
+            '</style>' +
+            '</head><body>' +
+            '<div style="padding: 2mm">' +
+                '<div style="font-size: 12px; font-weight: bold; text-align: center; border-bottom: 1px solid #000; padding-bottom: 2mm; margin-bottom: 2mm">Hospital Anchieta Ceilândia</div>' +
+                '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: -7px;">' +
+                    '<span><span style="font-weight: bold">Paciente:</span> ' + pac + '</span>' +
+                    '<span style="font-size: 8px; color: #666; text-align: right; line-height: 1.4; white-space: nowrap; margin-left: 6px; flex-shrink: 0;">Cód: ' + cod + '<br>' + data + ' ' + hora + '</span>' +
+                '</div>' +
+                '<div style="margin-bottom: 5px"><span style="font-weight: bold">Leito:</span> ' + leito + ' &nbsp; <span style="font-weight: bold">Setor:</span> ' + setor + '</div>' +
+                '<div style="margin-bottom: 5px"><span style="font-weight: bold">Dieta:</span> ' + dieta + ' &mdash; ' + ref + '</div>' +
+                (rest ? '<div style="margin-bottom: 5px"><span style="font-weight: bold">Restrições:</span> ' + rest + '</div>' : '') +
+                (obs  ? '<div style="margin-bottom: 5px; min-height: 8mm; line-height: 1.6;"><span style="font-weight: bold">Obs:</span> ' + obs + '</div>' : '') +
+                '<div style="text-align: center; margin: 1mm 0"><svg id="bc"></svg></div>' +
+                '<div style="text-align: center; font-size: 8px; font-weight: bold; font-family: monospace;">' + nr + '</div>' +
+            '</div>' +
+            '<script>' +
+                'window.onload=function(){' +
+                    'if(typeof JsBarcode!=="undefined"){' +
+                        'JsBarcode("#bc","' + nr.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '",' +
+                        '{format:"CODE128",width:1.8,height:35,displayValue:false,margin:0});' +
+                    '}' +
+                '};' +
+            '<\/script>' +
+            '</body></html>';
     }
 
     // =========================================================

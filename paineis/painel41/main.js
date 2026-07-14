@@ -71,7 +71,7 @@ var PAINEL_VERSAO = '1.1.39';
     function inicializar() {
         var btnVoltar = document.getElementById('btn-voltar-hub');
         if (btnVoltar) {
-            btnVoltar.addEventListener('click', function () { window.history.back(); });
+            btnVoltar.addEventListener('click', function () { window.location.href = '/painel/painel44'; });
         }
 
         DOM.inputBusca       = document.getElementById('input-busca');
@@ -100,9 +100,6 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.formSolicitar    = document.getElementById('form-solicitar');
         DOM.selTipoDieta     = document.getElementById('sel-tipo-dieta');
         DOM.selRefeicao      = document.getElementById('sel-refeicao');
-        DOM.inpQtd           = document.getElementById('inp-quantidade');
-        DOM.btnMinus         = document.getElementById('btn-minus');
-        DOM.btnPlus          = document.getElementById('btn-plus');
         DOM.listaRestricoes  = document.getElementById('lista-restricoes');
         DOM.inpObs           = document.getElementById('inp-obs');
         DOM.erroForm         = document.getElementById('erro-form');
@@ -113,6 +110,7 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.tabelaMinhas     = document.getElementById('tabela-minhas');
         DOM.tabelaEmpty      = document.getElementById('tabela-minhas-empty');
         DOM.badgeTotal       = document.getElementById('badge-total');
+        DOM.filtroSetor41    = document.getElementById('filtro-setor-41');
         DOM.modalSucesso     = document.getElementById('modal-sucesso');
         DOM.modalCodigo      = document.getElementById('modal-codigo');
         DOM.btnModalOk       = document.getElementById('btn-modal-ok');
@@ -130,12 +128,11 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.btnManualCanc.addEventListener('click', fecharFormManual);
         DOM.btnManualConf.addEventListener('click', confirmarManual);
         DOM.btnUrgente.addEventListener('click', toggleUrgente);
-        DOM.btnMinus.addEventListener('click', function () { alterarQtd(-1); });
-        DOM.btnPlus.addEventListener('click', function () { alterarQtd(1); });
         DOM.formSolicitar.addEventListener('submit', submeterSolicitacao);
         DOM.btnModalOk.addEventListener('click', fecharModalSucesso);
         DOM.btnCancFechar.addEventListener('click', fecharModalCancelar);
         DOM.btnCancConfirmar.addEventListener('click', confirmarCancelamento);
+        if (DOM.filtroSetor41) DOM.filtroSetor41.addEventListener('change', renderMinhasSolicitacoes);
 
         // Fechar modais clicando no overlay
         DOM.modalSucesso.addEventListener('click', function (e) {
@@ -408,16 +405,6 @@ var PAINEL_VERSAO = '1.1.39';
     }
 
     // =========================================================
-    // QUANTIDADE
-    // =========================================================
-    function alterarQtd(delta) {
-        var v = parseInt(DOM.inpQtd.value, 10) + delta;
-        if (v < 1) v = 1;
-        if (v > 10) v = 10;
-        DOM.inpQtd.value = v;
-    }
-
-    // =========================================================
     // SUBMETER SOLICITAÇÃO
     // =========================================================
     function submeterSolicitacao(e) {
@@ -428,7 +415,6 @@ var PAINEL_VERSAO = '1.1.39';
 
         var tipoDietaId = DOM.selTipoDieta.value;
         var refeicaoId  = DOM.selRefeicao.value;
-        var quantidade  = parseInt(DOM.inpQtd.value, 10);
 
         if (!tipoDietaId) { mostrarErro('Selecione o tipo de dieta.'); return; }
         if (!refeicaoId)  { mostrarErro('Selecione a refeição.'); return; }
@@ -451,7 +437,7 @@ var PAINEL_VERSAO = '1.1.39';
             ds_clinica:     Estado.paciente.ds_clinica,
             tipo_dieta_id:  parseInt(tipoDietaId, 10),
             refeicao_id:    parseInt(refeicaoId, 10),
-            quantidade:     quantidade,
+            quantidade:     1,
             restricoes_ids: restricoesIds,
             restricoes_txt: restricoesNomes.join(', '),
             observacao:     DOM.inpObs.value.trim(),
@@ -535,12 +521,40 @@ var PAINEL_VERSAO = '1.1.39';
             .catch(function (e) { console.error('minhas-solicitacoes', e); });
     }
 
+    function _popularFiltroSetor41() {
+        if (!DOM.filtroSetor41) return;
+        var atual = DOM.filtroSetor41.value;
+        var setores = {};
+        for (var i = 0; i < Estado.minhasSolicitacoes.length; i++) {
+            var s = Estado.minhasSolicitacoes[i].setor_nome;
+            if (s) setores[s] = true;
+        }
+        var html = '<option value="">Todos os setores</option>';
+        var chaves = Object.keys(setores).sort();
+        for (var j = 0; j < chaves.length; j++) {
+            html += '<option value="' + escHtml(chaves[j]) + '"' +
+                (chaves[j] === atual ? ' selected' : '') + '>' + escHtml(chaves[j]) + '</option>';
+        }
+        DOM.filtroSetor41.innerHTML = html;
+    }
+
     function renderMinhasSolicitacoes() {
-        var lista = Estado.minhasSolicitacoes;
+        var setorFiltro = DOM.filtroSetor41 ? DOM.filtroSetor41.value : '';
+        var lista = Estado.minhasSolicitacoes.filter(function (s) {
+            return !setorFiltro || s.setor_nome === setorFiltro;
+        });
+
+        _popularFiltroSetor41();
 
         if (!lista.length) {
-            DOM.tabelaEmpty.style.display = 'block';
-            DOM.tabelaMinhas.style.display = 'none';
+            DOM.tabelaEmpty.style.display = Estado.minhasSolicitacoes.length ? 'none' : 'block';
+            if (Estado.minhasSolicitacoes.length) {
+                DOM.tabelaEmpty.style.display = 'none';
+                DOM.tabelaMinhas.style.display = 'table';
+                DOM.tbodyMinhas.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:20px;">Nenhum resultado para este setor.</td></tr>';
+            } else {
+                DOM.tabelaMinhas.style.display = 'none';
+            }
             DOM.badgeTotal.style.display = 'none';
             return;
         }
@@ -572,6 +586,9 @@ var PAINEL_VERSAO = '1.1.39';
                         ? '<button class="btn-canc-linha" data-id="' + s.id + '">' +
                           '<i class="fa-solid fa-xmark"></i></button>'
                         : '--') +
+                '</td>' +
+                '<td class="td-motivo-cancel">' +
+                    (s.motivo_cancelamento ? escHtml(s.motivo_cancelamento) : '--') +
                 '</td>' +
             '</tr>';
         }

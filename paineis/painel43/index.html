@@ -173,6 +173,9 @@
                     <button class="sub-aba" data-subaba="restricoes">
                         <i class="fas fa-triangle-exclamation"></i> Restrições
                     </button>
+                    <button class="sub-aba" data-subaba="etiqueta">
+                        <i class="fas fa-print"></i> Etiqueta
+                    </button>
                 </div>
 
                 <!-- Equipe -->
@@ -236,6 +239,95 @@
                                 <tbody id="tbody-restricoes"></tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Etiqueta / Impressão -->
+                <div id="subaba-etiqueta" class="sub-conteudo" style="display:none;">
+                    <div class="config-toolbar">
+                        <h4>Configuração de Etiqueta</h4>
+                    </div>
+                    <div class="secao etq-form-secao">
+                        <div class="etq-form-group">
+                            <label class="etq-form-label">Modo de Impressão</label>
+                            <select id="etq-modo" class="etq-form-select">
+                                <option value="pdf">PDF — qualquer impressora (janela de impressão)</option>
+                                <option value="zpl">ZPL — impressora Zebra / térmica via Browser Print</option>
+                            </select>
+                        </div>
+
+                        <!-- Grupo PDF -->
+                        <div id="etq-pdf-group" class="etq-form-group">
+                            <label class="etq-form-label">Template HTML da Etiqueta</label>
+                            <div class="etq-vars-doc">
+                                Variáveis:
+                                <code>{{NR_ATENDIMENTO}}</code> <code>{{PACIENTE}}</code>
+                                <code>{{LEITO}}</code> <code>{{SETOR}}</code>
+                                <code>{{DIETA}}</code> <code>{{REFEICAO}}</code>
+                                <code>{{RESTRICOES}}</code> <code>{{OBS}}</code>
+                                <code>{{CODIGO}}</code> <code>{{DATA}}</code> <code>{{HORA}}</code>
+                                &nbsp;|&nbsp; Código de barras: <code>&lt;svg id="bc"&gt;&lt;/svg&gt;</code>
+                            </div>
+                            <div class="etq-editor-preview">
+                                <div class="etq-editor-col">
+                                    <textarea id="etq-pdf" class="etq-form-textarea etq-form-textarea-html"
+                                        rows="16" placeholder="HTML da etiqueta..."></textarea>
+                                    <button id="btn-padrao-pdf" class="btn-restaurar-padrao" type="button">
+                                        <i class="fas fa-rotate-left"></i> Restaurar template padrão
+                                    </button>
+                                </div>
+                                <div class="etq-preview-col">
+                                    <div class="etq-preview-label">
+                                        <i class="fas fa-eye"></i> Pré-visualização
+                                        <span class="etq-preview-hint">(dados de exemplo)</span>
+                                    </div>
+                                    <iframe id="etq-preview" class="etq-preview-frame" sandbox="allow-scripts"></iframe>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grupo ZPL -->
+                        <div id="etq-zpl-group" class="etq-form-group" style="display:none;">
+                            <label class="etq-form-label">Template ZPL</label>
+                            <div class="etq-vars-doc">
+                                Variáveis:
+                                <code>{{NR_ATENDIMENTO}}</code> <code>{{PACIENTE}}</code>
+                                <code>{{LEITO}}</code> <code>{{SETOR}}</code>
+                                <code>{{DIETA}}</code> <code>{{REFEICAO}}</code>
+                                <code>{{RESTRICOES}}</code> <code>{{OBS}}</code> <code>{{CODIGO}}</code>
+                            </div>
+                            <div class="etq-editor-preview">
+                                <div class="etq-editor-col">
+                                    <textarea id="etq-zpl" class="etq-form-textarea etq-form-textarea-html"
+                                        rows="16" placeholder="^XA...^XZ"></textarea>
+                                    <div class="etq-zpl-btns">
+                                        <button id="btn-padrao-zpl" class="btn-restaurar-padrao" type="button">
+                                            <i class="fas fa-rotate-left"></i> Restaurar padrão
+                                        </button>
+                                        <button id="btn-visualizar-zpl" class="btn-visualizar-zpl" type="button">
+                                            <i class="fas fa-eye"></i> Visualizar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="etq-preview-col">
+                                    <div class="etq-preview-label">
+                                        <i class="fas fa-eye"></i> Pré-visualização
+                                        <span class="etq-preview-hint">(dados de exemplo · Labelary API)</span>
+                                    </div>
+                                    <div class="etq-zpl-preview-box">
+                                        <img id="etq-zpl-preview" class="etq-zpl-preview-img" src="" alt="" style="display:none;">
+                                        <div id="etq-zpl-preview-status" class="etq-zpl-preview-status">
+                                            Digite o ZPL para visualizar
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="etq-msg" class="etq-msg" style="display:none;"></div>
+                        <button id="btn-salvar-etiqueta" class="btn-novo">
+                            <i class="fas fa-save"></i> Salvar Configuração
+                        </button>
                     </div>
                 </div>
 

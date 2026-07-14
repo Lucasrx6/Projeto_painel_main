@@ -51,7 +51,7 @@ def api_p42_fila():
         with get_db_cursor() as cursor:
             cursor.execute("""
                 SELECT
-                    id, codigo_entrega, nm_paciente, leito, setor_nome, ds_clinica,
+                    id, codigo_entrega, nr_atendimento, nm_paciente, leito, setor_nome, ds_clinica,
                     tipo_dieta_nome, refeicao_nome, quantidade, restricoes,
                     observacao, prioridade, status, responsavel_nome,
                     solicitante_nome,
@@ -222,18 +222,17 @@ def api_p42_iniciar_entrega(sid):
 @painel42_bp.route('/api/paineis/painel42/solicitacoes/<int:sid>/entregar', methods=['PUT'])
 @login_required
 def api_p42_entregar(sid):
-    dados               = request.get_json(silent=True) or {}
-    codigo_confirmacao  = (dados.get('codigo_confirmacao') or '').strip().upper()
-    observacao_entrega  = (dados.get('observacao_entrega') or '').strip() or None
+    dados                    = request.get_json(silent=True) or {}
+    nr_atend_confirmacao     = (dados.get('nr_atendimento_confirmacao') or '').strip()
+    observacao_entrega       = (dados.get('observacao_entrega') or '').strip() or None
 
-    if not codigo_confirmacao:
-        return jsonify({'success': False, 'error': 'Código de entrega obrigatório'}), 400
+    if not nr_atend_confirmacao:
+        return jsonify({'success': False, 'error': 'Número de atendimento obrigatório'}), 400
 
     try:
         with get_db_cursor() as cursor:
-            # Busca o código real para comparação case-insensitive
             cursor.execute(
-                "SELECT codigo_entrega FROM nutricao_solicitacoes WHERE id = %s AND status = 'em_entrega'",
+                "SELECT nr_atendimento FROM nutricao_solicitacoes WHERE id = %s AND status = 'em_entrega'",
                 (sid,)
             )
             row = cursor.fetchone()
@@ -241,8 +240,8 @@ def api_p42_entregar(sid):
             if not row:
                 return jsonify({'success': False, 'error': 'Solicitação não encontrada ou status inválido'}), 400
 
-            if row['codigo_entrega'].upper() != codigo_confirmacao:
-                return jsonify({'success': False, 'error': 'Código de entrega inválido'}), 400
+            if row['nr_atendimento'].strip() != nr_atend_confirmacao:
+                return jsonify({'success': False, 'error': 'Número de atendimento incorreto'}), 400
 
             cursor.execute("""
                 UPDATE nutricao_solicitacoes

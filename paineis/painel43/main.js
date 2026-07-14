@@ -20,12 +20,21 @@ var PAINEL_VERSAO = '1.0.28';
     var DOM = {};
 
     // =========================================================
-    // ESCAPE HTML
+    // ESCAPE HTML / TEMPO
     // =========================================================
     function escHtml(s) {
         return String(s || '')
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function fmtMin(n) {
+        var total = Math.round(Number(n) || 0);
+        if (total <= 0) return '0min';
+        if (total < 60) return total + 'min';
+        var h = Math.floor(total / 60);
+        var m = total % 60;
+        return m > 0 ? (h + 'h ' + m + 'min') : (h + 'h');
     }
 
     var STATUS_COR = {
@@ -49,7 +58,7 @@ var PAINEL_VERSAO = '1.0.28';
     function inicializar() {
         var btnVoltar = document.getElementById('btn-voltar-hub');
         if (btnVoltar) {
-            btnVoltar.addEventListener('click', function () { window.history.back(); });
+            btnVoltar.addEventListener('click', function () { window.location.href = '/painel/painel44'; });
         }
 
         // Abas principais
@@ -67,6 +76,16 @@ var PAINEL_VERSAO = '1.0.28';
                 trocarSubaba(this.getAttribute('data-subaba'));
             });
         }
+
+        // Aba Etiqueta só para admins — verifica pelo endpoint dedicado
+        fetch(CONFIG.apiBase + '/etiqueta-admin-check', { credentials: 'same-origin' })
+            .then(function (r) {
+                if (r.status === 403) {
+                    var btnEtq = document.querySelector('.sub-aba[data-subaba="etiqueta"]');
+                    if (btnEtq) btnEtq.style.display = 'none';
+                }
+            })
+            .catch(function () {});
 
         // Header
         var btnRefresh = document.getElementById('btn-refresh');
@@ -109,6 +128,23 @@ var PAINEL_VERSAO = '1.0.28';
         document.getElementById('btn-canc-ativo-conf').addEventListener('click', confirmarCancelAativo);
         document.getElementById('btn-canc-ativo-fech').addEventListener('click', function () {
             document.getElementById('modal-canc-ativo').style.display = 'none';
+        });
+
+        // Etiqueta config
+        document.getElementById('btn-salvar-etiqueta').addEventListener('click', salvarEtiqueta);
+        document.getElementById('etq-modo').addEventListener('change', _toggleEtiquetaGrupos);
+        document.getElementById('btn-padrao-pdf').addEventListener('click', function () {
+            document.getElementById('etq-pdf').value = _PDF_TEMPLATE_PADRAO;
+            _atualizarPreview();
+        });
+        document.getElementById('etq-pdf').addEventListener('input', function () {
+            clearTimeout(_previewTimer);
+            _previewTimer = setTimeout(_atualizarPreview, 450);
+        });
+        document.getElementById('btn-visualizar-zpl').addEventListener('click', _atualizarPreviewZPL);
+        document.getElementById('btn-padrao-zpl').addEventListener('click', function () {
+            document.getElementById('etq-zpl').value = _ZPL_TEMPLATE_PADRAO;
+            _atualizarPreviewZPL();
         });
 
         carregarDashboard();
@@ -171,8 +207,8 @@ var PAINEL_VERSAO = '1.0.28';
             { label: 'Cancelados',     val: r.cancelados || 0,     cor: '#DC3545', icone: 'fa-times-circle' },
             { label: 'Em Aberto',      val: r.em_aberto || 0,      cor: '#17A2B8', icone: 'fa-clock' },
             { label: 'Urgentes',       val: r.urgentes || 0,       cor: '#FF5722', icone: 'fa-exclamation-circle' },
-            { label: 'T.Médio Total',  val: (r.media_min_total  || '--') + (r.media_min_total  ? 'min' : ''), cor: '#6C757D', icone: 'fa-stopwatch' },
-            { label: 'T.Médio Aceite', val: (r.media_min_aceite || '--') + (r.media_min_aceite ? 'min' : ''), cor: '#6C757D', icone: 'fa-hourglass-half' }
+            { label: 'T.Médio Total',  val: r.media_min_total  != null ? fmtMin(r.media_min_total)  : '--', cor: '#6C757D', icone: 'fa-stopwatch' },
+            { label: 'T.Médio Aceite', val: r.media_min_aceite != null ? fmtMin(r.media_min_aceite) : '--', cor: '#6C757D', icone: 'fa-hourglass-half' }
         ];
         var html = '';
         for (var i = 0; i < kpis.length; i++) {
@@ -206,7 +242,7 @@ var PAINEL_VERSAO = '1.0.28';
                 '<td>' + (a.prioridade === 'urgente' ? '<span class="badge-urg">URG</span>' : 'Normal') + '</td>' +
                 '<td>' + badgeStatus(a.status) + '</td>' +
                 '<td>' + escHtml(a.responsavel_nome || '--') + '</td>' +
-                '<td>' + (a.minutos_espera || 0) + 'min</td>' +
+                '<td>' + fmtMin(a.minutos_espera || 0) + '</td>' +
                 '<td><button class="btn-canc-mini" data-id="' + a.id + '" data-desc="' + escHtml(a.nm_paciente) + '">' +
                     '<i class="fa-solid fa-ban"></i></button></td>' +
             '</tr>';
@@ -303,7 +339,13 @@ var PAINEL_VERSAO = '1.0.28';
                             html += '<tr>';
                             for (var c = 0; c < campoCols.length; c++) {
                                 var v = d[campoCols[c]];
-                                html += '<td>' + escHtml(v != null ? String(v) : '--') + '</td>';
+                                var cel;
+                                if (v != null && campoCols[c].indexOf('_min') >= 0) {
+                                    cel = fmtMin(v);
+                                } else {
+                                    cel = escHtml(v != null ? String(v) : '--');
+                                }
+                                html += '<td>' + cel + '</td>';
                             }
                             html += '</tr>';
                         }
@@ -373,6 +415,7 @@ var PAINEL_VERSAO = '1.0.28';
         if (sub === 'tipos-dieta')  carregarTiposDieta();
         if (sub === 'refeicoes')    carregarRefeicoes();
         if (sub === 'restricoes')   carregarRestricoes();
+        if (sub === 'etiqueta')     carregarEtiqueta();
     }
 
     // --- Equipe ---
@@ -750,6 +793,223 @@ var PAINEL_VERSAO = '1.0.28';
                 document.getElementById('btn-form-salvar').disabled = false;
                 document.getElementById('modal-form-erro').textContent = 'Falha na conexão.';
                 document.getElementById('modal-form-erro').style.display = 'block';
+            });
+    }
+
+    // =========================================================
+    // ETIQUETA CONFIG
+    // =========================================================
+
+    var _previewTimer = null;
+    var _zplBlobUrl   = null;
+
+    var _EXEMPLO = {
+        NR_ATENDIMENTO: '123456',
+        PACIENTE:        'Maria das Graças Oliveira',
+        LEITO:           'A-101',
+        SETOR:           'Clínica Médica',
+        DIETA:           'Dieta Branda',
+        REFEICAO:        'Almoço',
+        RESTRICOES:      'Sem glúten, sem lactose',
+        OBS:             'Sem sal',
+        CODIGO:          'NUT-0001',
+        DATA:            '13/07/2026',
+        HORA:            '11:30'
+    };
+
+    function _preencherVarsExemplo(template) {
+        return template
+            .replace(/\{\{NR_ATENDIMENTO\}\}/g, _EXEMPLO.NR_ATENDIMENTO)
+            .replace(/\{\{PACIENTE\}\}/g,        _EXEMPLO.PACIENTE)
+            .replace(/\{\{LEITO\}\}/g,           _EXEMPLO.LEITO)
+            .replace(/\{\{SETOR\}\}/g,           _EXEMPLO.SETOR)
+            .replace(/\{\{DIETA\}\}/g,           _EXEMPLO.DIETA)
+            .replace(/\{\{REFEICAO\}\}/g,        _EXEMPLO.REFEICAO)
+            .replace(/\{\{RESTRICOES\}\}/g,      _EXEMPLO.RESTRICOES)
+            .replace(/\{\{OBS\}\}/g,             _EXEMPLO.OBS)
+            .replace(/\{\{CODIGO\}\}/g,          _EXEMPLO.CODIGO)
+            .replace(/\{\{DATA\}\}/g,            _EXEMPLO.DATA)
+            .replace(/\{\{HORA\}\}/g,            _EXEMPLO.HORA);
+    }
+
+    function _atualizarPreview() {
+        var frame    = document.getElementById('etq-preview');
+        var template = document.getElementById('etq-pdf').value;
+        if (!frame || !template) return;
+        frame.srcdoc = _preencherVarsExemplo(template);
+    }
+
+    function _atualizarPreviewZPL() {
+        var template = (document.getElementById('etq-zpl').value || '').trim();
+        var img      = document.getElementById('etq-zpl-preview');
+        var status   = document.getElementById('etq-zpl-preview-status');
+        if (!img || !status) return;
+        if (!template) {
+            img.style.display = 'none';
+            status.className  = 'etq-zpl-preview-status';
+            status.textContent = 'Digite o ZPL para visualizar';
+            return;
+        }
+
+        var zpl = _preencherVarsExemplo(template);
+
+        status.className   = 'etq-zpl-preview-status carregando';
+        status.textContent = 'Gerando preview...';
+        img.style.opacity  = '0.4';
+
+        if (_zplBlobUrl) { URL.revokeObjectURL(_zplBlobUrl); _zplBlobUrl = null; }
+
+        fetch(CONFIG.apiBase + '/preview-zpl', {
+            method:      'POST',
+            credentials: 'same-origin',
+            headers:     { 'Content-Type': 'text/plain' },
+            body:        zpl
+        })
+            .then(function (r) {
+                if (r.status === 503) throw new Error('sem_internet');
+                if (!r.ok) throw new Error(r.status);
+                return r.blob();
+            })
+            .then(function (blob) {
+                if (_zplBlobUrl) { URL.revokeObjectURL(_zplBlobUrl); _zplBlobUrl = null; }
+                _zplBlobUrl       = URL.createObjectURL(blob);
+                img.src           = _zplBlobUrl;
+                img.style.display = 'block';
+                img.style.opacity = '1';
+                status.textContent = '';
+                status.className   = 'etq-zpl-preview-status';
+            })
+            .catch(function (err) {
+                img.style.opacity  = '1';
+                status.className   = 'etq-zpl-preview-status erro';
+                status.textContent = (err.message === 'sem_internet')
+                    ? 'Servidor sem acesso à internet (Labelary indisponível)'
+                    : 'ZPL inválido ou erro no servidor';
+            });
+    }
+
+    var _PDF_TEMPLATE_PADRAO = [
+        '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">',
+        '<title>Etiqueta Dieta</title>',
+        '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>',
+        '<style>',
+        '@page { size: 10cm 6cm; margin: 3mm }',
+        'body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 0; }',
+        'svg { max-width: 100%; height: 35px; display: block; margin: 0 auto; }',
+        '@media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact } }',
+        '</style></head><body>',
+        '<div style="padding: 2mm">',
+        '  <div style="font-size: 12px; font-weight: bold; text-align: center; border-bottom: 1px solid #000; padding-bottom: 2mm; margin-bottom: 2mm">Hospital Anchieta Ceilândia</div>',
+        '  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: -7px;">',
+        '    <span><span style="font-weight: bold">Paciente:</span> {{PACIENTE}}</span>',
+        '    <span style="font-size: 8px; color: #666; text-align: right; line-height: 1.4; white-space: nowrap; margin-left: 6px; flex-shrink: 0;">Cód: {{CODIGO}}<br>{{DATA}} {{HORA}}</span>',
+        '  </div>',
+        '  <div style="margin-bottom: 5px"><span style="font-weight: bold">Leito:</span> {{LEITO}} &nbsp; <span style="font-weight: bold">Setor:</span> {{SETOR}}</div>',
+        '  <div style="margin-bottom: 5px"><span style="font-weight: bold">Dieta:</span> {{DIETA}} &mdash; {{REFEICAO}}</div>',
+        '  <div style="margin-bottom: 5px"><span style="font-weight: bold">Restrições:</span> {{RESTRICOES}}</div>',
+        '  <div style="margin-bottom: 5px; min-height: 8mm; line-height: 1.6;"><span style="font-weight: bold">Obs:</span> {{OBS}}</div>',
+        '  <div style="text-align: center; margin: 1mm 0"><svg id="bc"></svg></div>',
+        '  <div style="text-align: center; font-size: 8px; font-weight: bold; font-family: monospace;">{{NR_ATENDIMENTO}}</div>',
+        '</div>',
+        '<script>',
+        'window.onload = function() {',
+        '  if (typeof JsBarcode !== "undefined") {',
+        '    JsBarcode("#bc", "{{NR_ATENDIMENTO}}", {format:"CODE128",width:1.8,height:35,displayValue:false,margin:0});',
+        '  }',
+        '};',
+        '<\/script>',
+        '</body></html>'
+    ].join('\n');
+
+    var _ZPL_TEMPLATE_PADRAO = [
+        '^XA',
+        '^PW800',
+        '^LL480',
+        '^CI28',
+        '^LH0,0',
+        '',
+        '^FO0,10^A0N,24,24^FB800,1,0,C^FDHospital Anchieta Ceilandia^FS',
+        '^FO0,42^GB800,2,2^FS',
+        '',
+        '^FO15,55^A0N,18,18^FDPaciente: {{PACIENTE}}^FS',
+        '^FO15,80^A0N,18,18^FDLeito: {{LEITO}}^FS',
+        '^FO420,80^A0N,18,18^FDSetor: {{SETOR}}^FS',
+        '^FO15,105^A0N,18,18^FDDieta: {{DIETA}} - {{REFEICAO}}^FS',
+        '',
+        '^FO15,128^GB770,38,1^FS',
+        '^FO22,136^A0N,16,16^FDRestricoes: {{RESTRICOES}}^FS',
+        '',
+        '^FO15,173^A0N,18,18^FDObs: {{OBS}}^FS',
+        '',
+        '^FO155,195^BY2^BCN,75,N,N,N^FD{{NR_ATENDIMENTO}}^FS',
+        '',
+        '^FO0,285^A0N,22,22^FB800,1,0,C^FD{{NR_ATENDIMENTO}}^FS',
+        '',
+        '^FO0,318^GB800,1,1^FS',
+        '^FO15,325^A0N,14,14^FDCod: {{CODIGO}}^FS',
+        '^FO530,325^A0N,14,14^FD{{DATA}} {{HORA}}^FS',
+        '',
+        '^XZ'
+    ].join('\n');
+
+    function _toggleEtiquetaGrupos() {
+        var modo    = document.getElementById('etq-modo').value;
+        var grpPdf  = document.getElementById('etq-pdf-group');
+        var grpZpl  = document.getElementById('etq-zpl-group');
+        if (grpPdf) grpPdf.style.display = (modo === 'pdf') ? 'flex' : 'none';
+        if (grpZpl) grpZpl.style.display = (modo === 'zpl') ? 'flex' : 'none';
+    }
+
+    function carregarEtiqueta() {
+        fetch(CONFIG.apiBase + '/config/etiqueta', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    document.getElementById('etq-modo').value = data.modo_impressao || 'pdf';
+                    document.getElementById('etq-zpl').value  = data.zpl_template  || _ZPL_TEMPLATE_PADRAO;
+                    document.getElementById('etq-pdf').value  = data.pdf_template  || _PDF_TEMPLATE_PADRAO;
+                    _toggleEtiquetaGrupos();
+                    _atualizarPreview();
+                    _atualizarPreviewZPL();
+                }
+            })
+            .catch(function (e) { console.error('etiqueta load', e); });
+    }
+
+    function salvarEtiqueta() {
+        var modo = document.getElementById('etq-modo').value;
+        var zpl  = document.getElementById('etq-zpl').value;
+        var pdf  = document.getElementById('etq-pdf').value;
+        var btn  = document.getElementById('btn-salvar-etiqueta');
+        var msg  = document.getElementById('etq-msg');
+        btn.disabled = true;
+        msg.style.display = 'none';
+
+        fetch(CONFIG.apiBase + '/config/etiqueta', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ modo_impressao: modo, zpl_template: zpl, pdf_template: pdf })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                msg.style.display = 'block';
+                if (data.success) {
+                    msg.className = 'etq-msg etq-msg-ok';
+                    msg.textContent = 'Configuração salva com sucesso!';
+                } else {
+                    msg.className = 'etq-msg etq-msg-err';
+                    msg.textContent = data.error || 'Erro ao salvar.';
+                }
+                setTimeout(function () { msg.style.display = 'none'; }, 3000);
+            })
+            .catch(function () {
+                btn.disabled = false;
+                msg.style.display = 'block';
+                msg.className = 'etq-msg etq-msg-err';
+                msg.textContent = 'Falha na conexão.';
+                setTimeout(function () { msg.style.display = 'none'; }, 3000);
             });
     }
 

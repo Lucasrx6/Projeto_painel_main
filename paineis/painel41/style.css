@@ -413,6 +413,31 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+}
+
+.secao-minhas-filtros {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filtro-setor-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+}
+
+.filtro-setor-select {
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    min-width: 140px;
 }
 
 .badge-total {
@@ -431,10 +456,25 @@ body {
     font-size: 13px;
 }
 
+#tabela-minhas-wrapper {
+    max-height: 420px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+#tabela-minhas-wrapper::-webkit-scrollbar { width: 5px; height: 5px; }
+#tabela-minhas-wrapper::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
 .tabela-minhas {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
+}
+
+.tabela-minhas thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .tabela-minhas th {
@@ -444,12 +484,25 @@ body {
     text-align: left;
     font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .tabela-minhas td {
     padding: 9px 12px;
     border-bottom: 1px solid #f0f0f0;
-    vertical-align: middle;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.tabela-minhas td.td-motivo-cancel {
+    white-space: normal;
+    word-break: break-word;
+    min-width: 140px;
+    max-width: 220px;
+    font-size: 0.78rem;
+    color: #666;
+    line-height: 1.4;
+    vertical-align: top;
 }
 
 .tabela-minhas tr:last-child td { border-bottom: none; }

@@ -119,6 +119,29 @@ body {
 
 .ultimo-update { font-size: 11px; opacity: .65; }
 
+.label-imprimir-aceitar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255,255,255,.9);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    transition: background 0.2s;
+}
+.label-imprimir-aceitar:hover { background: rgba(255,255,255,.2); }
+.label-imprimir-aceitar input[type="checkbox"] {
+    accent-color: #fff;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
 /* =========================================================
    KANBAN
    ========================================================= */
@@ -234,6 +257,23 @@ body {
     margin-left: auto;
 }
 
+.btn-reimprimir {
+    background: none;
+    border: none;
+    color: #bbb;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.2s, background 0.15s;
+}
+.btn-reimprimir:hover {
+    color: var(--cor-primaria);
+    background: var(--cor-primaria-light);
+}
+
 .card-paciente {
     font-size: 14px;
     font-weight: 700;
@@ -338,8 +378,36 @@ body {
     gap: 8px;
     user-select: none;
     border-bottom: 1px solid #f0f0f0;
+    flex-wrap: wrap;
 }
 .historico-header:hover { background: #fafafa; }
+
+.hist-filtro-wrapper {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+    user-select: none;
+}
+
+.hist-filtro-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+}
+
+.hist-filtro-select {
+    font-size: 11px;
+    padding: 3px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    min-width: 140px;
+    font-weight: 400;
+}
 
 .badge-hist {
     background: var(--cor-primaria);
@@ -349,12 +417,24 @@ body {
     border-radius: 10px;
 }
 
-.historico-body { overflow-x: auto; }
+.historico-body {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 440px;
+}
+
+.historico-body::-webkit-scrollbar { width: 5px; height: 5px; }
+.historico-body::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 
 .tabela-hist {
     width: 100%;
     border-collapse: collapse;
     font-size: 12px;
+}
+.tabela-hist thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 .tabela-hist th {
     background: var(--cor-primaria);
@@ -368,8 +448,19 @@ body {
 .tabela-hist td {
     padding: 8px 10px;
     border-bottom: 1px solid #f0f0f0;
-    vertical-align: middle;
+    vertical-align: top;
     white-space: nowrap;
+}
+
+.tabela-hist td.td-motivo-cancel {
+    white-space: normal;
+    word-break: break-word;
+    min-width: 140px;
+    max-width: 220px;
+    font-size: 0.75rem;
+    color: #666;
+    line-height: 1.4;
+    vertical-align: top;
 }
 .tabela-hist tr:last-child td { border-bottom: none; }
 .tabela-hist tr:nth-child(even) td { background: #fafafa; }

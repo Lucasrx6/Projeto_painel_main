@@ -142,15 +142,6 @@
                         </div>
                     </div>
 
-                    <div class="form-group form-group-qtd">
-                        <label>Quantidade</label>
-                        <div class="qtd-wrapper">
-                            <button type="button" class="btn-qtd" id="btn-minus">−</button>
-                            <input type="number" id="inp-quantidade" class="inp-qtd" value="1" min="1" max="10" readonly>
-                            <button type="button" class="btn-qtd" id="btn-plus">+</button>
-                        </div>
-                    </div>
-
                     <div class="form-group">
                         <label>Restrições Alimentares</label>
                         <div id="lista-restricoes" class="lista-restricoes">
@@ -181,6 +172,12 @@
         <div class="secao-minhas-header">
             <i class="fa-solid fa-list-check"></i> Minhas Solicitações de Hoje
             <span id="badge-total" class="badge-total" style="display:none;"></span>
+            <div class="secao-minhas-filtros">
+                <span class="filtro-setor-label"><i class="fa-solid fa-filter"></i> Setor:</span>
+                <select id="filtro-setor-41" class="filtro-setor-select">
+                    <option value="">Todos os setores</option>
+                </select>
+            </div>
         </div>
         <div id="tabela-minhas-wrapper">
             <div id="tabela-minhas-empty" class="tabela-empty">Nenhuma solicitação nas últimas 24 horas.</div>
@@ -196,6 +193,7 @@
                         <th>Status</th>
                         <th>Horário</th>
                         <th>Ação</th>
+                        <th>Motivo Cancel.</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-minhas"></tbody>
