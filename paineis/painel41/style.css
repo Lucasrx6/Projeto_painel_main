@@ -421,6 +421,8 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
+    row-gap: 6px;
 }
 
 .filtro-setor-label {
@@ -751,6 +753,49 @@ body {
     transition: background .15s;
 }
 .btn-manual-cancelar:hover { background: #f0f0f0; }
+
+/* =========================================================
+   BUSCA HISTÓRICO + NOVOS ELEMENTOS
+   ========================================================= */
+.busca-hist-input {
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    outline: none;
+    width: 210px;
+    background: #fff;
+    transition: border-color .15s;
+}
+.busca-hist-input:focus { border-color: var(--cor-primaria); }
+
+.btn-exportar-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+.btn-exportar-pdf:hover { background: #b02a37; }
+
+.tabela-minhas td.td-dia,
+.tabela-minhas td.td-nr {
+    font-size: 11px;
+    color: #888;
+    white-space: nowrap;
+}
+
+#card-info-nasc {
+    margin-top: 4px;
+}
 
 .badge-manual {
     background: #6c757d;

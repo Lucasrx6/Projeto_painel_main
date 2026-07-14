@@ -19,7 +19,11 @@ var PAINEL_VERSAO = '1.1.39';
         urgente: false,
         enviando: false,
         buscando: false,
-        _debounceTimer: null
+        _debounceTimer: null,
+        _debounceHistTimer: null,
+        buscaHist: '',
+        filtroRefeicao41: '',
+        listaFiltrada: []
     };
 
     var DOM = {};
@@ -58,10 +62,11 @@ var PAINEL_VERSAO = '1.1.39';
     // DEBOUNCE
     // =========================================================
     function debounce(fn, ms) {
+        var timer = null;
         return function () {
             var args = arguments;
-            clearTimeout(Estado._debounceTimer);
-            Estado._debounceTimer = setTimeout(function () { fn.apply(null, args); }, ms);
+            clearTimeout(timer);
+            timer = setTimeout(function () { fn.apply(null, args); }, ms);
         };
     }
 
@@ -93,6 +98,9 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.pacSetor         = document.getElementById('pac-setor');
         DOM.pacClinica       = document.getElementById('pac-clinica');
         DOM.pacDias          = document.getElementById('pac-dias');
+        DOM.pacNasc          = document.getElementById('pac-nasc');
+        DOM.cardInfoNasc     = document.getElementById('card-info-nasc');
+        DOM.manualNasc       = document.getElementById('manual-nasc');
         DOM.badgeManual      = document.getElementById('badge-manual');
         DOM.cardInfoExtra    = document.getElementById('card-info-extra');
         DOM.btnLimpar        = document.getElementById('btn-limpar-paciente');
@@ -111,6 +119,9 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.tabelaEmpty      = document.getElementById('tabela-minhas-empty');
         DOM.badgeTotal       = document.getElementById('badge-total');
         DOM.filtroSetor41    = document.getElementById('filtro-setor-41');
+        DOM.filtroRefeicao41  = document.getElementById('filtro-refeicao-41');
+        DOM.buscaHist41       = document.getElementById('busca-hist-41');
+        DOM.btnExportarPdf41  = document.getElementById('btn-exportar-pdf-41');
         DOM.modalSucesso     = document.getElementById('modal-sucesso');
         DOM.modalCodigo      = document.getElementById('modal-codigo');
         DOM.btnModalOk       = document.getElementById('btn-modal-ok');
@@ -132,7 +143,20 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.btnModalOk.addEventListener('click', fecharModalSucesso);
         DOM.btnCancFechar.addEventListener('click', fecharModalCancelar);
         DOM.btnCancConfirmar.addEventListener('click', confirmarCancelamento);
-        if (DOM.filtroSetor41) DOM.filtroSetor41.addEventListener('change', renderMinhasSolicitacoes);
+        if (DOM.btnExportarPdf41) DOM.btnExportarPdf41.addEventListener('click', exportarPDF);
+        if (DOM.filtroSetor41)    DOM.filtroSetor41.addEventListener('change', renderMinhasSolicitacoes);
+        if (DOM.filtroRefeicao41) DOM.filtroRefeicao41.addEventListener('change', function () {
+            Estado.filtroRefeicao41 = DOM.filtroRefeicao41.value;
+            renderMinhasSolicitacoes();
+        });
+        if (DOM.buscaHist41) DOM.buscaHist41.addEventListener('input', function () {
+            clearTimeout(Estado._debounceHistTimer);
+            var val = DOM.buscaHist41.value;
+            Estado._debounceHistTimer = setTimeout(function () {
+                Estado.buscaHist = val.trim().toLowerCase();
+                renderMinhasSolicitacoes();
+            }, 300);
+        });
 
         // Fechar modais clicando no overlay
         DOM.modalSucesso.addEventListener('click', function (e) {
@@ -243,25 +267,28 @@ var PAINEL_VERSAO = '1.1.39';
     // =========================================================
     // BUSCA DE PACIENTE
     // =========================================================
+    var _buscaGen = 0;
+
     function buscarPaciente() {
         var q = DOM.inputBusca.value.trim();
         if (q.length < CONFIG.minCharsSearch) {
             DOM.listaPacientes.innerHTML = '';
+            DOM.spinnerBusca.style.display = 'none';
             return;
         }
-        if (Estado.buscando) return;
-        Estado.buscando = true;
+        _buscaGen++;
+        var gen = _buscaGen;
         DOM.spinnerBusca.style.display = 'inline-block';
 
         fetch(CONFIG.apiBase + '/pacientes?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                Estado.buscando = false;
+                if (gen !== _buscaGen) return;
                 DOM.spinnerBusca.style.display = 'none';
                 renderListaPacientes(data.pacientes || []);
             })
             .catch(function (e) {
-                Estado.buscando = false;
+                if (gen !== _buscaGen) return;
                 DOM.spinnerBusca.style.display = 'none';
                 console.error('busca pacientes', e);
             });
@@ -307,6 +334,7 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.manualNome.value        = '';
         DOM.manualAtend.value       = '';
         DOM.manualLeito.value       = '';
+        if (DOM.manualNasc) DOM.manualNasc.value = '';
         DOM.manualSetor.selectedIndex = 0;
         DOM.manualErro.style.display = 'none';
         DOM.manualNome.focus();
@@ -320,6 +348,7 @@ var PAINEL_VERSAO = '1.1.39';
     function confirmarManual() {
         var nome  = DOM.manualNome.value.trim();
         var atend = DOM.manualAtend.value.trim();
+        var nasc  = DOM.manualNasc ? DOM.manualNasc.value.trim() : '';
         var setor = DOM.manualSetor.value.trim();
         if (!nome) {
             DOM.manualErro.textContent = 'Nome do paciente é obrigatório.';
@@ -331,6 +360,12 @@ var PAINEL_VERSAO = '1.1.39';
             DOM.manualErro.textContent = 'Nº de atendimento é obrigatório.';
             DOM.manualErro.style.display = 'block';
             DOM.manualAtend.focus();
+            return;
+        }
+        if (!nasc) {
+            DOM.manualErro.textContent = 'Data de nascimento é obrigatória.';
+            DOM.manualErro.style.display = 'block';
+            if (DOM.manualNasc) DOM.manualNasc.focus();
             return;
         }
         if (!setor) {
@@ -348,8 +383,21 @@ var PAINEL_VERSAO = '1.1.39';
             cd_unidade:     null,
             ds_clinica:     null,
             dias_internado: null,
+            dt_nascimento:  nasc,
             _manual:        true
         });
+    }
+
+    function _formatarNascimento(dtNasc) {
+        if (!dtNasc) return null;
+        var partes = String(dtNasc).split('-');
+        if (partes.length !== 3) return dtNasc;
+        var hoje = new Date();
+        var anos = hoje.getFullYear() - parseInt(partes[0], 10);
+        var mes  = hoje.getMonth() + 1 - parseInt(partes[1], 10);
+        var dia  = hoje.getDate() - parseInt(partes[2], 10);
+        if (mes < 0 || (mes === 0 && dia < 0)) anos--;
+        return partes[2] + '/' + partes[1] + '/' + partes[0] + ' (' + anos + ' anos)';
     }
 
     function selecionarPaciente(p) {
@@ -363,8 +411,12 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.pacLeito.textContent   = p.leito       || '--';
         DOM.pacSetor.textContent   = p.setor_nome  || '--';
 
+        var nascFormatado = _formatarNascimento(p.dt_nascimento);
+        if (DOM.pacNasc) DOM.pacNasc.textContent = nascFormatado || '--';
+        if (DOM.cardInfoNasc) DOM.cardInfoNasc.style.display = nascFormatado ? '' : 'none';
+
         if (p._manual) {
-            DOM.badgeManual.style.display  = 'inline-block';
+            DOM.badgeManual.style.display   = 'inline-block';
             DOM.cardInfoExtra.style.display = 'none';
         } else {
             DOM.badgeManual.style.display   = 'none';
@@ -435,6 +487,7 @@ var PAINEL_VERSAO = '1.1.39';
             setor_nome:     Estado.paciente.setor_nome,
             cd_unidade:     Estado.paciente.cd_unidade,
             ds_clinica:     Estado.paciente.ds_clinica,
+            dt_nascimento:  Estado.paciente.dt_nascimento || null,
             tipo_dieta_id:  parseInt(tipoDietaId, 10),
             refeicao_id:    parseInt(refeicaoId, 10),
             quantidade:     1,
@@ -538,21 +591,51 @@ var PAINEL_VERSAO = '1.1.39';
         DOM.filtroSetor41.innerHTML = html;
     }
 
+    function _popularFiltroRefeicao41() {
+        if (!DOM.filtroRefeicao41) return;
+        var atual = DOM.filtroRefeicao41.value;
+        var refeicoes = {};
+        for (var i = 0; i < Estado.minhasSolicitacoes.length; i++) {
+            var r = Estado.minhasSolicitacoes[i];
+            if (r.refeicao_nome) refeicoes[r.refeicao_nome] = true;
+        }
+        var html = '<option value="">Todas</option>';
+        var nomes = Object.keys(refeicoes).sort();
+        for (var j = 0; j < nomes.length; j++) {
+            html += '<option value="' + escHtml(nomes[j]) + '"' +
+                (nomes[j] === atual ? ' selected' : '') + '>' + escHtml(nomes[j]) + '</option>';
+        }
+        DOM.filtroRefeicao41.innerHTML = html;
+        Estado.filtroRefeicao41 = DOM.filtroRefeicao41.value;
+    }
+
     function renderMinhasSolicitacoes() {
-        var setorFiltro = DOM.filtroSetor41 ? DOM.filtroSetor41.value : '';
+        var setorFiltro    = DOM.filtroSetor41    ? DOM.filtroSetor41.value    : '';
+        var refeicaoFiltro = Estado.filtroRefeicao41;
+        var busca          = Estado.buscaHist;
+
         var lista = Estado.minhasSolicitacoes.filter(function (s) {
-            return !setorFiltro || s.setor_nome === setorFiltro;
+            if (setorFiltro    && s.setor_nome    !== setorFiltro)    return false;
+            if (refeicaoFiltro && s.refeicao_nome !== refeicaoFiltro) return false;
+            if (busca) {
+                var nome  = (s.nm_paciente    || '').toLowerCase();
+                var nr    = (s.nr_atendimento || '').toLowerCase();
+                if (nome.indexOf(busca) === -1 && nr.indexOf(busca) === -1) return false;
+            }
+            return true;
         });
+        Estado.listaFiltrada = lista;
 
         _popularFiltroSetor41();
+        _popularFiltroRefeicao41();
 
         if (!lista.length) {
-            DOM.tabelaEmpty.style.display = Estado.minhasSolicitacoes.length ? 'none' : 'block';
             if (Estado.minhasSolicitacoes.length) {
-                DOM.tabelaEmpty.style.display = 'none';
+                DOM.tabelaEmpty.style.display  = 'none';
                 DOM.tabelaMinhas.style.display = 'table';
-                DOM.tbodyMinhas.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:20px;">Nenhum resultado para este setor.</td></tr>';
+                DOM.tbodyMinhas.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#aaa;padding:20px;">Nenhum resultado para os filtros aplicados.</td></tr>';
             } else {
+                DOM.tabelaEmpty.style.display  = 'block';
                 DOM.tabelaMinhas.style.display = 'none';
             }
             DOM.badgeTotal.style.display = 'none';
@@ -574,13 +657,16 @@ var PAINEL_VERSAO = '1.1.39';
 
             html += '<tr class="' + (s.status === 'cancelado' ? 'linha-cancelada' : '') + '">' +
                 '<td><span class="codigo-entrega">' + escHtml(s.codigo_entrega) + '</span></td>' +
+                '<td class="td-dia">' + escHtml(s.data_pedido || '--') + '</td>' +
+                '<td>' + escHtml(s.hora_pedido || '--') + '</td>' +
+                '<td class="td-nr">' + escHtml(s.nr_atendimento || '--') + '</td>' +
                 '<td>' + escHtml(s.nm_paciente) + '</td>' +
                 '<td>' + escHtml(s.leito || '--') + '</td>' +
+                '<td>' + escHtml(s.setor_nome || '--') + '</td>' +
                 '<td>' + escHtml(s.tipo_dieta_nome || '--') + '</td>' +
                 '<td>' + escHtml(s.refeicao_nome || '--') + '</td>' +
                 '<td>' + prio + '</td>' +
                 '<td>' + badgeStatus(s.status) + '</td>' +
-                '<td>' + escHtml(s.criado_em || '--') + '</td>' +
                 '<td>' +
                     (podeCancelar
                         ? '<button class="btn-canc-linha" data-id="' + s.id + '">' +
@@ -600,6 +686,88 @@ var PAINEL_VERSAO = '1.1.39';
                 abrirModalCancelar(this.getAttribute('data-id'));
             });
         }
+    }
+
+    // =========================================================
+    // EXPORTAR PDF — abre janela com tabela filtrada e imprime
+    // =========================================================
+    function exportarPDF() {
+        var lista = Estado.listaFiltrada;
+        if (!lista || !lista.length) {
+            alert('Nenhuma solicitação para exportar com os filtros atuais.');
+            return;
+        }
+
+        var agora  = new Date();
+        var datahora = ('0' + agora.getDate()).slice(-2) + '/' +
+                       ('0' + (agora.getMonth() + 1)).slice(-2) + '/' +
+                       agora.getFullYear() + ' ' +
+                       ('0' + agora.getHours()).slice(-2) + ':' +
+                       ('0' + agora.getMinutes()).slice(-2);
+
+        var filtroDesc = [];
+        var setorFiltro = DOM.filtroSetor41 ? DOM.filtroSetor41.value : '';
+        if (setorFiltro)           filtroDesc.push('Setor: ' + setorFiltro);
+        if (Estado.filtroRefeicao41) filtroDesc.push('Refeição: ' + Estado.filtroRefeicao41);
+        if (Estado.buscaHist)      filtroDesc.push('Busca: "' + Estado.buscaHist + '"');
+        var filtroTexto = filtroDesc.length ? filtroDesc.join(' | ') : 'Todos';
+
+        var statusMap = {
+            aguardando: 'Aguardando', aceito: 'Aceito',
+            em_preparo: 'Em Preparo', pronto: 'Pronto',
+            em_entrega: 'Em Entrega', entregue: 'Entregue', cancelado: 'Cancelado'
+        };
+
+        var rows = '';
+        for (var i = 0; i < lista.length; i++) {
+            var s = lista[i];
+            var isCancelado = s.status === 'cancelado';
+            rows += '<tr' + (isCancelado ? ' class="cancelado"' : '') + '>' +
+                '<td>' + escHtml(s.codigo_entrega || '--') + '</td>' +
+                '<td>' + escHtml(s.data_pedido    || '--') + '</td>' +
+                '<td>' + escHtml(s.hora_pedido    || '--') + '</td>' +
+                '<td>' + escHtml(s.nr_atendimento || '--') + '</td>' +
+                '<td>' + escHtml(s.nm_paciente    || '--') + '</td>' +
+                '<td>' + escHtml(s.leito          || '--') + '</td>' +
+                '<td>' + escHtml(s.setor_nome     || '--') + '</td>' +
+                '<td>' + escHtml(s.tipo_dieta_nome || '--') + '</td>' +
+                '<td>' + escHtml(s.refeicao_nome  || '--') + '</td>' +
+                '<td>' + (s.prioridade === 'urgente' ? '<strong style="color:#c0392b">Urgente</strong>' : 'Normal') + '</td>' +
+                '<td>' + escHtml(statusMap[s.status] || s.status) + '</td>' +
+                '<td>' + escHtml(s.motivo_cancelamento || '--') + '</td>' +
+            '</tr>';
+        }
+
+        var html = '<!DOCTYPE html><html lang="pt-BR"><head>' +
+            '<meta charset="UTF-8">' +
+            '<title>Solicitações de Dieta — HAC</title>' +
+            '<style>' +
+                'body{font-family:Arial,sans-serif;font-size:10px;color:#222;margin:10mm;}' +
+                'h2{font-size:13px;margin:0 0 3px;}' +
+                '.sub{font-size:9px;color:#555;margin-bottom:10px;}' +
+                'table{width:100%;border-collapse:collapse;}' +
+                'th{background:#1a5c3a;color:#fff;padding:5px 6px;text-align:left;font-size:9px;white-space:nowrap;}' +
+                'td{padding:4px 6px;border-bottom:1px solid #e0e0e0;font-size:9px;vertical-align:middle;}' +
+                'tr:nth-child(even) td{background:#f5f5f5;}' +
+                'tr.cancelado td{color:#aaa;text-decoration:line-through;}' +
+                '@media print{@page{size:A4 landscape;margin:10mm}body{margin:0}}' +
+            '</style>' +
+            '</head><body>' +
+            '<h2><i>Solicitações de Dieta — Hospital Anchieta Ceilândia</i></h2>' +
+            '<div class="sub">Gerado em: ' + datahora + ' &nbsp;|&nbsp; ' +
+                lista.length + ' registro(s) &nbsp;|&nbsp; Filtros: ' + escHtml(filtroTexto) + '</div>' +
+            '<table><thead><tr>' +
+                '<th>Código</th><th>Dia</th><th>Horário</th><th>NR Atend.</th>' +
+                '<th>Paciente</th><th>Leito</th><th>Setor</th><th>Dieta</th>' +
+                '<th>Refeição</th><th>Prioridade</th><th>Status</th><th>Motivo Cancel.</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table>' +
+            '<script>window.onload=function(){window.print();}<\/script>' +
+            '</body></html>';
+
+        var win = window.open('', '_blank', 'width=900,height=600');
+        if (!win) { alert('Permita pop-ups para exportar o PDF.'); return; }
+        win.document.write(html);
+        win.document.close();
     }
 
     // =========================================================

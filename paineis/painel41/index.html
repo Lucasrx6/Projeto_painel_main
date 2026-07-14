@@ -76,6 +76,12 @@
                             <input type="text" id="manual-leito" class="form-input-m" placeholder="Ex: A101">
                         </div>
                     </div>
+                    <div class="form-row-m">
+                        <div class="form-group-m">
+                            <label>Data de Nascimento <span class="obrig">*</span></label>
+                            <input type="date" id="manual-nasc" class="form-input-m">
+                        </div>
+                    </div>
                     <div class="form-group-m">
                         <label>Setor <span class="obrig">*</span></label>
                         <select id="manual-setor" class="form-input-m form-select-m">
@@ -106,6 +112,9 @@
                     <div class="card-paciente-info" id="card-info-extra">
                         <span><i class="fa-solid fa-stethoscope"></i> <span id="pac-clinica">--</span></span>
                         <span><i class="fa-solid fa-calendar-days"></i> <span id="pac-dias">--</span> dias</span>
+                    </div>
+                    <div class="card-paciente-info" id="card-info-nasc">
+                        <span><i class="fa-solid fa-cake-candles"></i> Nasc.: <span id="pac-nasc">--</span></span>
                     </div>
                     <button class="btn-limpar-paciente" id="btn-limpar-paciente">
                         <i class="fa-solid fa-xmark"></i> Trocar paciente
@@ -173,10 +182,18 @@
             <i class="fa-solid fa-list-check"></i> Minhas Solicitações de Hoje
             <span id="badge-total" class="badge-total" style="display:none;"></span>
             <div class="secao-minhas-filtros">
+                <input type="text" id="busca-hist-41" class="busca-hist-input" placeholder="&#128269; Buscar paciente ou atendimento...">
                 <span class="filtro-setor-label"><i class="fa-solid fa-filter"></i> Setor:</span>
                 <select id="filtro-setor-41" class="filtro-setor-select">
                     <option value="">Todos os setores</option>
                 </select>
+                <span class="filtro-setor-label"><i class="fa-solid fa-utensils"></i> Refeição:</span>
+                <select id="filtro-refeicao-41" class="filtro-setor-select">
+                    <option value="">Todas</option>
+                </select>
+                <button id="btn-exportar-pdf-41" class="btn-exportar-pdf" title="Exportar lista filtrada como PDF">
+                    <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+                </button>
             </div>
         </div>
         <div id="tabela-minhas-wrapper">
@@ -185,13 +202,16 @@
                 <thead>
                     <tr>
                         <th>Código</th>
+                        <th>Dia</th>
+                        <th>Horário</th>
+                        <th>NR Atend.</th>
                         <th>Paciente</th>
                         <th>Leito</th>
+                        <th>Setor</th>
                         <th>Dieta</th>
                         <th>Refeição</th>
                         <th>Prioridade</th>
                         <th>Status</th>
-                        <th>Horário</th>
                         <th>Ação</th>
                         <th>Motivo Cancel.</th>
                     </tr>

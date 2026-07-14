@@ -115,8 +115,30 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700;
 }
 
+/* ── FILA DO DIA — TABELA ──────────────────────── */
+.grid-fila { display: block; }
+
+.tabela-fila-wrapper { overflow-x: auto; }
+.tabela-fila { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tabela-fila thead th {
+    background: #f8f9fa; border-bottom: 2px solid var(--borda);
+    padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 700;
+    color: var(--texto-sec); text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap;
+}
+.tabela-fila tbody td { padding: 9px 12px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+.tabela-fila tbody tr:last-child td { border-bottom: none; }
+.tabela-fila tbody tr:hover td { background: #f8f9fa; }
+.tabela-fila tbody tr.linha-urgente td { background: #fff5f5; }
+.tabela-fila tbody tr.linha-concluido td { opacity: 0.75; }
+.tabela-fila tbody tr.linha-recusado td { background: #fff5f5; }
+.ta-nome  { font-size: 13px; font-weight: 700; }
+.ta-sub   { font-size: 11px; color: var(--texto-sec); }
+.ta-proc  { font-size: 12px; font-weight: 600; word-break: break-word; max-width: 200px; }
+.ta-slot  { font-size: 12px; font-weight: 600; color: #0c5460; white-space: nowrap; }
+.ta-slot-sem { font-size: 11px; color: var(--texto-sec); font-style: italic; white-space: nowrap; }
+.ta-acoes { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+
 /* ── CARDS DE PACIENTE ─────────────────────────── */
-.grid-fila { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; padding: 16px; }
 
 .card-paciente {
     background: var(--card-bg); border-radius: var(--radius);

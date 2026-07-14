@@ -25,7 +25,7 @@ var PAINEL_VERSAO = '1.0.17';
 
         var btnVoltar = document.getElementById('btn-voltar-dashboard');
         if (btnVoltar) {
-            btnVoltar.addEventListener('click', function () { window.location.href = '/dashboard'; });
+            btnVoltar.addEventListener('click', function () { window.location.href = '/'; });
         }
 
         carregarCatalogo();

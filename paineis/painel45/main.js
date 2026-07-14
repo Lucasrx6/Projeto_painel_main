@@ -160,110 +160,83 @@
         }
     }
 
-    // ── Card de agendamento ─────────────────────────
-    function cardAgendamentoHtml(item) {
+    // ── Linha de agendamento (visualização em tabela) ─
+    function linhaAgendamentoHtml(item) {
         var enf      = item.status_enfermagem || 'pendente';
         var urgente  = item.prioridade === 'urgente';
         var recusado = enf === 'recusado';
         var ciente   = enf === 'ciente';
 
-        var cls = 'card-ag';
-        if (urgente)  cls += ' card-ag-urgente';
-        if (recusado) cls += ' card-ag-recusado';
-        if (ciente)   cls += ' card-ag-ciente';
+        var cls = 'linha-ag';
+        if (urgente)  cls += ' linha-urgente';
+        if (ciente)   cls += ' linha-ciente';
+        if (recusado) cls += ' linha-recusado';
 
-        var html = '<div class="' + cls + '">';
+        var html = '<tr class="' + cls + '">';
 
-        // Header
-        html += '<div class="card-ag-header">';
-        html += '<span class="card-ag-setor"><i class="fas fa-hospital-alt"></i> ' + escHtml(item.setor_origem_nome || '-') + '</span>';
-        if (urgente) html += '<span class="badge-urgente">URGENTE</span>';
-        html += '</div>';
-
-        // Corpo
-        html += '<div class="card-ag-body">';
-
-        // Paciente
-        html += '<div class="card-ag-paciente">'
-              + '<div class="card-ag-nome">' + escHtml(formatarNome(item.nm_paciente)) + '</div>'
-              + '<div class="card-ag-meta">'
-              + '<span><i class="fas fa-bed"></i> ' + escHtml(item.leito_origem || '-') + '</span>'
+        // Paciente / Leito
+        html += '<td>'
+              + '<div class="ta-nome">'
+              + (urgente ? '<i class="fas fa-bolt" style="color:#dc3545;margin-right:4px;"></i>' : '')
+              + escHtml(formatarNome(item.nm_paciente))
               + '</div>'
-              + '</div>';
+              + '<div class="ta-sub"><i class="fas fa-bed"></i> ' + escHtml(item.leito_origem || '-') + '</div>'
+              + '</td>';
 
-        // Exame + tipo + horário
-        html += '<div class="card-ag-exame">'
-              + '<div class="card-ag-proc"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-') + '</div>'
-              + '<div class="card-ag-badges">'
-              + badgeTipo(item.tipo_exame)
-              + ' ' + badgeEnf(enf)
-              + ' ' + badgeRadioStatus(item.status)
-              + '</div>';
+        // Procedimento
+        html += '<td><div class="ta-proc">' + escHtml(item.ds_procedimento || '-') + '</div></td>';
 
-        // Horário do slot
+        // Tipo
+        html += '<td>' + badgeTipo(item.tipo_exame) + '</td>';
+
+        // Horário
         if (item.slot_data_hora) {
-            html += '<div class="card-ag-slot"><i class="fas fa-clock"></i> Horário: <strong>'
-                  + formatarDataHora(item.slot_data_hora) + '</strong>';
-            if (item.slot_modalidade) html += ' <span class="badge-modalidade">' + escHtml(item.slot_modalidade) + '</span>';
-            html += '</div>';
+            html += '<td><span class="ta-slot"><i class="fas fa-clock"></i> '
+                  + escHtml(formatarDataHora(item.slot_data_hora)) + '</span>';
+            if (item.slot_modalidade) {
+                html += ' <span class="badge-modalidade">' + escHtml(item.slot_modalidade) + '</span>';
+            }
+            html += '</td>';
         } else {
-            html += '<div class="card-ag-slot card-ag-slot-sem"><i class="fas fa-calendar-times"></i> Aguardando horário</div>';
+            html += '<td><span class="ta-slot-sem"><i class="fas fa-calendar-times"></i> Aguardando</span></td>';
         }
 
-        // Motivo recusa
-        if (recusado && item.motivo_recusa) {
-            html += '<div class="card-ag-recusa-motivo">'
-                  + '<i class="fas fa-exclamation-circle"></i> <strong>Motivo:</strong> '
-                  + escHtml(item.motivo_recusa)
-                  + '</div>';
-        }
+        // Status Enfermagem
+        html += '<td>' + badgeEnf(enf) + '</td>';
 
-        // Observação
-        if (item.observacao) {
-            html += '<div class="card-ag-obs"><i class="fas fa-comment-alt"></i> ' + escHtml(item.observacao) + '</div>';
-        }
+        // Status Radiologia
+        html += '<td>' + badgeRadioStatus(item.status) + '</td>';
 
-        // Preparo necessário
-        if (item.requer_preparo && item.tipo_preparo) {
-            html += '<div class="card-ag-preparo"><i class="fas fa-flask"></i> <strong>Preparo:</strong> ' + escHtml(item.tipo_preparo) + '</div>';
-        }
-
-        // Médico solicitante
-        if (item.nm_medico_solicitante) {
-            html += '<div class="card-ag-medico"><i class="fas fa-user-md"></i> ' + escHtml(item.nm_medico_solicitante) + '</div>';
-        }
-
-        html += '</div>';  // card-ag-exame
-        html += '</div>';  // card-ag-body
-
-        // Ações — só para exames agendados (com slot) e não concluídos/cancelados
+        // Ações
+        html += '<td><div class="ta-acoes">';
         var podeAgir = item.status !== 'concluido' && item.status !== 'cancelado';
         if (podeAgir && item.slot_id) {
-            html += '<div class="card-ag-footer">';
             if (enf !== 'ciente') {
-                html += '<button class="btn-ciencia" onclick="P45.abrirCiencia(' + item.id + ',\''
-                      + escHtml(item.nm_paciente || '') + '\',\''
+                html += '<button class="btn-ciencia" onclick="P45.abrirCiencia('
+                      + item.id + ',\'' + escHtml(item.nm_paciente || '') + '\',\''
                       + escHtml(item.ds_procedimento || '') + '\')">'
-                      + '<i class="fas fa-check"></i> Dar Ciência</button>';
-            } else {
-                html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciência registrada';
-                if (item.dt_ciencia) html += ' ' + formatarDataHora(item.dt_ciencia);
-                html += '</span>';
-            }
-            if (enf !== 'ciente') {
-                html += '<button class="btn-recusar" onclick="P45.abrirRecusar(' + item.id + ',\''
-                      + escHtml(item.nm_paciente || '') + '\',\''
+                      + '<i class="fas fa-check"></i> Ciência</button>';
+                html += '<button class="btn-recusar" onclick="P45.abrirRecusar('
+                      + item.id + ',\'' + escHtml(item.nm_paciente || '') + '\',\''
                       + escHtml(item.ds_procedimento || '') + '\')">'
                       + '<i class="fas fa-times"></i> Recusar</button>';
+            } else {
+                html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciente';
+                if (item.dt_ciencia) html += ' ' + escHtml(formatarDataHora(item.dt_ciencia));
+                html += '</span>';
             }
-            html += '</div>';
         } else if (!item.slot_id) {
-            html += '<div class="card-ag-footer">'
-                  + '<span class="txt-sem-horario"><i class="fas fa-hourglass-half"></i> Aguardando horário da radiologia</span>'
-                  + '</div>';
+            html += '<span class="ta-slot-sem"><i class="fas fa-hourglass-half"></i> Sem horário</span>';
+        } else {
+            html += '<span style="color:var(--texto-sec);font-size:11px;">-</span>';
         }
+        if (recusado && item.motivo_recusa) {
+            html += ' <span title="' + escHtml(item.motivo_recusa) + '" style="color:#842029;cursor:help;margin-left:2px;">'
+                  + '<i class="fas fa-exclamation-circle"></i></span>';
+        }
+        html += '</div></td>';
 
-        html += '</div>';  // card-ag
+        html += '</tr>';
         return html;
     }
 
@@ -317,11 +290,14 @@
                 html += '<span class="setor-pendentes">' + pendCount + ' aguard.</span>';
             }
             html += '</div>';
-            html += '<div class="grid-cards-ag">';
+            html += '<div class="tabela-ag-wrapper"><table class="tabela-ag"><thead><tr>'
+                  + '<th>Paciente / Leito</th><th>Procedimento</th><th>Tipo</th>'
+                  + '<th>Horário</th><th>Enf.</th><th>Radiologia</th><th>Ações</th>'
+                  + '</tr></thead><tbody>';
             for (var ci = 0; ci < lista.length; ci++) {
-                html += cardAgendamentoHtml(lista[ci]);
+                html += linhaAgendamentoHtml(lista[ci]);
             }
-            html += '</div></div>';
+            html += '</tbody></table></div></div>';
         }
         mc.innerHTML = html;
     }

@@ -190,66 +190,86 @@
         return '';
     }
 
-    function cardPacienteHtml(item) {
-        var statusCls = '';
-        if (item.prioridade === 'urgente') statusCls = ' card-urgente';
-        else if (item.status === 'agendado')   statusCls = ' card-agendado';
-        else if (item.status === 'no_local')   statusCls = ' card-no_local';
-        else if (item.status === 'executando') statusCls = ' card-executando';
-        else if (item.status === 'concluido')  statusCls = ' card-concluido';
-        if (item.status_enfermagem === 'recusado') statusCls += ' card-enf-recusado';
+    function linhaPacienteHtml(item) {
+        var urgente = item.prioridade === 'urgente';
+        var enfSt   = item.status_enfermagem;
+        var rowCls  = 'linha-pac';
+        if (urgente)                     rowCls += ' linha-urgente';
+        if (item.status === 'concluido') rowCls += ' linha-concluido';
+        if (enfSt === 'recusado')        rowCls += ' linha-recusado';
 
-        var html = '<div class="card-paciente' + statusCls + '">';
-        html += '<div class="card-header-p">'
-              + '<div><div class="card-nome">' + escHtml(formatarNome(item.nm_paciente)) + '</div>'
-              + '<div class="card-atnd"><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(item.nr_atendimento || '') + '</div></div>';
-        if (item.prioridade === 'urgente')
-            html += '<div class="card-badge-prio"><span class="badge-urgente"><i class="fas fa-exclamation"></i> Urgente</span></div>';
-        html += '</div>';
+        var html = '<tr class="' + rowCls + '">';
 
-        html += '<div class="card-body-p">'
-              + '<div class="card-exame"><i class="fas fa-x-ray"></i> ' + escHtml(item.ds_procedimento || '-')
-              + (item.tipo_exame ? ' ' + badgeTipoExame(item.tipo_exame) : '') + '</div>';
-        if (item.leito_origem)
-            html += '<div class="card-linha"><i class="fas fa-bed"></i><span>' + escHtml(item.leito_origem) + '</span></div>';
-        if (item.setor_origem_nome)
-            html += '<div class="card-linha"><i class="fas fa-hospital-alt"></i><span>' + escHtml(item.setor_origem_nome) + '</span></div>';
-        if (item.slot_data_hora)
-            html += '<div class="card-linha"><i class="fas fa-clock"></i><span><strong>' + formatarHora(item.slot_data_hora) + '</strong>'
-                  + (item.slot_modalidade ? ' — ' + escHtml(item.slot_modalidade) : '') + '</span></div>';
+        // Col: Paciente
+        html += '<td>';
+        if (urgente) html += '<i class="fas fa-bolt" style="color:#dc3545;margin-right:4px;font-size:11px;"></i>';
+        html += '<div class="ta-nome">' + escHtml(formatarNome(item.nm_paciente)) + '</div>'
+              + '<div class="ta-sub"># ' + escHtml(item.nr_atendimento || '') + '</div>';
+        html += '</td>';
+
+        // Col: Exame
+        html += '<td><div class="ta-proc">' + escHtml(item.ds_procedimento || '-') + '</div>';
+        if (item.tipo_exame) html += badgeTipoExame(item.tipo_exame);
         if (item.requer_preparo && item.tipo_preparo)
-            html += '<div class="card-linha card-linha-preparo"><i class="fas fa-flask"></i><span><strong>Preparo:</strong> ' + escHtml(item.tipo_preparo) + '</span></div>';
-        html += '<div class="card-status-row">' + badgeStatus(item.status) + badgeTransporte(item) + '</div>';
-        var enfSt = item.status_enfermagem;
-        if (enfSt === 'ciente' || enfSt === 'recusado') {
-            html += '<div class="card-enf-row">' + badgeStatusEnf(enfSt) + '</div>';
-            if (enfSt === 'recusado' && item.motivo_recusa) {
-                html += '<div class="card-motivo-recusa"><i class="fas fa-exclamation-circle"></i> '
-                      + escHtml(item.motivo_recusa) + '</div>';
-            }
-        } else if (item.status === 'agendado' && enfSt === 'pendente') {
-            html += '<div class="card-enf-row">' + badgeStatusEnf('pendente') + '</div>';
-        }
-        html += '</div>';
+            html += '<div class="ta-sub" style="color:#5a3e00;background:#fff3cd;border-radius:3px;padding:1px 4px;margin-top:2px;">'
+                  + '<i class="fas fa-flask"></i> ' + escHtml(item.tipo_preparo) + '</div>';
+        html += '</td>';
 
-        html += '<div class="card-footer-p">';
-        if (item.status === 'pendente' || item.status === 'agendado') {
-            html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + item.id + ',\'no_local\')">'
+        // Col: Leito / Setor
+        html += '<td>';
+        if (item.leito_origem)
+            html += '<span class="leito-badge">' + escHtml(item.leito_origem) + '</span><br>';
+        if (item.setor_origem_nome)
+            html += '<span class="ta-sub">' + escHtml(item.setor_origem_nome) + '</span>';
+        html += '</td>';
+
+        // Col: Horário
+        html += '<td>';
+        if (item.slot_data_hora) {
+            html += '<span class="ta-slot">' + formatarHora(item.slot_data_hora) + '</span>';
+            if (item.slot_modalidade) html += '<div class="ta-sub">' + escHtml(item.slot_modalidade) + '</div>';
+        } else {
+            html += '<span class="ta-slot-sem">Sem slot</span>';
+        }
+        html += '</td>';
+
+        // Col: Status
+        html += '<td>' + badgeStatus(item.status);
+        var trBadge = badgeTransporte(item);
+        if (trBadge) html += '<br>' + trBadge;
+        html += '</td>';
+
+        // Col: Enf.
+        html += '<td>';
+        if (enfSt === 'ciente' || enfSt === 'recusado') {
+            html += badgeStatusEnf(enfSt);
+            if (enfSt === 'recusado' && item.motivo_recusa)
+                html += ' <span title="' + escHtml(item.motivo_recusa) + '" style="cursor:help;">'
+                      + '<i class="fas fa-exclamation-circle" style="color:#842029;"></i></span>';
+        } else if (item.status === 'agendado' && enfSt === 'pendente') {
+            html += badgeStatusEnf('pendente');
+        } else {
+            html += '<span style="color:#adb5bd;font-size:11px;">—</span>';
+        }
+        html += '</td>';
+
+        // Col: Ações
+        html += '<td><div class="ta-acoes">';
+        if (item.status === 'pendente' || item.status === 'agendado')
+            html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + item.id + ',\'no_local\')" style="font-size:11px;padding:5px 9px">'
                   + '<i class="fas fa-map-marker-alt"></i> Chegou</button>';
-        }
-        if (item.status === 'no_local') {
-            html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + item.id + ',\'executando\')">'
+        if (item.status === 'no_local')
+            html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + item.id + ',\'executando\')" style="font-size:11px;padding:5px 9px">'
                   + '<i class="fas fa-play"></i> Iniciar</button>';
-        }
-        if (item.status === 'executando') {
-            html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + item.id + ',\'concluido\')">'
+        if (item.status === 'executando')
+            html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + item.id + ',\'concluido\')" style="font-size:11px;padding:5px 9px">'
                   + '<i class="fas fa-check"></i> Concluído</button>';
-        }
-        if (item.status !== 'concluido' && item.status !== 'cancelado') {
-            html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + item.id + ',\'cancelado\')">'
-                  + '<i class="fas fa-times"></i> Cancelar</button>';
-        }
-        html += '</div></div>';
+        if (item.status !== 'concluido' && item.status !== 'cancelado')
+            html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + item.id + ',\'cancelado\')" style="font-size:11px;padding:5px 9px">'
+                  + '<i class="fas fa-times"></i></button>';
+        html += '</div></td>';
+
+        html += '</tr>';
         return html;
     }
 
@@ -276,10 +296,17 @@
         }
         if (vazio) vazio.style.display = 'none';
 
+        var THEAD = '<div class="tabela-fila-wrapper"><table class="tabela-fila"><thead><tr>'
+                  + '<th>Paciente</th><th>Exame</th><th>Leito / Setor</th>'
+                  + '<th>Horário</th><th>Status</th><th>Enf.</th><th>Ações</th>'
+                  + '</tr></thead><tbody>';
+        var TFOOT = '</tbody></table></div>';
+
         if (agendados.length) {
             if (cntAg) cntAg.textContent = agendados.length;
-            var htmlAg = '';
-            for (var i = 0; i < agendados.length; i++) htmlAg += cardPacienteHtml(agendados[i]);
+            var htmlAg = THEAD;
+            for (var i = 0; i < agendados.length; i++) htmlAg += linhaPacienteHtml(agendados[i]);
+            htmlAg += TFOOT;
             if (gridAg) gridAg.innerHTML = htmlAg;
             if (secAg) secAg.style.display = '';
         } else {
@@ -288,8 +315,9 @@
 
         if (pendentes.length) {
             if (cntPend) cntPend.textContent = pendentes.length;
-            var htmlPend = '';
-            for (var j = 0; j < pendentes.length; j++) htmlPend += cardPacienteHtml(pendentes[j]);
+            var htmlPend = THEAD;
+            for (var j = 0; j < pendentes.length; j++) htmlPend += linhaPacienteHtml(pendentes[j]);
+            htmlPend += TFOOT;
             if (gridPend) gridPend.innerHTML = htmlPend;
             if (secPend) secPend.style.display = '';
         } else {

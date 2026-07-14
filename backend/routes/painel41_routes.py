@@ -128,18 +128,19 @@ def api_p41_pacientes():
             cursor.execute("""
                 SELECT DISTINCT
                     nr_atendimento,
-                    nm_pessoa_fisica    AS nm_paciente,
-                    ds_tipo_acomodacao  AS leito,
-                    setor               AS setor_nome,
+                    nm_pessoa_fisica                      AS nm_paciente,
+                    TRIM(cd_unidade)                     AS leito,
+                    setor                                AS setor_nome,
                     cd_unidade,
                     ds_clinica,
                     ie_sexo,
-                    qt_dia_permanencia  AS dias_internado
+                    qt_dia_permanencia                   AS dias_internado,
+                    TO_CHAR(dt_nascimento, 'YYYY-MM-DD') AS dt_nascimento
                 FROM padioleiro
                 WHERE (
                     nm_pessoa_fisica   ILIKE %s
                     OR nr_atendimento  ILIKE %s
-                    OR ds_tipo_acomodacao ILIKE %s
+                    OR TRIM(cd_unidade) ILIKE %s
                 )
                 ORDER BY nm_pessoa_fisica
                 LIMIT 20
@@ -165,7 +166,10 @@ def api_p41_solicitar():
     nm_paciente    = (dados.get('nm_paciente') or '').strip()
     tipo_dieta_id  = dados.get('tipo_dieta_id')
     refeicao_id    = dados.get('refeicao_id')
-    quantidade     = int(dados.get('quantidade') or 1)
+    try:
+        quantidade = int(dados.get('quantidade') or 1)
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'error': 'Quantidade deve ser um número inteiro entre 1 e 10'}), 400
     prioridade     = (dados.get('prioridade') or 'normal').strip()
 
     if not nr_atendimento or not nm_paciente:
@@ -185,6 +189,7 @@ def api_p41_solicitar():
     ds_clinica    = (dados.get('ds_clinica') or '').strip() or None
     restricoes    = (dados.get('restricoes_txt') or '').strip() or None
     observacao    = (dados.get('observacao') or '').strip() or None
+    dt_nascimento = (dados.get('dt_nascimento') or '').strip() or None
 
     solicitante_id   = session.get('usuario_id')
     solicitante_nome = session.get('nome_completo') or session.get('usuario')
@@ -211,20 +216,23 @@ def api_p41_solicitar():
                 return jsonify({'success': False, 'error': 'Refeição inválida'}), 400
             refeicao_nome = row_ref['nome']
 
+            # Serializa geração do código para evitar duplicatas sob concorrência
+            cursor.execute("SELECT pg_advisory_xact_lock(hashtext('nutricao_codigo_diario'))")
+
             # 1. INSERT com código temporário
             cursor.execute("""
                 INSERT INTO nutricao_solicitacoes
                     (codigo_entrega, nr_atendimento, nm_paciente, leito, setor_nome,
                      cd_unidade, ds_clinica, tipo_dieta_id, tipo_dieta_nome,
                      refeicao_id, refeicao_nome, quantidade, restricoes,
-                     observacao, prioridade, solicitante_id, solicitante_nome, status)
+                     observacao, prioridade, dt_nascimento, solicitante_id, solicitante_nome, status)
                 VALUES
-                    ('NUT-PENDING', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'aguardando')
+                    ('NUT-PENDING', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'aguardando')
                 RETURNING id
             """, (
                 nr_atendimento, nm_paciente, leito, setor_nome, cd_unidade, ds_clinica,
                 tipo_dieta_id, tipo_dieta_nome, refeicao_id, refeicao_nome,
-                quantidade, restricoes, observacao, prioridade,
+                quantidade, restricoes, observacao, prioridade, dt_nascimento,
                 solicitante_id, solicitante_nome
             ))
             new_id = cursor.fetchone()['id']
@@ -267,11 +275,12 @@ def api_p41_minhas_solicitacoes():
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT id, codigo_entrega, nm_paciente, leito, setor_nome,
-                    tipo_dieta_nome, refeicao_nome, prioridade, status,
+                SELECT id, codigo_entrega, nr_atendimento, nm_paciente, leito, setor_nome,
+                    tipo_dieta_nome, refeicao_nome, refeicao_id, prioridade, status,
                     quantidade, restricoes, observacao,
-                    TO_CHAR(criado_em,  'HH24:MI') AS criado_em,
-                    TO_CHAR(dt_entrega, 'HH24:MI') AS dt_entrega,
+                    TO_CHAR(criado_em, 'DD/MM/YYYY') AS data_pedido,
+                    TO_CHAR(criado_em,  'HH24:MI')   AS hora_pedido,
+                    TO_CHAR(dt_entrega, 'HH24:MI')   AS dt_entrega,
                     motivo_cancelamento
                 FROM nutricao_solicitacoes
                 WHERE solicitante_id = %s

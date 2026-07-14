@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request, send_from_directory, session, cur
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route
+import re
 
 painel42_bp = Blueprint('painel42', __name__)
 
@@ -52,7 +53,7 @@ def api_p42_fila():
             cursor.execute("""
                 SELECT
                     id, codigo_entrega, nr_atendimento, nm_paciente, leito, setor_nome, ds_clinica,
-                    tipo_dieta_nome, refeicao_nome, quantidade, restricoes,
+                    tipo_dieta_id, tipo_dieta_nome, refeicao_id, refeicao_nome, quantidade, restricoes,
                     observacao, prioridade, status, responsavel_nome,
                     solicitante_nome,
                     TO_CHAR(criado_em,         'HH24:MI') AS criado_em,
@@ -307,9 +308,10 @@ def api_p42_historico_hoje():
                     SELECT id, codigo_entrega, nm_paciente, leito, setor_nome,
                         tipo_dieta_nome, refeicao_nome, prioridade, status,
                         responsavel_nome, entregue_por, motivo_cancelamento,
-                        TO_CHAR(criado_em,       'HH24:MI') AS criado_em,
-                        TO_CHAR(dt_entrega,      'HH24:MI') AS dt_entrega,
-                        TO_CHAR(dt_cancelamento, 'HH24:MI') AS dt_cancelamento,
+                        TO_CHAR(criado_em,       'DD/MM/YYYY') AS data_pedido,
+                        TO_CHAR(criado_em,       'HH24:MI')   AS criado_em,
+                        TO_CHAR(dt_entrega,      'HH24:MI')   AS dt_entrega,
+                        TO_CHAR(dt_cancelamento, 'HH24:MI')   AS dt_cancelamento,
                         CASE WHEN dt_entrega IS NOT NULL
                             THEN ROUND(EXTRACT(EPOCH FROM (dt_entrega - criado_em)) / 60)::int
                         END AS t_total_min
@@ -324,9 +326,10 @@ def api_p42_historico_hoje():
                     SELECT id, codigo_entrega, nm_paciente, leito, setor_nome,
                         tipo_dieta_nome, refeicao_nome, prioridade, status,
                         responsavel_nome, entregue_por, motivo_cancelamento,
-                        TO_CHAR(criado_em,       'HH24:MI') AS criado_em,
-                        TO_CHAR(dt_entrega,      'HH24:MI') AS dt_entrega,
-                        TO_CHAR(dt_cancelamento, 'HH24:MI') AS dt_cancelamento,
+                        TO_CHAR(criado_em,       'DD/MM/YYYY') AS data_pedido,
+                        TO_CHAR(criado_em,       'HH24:MI')   AS criado_em,
+                        TO_CHAR(dt_entrega,      'HH24:MI')   AS dt_entrega,
+                        TO_CHAR(dt_cancelamento, 'HH24:MI')   AS dt_cancelamento,
                         CASE WHEN dt_entrega IS NOT NULL
                             THEN ROUND(EXTRACT(EPOCH FROM (dt_entrega - criado_em)) / 60)::int
                         END AS t_total_min
@@ -341,6 +344,151 @@ def api_p42_historico_hoje():
     except Exception as e:
         current_app.logger.error('Erro historico-hoje p42: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar histórico'}), 500
+
+
+# =========================================================
+# EDITAR SOLICITAÇÃO (tipo dieta, refeição, observação)
+# =========================================================
+
+@painel42_bp.route('/api/paineis/painel42/solicitacoes/<int:sid>/editar', methods=['PUT'])
+@login_required
+def api_p42_editar(sid):
+    dados         = request.get_json(silent=True) or {}
+    tipo_dieta_id = dados.get('tipo_dieta_id')
+    refeicao_id   = dados.get('refeicao_id')
+    observacao    = (dados.get('observacao') or '').strip() or None
+
+    if not tipo_dieta_id or not refeicao_id:
+        return jsonify({'success': False, 'error': 'Tipo de dieta e refeição são obrigatórios'}), 400
+
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                "SELECT nome FROM nutricao_tipos_dieta WHERE id = %s AND ativo = TRUE",
+                (tipo_dieta_id,)
+            )
+            tipo = cursor.fetchone()
+            if not tipo:
+                return jsonify({'success': False, 'error': 'Tipo de dieta inválido'}), 400
+
+            cursor.execute(
+                "SELECT nome FROM nutricao_refeicoes WHERE id = %s AND ativo = TRUE",
+                (refeicao_id,)
+            )
+            ref = cursor.fetchone()
+            if not ref:
+                return jsonify({'success': False, 'error': 'Refeição inválida'}), 400
+
+            # Preserve [Retorno:] audit notes written by voltar-status
+            cursor.execute(
+                "SELECT observacao FROM nutricao_solicitacoes WHERE id = %s AND status NOT IN ('em_entrega', 'entregue', 'cancelado')",
+                (sid,)
+            )
+            obs_row = cursor.fetchone()
+            if not obs_row:
+                return jsonify({'success': False, 'error': 'Solicitação não encontrada ou já finalizada'}), 400
+
+            obs_atual = obs_row['observacao'] or ''
+            notas_audit = re.findall(r'\[Retorno:[^\]]+\]', obs_atual)
+            if notas_audit:
+                suffix = ' | '.join(notas_audit)
+                observacao_final = (observacao + ' | ' + suffix) if observacao else suffix
+            else:
+                observacao_final = observacao
+
+            cursor.execute("""
+                UPDATE nutricao_solicitacoes
+                SET tipo_dieta_id   = %s,
+                    tipo_dieta_nome = %s,
+                    refeicao_id     = %s,
+                    refeicao_nome   = %s,
+                    observacao      = %s,
+                    atualizado_em   = NOW()
+                WHERE id = %s AND status NOT IN ('em_entrega', 'entregue', 'cancelado')
+            """, (tipo_dieta_id, tipo['nome'], refeicao_id, ref['nome'], observacao_final, sid))
+
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Solicitação não encontrada ou já finalizada'}), 400
+
+        current_app.logger.info('Solicitação %s editada pela nutrição (usuario: %s)',
+                                sid, session.get('usuario', '?'))
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro editar p42 id=%s: %s', sid, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao editar solicitação'}), 500
+
+
+# =========================================================
+# VOLTAR STATUS (com justificativa)
+# =========================================================
+
+@painel42_bp.route('/api/paineis/painel42/solicitacoes/<int:sid>/voltar-status', methods=['PUT'])
+@login_required
+def api_p42_voltar_status(sid):
+    dados  = request.get_json(silent=True) or {}
+    motivo = (dados.get('motivo') or '').strip()
+
+    if len(motivo) < 10:
+        return jsonify({'success': False, 'error': 'Justificativa deve ter pelo menos 10 caracteres'}), 400
+
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                "SELECT status FROM nutricao_solicitacoes WHERE id = %s",
+                (sid,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'Solicitação não encontrada'}), 404
+
+            status_atual = row['status']
+            nota = '[Retorno: ' + motivo + ']'
+
+            if status_atual == 'aceito':
+                cursor.execute("""
+                    UPDATE nutricao_solicitacoes
+                    SET status = 'aguardando', responsavel_id = NULL, responsavel_nome = NULL,
+                        dt_aceite = NULL,
+                        observacao = COALESCE(NULLIF(observacao,'') || ' | ' || %s, %s),
+                        atualizado_em = NOW()
+                    WHERE id = %s AND status = 'aceito'
+                """, (nota, nota, sid))
+            elif status_atual == 'em_preparo':
+                cursor.execute("""
+                    UPDATE nutricao_solicitacoes
+                    SET status = 'aceito', dt_inicio_preparo = NULL,
+                        observacao = COALESCE(NULLIF(observacao,'') || ' | ' || %s, %s),
+                        atualizado_em = NOW()
+                    WHERE id = %s AND status = 'em_preparo'
+                """, (nota, nota, sid))
+            elif status_atual == 'pronto':
+                cursor.execute("""
+                    UPDATE nutricao_solicitacoes
+                    SET status = 'em_preparo', dt_pronto = NULL,
+                        observacao = COALESCE(NULLIF(observacao,'') || ' | ' || %s, %s),
+                        atualizado_em = NOW()
+                    WHERE id = %s AND status = 'pronto'
+                """, (nota, nota, sid))
+            elif status_atual == 'em_entrega':
+                cursor.execute("""
+                    UPDATE nutricao_solicitacoes
+                    SET status = 'pronto', dt_inicio_entrega = NULL, entregue_por = NULL,
+                        observacao = COALESCE(NULLIF(observacao,'') || ' | ' || %s, %s),
+                        atualizado_em = NOW()
+                    WHERE id = %s AND status = 'em_entrega'
+                """, (nota, nota, sid))
+            else:
+                return jsonify({'success': False, 'error': 'Não é possível voltar o status atual'}), 400
+
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Status alterado por outro usuário. Recarregue a página.'}), 409
+
+        current_app.logger.info('Solicitação %s voltou de %s (usuario: %s, motivo: %s)',
+                                sid, status_atual, session.get('usuario', '?'), motivo)
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro voltar-status p42 id=%s: %s', sid, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao voltar status'}), 500
 
 
 # =========================================================

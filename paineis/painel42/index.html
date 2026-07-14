@@ -46,15 +46,20 @@
         </div>
         <div class="header-right">
             <div class="membro-wrapper">
-                <label class="membro-label"><i class="fa-solid fa-user-nurse"></i> Responsável:</label>
-                <select id="sel-membro" class="sel-membro">
-                    <option value="">Carregando...</option>
+                <label class="membro-label"><i class="fa-solid fa-layer-group"></i> Visualização:</label>
+                <select id="sel-visualizacao" class="sel-membro">
+                    <option value="geral">Geral</option>
+                    <option value="nutricionista">Nutricionista</option>
+                    <option value="cozinha">Cozinha</option>
                 </select>
             </div>
             <label class="label-imprimir-aceitar" title="Imprimir etiqueta automaticamente ao aceitar">
                 <input type="checkbox" id="chk-imprimir-aceitar">
                 <i class="fa-solid fa-print"></i> Imprimir ao aceitar
             </label>
+            <button id="btn-protocolo" class="btn-protocolo-header" title="Gerar Protocolo de Entrega para impressão">
+                <i class="fa-solid fa-file-signature"></i> Protocolo de Entrega
+            </button>
             <div id="ultimo-update" class="ultimo-update"></div>
             <button id="btn-voltar-hub" class="btn-header" title="Voltar ao Hub de Serviços">
                 <i class="fas fa-arrow-left"></i>
@@ -66,7 +71,7 @@
     <div class="kanban-board" id="kanban-board">
 
         <!-- COL: AGUARDANDO -->
-        <div class="kanban-col">
+        <div class="kanban-col" id="kanban-col-aguardando">
             <div class="kanban-col-header" style="background:#6C757D;">
                 <i class="fa-solid fa-clock"></i> Aguardando
                 <span class="col-badge" id="badge-aguardando">0</span>
@@ -77,7 +82,7 @@
         </div>
 
         <!-- COL: ACEITO -->
-        <div class="kanban-col">
+        <div class="kanban-col" id="kanban-col-aceito">
             <div class="kanban-col-header" style="background:#17A2B8;">
                 <i class="fa-solid fa-circle-check"></i> Aceito
                 <span class="col-badge" id="badge-aceito">0</span>
@@ -88,7 +93,7 @@
         </div>
 
         <!-- COL: EM PREPARO -->
-        <div class="kanban-col">
+        <div class="kanban-col" id="kanban-col-em_preparo">
             <div class="kanban-col-header" style="background:#E67E00;">
                 <i class="fa-solid fa-fire-burner"></i> Em Preparo
                 <span class="col-badge" id="badge-em_preparo">0</span>
@@ -99,7 +104,7 @@
         </div>
 
         <!-- COL: PRONTO -->
-        <div class="kanban-col">
+        <div class="kanban-col" id="kanban-col-pronto">
             <div class="kanban-col-header" style="background:#8BC34A;">
                 <i class="fa-solid fa-bell-concierge"></i> Pronto
                 <span class="col-badge" id="badge-pronto">0</span>
@@ -110,7 +115,7 @@
         </div>
 
         <!-- COL: EM ENTREGA -->
-        <div class="kanban-col">
+        <div class="kanban-col" id="kanban-col-em_entrega">
             <div class="kanban-col-header" style="background:#6F42C1;">
                 <i class="fa-solid fa-person-walking"></i> Em Entrega
                 <span class="col-badge" id="badge-em_entrega">0</span>
@@ -139,7 +144,7 @@
             <table class="tabela-hist">
                 <thead>
                     <tr>
-                        <th>Código</th><th>Paciente</th><th>Leito</th>
+                        <th>Dia</th><th>Código</th><th>Paciente</th><th>Leito</th>
                         <th>Dieta</th><th>Refeição</th><th>Responsável</th>
                         <th>Status</th><th>Criado</th><th>Finalizado</th>
                         <th>T.Total</th><th>Motivo Cancel.</th>
@@ -200,6 +205,60 @@
         </div>
     </div>
 
+    <!-- MODAL: EDITAR SOLICITAÇÃO -->
+    <div id="modal-editar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-titulo"><i class="fa-solid fa-pen-to-square" style="color:#0d6efd;"></i> Editar Solicitação</div>
+            <input type="hidden" id="edit-sid">
+            <p class="modal-desc" id="edit-desc"></p>
+            <div class="form-group-modal">
+                <label>Tipo de Dieta <span style="color:red">*</span></label>
+                <select id="edit-tipo-dieta" class="form-select-modal">
+                    <option value="">Carregando...</option>
+                </select>
+            </div>
+            <div class="form-group-modal">
+                <label>Refeição <span style="color:red">*</span></label>
+                <select id="edit-refeicao" class="form-select-modal">
+                    <option value="">Carregando...</option>
+                </select>
+            </div>
+            <div class="form-group-modal">
+                <label>Observação</label>
+                <textarea id="edit-obs" class="form-textarea-modal" rows="2" placeholder="Observações para a nutrição..."></textarea>
+            </div>
+            <div id="edit-erro" class="modal-erro" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="btn-edit-confirmar" class="btn-acao" style="background:#0d6efd;">
+                    <i class="fa-solid fa-check"></i> Salvar Alterações
+                </button>
+                <button id="btn-edit-fechar" class="btn-fechar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VOLTAR STATUS -->
+    <div id="modal-voltar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-titulo" style="color:#E67E00;"><i class="fa-solid fa-rotate-left"></i> Voltar Status</div>
+            <input type="hidden" id="volt-sid">
+            <p class="modal-desc" id="volt-desc"></p>
+            <div id="volt-info" class="volt-info"></div>
+            <div class="form-group-modal">
+                <label>Justificativa <span style="color:red">*</span> (mín. 10 caracteres):</label>
+                <textarea id="volt-motivo" class="form-textarea-modal" rows="3"
+                    placeholder="Explique o motivo de voltar o status..."></textarea>
+            </div>
+            <div id="volt-erro" class="modal-erro" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="btn-volt-confirmar" class="btn-acao" style="background:#E67E00;">
+                    <i class="fa-solid fa-rotate-left"></i> Confirmar Retorno
+                </button>
+                <button id="btn-volt-fechar" class="btn-fechar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: CANCELAR -->
     <div id="modal-cancelar" class="modal-overlay" style="display:none;">
         <div class="modal-box">
@@ -217,6 +276,28 @@
                     <i class="fa-solid fa-ban"></i> Cancelar
                 </button>
                 <button id="btn-canc-fechar" class="btn-fechar">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PROTOCOLO DE ENTREGA -->
+    <div id="modal-protocolo" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-titulo">
+                <i class="fa-solid fa-file-signature" style="color:#6F42C1;"></i> Protocolo de Entrega
+            </div>
+            <p class="modal-desc" id="prot-desc"></p>
+            <div class="form-group-modal">
+                <label>Filtrar por setor:</label>
+                <select id="prot-setor" class="form-select-modal">
+                    <option value="">Todos os setores</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-prot-confirmar" class="btn-acao" style="background:#6F42C1;">
+                    <i class="fa-solid fa-print"></i> Imprimir Protocolo
+                </button>
+                <button id="btn-prot-fechar" class="btn-fechar">Cancelar</button>
             </div>
         </div>
     </div>

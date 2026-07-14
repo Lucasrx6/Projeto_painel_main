@@ -95,10 +95,11 @@ body {
 
 .header-right {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    min-width: 200px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .membro-wrapper { display: flex; align-items: center; gap: 8px; }
@@ -195,6 +196,7 @@ body {
 .kanban-col-body {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 8px;
     display: flex;
     flex-direction: column;
@@ -218,6 +220,9 @@ body {
     box-shadow: 0 1px 3px rgba(0,0,0,.1);
     border-left: 4px solid #dee2e6;
     transition: box-shadow .2s;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
 }
 .card:hover        { box-shadow: 0 3px 8px rgba(0,0,0,.15); }
 .card-urgente      { border-left-color: #FF5722; background: #FFF8F7; }
@@ -280,6 +285,7 @@ body {
     color: #222;
     margin-bottom: 4px;
     line-height: 1.3;
+    word-break: break-word;
 }
 
 .card-info {
@@ -288,12 +294,14 @@ body {
     font-size: 11px;
     color: #666;
     margin-bottom: 4px;
+    flex-wrap: wrap;
 }
 
 .card-dieta {
     font-size: 12px;
     color: #444;
     margin-bottom: 4px;
+    word-break: break-word;
 }
 
 .card-restricoes {
@@ -313,6 +321,8 @@ body {
     margin-bottom: 4px;
     border-left: 2px solid #dee2e6;
     padding-left: 6px;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .card-footer {
@@ -355,6 +365,55 @@ body {
 .btn-confirmar-entrega { background: #6F42C1; }
 .btn-cancelar         { background: none; border: 1px solid #DC3545; color: #DC3545; flex: 0 0 auto; padding: 6px 10px; }
 .btn-cancelar:hover   { background: #DC3545; color: #fff; }
+
+.card-nr-atend {
+    font-size: 10px;
+    color: #888;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.card-extras {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0,0,0,.08);
+}
+
+.btn-extra {
+    flex: 1;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: background .15s, color .15s;
+    background: transparent;
+}
+.btn-editar        { border: 1px solid #0d6efd; color: #0d6efd; }
+.btn-editar:hover  { background: #0d6efd; color: #fff; }
+.btn-voltar-status        { border: 1px solid #E67E00; color: #E67E00; }
+.btn-voltar-status:hover  { background: #E67E00; color: #fff; }
+
+.volt-info {
+    font-size: 12px;
+    font-weight: 600;
+    color: #E67E00;
+    background: #fff8f0;
+    border: 1px solid #E67E00;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 12px;
+}
+
+.td-dia { font-size: 11px; color: #888; white-space: nowrap; }
 
 /* =========================================================
    HISTÓRICO
@@ -611,3 +670,24 @@ body {
     transition: background .15s;
 }
 .btn-fechar:hover { background: #e9ecef; }
+
+/* =========================================================
+   BOTÃO PROTOCOLO DE ENTREGA (header)
+   ========================================================= */
+.btn-protocolo-header {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+    white-space: nowrap;
+    font-family: inherit;
+}
+.btn-protocolo-header:hover { background: rgba(255,255,255,0.3); }

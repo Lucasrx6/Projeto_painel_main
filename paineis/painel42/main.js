@@ -4,16 +4,17 @@ var PAINEL_VERSAO = '1.0.52';
 
     var CONFIG = {
         apiBase: '/api/paineis/painel42',
-        refreshInterval: 15000,
-        storageKeyMembro: 'p42_membro_id'
+        refreshInterval: 15000
     };
 
     var Estado = {
         fila: [],
         equipe: [],
         historico: [],
+        tiposDieta: [],
+        refeicoes: [],
         contadores: { aguardando: 0, aceito: 0, em_preparo: 0, pronto: 0, em_entrega: 0 },
-        membroId: null,
+        visualizacao: 'geral',
         idsAnteriores: [],
         idsUrgentesAnteriores: [],
         processando: false
@@ -66,7 +67,7 @@ var PAINEL_VERSAO = '1.0.52';
             btnVoltar.addEventListener('click', function () { window.location.href = '/painel/painel44'; });
         }
 
-        DOM.selMembro         = document.getElementById('sel-membro');
+        DOM.selVisualizacao   = document.getElementById('sel-visualizacao');
         DOM.ultimoUpdate      = document.getElementById('ultimo-update');
         DOM.historicoBody     = document.getElementById('historico-body');
         DOM.btnToggleHist     = document.getElementById('btn-toggle-historico');
@@ -107,9 +108,31 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.btnCancConfirmar  = document.getElementById('btn-canc-confirmar');
         DOM.btnCancFechar     = document.getElementById('btn-canc-fechar');
 
-        // Restaurar membro salvo
-        var membroSalvo = localStorage.getItem(CONFIG.storageKeyMembro);
-        if (membroSalvo) Estado.membroId = membroSalvo;
+        // Modal editar
+        DOM.modalEditar       = document.getElementById('modal-editar');
+        DOM.editSid           = document.getElementById('edit-sid');
+        DOM.editDesc          = document.getElementById('edit-desc');
+        DOM.editTipoDieta     = document.getElementById('edit-tipo-dieta');
+        DOM.editRefeicao      = document.getElementById('edit-refeicao');
+        DOM.editObs           = document.getElementById('edit-obs');
+        DOM.editErro          = document.getElementById('edit-erro');
+        DOM.btnEditConfirmar  = document.getElementById('btn-edit-confirmar');
+        DOM.btnEditFechar     = document.getElementById('btn-edit-fechar');
+
+        // Modal voltar status
+        DOM.modalVoltar       = document.getElementById('modal-voltar');
+        DOM.voltSid           = document.getElementById('volt-sid');
+        DOM.voltDesc          = document.getElementById('volt-desc');
+        DOM.voltInfo          = document.getElementById('volt-info');
+        DOM.voltMotivo        = document.getElementById('volt-motivo');
+        DOM.voltErro          = document.getElementById('volt-erro');
+        DOM.btnVoltConfirmar  = document.getElementById('btn-volt-confirmar');
+        DOM.btnVoltFechar     = document.getElementById('btn-volt-fechar');
+
+        // Restaurar visualização salva
+        var visSalva = localStorage.getItem('p42_visualizacao') || 'geral';
+        Estado.visualizacao = visSalva;
+        if (DOM.selVisualizacao) DOM.selVisualizacao.value = visSalva;
 
         // Restaurar preferência de impressão
         if (DOM.chkImprimirAceitar) {
@@ -120,13 +143,10 @@ var PAINEL_VERSAO = '1.0.52';
         }
 
         // Eventos
-        DOM.selMembro.addEventListener('change', function () {
-            Estado.membroId = this.value || null;
-            if (Estado.membroId) {
-                localStorage.setItem(CONFIG.storageKeyMembro, Estado.membroId);
-            } else {
-                localStorage.removeItem(CONFIG.storageKeyMembro);
-            }
+        DOM.selVisualizacao.addEventListener('change', function () {
+            Estado.visualizacao = this.value || 'geral';
+            localStorage.setItem('p42_visualizacao', Estado.visualizacao);
+            renderKanban();
         });
 
         DOM.btnToggleHist.addEventListener('click', toggleHistorico);
@@ -140,6 +160,10 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.btnEntrConfirmar.addEventListener('click', confirmarEntrega);
         DOM.btnCancFechar.addEventListener('click', function () { fecharModal(DOM.modalCancelar); });
         DOM.btnCancConfirmar.addEventListener('click', confirmarCancelar);
+        DOM.btnEditFechar.addEventListener('click', function () { fecharModal(DOM.modalEditar); });
+        DOM.btnEditConfirmar.addEventListener('click', confirmarEditar);
+        DOM.btnVoltFechar.addEventListener('click', function () { fecharModal(DOM.modalVoltar); });
+        DOM.btnVoltConfirmar.addEventListener('click', confirmarVoltarStatus);
 
         DOM.inpCodigoConfirm.addEventListener('input', validarCodigoInput);
 
@@ -147,6 +171,29 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.modalAceitar.addEventListener('click', function (e) { if (e.target === DOM.modalAceitar) fecharModal(DOM.modalAceitar); });
         DOM.modalEntregar.addEventListener('click', function (e) { if (e.target === DOM.modalEntregar) fecharModal(DOM.modalEntregar); });
         DOM.modalCancelar.addEventListener('click', function (e) { if (e.target === DOM.modalCancelar) fecharModal(DOM.modalCancelar); });
+        DOM.modalEditar.addEventListener('click', function (e) { if (e.target === DOM.modalEditar) fecharModal(DOM.modalEditar); });
+        DOM.modalVoltar.addEventListener('click', function (e) { if (e.target === DOM.modalVoltar) fecharModal(DOM.modalVoltar); });
+
+        // Modal protocolo
+        DOM.btnProtocolo      = document.getElementById('btn-protocolo');
+        DOM.modalProtocolo    = document.getElementById('modal-protocolo');
+        DOM.protDesc          = document.getElementById('prot-desc');
+        DOM.protSetor         = document.getElementById('prot-setor');
+        DOM.btnProtConfirmar  = document.getElementById('btn-prot-confirmar');
+        DOM.btnProtFechar     = document.getElementById('btn-prot-fechar');
+
+        if (DOM.btnProtocolo) {
+            DOM.btnProtocolo.addEventListener('click', abrirModalProtocolo);
+        }
+        DOM.btnProtFechar.addEventListener('click', function () { fecharModal(DOM.modalProtocolo); });
+        DOM.btnProtConfirmar.addEventListener('click', function () {
+            var setor = DOM.protSetor.value;
+            fecharModal(DOM.modalProtocolo);
+            gerarProtocolo(setor);
+        });
+        DOM.modalProtocolo.addEventListener('click', function (e) {
+            if (e.target === DOM.modalProtocolo) fecharModal(DOM.modalProtocolo);
+        });
 
         carregarEquipe();
         carregarFila();
@@ -163,29 +210,17 @@ var PAINEL_VERSAO = '1.0.52';
             .then(function (data) {
                 if (data.success) {
                     Estado.equipe = data.equipe || [];
-                    renderSelectMembro();
                     renderSelectMembroModal();
                 }
             })
             .catch(function (e) { console.error('equipe', e); });
     }
 
-    function renderSelectMembro() {
-        var html = '<option value="">Todos / Sem filtro</option>';
-        for (var i = 0; i < Estado.equipe.length; i++) {
-            var m = Estado.equipe[i];
-            var sel = (String(m.id) === String(Estado.membroId)) ? ' selected' : '';
-            html += '<option value="' + m.id + '"' + sel + '>' + escHtml(m.nome) + '</option>';
-        }
-        DOM.selMembro.innerHTML = html;
-    }
-
     function renderSelectMembroModal() {
         var html = '<option value="">Selecione o responsável...</option>';
         for (var i = 0; i < Estado.equipe.length; i++) {
             var m = Estado.equipe[i];
-            var sel = (String(m.id) === String(Estado.membroId)) ? ' selected' : '';
-            html += '<option value="' + m.id + '"' + sel + '>' + escHtml(m.nome) +
+            html += '<option value="' + m.id + '">' + escHtml(m.nome) +
                     ' (' + escHtml(m.funcao) + ')</option>';
         }
         DOM.accSelMembro.innerHTML = html;
@@ -244,6 +279,23 @@ var PAINEL_VERSAO = '1.0.52';
     var COLS = ['aguardando', 'aceito', 'em_preparo', 'pronto', 'em_entrega'];
 
     function renderKanban() {
+        // Visibilidade por tipo de visualização
+        var vis = Estado.visualizacao || 'geral';
+        var colsVisiveis;
+        if (vis === 'nutricionista') {
+            colsVisiveis = ['aguardando', 'aceito'];
+        } else if (vis === 'cozinha') {
+            colsVisiveis = ['em_preparo', 'pronto', 'em_entrega'];
+        } else {
+            colsVisiveis = COLS;
+        }
+        var board = document.getElementById('kanban-board');
+        if (board) board.style.gridTemplateColumns = 'repeat(' + colsVisiveis.length + ', 1fr)';
+        for (var cv = 0; cv < COLS.length; cv++) {
+            var colVis = document.getElementById('kanban-col-' + COLS[cv]);
+            if (colVis) colVis.style.display = (colsVisiveis.indexOf(COLS[cv]) !== -1) ? '' : 'none';
+        }
+
         var grupos = { aguardando: [], aceito: [], em_preparo: [], pronto: [], em_entrega: [] };
         for (var i = 0; i < Estado.fila.length; i++) {
             var s = Estado.fila[i];
@@ -317,6 +369,29 @@ var PAINEL_VERSAO = '1.0.52';
                     '<i class="fa-solid fa-xmark"></i></button>';
         }
 
+        var podeEditar = s.status !== 'em_entrega' && s.status !== 'entregue' && s.status !== 'cancelado';
+        var podeVoltar = s.status === 'aceito' || s.status === 'em_preparo' ||
+                         s.status === 'pronto'  || s.status === 'em_entrega';
+        var extras = '';
+        if (podeEditar || podeVoltar) {
+            extras = '<div class="card-extras">';
+            if (podeEditar) {
+                extras += '<button class="btn-extra btn-editar" data-id="' + s.id +
+                    '" data-tipo-id="' + (s.tipo_dieta_id || '') +
+                    '" data-ref-id="' + (s.refeicao_id || '') +
+                    '" data-obs="' + escHtml(s.observacao || '') +
+                    '" data-desc="' + escHtml(s.nm_paciente) + '">' +
+                    '<i class="fa-solid fa-pen"></i> Editar</button>';
+            }
+            if (podeVoltar) {
+                extras += '<button class="btn-extra btn-voltar-status" data-id="' + s.id +
+                    '" data-status="' + s.status +
+                    '" data-desc="' + escHtml(s.nm_paciente) + '">' +
+                    '<i class="fa-solid fa-rotate-left"></i> Voltar</button>';
+            }
+            extras += '</div>';
+        }
+
         return '<div class="card' + (urgente ? ' card-urgente' : '') + minWarn + '">' +
             '<div class="card-topo">' +
                 (urgente ? '<span class="tag-urgente"><i class="fa-solid fa-bolt"></i> URGENTE</span>' : '') +
@@ -326,6 +401,7 @@ var PAINEL_VERSAO = '1.0.52';
                 '</button>' +
             '</div>' +
             '<div class="card-paciente">' + escHtml(s.nm_paciente) + '</div>' +
+            '<div class="card-nr-atend"><i class="fa-solid fa-id-card"></i> ' + escHtml(s.nr_atendimento || '--') + '</div>' +
             '<div class="card-info">' +
                 '<span><i class="fa-solid fa-bed"></i> ' + escHtml(s.leito || '--') + '</span>' +
                 '<span><i class="fa-solid fa-hospital"></i> ' + escHtml(s.setor_nome || '--') + '</span>' +
@@ -345,6 +421,7 @@ var PAINEL_VERSAO = '1.0.52';
                 (s.responsavel_nome ? '<span class="card-resp"><i class="fa-solid fa-user"></i> ' + escHtml(s.responsavel_nome) + '</span>' : '') +
             '</div>' +
             '<div class="card-acoes">' + acoes + '</div>' +
+            extras +
         '</div>';
     }
 
@@ -380,6 +457,22 @@ var PAINEL_VERSAO = '1.0.52';
         bindBtn('.btn-cancelar', function (el) {
             abrirModalCancelar(el.getAttribute('data-id'), el.getAttribute('data-desc'));
         });
+        bindBtn('.btn-editar', function (el) {
+            abrirModalEditar(
+                el.getAttribute('data-id'),
+                el.getAttribute('data-tipo-id'),
+                el.getAttribute('data-ref-id'),
+                el.getAttribute('data-obs'),
+                el.getAttribute('data-desc')
+            );
+        });
+        bindBtn('.btn-voltar-status', function (el) {
+            abrirModalVoltarStatus(
+                el.getAttribute('data-id'),
+                el.getAttribute('data-status'),
+                el.getAttribute('data-desc')
+            );
+        });
     }
 
     function bindBtn(selector, handler) {
@@ -412,18 +505,7 @@ var PAINEL_VERSAO = '1.0.52';
         if (Estado.processando) return;
         Estado.processando = true;
 
-        var entregue_por = Estado.membroId
-            ? (function () {
-                for (var i = 0; i < Estado.equipe.length; i++) {
-                    if (String(Estado.equipe[i].id) === String(Estado.membroId))
-                        return Estado.equipe[i].nome;
-                }
-                return null;
-              })()
-            : null;
-
         var body = {};
-        if (acao === 'iniciar-entrega' && entregue_por) body.entregue_por = entregue_por;
 
         fetch(CONFIG.apiBase + '/solicitacoes/' + sid + '/' + acao, {
             method: 'PUT',
@@ -453,8 +535,6 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.accSid.value  = sid;
         DOM.accDesc.textContent = desc || '';
         DOM.accErro.style.display = 'none';
-        // Pré-selecionar membro do header no modal
-        if (Estado.membroId) DOM.accSelMembro.value = Estado.membroId;
         DOM.modalAceitar.style.display = 'flex';
     }
 
@@ -623,7 +703,6 @@ var PAINEL_VERSAO = '1.0.52';
     // =========================================================
     function carregarHistorico() {
         var url = CONFIG.apiBase + '/historico-hoje';
-        if (Estado.membroId) url += '?responsavel_id=' + Estado.membroId;
 
         fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
@@ -664,7 +743,7 @@ var PAINEL_VERSAO = '1.0.52';
 
         if (!lista.length) {
             DOM.tbodyHistorico.innerHTML = Estado.historico.length
-                ? '<tr><td colspan="11" style="text-align:center;color:#aaa;padding:16px;">Nenhum resultado para este setor.</td></tr>'
+                ? '<tr><td colspan="12" style="text-align:center;color:#aaa;padding:16px;">Nenhum resultado para este setor.</td></tr>'
                 : '';
             DOM.histEmpty.style.display = Estado.historico.length ? 'none' : 'block';
             return;
@@ -675,6 +754,7 @@ var PAINEL_VERSAO = '1.0.52';
         for (var i = 0; i < lista.length; i++) {
             var h = lista[i];
             html += '<tr>' +
+                '<td class="td-dia">' + escHtml(h.data_pedido || '--') + '</td>' +
                 '<td><span class="codigo-hist">' + escHtml(h.codigo_entrega) + '</span></td>' +
                 '<td>' + escHtml(h.nm_paciente) + '</td>' +
                 '<td>' + escHtml(h.leito || '--') + '</td>' +
@@ -717,6 +797,172 @@ var PAINEL_VERSAO = '1.0.52';
             (h < 10 ? '0' : '') + h + ':' +
             (m < 10 ? '0' : '') + m + ':' +
             (s < 10 ? '0' : '') + s;
+    }
+
+    // =========================================================
+    // MODAL: EDITAR SOLICITAÇÃO
+    // =========================================================
+    var _editGen = 0;
+
+    function _carregarOpcoesDieta(tipoDietaAtualId, refeicaoAtualId) {
+        _editGen++;
+        var gen = _editGen;
+
+        fetch('/api/paineis/painel41/tipos-dieta', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (gen !== _editGen) return;
+                if (!data.success) return;
+                Estado.tiposDieta = data.tipos || [];
+                var html = '<option value="">Selecione...</option>';
+                for (var i = 0; i < Estado.tiposDieta.length; i++) {
+                    var t = Estado.tiposDieta[i];
+                    var sel = (String(t.id) === String(tipoDietaAtualId)) ? ' selected' : '';
+                    html += '<option value="' + t.id + '"' + sel + '>' + escHtml(t.nome) + '</option>';
+                }
+                DOM.editTipoDieta.innerHTML = html;
+            })
+            .catch(function (e) {
+                if (gen !== _editGen) return;
+                console.error('tipos-dieta', e);
+                DOM.editErro.textContent = 'Erro ao carregar tipos de dieta.';
+                DOM.editErro.style.display = 'block';
+            });
+
+        fetch('/api/paineis/painel41/refeicoes', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (gen !== _editGen) return;
+                if (!data.success) return;
+                Estado.refeicoes = data.refeicoes || [];
+                var html = '<option value="">Selecione...</option>';
+                for (var i = 0; i < Estado.refeicoes.length; i++) {
+                    var rf = Estado.refeicoes[i];
+                    var sel = (String(rf.id) === String(refeicaoAtualId)) ? ' selected' : '';
+                    html += '<option value="' + rf.id + '"' + sel + '>' + escHtml(rf.nome) + '</option>';
+                }
+                DOM.editRefeicao.innerHTML = html;
+            })
+            .catch(function (e) {
+                if (gen !== _editGen) return;
+                console.error('refeicoes', e);
+                DOM.editErro.textContent = 'Erro ao carregar refeições.';
+                DOM.editErro.style.display = 'block';
+            });
+    }
+
+    function abrirModalEditar(sid, tipoDietaId, refeicaoId, obs, desc) {
+        DOM.editSid.value             = sid;
+        DOM.editDesc.textContent      = desc || '';
+        // Strip [Retorno:] audit notes — backend re-appends them on save
+        var obsLimpa = (obs || '').replace(/(\s*\|\s*)?\[Retorno:[^\]]+\]/g, '').trim();
+        DOM.editObs.value             = obsLimpa;
+        DOM.editErro.style.display    = 'none';
+        DOM.modalEditar.style.display = 'flex';
+        _carregarOpcoesDieta(tipoDietaId, refeicaoId);
+    }
+
+    function confirmarEditar() {
+        var sid         = DOM.editSid.value;
+        var tipoDietaId = DOM.editTipoDieta.value;
+        var refeicaoId  = DOM.editRefeicao.value;
+        var obs         = DOM.editObs.value.trim();
+
+        if (!tipoDietaId || !refeicaoId) {
+            DOM.editErro.textContent   = 'Selecione o tipo de dieta e a refeição.';
+            DOM.editErro.style.display = 'block';
+            return;
+        }
+        Estado.processando            = true;
+        DOM.btnEditConfirmar.disabled = true;
+        DOM.editErro.style.display    = 'none';
+
+        fetch(CONFIG.apiBase + '/solicitacoes/' + sid + '/editar', {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tipo_dieta_id: parseInt(tipoDietaId, 10),
+                refeicao_id:   parseInt(refeicaoId,  10),
+                observacao:    obs || null
+            })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                Estado.processando = false;
+                DOM.btnEditConfirmar.disabled = false;
+                if (data.success) {
+                    fecharModal(DOM.modalEditar);
+                    carregarFila();
+                } else {
+                    DOM.editErro.textContent   = data.error || 'Erro ao editar.';
+                    DOM.editErro.style.display = 'block';
+                }
+            })
+            .catch(function () {
+                Estado.processando = false;
+                DOM.btnEditConfirmar.disabled = false;
+                DOM.editErro.textContent   = 'Falha na conexão.';
+                DOM.editErro.style.display = 'block';
+            });
+    }
+
+    // =========================================================
+    // MODAL: VOLTAR STATUS
+    // =========================================================
+    var _LABEL_VOLTAR = {
+        aceito:     'Aceito → Aguardando',
+        em_preparo: 'Em Preparo → Aceito',
+        pronto:     'Pronto → Em Preparo',
+        em_entrega: 'Em Entrega → Pronto'
+    };
+
+    function abrirModalVoltarStatus(sid, statusAtual, desc) {
+        DOM.voltSid.value             = sid;
+        DOM.voltDesc.textContent      = desc || '';
+        DOM.voltInfo.textContent      = 'Ação: ' + (_LABEL_VOLTAR[statusAtual] || statusAtual);
+        DOM.voltMotivo.value          = '';
+        DOM.voltErro.style.display    = 'none';
+        DOM.modalVoltar.style.display = 'flex';
+    }
+
+    function confirmarVoltarStatus() {
+        var sid    = DOM.voltSid.value;
+        var motivo = DOM.voltMotivo.value.trim();
+
+        if (motivo.length < 10) {
+            DOM.voltErro.textContent   = 'Justificativa deve ter pelo menos 10 caracteres.';
+            DOM.voltErro.style.display = 'block';
+            return;
+        }
+        Estado.processando            = true;
+        DOM.btnVoltConfirmar.disabled = true;
+        DOM.voltErro.style.display    = 'none';
+
+        fetch(CONFIG.apiBase + '/solicitacoes/' + sid + '/voltar-status', {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ motivo: motivo })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                Estado.processando = false;
+                DOM.btnVoltConfirmar.disabled = false;
+                if (data.success) {
+                    fecharModal(DOM.modalVoltar);
+                    carregarFila();
+                } else {
+                    DOM.voltErro.textContent   = data.error || 'Erro ao voltar status.';
+                    DOM.voltErro.style.display = 'block';
+                }
+            })
+            .catch(function () {
+                Estado.processando = false;
+                DOM.btnVoltConfirmar.disabled = false;
+                DOM.voltErro.textContent   = 'Falha na conexão.';
+                DOM.voltErro.style.display = 'block';
+            });
     }
 
     // =========================================================
@@ -860,6 +1106,142 @@ var PAINEL_VERSAO = '1.0.52';
                 '};' +
             '<\/script>' +
             '</body></html>';
+    }
+
+    // =========================================================
+    // PROTOCOLO DE ENTREGA
+    // =========================================================
+    function abrirModalProtocolo() {
+        var emEntrega = [];
+        for (var i = 0; i < Estado.fila.length; i++) {
+            if (Estado.fila[i].status === 'em_entrega') emEntrega.push(Estado.fila[i]);
+        }
+        if (!emEntrega.length) {
+            alert('Nenhuma solicitação em entrega no momento.');
+            return;
+        }
+
+        var setores = {};
+        for (var j = 0; j < emEntrega.length; j++) {
+            var sn = emEntrega[j].setor_nome;
+            if (sn) setores[sn] = true;
+        }
+        var chaves = Object.keys(setores).sort();
+        var html = '<option value="">Todos os setores (' + emEntrega.length + ' paciente(s))</option>';
+        for (var k = 0; k < chaves.length; k++) {
+            var cnt = 0;
+            for (var l = 0; l < emEntrega.length; l++) {
+                if (emEntrega[l].setor_nome === chaves[k]) cnt++;
+            }
+            html += '<option value="' + escHtml(chaves[k]) + '">' +
+                escHtml(chaves[k]) + ' (' + cnt + ')</option>';
+        }
+        DOM.protSetor.innerHTML = html;
+        DOM.protDesc.textContent = emEntrega.length +
+            ' solicitação(ões) em entrega. Selecione o setor ou imprima todos.';
+        DOM.modalProtocolo.style.display = 'flex';
+    }
+
+    function gerarProtocolo(setorFiltro) {
+        var lista = [];
+        for (var i = 0; i < Estado.fila.length; i++) {
+            var s = Estado.fila[i];
+            if (s.status !== 'em_entrega') continue;
+            if (setorFiltro && s.setor_nome !== setorFiltro) continue;
+            lista.push(s);
+        }
+        if (!lista.length) {
+            alert('Nenhuma solicitação em entrega para o filtro selecionado.');
+            return;
+        }
+
+        var agora  = new Date();
+        var data   = agora.toLocaleDateString('pt-BR');
+        var hora   = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        var titulo = setorFiltro ? escHtml(setorFiltro) : 'Todos os setores';
+
+        var linhas = '';
+        for (var j = 0; j < lista.length; j++) {
+            var s = lista[j];
+            linhas +=
+                '<tr>' +
+                '<td>' + escHtml(s.codigo_entrega || '--') + '</td>' +
+                '<td>' + escHtml(s.nr_atendimento || '--') + '</td>' +
+                '<td class="td-paciente">' + escHtml(s.nm_paciente || '--') + '</td>' +
+                '<td>' + escHtml(s.leito || '--') + '</td>' +
+                '<td>' + escHtml(s.setor_nome || '--') + '</td>' +
+                '<td>' + escHtml(s.tipo_dieta_nome || '--') + '</td>' +
+                '<td>' + escHtml(s.refeicao_nome || '--') + '</td>' +
+                '<td class="td-assinatura">' +
+                    '<div class="linha-assinatura"></div>' +
+                    '<div class="label-assinatura">Assinatura / Nome legível</div>' +
+                '</td>' +
+                '</tr>';
+        }
+
+        var html =
+            '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+            '<title>Protocolo de Entrega - HAC</title>' +
+            '<style>' +
+                '@page{size:A4 portrait;margin:12mm}' +
+                'body{font-family:Arial,sans-serif;font-size:10px;color:#000;margin:0;padding:0}' +
+                '.cabecalho{display:flex;align-items:center;gap:14px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:10px}' +
+                '.logo-hospital{height:58px;width:auto;flex-shrink:0}' +
+                '.cabecalho-texto{flex:1;text-align:center}' +
+                '.cabecalho h1{font-size:14px;margin:0 0 3px;font-weight:bold;letter-spacing:.5px}' +
+                '.cabecalho h2{font-size:11px;margin:0;font-weight:bold;color:#555;letter-spacing:.5px}' +
+                '.info-linha{display:flex;justify-content:space-between;margin-bottom:8px;font-size:9px;' +
+                    'border-bottom:1px dashed #bbb;padding-bottom:6px;gap:8px}' +
+                'table{width:100%;border-collapse:collapse;margin-top:4px}' +
+                'thead th{background:#333;color:#fff;padding:6px 5px;text-align:left;' +
+                    'font-size:9px;font-weight:bold;border:1px solid #000}' +
+                'tbody td{padding:5px;border:1px solid #ccc;font-size:9px;vertical-align:middle}' +
+                '.td-paciente{font-weight:bold;min-width:130px}' +
+                '.td-assinatura{width:26%;min-width:90px}' +
+                '.linha-assinatura{border-bottom:1px solid #888;height:26px;margin:0 4px 0}' +
+                '.label-assinatura{text-align:center;font-size:7px;color:#777;margin-top:2px}' +
+                'tbody tr:nth-child(even) td{background:#f5f5f5}' +
+                '@media print{' +
+                    '@page{size:A4 portrait;margin:12mm}' +
+                    'body{print-color-adjust:exact;-webkit-print-color-adjust:exact}' +
+                '}' +
+            '</style>' +
+            '</head><body>' +
+            '<div class="cabecalho">' +
+                '<img src="/static/img/logo.png" class="logo-hospital" alt="Hospital Anchieta">' +
+                '<div class="cabecalho-texto">' +
+                    '<h1>HOSPITAL ANCHIETA CEILÂNDIA</h1>' +
+                    '<h2>PROTOCOLO DE ENTREGA DE DIETA</h2>' +
+                '</div>' +
+            '</div>' +
+            '<div class="info-linha">' +
+                '<span><b>Data:</b> ' + data + '</span>' +
+                '<span><b>Emissão:</b> ' + hora + '</span>' +
+                '<span><b>Setor:</b> ' + titulo + '</span>' +
+                '<span><b>Total:</b> ' + lista.length + ' paciente(s)</span>' +
+            '</div>' +
+            '<table>' +
+                '<thead><tr>' +
+                    '<th>Código</th>' +
+                    '<th>NR Atend.</th>' +
+                    '<th>Paciente</th>' +
+                    '<th>Leito</th>' +
+                    '<th>Setor</th>' +
+                    '<th>Dieta</th>' +
+                    '<th>Refeição</th>' +
+                    '<th>Recebimento (Assinatura / Nome)</th>' +
+                '</tr></thead>' +
+                '<tbody>' + linhas + '</tbody>' +
+            '</table>' +
+            '<script>window.onload=function(){window.print();};<\/script>' +
+            '</body></html>';
+
+        var w = window.open('', '_blank', 'width=820,height=700,toolbar=0,menubar=0,location=0,scrollbars=1');
+        if (!w) { alert('Permita pop-ups para imprimir o protocolo.'); return; }
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
     }
 
     // =========================================================

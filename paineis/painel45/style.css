@@ -127,90 +127,71 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;
 }
 
-/* ── GRID DE CARDS ───────────────────────────────── */
-.grid-cards-ag {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 12px; padding: 14px;
-}
+/* ── TABELA DE AGENDAMENTOS ──────────────────────── */
+.tabela-ag-wrapper { overflow-x: auto; }
 
-/* ── CARD DE AGENDAMENTO ─────────────────────────── */
-.card-ag {
-    background: var(--card-bg); border-radius: 10px;
-    box-shadow: var(--sombra); border-left: 5px solid var(--borda);
-    overflow: hidden; transition: transform 0.15s, box-shadow 0.15s;
-    display: flex; flex-direction: column;
+.tabela-ag {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
 }
-.card-ag:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
-.card-ag.card-ag-urgente  { border-left-color: #dc3545; }
-.card-ag.card-ag-ciente   { border-left-color: #198754; }
-.card-ag.card-ag-recusado { border-left-color: #fd7e14; background: #fff9f0; }
-
-.card-ag-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 7px 12px; background: #f8f9fa; border-bottom: 1px solid var(--borda);
+.tabela-ag thead th {
+    background: #f8f9fa;
+    border-bottom: 2px solid var(--borda);
+    padding: 9px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--texto-sec);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
 }
-.card-ag-setor { font-size: 10px; font-weight: 700; color: var(--cor-primaria); text-transform: uppercase; letter-spacing: 0.4px; }
-.badge-urgente { background: #f8d7da; color: #721c24; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
-
-.card-ag-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-
-.card-ag-paciente { display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid var(--borda); padding-bottom: 7px; }
-.card-ag-nome { font-size: 14px; font-weight: 700; color: var(--texto); }
-.card-ag-meta { font-size: 11px; color: var(--texto-sec); display: flex; gap: 8px; flex-wrap: wrap; }
-
-.card-ag-exame { display: flex; flex-direction: column; gap: 5px; }
-.card-ag-proc { font-size: 12px; font-weight: 600; color: var(--texto); display: flex; align-items: center; gap: 5px; }
-.card-ag-proc i { color: var(--cor-primaria); font-size: 11px; }
-.card-ag-badges { display: flex; gap: 4px; flex-wrap: wrap; }
-
-.card-ag-slot {
-    font-size: 12px; color: #0c5460; font-weight: 600;
-    background: #d1ecf1; border-radius: 6px; padding: 4px 9px;
-    display: inline-flex; align-items: center; gap: 5px;
+.tabela-ag tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--borda);
+    vertical-align: middle;
 }
-.card-ag-slot.card-ag-slot-sem {
-    background: #f8f9fa; color: var(--texto-sec); font-weight: 500;
-}
-.badge-modalidade {
-    background: #cfe2ff; color: #0d6efd; border-radius: 6px;
-    padding: 1px 6px; font-size: 10px; font-weight: 700;
-}
+.tabela-ag tbody tr:last-child td { border-bottom: none; }
+.tabela-ag tbody tr:hover td { background: #f5f5f5; }
+.tabela-ag tbody tr.linha-urgente td  { background: #fff5f5; }
+.tabela-ag tbody tr.linha-ciente td   { background: #f5fbf7; }
+.tabela-ag tbody tr.linha-recusado td { background: #fffaf4; }
 
-.card-ag-recusa-motivo {
-    font-size: 12px; color: #842029; background: #f8d7da;
-    border-radius: 6px; padding: 5px 9px; display: flex; align-items: flex-start; gap: 5px;
-}
-.card-ag-obs { font-size: 11px; color: var(--texto-sec); font-style: italic; display: flex; align-items: center; gap: 4px; }
-.card-ag-preparo { font-size: 11px; color: #5a3e00; background: #fff3cd; border-radius: 6px; padding: 5px 9px; display: flex; align-items: flex-start; gap: 5px; margin-top: 2px; }
-.card-ag-medico { font-size: 11px; color: var(--texto-sec); display: flex; align-items: center; gap: 4px; }
+.ta-nome { font-size: 13px; font-weight: 700; color: var(--texto); }
+.ta-sub  { font-size: 11px; color: var(--texto-sec); margin-top: 2px; }
+.ta-proc { font-size: 12px; font-weight: 600; color: var(--texto); word-break: break-word; max-width: 220px; }
+.ta-slot     { font-size: 12px; font-weight: 600; color: #0c5460; white-space: nowrap; }
+.ta-slot-sem { font-size: 11px; color: var(--texto-sec); font-style: italic; white-space: nowrap; }
+.ta-acoes    { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
 
-.card-ag-footer {
-    padding: 9px 12px; background: #f8f9fa; border-top: 1px solid var(--borda);
-    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
-    margin-top: auto;
-}
+.badge-urgente    { background: #f8d7da; color: #721c24; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+.badge-modalidade { background: #cfe2ff; color: #0d6efd; border-radius: 6px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
 
 /* ── BOTÕES DE AÇÃO ──────────────────────────────── */
 .btn-ciencia {
-    flex: 1; background: #198754; color: white; border: none;
-    padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;
-    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: background 0.2s;
+    background: #198754; color: white; border: none;
+    padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    transition: background 0.2s; white-space: nowrap;
 }
 .btn-ciencia:hover { background: #157347; }
 
 .btn-recusar {
-    flex: 1; background: white; color: #dc3545; border: 2px solid #dc3545;
-    padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;
-    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s;
+    background: white; color: #dc3545; border: 2px solid #dc3545;
+    padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    transition: all 0.2s; white-space: nowrap;
 }
 .btn-recusar:hover { background: #f8d7da; }
 
 .txt-ciente {
-    font-size: 12px; color: #198754; font-weight: 700; display: flex; align-items: center; gap: 4px;
+    font-size: 12px; color: #198754; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
 }
 .txt-sem-horario {
-    font-size: 12px; color: var(--texto-sec); font-style: italic; display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--texto-sec); font-style: italic;
+    display: inline-flex; align-items: center; gap: 4px;
 }
 
 /* ── BADGES STATUS ───────────────────────────────── */
