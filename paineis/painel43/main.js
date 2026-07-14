@@ -10,7 +10,7 @@ var PAINEL_VERSAO = '1.0.28';
     var Estado = {
         abaAtiva: 'dashboard',
         subabaAtiva: 'equipe',
-        diasRel: 30,
+        relAbaAtiva: 'resumo',
         // dados config
         equipe: [], tiposDieta: [], refeicoes: [], restricoes: [],
         // form modal
@@ -95,11 +95,16 @@ var PAINEL_VERSAO = '1.0.28';
         document.getElementById('btn-refresh-dash').addEventListener('click', carregarDashboard);
 
         // Relatórios
-        document.getElementById('btn-filtrar').addEventListener('click', function () {
-            Estado.diasRel = parseInt(document.getElementById('fil-dias').value, 10);
-            carregarRelatorios();
-        });
+        document.getElementById('btn-filtrar').addEventListener('click', carregarRelAbaAtiva);
         document.getElementById('btn-exportar').addEventListener('click', exportarCSV);
+
+        var relAbaBtns = document.querySelectorAll('[data-relaba]');
+        for (var ri = 0; ri < relAbaBtns.length; ri++) {
+            relAbaBtns[ri].addEventListener('click', function () {
+                trocarRelAba(this.getAttribute('data-relaba'));
+            });
+        }
+        _initRelDatas();
 
         // Config: botões add
         document.getElementById('btn-add-equipe').addEventListener('click', function () {
@@ -164,7 +169,7 @@ var PAINEL_VERSAO = '1.0.28';
         for (var j = 0; j < conteudos.length; j++) {
             conteudos[j].style.display = (conteudos[j].id === 'aba-' + aba) ? 'flex' : 'none';
         }
-        if (aba === 'relatorios') carregarRelatorios();
+        if (aba === 'relatorios') { carregarDietasFiltro(); carregarRelatorios(); }
         if (aba === 'configuracoes') carregarConfiguracoes();
     }
 
@@ -316,49 +321,230 @@ var PAINEL_VERSAO = '1.0.28';
     // =========================================================
     // RELATÓRIOS
     // =========================================================
-    function carregarRelatorios() {
-        var dias = Estado.diasRel;
-        var endpoints = ['por-refeicao', 'por-dieta', 'por-setor', 'por-responsavel'];
-        var tbodys    = ['tbody-refeicao', 'tbody-dieta', 'tbody-setor', 'tbody-responsavel'];
-        var cols      = [
-            ['refeicao_nome', 'total', 'entregues', 'cancelados', 'urgentes', 'media_min'],
-            ['tipo_dieta_nome', 'total', 'entregues', 'cancelados', 'urgentes', 'media_min'],
-            ['setor', 'total', 'entregues', 'cancelados', 'urgentes'],
-            ['responsavel_nome', 'total', 'entregues', 'cancelados', 'media_min_total']
-        ];
+    function _initRelDatas() {
+        var hoje = new Date();
+        var ini  = new Date(hoje);
+        ini.setDate(ini.getDate() - 30);
+        var fmt = function (d) {
+            var y   = d.getFullYear();
+            var m   = ('0' + (d.getMonth() + 1)).slice(-2);
+            var dia = ('0' + d.getDate()).slice(-2);
+            return y + '-' + m + '-' + dia;
+        };
+        var di = document.getElementById('rel-data-inicio');
+        var df = document.getElementById('rel-data-fim');
+        if (di && !di.value) di.value = fmt(ini);
+        if (df && !df.value) df.value = fmt(hoje);
+    }
 
-        for (var i = 0; i < endpoints.length; i++) {
-            (function (ep, tbody, campoCols) {
-                fetch(CONFIG.apiBase + '/' + ep + '?dias=' + dias, { credentials: 'same-origin' })
+    function _buildRelQueryParams() {
+        var di = (document.getElementById('rel-data-inicio') || {}).value || '';
+        var df = (document.getElementById('rel-data-fim')    || {}).value || '';
+        if (di && df) {
+            return 'data_inicio=' + encodeURIComponent(di) + '&data_fim=' + encodeURIComponent(df);
+        }
+        return 'dias=30';
+    }
+
+    function _getRelFiltros() {
+        return {
+            status: (document.getElementById('rel-fil-status') || {}).value || '',
+            dieta:  (document.getElementById('rel-fil-dieta')  || {}).value || '',
+            setor:  (document.getElementById('rel-fil-setor')  || {}).value || ''
+        };
+    }
+
+    var _dietasFiltroCarregadas = false;
+    function carregarDietasFiltro() {
+        if (_dietasFiltroCarregadas) return;
+        fetch(CONFIG.apiBase + '/config/tipos-dieta', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                var sel = document.getElementById('rel-fil-dieta');
+                if (!sel) return;
+                for (var i = 0; i < data.dados.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = data.dados[i].id;
+                    opt.textContent = data.dados[i].nome;
+                    sel.appendChild(opt);
+                }
+                _dietasFiltroCarregadas = true;
+            })
+            .catch(function () {});
+    }
+
+    function trocarRelAba(aba) {
+        Estado.relAbaAtiva = aba;
+        var btns = document.querySelectorAll('[data-relaba]');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].className = 'rel-aba' + (btns[i].getAttribute('data-relaba') === aba ? ' rel-aba-ativa' : '');
+        }
+        var subs = ['resumo', 'historico', 'por-refeicao', 'por-setor', 'por-responsavel'];
+        for (var j = 0; j < subs.length; j++) {
+            var el = document.getElementById('rel-' + subs[j]);
+            if (el) el.style.display = (subs[j] === aba) ? '' : 'none';
+        }
+        var extras = document.querySelectorAll('.rel-filtro-extra');
+        for (var k = 0; k < extras.length; k++) {
+            extras[k].style.display = (aba === 'historico') ? '' : 'none';
+        }
+        carregarRelAbaAtiva();
+    }
+
+    function carregarRelatorios() { carregarRelAbaAtiva(); }
+
+    function carregarRelAbaAtiva() {
+        var aba = Estado.relAbaAtiva;
+        if (aba === 'resumo')              carregarRelResumo();
+        else if (aba === 'historico')      carregarHistorico();
+        else if (aba === 'por-refeicao')   carregarRelPorRefeicao();
+        else if (aba === 'por-setor')      carregarRelPorSetor();
+        else if (aba === 'por-responsavel') carregarRelPorResponsavel();
+    }
+
+    function _renderTabelaRel(tbodyId, dados, cols, ncols) {
+        var el = document.getElementById(tbodyId);
+        if (!el) return;
+        if (!dados || !dados.length) {
+            el.innerHTML = '<tr><td colspan="' + ncols + '" class="tabela-vazio">Sem dados</td></tr>';
+            return;
+        }
+        var html = '';
+        for (var k = 0; k < dados.length; k++) {
+            var d = dados[k];
+            html += '<tr>';
+            for (var c = 0; c < cols.length; c++) {
+                var v   = d[cols[c]];
+                var cel = (v != null && cols[c].indexOf('_min') >= 0)
+                    ? fmtMin(v)
+                    : escHtml(v != null ? String(v) : '--');
+                html += '<td>' + cel + '</td>';
+            }
+            html += '</tr>';
+        }
+        el.innerHTML = html;
+    }
+
+    function carregarRelResumo() {
+        var q = _buildRelQueryParams();
+        var map = [
+            { ep: 'por-refeicao',    id: 'tbody-refeicao',    cols: ['refeicao_nome','total','entregues','cancelados','urgentes','media_min'] },
+            { ep: 'por-dieta',       id: 'tbody-dieta',       cols: ['tipo_dieta_nome','total','entregues','cancelados','urgentes','media_min'] },
+            { ep: 'por-setor',       id: 'tbody-setor',       cols: ['setor','total','entregues','cancelados','urgentes'] },
+            { ep: 'por-responsavel', id: 'tbody-responsavel', cols: ['responsavel_nome','total','entregues','cancelados','media_min_total'] }
+        ];
+        for (var i = 0; i < map.length; i++) {
+            (function (m) {
+                fetch(CONFIG.apiBase + '/' + m.ep + '?' + q, { credentials: 'same-origin' })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
-                        if (!data.success || !data.dados) return;
-                        var html = '';
-                        for (var k = 0; k < data.dados.length; k++) {
-                            var d = data.dados[k];
-                            html += '<tr>';
-                            for (var c = 0; c < campoCols.length; c++) {
-                                var v = d[campoCols[c]];
-                                var cel;
-                                if (v != null && campoCols[c].indexOf('_min') >= 0) {
-                                    cel = fmtMin(v);
-                                } else {
-                                    cel = escHtml(v != null ? String(v) : '--');
-                                }
-                                html += '<td>' + cel + '</td>';
-                            }
-                            html += '</tr>';
-                        }
-                        document.getElementById(tbody).innerHTML = html || '<tr><td colspan="10" class="tabela-empty">Sem dados</td></tr>';
+                        if (data.success) _renderTabelaRel(m.id, data.dados, m.cols, m.cols.length);
                     })
-                    .catch(function (e) { console.error(ep, e); });
-            })(endpoints[i], tbodys[i], cols[i]);
+                    .catch(function (e) { console.error(m.ep, e); });
+            })(map[i]);
         }
     }
 
+    function carregarHistorico() {
+        var q = _buildRelQueryParams();
+        var f = _getRelFiltros();
+        if (f.status) q += '&status='        + encodeURIComponent(f.status);
+        if (f.dieta)  q += '&tipo_dieta_id=' + encodeURIComponent(f.dieta);
+        if (f.setor)  q += '&setor='         + encodeURIComponent(f.setor);
+
+        var tbody = document.getElementById('tbody-historico');
+        var empty = document.getElementById('hist-empty');
+        var count = document.getElementById('hist-count');
+        if (empty) empty.style.display = 'none';
+        tbody.innerHTML = '<tr><td colspan="11" class="tabela-vazio"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+        fetch(CONFIG.apiBase + '/solicitacoes?' + q, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    tbody.innerHTML = '<tr><td colspan="11" class="tabela-vazio">Erro ao carregar dados.</td></tr>';
+                    return;
+                }
+                var rows = data.solicitacoes || [];
+                if (count) count.textContent = rows.length + ' registro(s)';
+                if (!rows.length) {
+                    tbody.innerHTML = '';
+                    if (empty) empty.style.display = 'block';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    html += '<tr>' +
+                        '<td><span class="cod-mini">' + escHtml(r.codigo_entrega || '--') + '</span></td>' +
+                        '<td style="white-space:nowrap;">' + escHtml(r.criado_em || '--') + '</td>' +
+                        '<td>' + escHtml(r.nm_paciente || '--') + '</td>' +
+                        '<td>' + escHtml(r.leito || '--') + '</td>' +
+                        '<td>' + escHtml(r.setor_nome || '--') + '</td>' +
+                        '<td>' + escHtml(r.tipo_dieta_nome || '--') + '</td>' +
+                        '<td>' + escHtml(r.refeicao_nome || '--') + '</td>' +
+                        '<td>' + (r.prioridade === 'urgente' ? '<span class="badge-urg">URG</span>' : '<span style="color:#6c757d;">Normal</span>') + '</td>' +
+                        '<td>' + badgeStatus(r.status) + '</td>' +
+                        '<td>' + escHtml(r.responsavel_nome || '--') + '</td>' +
+                        '<td>' + (r.t_total_min != null ? fmtMin(r.t_total_min) : '--') + '</td>' +
+                    '</tr>';
+                }
+                tbody.innerHTML = html;
+            })
+            .catch(function (e) {
+                console.error('historico', e);
+                tbody.innerHTML = '<tr><td colspan="11" class="tabela-vazio">Erro ao carregar.</td></tr>';
+            });
+    }
+
+    function carregarRelPorRefeicao() {
+        var q = _buildRelQueryParams();
+        fetch(CONFIG.apiBase + '/por-refeicao?' + q, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                renderBarras('rel-grafico-refeicao', data.dados, 'refeicao_nome', '#9B1C24');
+                _renderTabelaRel('tbody-rel-refeicao', data.dados,
+                    ['refeicao_nome','total','entregues','cancelados','urgentes','media_min'], 6);
+            })
+            .catch(function (e) { console.error('rel-refeicao', e); });
+    }
+
+    function carregarRelPorSetor() {
+        var q = _buildRelQueryParams();
+        fetch(CONFIG.apiBase + '/por-setor?' + q, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                renderBarras('rel-grafico-setor', data.dados.slice(0, 12), 'setor', '#17A2B8');
+                _renderTabelaRel('tbody-rel-setor', data.dados,
+                    ['setor','total','entregues','cancelados','urgentes'], 5);
+            })
+            .catch(function (e) { console.error('rel-setor', e); });
+    }
+
+    function carregarRelPorResponsavel() {
+        var q = _buildRelQueryParams();
+        fetch(CONFIG.apiBase + '/por-responsavel?' + q, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                _renderTabelaRel('tbody-rel-responsavel', data.dados,
+                    ['responsavel_nome','total','entregues','cancelados','media_min_total','media_min_espera_preparo'], 6);
+            })
+            .catch(function (e) { console.error('rel-responsavel', e); });
+    }
+
     function exportarCSV() {
-        var url = CONFIG.apiBase + '/exportar?dias=' + Estado.diasRel;
-        window.location.href = url;
+        var q = _buildRelQueryParams();
+        var f = _getRelFiltros();
+        if (Estado.relAbaAtiva === 'historico') {
+            if (f.status) q += '&status='        + encodeURIComponent(f.status);
+            if (f.dieta)  q += '&tipo_dieta_id=' + encodeURIComponent(f.dieta);
+            if (f.setor)  q += '&setor='         + encodeURIComponent(f.setor);
+        }
+        window.location.href = CONFIG.apiBase + '/exportar?' + q;
     }
 
     // =========================================================

@@ -20,6 +20,16 @@ _CAMPOS_REFEICAO    = ('nome', 'horario_inicio', 'horario_fim', 'icone', 'ativo'
 _CAMPOS_RESTRICAO   = ('nome', 'sigla', 'icone', 'cor', 'ativo', 'ordem')
 
 
+def _filtro_data(args, dias_default=30):
+    """Retorna (where_sql, params_list) para filtro temporal em nutricao_solicitacoes."""
+    di = args.get('data_inicio') or None
+    df = args.get('data_fim')    or None
+    if di and df:
+        return "DATE(criado_em) BETWEEN %s AND %s", [di, df]
+    dias = int(args.get('dias') or dias_default)
+    return "criado_em >= NOW() - (%s || ' days')::INTERVAL", [str(dias)]
+
+
 @painel43_bp.route('/painel/painel43')
 @login_required
 @panel_permission_required('painel43')
@@ -84,14 +94,14 @@ def api_p43_dashboard():
 @painel43_bp.route('/api/paineis/painel43/solicitacoes', methods=['GET'])
 @login_required
 def api_p43_solicitacoes():
-    dias           = int(request.args.get('dias') or 7)
     setor          = request.args.get('setor') or None
     status         = request.args.get('status') or None
     tipo_dieta_id  = request.args.get('tipo_dieta_id') or None
     responsavel_id = request.args.get('responsavel_id') or None
 
-    where  = ["criado_em >= NOW() - INTERVAL '%s days'" ]
-    params = [dias]
+    fd_where, fd_params = _filtro_data(request.args, dias_default=7)
+    where  = [fd_where]
+    params = fd_params[:]
 
     if setor:
         where.append("setor_nome ILIKE %s")
@@ -143,7 +153,7 @@ def api_p43_solicitacoes():
 @painel43_bp.route('/api/paineis/painel43/por-refeicao', methods=['GET'])
 @login_required
 def api_p43_por_refeicao():
-    dias = int(request.args.get('dias') or 30)
+    fd_where, fd_params = _filtro_data(request.args)
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
@@ -155,10 +165,10 @@ def api_p43_por_refeicao():
                     ROUND(AVG(CASE WHEN dt_entrega IS NOT NULL
                         THEN EXTRACT(EPOCH FROM (dt_entrega - criado_em))/60 END)::numeric,1) AS media_min
                 FROM nutricao_solicitacoes
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                WHERE """ + fd_where + """
                   AND refeicao_nome IS NOT NULL
                 GROUP BY refeicao_nome ORDER BY total DESC
-            """, (str(dias),))
+            """, fd_params)
             dados = [dict(r) for r in cursor.fetchall()]
         return jsonify({'success': True, 'dados': dados})
     except Exception as e:
@@ -173,7 +183,7 @@ def api_p43_por_refeicao():
 @painel43_bp.route('/api/paineis/painel43/por-dieta', methods=['GET'])
 @login_required
 def api_p43_por_dieta():
-    dias = int(request.args.get('dias') or 30)
+    fd_where, fd_params = _filtro_data(request.args)
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
@@ -185,10 +195,10 @@ def api_p43_por_dieta():
                     ROUND(AVG(CASE WHEN dt_entrega IS NOT NULL
                         THEN EXTRACT(EPOCH FROM (dt_entrega - criado_em))/60 END)::numeric,1) AS media_min
                 FROM nutricao_solicitacoes
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                WHERE """ + fd_where + """
                   AND tipo_dieta_nome IS NOT NULL
                 GROUP BY tipo_dieta_nome ORDER BY total DESC
-            """, (str(dias),))
+            """, fd_params)
             dados = [dict(r) for r in cursor.fetchall()]
         return jsonify({'success': True, 'dados': dados})
     except Exception as e:
@@ -203,7 +213,7 @@ def api_p43_por_dieta():
 @painel43_bp.route('/api/paineis/painel43/por-setor', methods=['GET'])
 @login_required
 def api_p43_por_setor():
-    dias = int(request.args.get('dias') or 30)
+    fd_where, fd_params = _filtro_data(request.args)
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
@@ -213,9 +223,9 @@ def api_p43_por_setor():
                     COUNT(*) FILTER (WHERE status='cancelado') AS cancelados,
                     COUNT(*) FILTER (WHERE prioridade='urgente') AS urgentes
                 FROM nutricao_solicitacoes
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                WHERE """ + fd_where + """
                 GROUP BY setor_nome ORDER BY total DESC LIMIT 20
-            """, (str(dias),))
+            """, fd_params)
             dados = [dict(r) for r in cursor.fetchall()]
         return jsonify({'success': True, 'dados': dados})
     except Exception as e:
@@ -230,7 +240,7 @@ def api_p43_por_setor():
 @painel43_bp.route('/api/paineis/painel43/por-responsavel', methods=['GET'])
 @login_required
 def api_p43_por_responsavel():
-    dias = int(request.args.get('dias') or 30)
+    fd_where, fd_params = _filtro_data(request.args)
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
@@ -243,10 +253,10 @@ def api_p43_por_responsavel():
                     ROUND(AVG(CASE WHEN dt_inicio_preparo IS NOT NULL AND dt_aceite IS NOT NULL
                         THEN EXTRACT(EPOCH FROM (dt_inicio_preparo - dt_aceite))/60 END)::numeric,1) AS media_min_espera_preparo
                 FROM nutricao_solicitacoes
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                WHERE """ + fd_where + """
                   AND responsavel_nome IS NOT NULL
                 GROUP BY responsavel_nome ORDER BY total DESC
-            """, (str(dias),))
+            """, fd_params)
             dados = [dict(r) for r in cursor.fetchall()]
         return jsonify({'success': True, 'dados': dados})
     except Exception as e:
@@ -261,7 +271,7 @@ def api_p43_por_responsavel():
 @painel43_bp.route('/api/paineis/painel43/por-hora', methods=['GET'])
 @login_required
 def api_p43_por_hora():
-    dias = int(request.args.get('dias') or 1)
+    fd_where, fd_params = _filtro_data(request.args, dias_default=1)
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
@@ -270,9 +280,9 @@ def api_p43_por_hora():
                     COUNT(*) FILTER (WHERE status='entregue')    AS entregues,
                     COUNT(*) FILTER (WHERE prioridade='urgente') AS urgentes
                 FROM nutricao_solicitacoes
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                WHERE """ + fd_where + """
                 GROUP BY 1 ORDER BY 1
-            """, (str(dias),))
+            """, fd_params)
             dados = [dict(r) for r in cursor.fetchall()]
         return jsonify({'success': True, 'dados': dados})
     except Exception as e:
@@ -317,7 +327,7 @@ def api_p43_cancelar(sid):
 @painel43_bp.route('/api/paineis/painel43/exportar', methods=['GET'])
 @login_required
 def api_p43_exportar():
-    dias = int(request.args.get('dias') or 30)
+    fd_where, fd_params = _filtro_data(request.args)
     now  = datetime.now()
 
     try:
@@ -338,9 +348,9 @@ def api_p43_exportar():
                         THEN ROUND(EXTRACT(EPOCH FROM (dt_entrega - criado_em))/60)::int
                     END AS t_total_min
                 FROM nutricao_solicitacoes
-                WHERE criado_em >= NOW() - (%s || ' days')::INTERVAL
+                WHERE """ + fd_where + """
                 ORDER BY criado_em DESC
-            """, (str(dias),))
+            """, fd_params)
             rows = cursor.fetchall()
 
         output = io.StringIO()

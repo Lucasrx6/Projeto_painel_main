@@ -427,6 +427,33 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     transition: background 0.15s;
 }
 .btn-visualizar-zpl:hover { background: var(--cor-primaria-dark); }
+
+/* ── RELATÓRIOS — sub-abas e layout ────────────── */
+.rel-sub-abas {
+    display: flex; border-bottom: 2px solid var(--borda);
+    overflow-x: auto; flex-shrink: 0;
+}
+.rel-aba {
+    background: none; border: none; border-bottom: 3px solid transparent;
+    padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--texto-sec);
+    cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: -2px;
+    transition: all 0.15s; white-space: nowrap;
+}
+.rel-aba:hover { color: var(--cor-primaria); }
+.rel-aba-ativa { color: var(--cor-primaria); border-bottom-color: var(--cor-primaria); }
+
+.rel-sub-conteudo { display: flex; flex-direction: column; gap: 16px; }
+
+.rel-analytics-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .rel-analytics-split { grid-template-columns: 1fr; } }
+
+.filtro-content input[type=date],
+.filtro-content input[type=text] {
+    border: 2px solid var(--borda); border-radius: 8px; padding: 7px 10px;
+    font-size: 13px; color: var(--texto); background: white; font-family: inherit;
+}
+.filtro-content input[type=date]:focus,
+.filtro-content input[type=text]:focus { outline: none; border-color: var(--cor-primaria); }
 .etq-msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; }
 .etq-msg-ok  { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
 .etq-msg-err { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
