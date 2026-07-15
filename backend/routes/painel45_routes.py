@@ -63,25 +63,32 @@ def painel45():
 @panel_permission_required('painel45')
 def api_p45_agendamentos():
     """
-    Retorna exames agendados pela radiologia para a enfermagem ver e confirmar/recusar.
-    Mostra: aguardando ciência, cientes e recusados dos últimos 2 dias.
+    Retorna exames agendados pela radiologia para a enfermagem.
+    ?data=YYYY-MM-DD     (padrão: hoje)
+    ?status_enf=pendente|ciente|recusado  (padrão: todos os ativos)
     """
     try:
         _auto_finalizar_expirados(current_app.logger)
-        filtro_enf = request.args.get('status_enf', '')  # pendente|ciente|recusado
+        filtro_enf = request.args.get('status_enf', '').strip()
+        data_str   = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
 
-        filtros = ["ra.status NOT IN ('cancelado')"]
-        params = []
+        filtros = []
+        params  = []
 
-        if filtro_enf:
-            filtros.append("ra.status_enfermagem = %s")
-            params.append(filtro_enf)
+        if filtro_enf == 'recusado':
+            # Recusados têm status='cancelado' + status_enfermagem='recusado'
+            filtros.append("ra.status = 'cancelado'")
+            filtros.append("ra.status_enfermagem = 'recusado'")
+            filtros.append("DATE(ra.dt_recusa) = %s")
+            params.append(data_str)
         else:
-            # Por padrão: últimas 48h e excluindo concluídos antigos
-            filtros.append("""
-                (ra.status NOT IN ('concluido')
-                 OR (ra.status = 'concluido' AND ra.atualizado_em >= NOW() - INTERVAL '24 hours'))
-            """)
+            filtros.append("ra.status NOT IN ('cancelado')")
+            if filtro_enf in ('pendente', 'ciente'):
+                filtros.append("ra.status_enfermagem = %s")
+                params.append(filtro_enf)
+            # Filtrar pelo dia do slot (ou data de criação se sem slot)
+            filtros.append("DATE(COALESCE(rs.data_hora, ra.criado_em)) = %s")
+            params.append(data_str)
 
         where = 'WHERE ' + ' AND '.join(filtros)
 
@@ -134,10 +141,9 @@ def api_p45_agendamentos():
                 {where}
                 ORDER BY
                     CASE ra.status_enfermagem
-                        WHEN 'pendente'  THEN 1
-                        WHEN 'recusado'  THEN 2
-                        WHEN 'ciente'    THEN 3
-                        ELSE 4
+                        WHEN 'pendente' THEN 1
+                        WHEN 'ciente'   THEN 2
+                        ELSE 3
                     END,
                     rs.data_hora NULLS LAST,
                     ra.setor_origem_nome,

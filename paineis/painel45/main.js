@@ -17,8 +17,14 @@
         dados: [],
         setoresSelecionados: [],
         filtroStatus: 'todos',   // 'todos'|'pendente'|'ciente'|'recusado'
+        filtroData: '',          // YYYY-MM-DD — iniciado em inicializar()
         modalId: null
     };
+
+    function hojeISO() {
+        var d = new Date();
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
 
     // ── Toast ──────────────────────────────────────
     function toast(msg, tipo) {
@@ -212,30 +218,34 @@
 
         // Ações
         html += '<td><div class="ta-acoes">';
-        var podeAgir = item.status !== 'concluido' && item.status !== 'cancelado';
-        if (podeAgir && item.slot_id) {
-            if (enf !== 'ciente') {
-                html += '<button class="btn-ciencia" onclick="P45.abrirCiencia('
-                      + item.id + ',\'' + escHtml(item.nm_paciente || '') + '\',\''
-                      + escHtml(item.ds_procedimento || '') + '\')">'
-                      + '<i class="fas fa-check"></i> Ciência</button>';
-                html += '<button class="btn-recusar" onclick="P45.abrirRecusar('
-                      + item.id + ',\'' + escHtml(item.nm_paciente || '') + '\',\''
-                      + escHtml(item.ds_procedimento || '') + '\')">'
-                      + '<i class="fas fa-times"></i> Recusar</button>';
-            } else {
-                html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciente';
-                if (item.dt_ciencia) html += ' ' + escHtml(formatarDataHora(item.dt_ciencia));
-                html += '</span>';
+        if (recusado) {
+            // Recusado pela enfermagem — exibir motivo, sem ação disponível
+            html += '<span style="color:#6c757d;font-size:11px;"><i class="fas fa-ban"></i> Recusado';
+            if (item.dt_recusa) html += ' · ' + escHtml(formatarDataHora(item.dt_recusa));
+            html += '</span>';
+            if (item.motivo_recusa) {
+                html += '<div style="font-size:10px;color:#842029;margin-top:2px;" title="' + escHtml(item.motivo_recusa) + '">'
+                      + escHtml(item.motivo_recusa.length > 50 ? item.motivo_recusa.slice(0, 50) + '…' : item.motivo_recusa)
+                      + '</div>';
             }
-        } else if (!item.slot_id) {
-            html += '<span class="ta-slot-sem"><i class="fas fa-hourglass-half"></i> Sem horário</span>';
         } else {
-            html += '<span style="color:var(--texto-sec);font-size:11px;">-</span>';
-        }
-        if (recusado && item.motivo_recusa) {
-            html += ' <span title="' + escHtml(item.motivo_recusa) + '" style="color:#842029;cursor:help;margin-left:2px;">'
-                  + '<i class="fas fa-exclamation-circle"></i></span>';
+            var podeAgir = item.status !== 'concluido' && item.status !== 'cancelado';
+            if (podeAgir && item.slot_id) {
+                if (enf !== 'ciente') {
+                    html += '<button class="btn-ciencia" data-acao="ciencia" data-id="' + item.id + '">'
+                          + '<i class="fas fa-check"></i> Ciência</button>';
+                    html += '<button class="btn-recusar" data-acao="recusar" data-id="' + item.id + '">'
+                          + '<i class="fas fa-times"></i> Recusar</button>';
+                } else {
+                    html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciente';
+                    if (item.dt_ciencia) html += ' ' + escHtml(formatarDataHora(item.dt_ciencia));
+                    html += '</span>';
+                }
+            } else if (!item.slot_id) {
+                html += '<span class="ta-slot-sem"><i class="fas fa-hourglass-half"></i> Sem horário</span>';
+            } else {
+                html += '<span style="color:var(--texto-sec);font-size:11px;">-</span>';
+            }
         }
         html += '</div></td>';
 
@@ -396,7 +406,9 @@
 
     // ── Carregar ───────────────────────────────────
     function carregar() {
-        fetch(CONFIG.api.agendamentos, {credentials: 'same-origin'})
+        var url = CONFIG.api.agendamentos + '?data=' + Estado.filtroData;
+        if (Estado.filtroStatus !== 'todos') url += '&status_enf=' + Estado.filtroStatus;
+        fetch(url, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) {
@@ -419,12 +431,16 @@
     }
 
     // ── Modal Ciência ──────────────────────────────
-    function abrirCiencia(id, nome, exame) {
+    function abrirCiencia(id) {
         Estado.modalId = id;
+        var item = null;
+        for (var i = 0; i < Estado.dados.length; i++) {
+            if (Estado.dados[i].id === id) { item = Estado.dados[i]; break; }
+        }
         var info = document.getElementById('modal-cien-info');
-        if (info) {
-            info.innerHTML = '<strong>' + escHtml(formatarNome(nome)) + '</strong><br>'
-                           + '<small>' + escHtml(exame) + '</small>';
+        if (info && item) {
+            info.innerHTML = '<strong>' + escHtml(formatarNome(item.nm_paciente || '')) + '</strong><br>'
+                           + '<small>' + escHtml(item.ds_procedimento || '') + '</small>';
         }
         var modal = document.getElementById('modal-ciencia');
         if (modal) modal.style.display = 'flex';
@@ -454,12 +470,16 @@
     }
 
     // ── Modal Recusar ──────────────────────────────
-    function abrirRecusar(id, nome, exame) {
+    function abrirRecusar(id) {
         Estado.modalId = id;
+        var item = null;
+        for (var i = 0; i < Estado.dados.length; i++) {
+            if (Estado.dados[i].id === id) { item = Estado.dados[i]; break; }
+        }
         var info = document.getElementById('modal-rec-info');
-        if (info) {
-            info.innerHTML = '<strong>' + escHtml(formatarNome(nome)) + '</strong><br>'
-                           + '<small>' + escHtml(exame) + '</small>';
+        if (info && item) {
+            info.innerHTML = '<strong>' + escHtml(formatarNome(item.nm_paciente || '')) + '</strong><br>'
+                           + '<small>' + escHtml(item.ds_procedimento || '') + '</small>';
         }
         var motivo = document.getElementById('modal-rec-motivo');
         if (motivo) motivo.value = '';
@@ -504,13 +524,54 @@
 
     // ── Inicializar ────────────────────────────────
     function inicializar() {
+        // Restaurar preferências
         try {
             var ss = localStorage.getItem('p45_setores');
             if (ss) Estado.setoresSelecionados = JSON.parse(ss) || [];
         } catch(e) { Estado.setoresSelecionados = []; }
         Estado.filtroStatus = localStorage.getItem('p45_filtro_status') || 'todos';
+        Estado.filtroData   = hojeISO();
 
-        // Pills de status
+        // ── Navegação por data ─────────────────────
+        function labelData() {
+            var hoje  = hojeISO();
+            var ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
+            var ontemISO = ontem.getFullYear() + '-' + pad2(ontem.getMonth()+1) + '-' + pad2(ontem.getDate());
+            var d    = Estado.filtroData;
+            var fmt  = d.slice(8,10) + '/' + d.slice(5,7);
+            if (d === hoje)     return 'Hoje — ' + fmt;
+            if (d === ontemISO) return 'Ontem — ' + fmt;
+            return fmt + '/' + d.slice(0,4);
+        }
+        function atualizarNavData() {
+            var el = document.getElementById('label-data-p45');
+            if (el) el.textContent = labelData();
+            var btnHoje = document.getElementById('btn-data-hoje');
+            if (btnHoje) btnHoje.style.display = Estado.filtroData === hojeISO() ? 'none' : '';
+        }
+        atualizarNavData();
+
+        var btnAnt = document.getElementById('btn-data-ant');
+        if (btnAnt) btnAnt.addEventListener('click', function() {
+            var d = new Date(Estado.filtroData + 'T12:00:00');
+            d.setDate(d.getDate() - 1);
+            Estado.filtroData = d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+            atualizarNavData(); carregar();
+        });
+        var btnProx = document.getElementById('btn-data-prox');
+        if (btnProx) btnProx.addEventListener('click', function() {
+            var d = new Date(Estado.filtroData + 'T12:00:00');
+            d.setDate(d.getDate() + 1);
+            Estado.filtroData = d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+            atualizarNavData(); carregar();
+        });
+        var btnHojeEl = document.getElementById('btn-data-hoje');
+        if (btnHojeEl) btnHojeEl.addEventListener('click', function() {
+            Estado.filtroData = hojeISO();
+            atualizarNavData(); carregar();
+        });
+
+        // ── Pills de status ────────────────────────
         function atualizarPillsStatus() {
             var btns = document.querySelectorAll('#filtro-status-pills .pill-status');
             for (var i = 0; i < btns.length; i++) {
@@ -528,41 +589,64 @@
                         Estado.filtroStatus = btn.getAttribute('data-status');
                         localStorage.setItem('p45_filtro_status', Estado.filtroStatus);
                         atualizarPillsStatus();
-                        renderizar();
+                        carregar();  // busca do servidor com o novo filtro
                     });
                 })(pillBtns[pi]);
             }
         }
 
-        // Botões cabeçalho
+        // ── Delegação de eventos para ciência/recusar ──
+        document.addEventListener('click', function(e) {
+            var el = e.target;
+            while (el && el !== document.body) {
+                var acao = el.getAttribute ? el.getAttribute('data-acao') : null;
+                if (acao) {
+                    var id = parseInt(el.getAttribute('data-id') || '0', 10);
+                    if (acao === 'ciencia') { abrirCiencia(id); return; }
+                    if (acao === 'recusar') { abrirRecusar(id); return; }
+                }
+                el = el.parentNode;
+            }
+        });
+
+        // ── Botões cabeçalho ───────────────────────
         var btnR = document.getElementById('btn-refresh');
         if (btnR) btnR.addEventListener('click', carregar);
         var btnV = document.getElementById('btn-voltar');
         if (btnV) btnV.addEventListener('click', function() { window.history.back(); });
 
-        // Modal ciência
-        document.getElementById('modal-cien-fechar').addEventListener('click', fecharCiencia);
-        document.getElementById('modal-cien-cancelar').addEventListener('click', fecharCiencia);
-        document.getElementById('modal-cien-confirmar').addEventListener('click', confirmarCiencia);
-        document.getElementById('modal-ciencia').addEventListener('click', function(e) {
+        // ── Modal ciência (com null-check em cada elemento) ──
+        var mCienFechar   = document.getElementById('modal-cien-fechar');
+        var mCienCancelar = document.getElementById('modal-cien-cancelar');
+        var mCienConf     = document.getElementById('modal-cien-confirmar');
+        var mCiencia      = document.getElementById('modal-ciencia');
+        if (mCienFechar)   mCienFechar.addEventListener('click', fecharCiencia);
+        if (mCienCancelar) mCienCancelar.addEventListener('click', fecharCiencia);
+        if (mCienConf)     mCienConf.addEventListener('click', confirmarCiencia);
+        if (mCiencia)      mCiencia.addEventListener('click', function(e) {
             if (e.target === this) fecharCiencia();
         });
 
-        // Modal recusar
-        document.getElementById('modal-rec-fechar').addEventListener('click', fecharRecusar);
-        document.getElementById('modal-rec-cancelar').addEventListener('click', fecharRecusar);
-        document.getElementById('modal-rec-confirmar').addEventListener('click', confirmarRecusar);
-        document.getElementById('modal-recusar').addEventListener('click', function(e) {
+        // ── Modal recusar (com null-check) ─────────
+        var mRecFechar   = document.getElementById('modal-rec-fechar');
+        var mRecCancelar = document.getElementById('modal-rec-cancelar');
+        var mRecConf     = document.getElementById('modal-rec-confirmar');
+        var mRecusar     = document.getElementById('modal-recusar');
+        if (mRecFechar)   mRecFechar.addEventListener('click', fecharRecusar);
+        if (mRecCancelar) mRecCancelar.addEventListener('click', fecharRecusar);
+        if (mRecConf)     mRecConf.addEventListener('click', confirmarRecusar);
+        if (mRecusar)     mRecusar.addEventListener('click', function(e) {
             if (e.target === this) fecharRecusar();
         });
+
         // Contador de caracteres — motivo de recusa
         var motivoRecusaEl = document.getElementById('modal-rec-motivo');
         if (motivoRecusaEl) {
             motivoRecusaEl.addEventListener('input', function() {
-                var len = motivoRecusaEl.value.trim().length;
+                var len = this.value.trim().length;
                 var btnConf = document.getElementById('modal-rec-confirmar');
-                var cnt = document.getElementById('modal-rec-contador');
-                var hnt = document.getElementById('modal-rec-hint');
+                var cnt     = document.getElementById('modal-rec-contador');
+                var hnt     = document.getElementById('modal-rec-hint');
                 if (cnt) cnt.textContent = len + ' / 10 mínimo';
                 if (hnt) hnt.style.color = len >= 10 ? '#28a745' : '#dc3545';
                 if (btnConf) btnConf.disabled = len < 10;
@@ -573,10 +657,7 @@
         setInterval(carregar, CONFIG.intervalo);
     }
 
-    window.P45 = {
-        abrirCiencia: abrirCiencia,
-        abrirRecusar: abrirRecusar
-    };
+    window.P45 = { abrirCiencia: abrirCiencia, abrirRecusar: abrirRecusar };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inicializar);
     else inicializar();
