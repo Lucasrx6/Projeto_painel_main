@@ -117,15 +117,18 @@
                     <button class="rel-aba" data-relaba="por-responsavel">
                         <i class="fas fa-user-nurse"></i> Por Responsável
                     </button>
+                    <button class="rel-aba" data-relaba="assinaturas">
+                        <i class="fas fa-signature"></i> Assinaturas
+                    </button>
                 </div>
 
                 <!-- Filtro bar -->
                 <div class="filtro-bar-rel">
                     <div class="filtro-content">
                         <label>De:</label>
-                        <input type="date" id="rel-data-inicio">
+                        <input type="text" id="rel-data-inicio" placeholder="dd/mm/aaaa" maxlength="10" class="input-data-br">
                         <label>Até:</label>
-                        <input type="date" id="rel-data-fim">
+                        <input type="text" id="rel-data-fim" placeholder="dd/mm/aaaa" maxlength="10" class="input-data-br">
                         <select id="rel-fil-status" class="rel-filtro-extra" style="display:none;">
                             <option value="">Todos os status</option>
                             <option value="aguardando">Aguardando</option>
@@ -274,6 +277,46 @@
                                 </thead>
                                 <tbody id="tbody-rel-responsavel"></tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB: Assinaturas Digitais -->
+                <div id="rel-assinaturas" class="rel-sub-conteudo" style="display:none;">
+                    <div class="rel-assin-filtros">
+                        <input type="text" id="rel-assin-setor" placeholder="Filtrar por setor...">
+                        <label class="rel-assin-chk-label">
+                            <input type="checkbox" id="rel-assin-apenas-sem">
+                            Apenas sem assinatura
+                        </label>
+                    </div>
+                    <div class="rel-assin-kpis" id="rel-assin-kpis"></div>
+                    <div class="secao">
+                        <h3 class="secao-titulo">
+                            <i class="fas fa-list"></i> Entregas — Situação de Assinatura
+                            <span id="rel-assin-count" style="font-size:12px;font-weight:normal;color:#666;margin-left:8px;"></span>
+                        </h3>
+                        <div class="tabela-wrapper">
+                            <table class="tabela">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Entregue em</th>
+                                        <th>Paciente</th>
+                                        <th>Leito / Setor</th>
+                                        <th>Dieta / Refeição</th>
+                                        <th>Responsável</th>
+                                        <th>Assinado?</th>
+                                        <th>Assinante</th>
+                                        <th>CPF</th>
+                                        <th>Coletado por</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-rel-assinaturas"></tbody>
+                            </table>
+                            <div id="rel-assin-empty" class="tabela-vazio" style="display:none;">
+                                <i class="fas fa-search"></i> Nenhum registro encontrado para o período selecionado.
+                            </div>
                         </div>
                     </div>
                 </div>

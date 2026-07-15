@@ -321,25 +321,51 @@ var PAINEL_VERSAO = '1.0.28';
     // =========================================================
     // RELATÓRIOS
     // =========================================================
+    function _parseDateBR(str) {
+        if (!str || str.length < 10) return '';
+        var parts = str.split('/');
+        if (parts.length !== 3 || parts[2].length < 4) return '';
+        return parts[2] + '-' + parts[1] + '-' + parts[0];
+    }
+
+    function _mascaraData(id) {
+        var inp = document.getElementById(id);
+        if (!inp) return;
+        inp.addEventListener('input', function () {
+            var v = this.value.replace(/\D/g, '');
+            if (v.length > 8) v = v.slice(0, 8);
+            if (v.length > 4) {
+                v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+            } else if (v.length > 2) {
+                v = v.slice(0, 2) + '/' + v.slice(2);
+            }
+            this.value = v;
+        });
+    }
+
     function _initRelDatas() {
         var hoje = new Date();
         var ini  = new Date(hoje);
         ini.setDate(ini.getDate() - 30);
-        var fmt = function (d) {
-            var y   = d.getFullYear();
-            var m   = ('0' + (d.getMonth() + 1)).slice(-2);
+        var fmtBR = function (d) {
             var dia = ('0' + d.getDate()).slice(-2);
-            return y + '-' + m + '-' + dia;
+            var m   = ('0' + (d.getMonth() + 1)).slice(-2);
+            var y   = d.getFullYear();
+            return dia + '/' + m + '/' + y;
         };
         var di = document.getElementById('rel-data-inicio');
         var df = document.getElementById('rel-data-fim');
-        if (di && !di.value) di.value = fmt(ini);
-        if (df && !df.value) df.value = fmt(hoje);
+        if (di && !di.value) di.value = fmtBR(ini);
+        if (df && !df.value) df.value = fmtBR(hoje);
+        _mascaraData('rel-data-inicio');
+        _mascaraData('rel-data-fim');
     }
 
     function _buildRelQueryParams() {
-        var di = (document.getElementById('rel-data-inicio') || {}).value || '';
-        var df = (document.getElementById('rel-data-fim')    || {}).value || '';
+        var diRaw = (document.getElementById('rel-data-inicio') || {}).value || '';
+        var dfRaw = (document.getElementById('rel-data-fim')    || {}).value || '';
+        var di = _parseDateBR(diRaw);
+        var df = _parseDateBR(dfRaw);
         if (di && df) {
             return 'data_inicio=' + encodeURIComponent(di) + '&data_fim=' + encodeURIComponent(df);
         }
@@ -380,7 +406,7 @@ var PAINEL_VERSAO = '1.0.28';
         for (var i = 0; i < btns.length; i++) {
             btns[i].className = 'rel-aba' + (btns[i].getAttribute('data-relaba') === aba ? ' rel-aba-ativa' : '');
         }
-        var subs = ['resumo', 'historico', 'por-refeicao', 'por-setor', 'por-responsavel'];
+        var subs = ['resumo', 'historico', 'por-refeicao', 'por-setor', 'por-responsavel', 'assinaturas'];
         for (var j = 0; j < subs.length; j++) {
             var el = document.getElementById('rel-' + subs[j]);
             if (el) el.style.display = (subs[j] === aba) ? '' : 'none';
@@ -401,6 +427,7 @@ var PAINEL_VERSAO = '1.0.28';
         else if (aba === 'por-refeicao')   carregarRelPorRefeicao();
         else if (aba === 'por-setor')      carregarRelPorSetor();
         else if (aba === 'por-responsavel') carregarRelPorResponsavel();
+        else if (aba === 'assinaturas')     carregarRelAssinaturas();
     }
 
     function _renderTabelaRel(tbodyId, dados, cols, ncols) {
@@ -536,9 +563,102 @@ var PAINEL_VERSAO = '1.0.28';
             .catch(function (e) { console.error('rel-responsavel', e); });
     }
 
+    // =========================================================
+    // RELATÓRIO DE ASSINATURAS
+    // =========================================================
+    function carregarRelAssinaturas() {
+        var q         = _buildRelQueryParams();
+        var setor     = (document.getElementById('rel-assin-setor')     || {}).value || '';
+        var apenasSem = (document.getElementById('rel-assin-apenas-sem') || {}).checked;
+        if (setor)     q += '&setor='      + encodeURIComponent(setor);
+        if (apenasSem) q += '&apenas_sem=1';
+
+        var tbody = document.getElementById('tbody-rel-assinaturas');
+        var empty = document.getElementById('rel-assin-empty');
+        var count = document.getElementById('rel-assin-count');
+        var kpis  = document.getElementById('rel-assin-kpis');
+        if (empty) empty.style.display = 'none';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="tabela-vazio"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+        fetch(CONFIG.apiBase + '/rel-assinaturas?' + q, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    if (data.migration_pendente) {
+                        var aviso = '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin:12px 0;color:#856404;">' +
+                            '<i class="fas fa-triangle-exclamation"></i> <strong>Migração pendente:</strong> ' +
+                            escHtml(data.error || '') + '</div>';
+                        if (kpis) kpis.innerHTML = aviso;
+                        if (tbody) tbody.innerHTML = '';
+                    } else {
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="tabela-vazio">Erro ao carregar dados.</td></tr>';
+                        if (kpis) kpis.innerHTML = '';
+                    }
+                    return;
+                }
+
+                // KPIs
+                var r = data.resumo || {};
+                var total = Number(r.total || 0);
+                var comAss = Number(r.com_assinatura || 0);
+                var semAss = Number(r.sem_assinatura || 0);
+                var pct = total > 0 ? Math.round(comAss / total * 100) : 0;
+                if (kpis) {
+                    kpis.innerHTML =
+                        '<div class="assin-kpi assin-kpi-total"><div class="assin-kpi-num">' + total + '</div><div class="assin-kpi-label">Total Entregues</div></div>' +
+                        '<div class="assin-kpi assin-kpi-ok"><div class="assin-kpi-num">' + comAss + '</div><div class="assin-kpi-label">Com Assinatura</div></div>' +
+                        '<div class="assin-kpi assin-kpi-pend"><div class="assin-kpi-num">' + semAss + '</div><div class="assin-kpi-label">Sem Assinatura</div></div>' +
+                        '<div class="assin-kpi assin-kpi-pct"><div class="assin-kpi-num">' + pct + '%</div><div class="assin-kpi-label">Cobertura</div></div>';
+                }
+
+                var registros = data.registros || [];
+                if (count) count.textContent = registros.length + ' registro(s)';
+                if (!registros.length) {
+                    if (tbody) tbody.innerHTML = '';
+                    if (empty) empty.style.display = 'block';
+                    return;
+                }
+
+                var QUALIDADE = { paciente: 'Paciente', familiar: 'Familiar', responsavel_legal: 'Resp. Legal' };
+                var html = '';
+                for (var i = 0; i < registros.length; i++) {
+                    var reg = registros[i];
+                    var badgeAssin = reg.tem_assinatura
+                        ? '<span class="badge-assin badge-assin-sim"><i class="fas fa-check"></i> Sim</span>'
+                        : '<span class="badge-assin badge-assin-nao"><i class="fas fa-times"></i> Não</span>';
+                    var qualLabel = reg.qualidade_signatario ? (QUALIDADE[reg.qualidade_signatario] || reg.qualidade_signatario) : '';
+                    html += '<tr' + (reg.tem_assinatura ? '' : ' class="linha-sem-assin"') + '>' +
+                        '<td><span class="cod-mini">' + escHtml(reg.codigo_entrega || '--') + '</span></td>' +
+                        '<td style="white-space:nowrap;">' + escHtml(reg.dt_entrega || '--') + '</td>' +
+                        '<td>' + escHtml(reg.nm_paciente || '--') + '</td>' +
+                        '<td>' + escHtml((reg.leito || '--') + ' / ' + (reg.setor_nome || '--')) + '</td>' +
+                        '<td>' + escHtml((reg.tipo_dieta_nome || '--') + ' — ' + (reg.refeicao_nome || '--')) + '</td>' +
+                        '<td>' + escHtml(reg.responsavel_nome || '--') + '</td>' +
+                        '<td style="text-align:center;">' + badgeAssin + '</td>' +
+                        '<td>' + (reg.nm_signatario ? escHtml(reg.nm_signatario) + (qualLabel ? ' <span class="badge-qual-mini">' + escHtml(qualLabel) + '</span>' : '') : '--') + '</td>' +
+                        '<td style="white-space:nowrap;">' + escHtml(reg.nm_signatario_cpf || '--') + '</td>' +
+                        '<td>' + escHtml(reg.coletado_por_nome_equipe || '--') + '</td>' +
+                        '</tr>';
+                }
+                if (tbody) tbody.innerHTML = html;
+            })
+            .catch(function (e) {
+                console.error('rel-assinaturas', e);
+                if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="tabela-vazio">Erro ao carregar.</td></tr>';
+            });
+    }
+
     function exportarCSV() {
         var q = _buildRelQueryParams();
         var f = _getRelFiltros();
+        if (Estado.relAbaAtiva === 'assinaturas') {
+            var setor = (document.getElementById('rel-assin-setor') || {}).value || '';
+            var apenasSem = (document.getElementById('rel-assin-apenas-sem') || {}).checked ? '1' : '0';
+            if (setor)       q += '&setor='      + encodeURIComponent(setor);
+            if (apenasSem === '1') q += '&apenas_sem=1';
+            window.location.href = CONFIG.apiBase + '/rel-assinaturas/exportar?' + q;
+            return;
+        }
         if (Estado.relAbaAtiva === 'historico') {
             if (f.status) q += '&status='        + encodeURIComponent(f.status);
             if (f.dieta)  q += '&tipo_dieta_id=' + encodeURIComponent(f.dieta);

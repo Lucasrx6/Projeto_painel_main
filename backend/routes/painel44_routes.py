@@ -15,6 +15,7 @@ _HUB_PAINEIS = {
     'painel34', 'painel35', 'painel36',
     'painel41', 'painel42', 'painel43',
     'painel45', 'painel46', 'painel47',
+    'painel48',
 }
 
 # ============================================================
@@ -77,6 +78,16 @@ _SUBSISTEMAS = [
         'paineis': [
             {'nome': 'Abrir Chamado',   'icone': 'fa-ticket',  'url': '/painel/painel14', 'permissao': 'painel14'},
             {'nome': 'Painel Helpdesk', 'icone': 'fa-desktop', 'url': '/painel/painel15', 'permissao': 'painel15'},
+        ]
+    },
+    {
+        'id': 'assinatura_digital',
+        'grupo': 'Assinatura Digital',
+        'descricao': 'Coleta e armazenamento de assinaturas eletrônicas (AES) com validade legal interna',
+        'icone': 'fa-signature',
+        'cor': '#7C3AED',
+        'paineis': [
+            {'nome': 'HUB de Assinaturas', 'icone': 'fa-pen-nib', 'url': '/painel/painel48', 'permissao': 'painel48'},
         ]
     },
 ]

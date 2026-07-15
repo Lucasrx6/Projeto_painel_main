@@ -358,13 +358,15 @@ body {
 .btn-card:active  { transform: scale(.96); }
 .btn-card:hover   { opacity: .85; }
 
-.btn-aceitar          { background: #17A2B8; }
-.btn-preparo          { background: #E67E00; }
-.btn-pronto           { background: #8BC34A; }
-.btn-entrega          { background: #6F42C1; }
+.btn-aceitar           { background: #17A2B8; }
+.btn-preparo           { background: #E67E00; }
+.btn-pronto            { background: #8BC34A; }
+.btn-entrega           { background: #6F42C1; }
 .btn-confirmar-entrega { background: #6F42C1; }
-.btn-cancelar         { background: none; border: 1px solid #DC3545; color: #DC3545; flex: 0 0 auto; padding: 6px 10px; }
-.btn-cancelar:hover   { background: #DC3545; color: #fff; }
+.btn-assinar-digital   { background: #198754; }
+.btn-assinar-digital:hover { opacity: 1; background: #146c43; }
+.btn-cancelar          { background: none; border: 1px solid #DC3545; color: #DC3545; flex: 0 0 auto; padding: 6px 10px; }
+.btn-cancelar:hover    { background: #DC3545; color: #fff; }
 
 .card-nr-atend {
     font-size: 10px;

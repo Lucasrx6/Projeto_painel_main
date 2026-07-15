@@ -260,6 +260,48 @@ def api_p42_entregar(sid):
 
 
 # =========================================================
+# ENTREGAR COM ASSINATURA DIGITAL (em_entrega → entregue)
+# =========================================================
+
+@painel42_bp.route('/api/paineis/painel42/solicitacoes/<int:sid>/entregar-assinado', methods=['PUT'])
+@login_required
+def api_p42_entregar_assinado(sid):
+    dados        = request.get_json(silent=True) or {}
+    assinatura_id = dados.get('assinatura_id')
+
+    if not assinatura_id or not str(assinatura_id).isdigit():
+        return jsonify({'success': False, 'error': 'assinatura_id inválido'}), 400
+
+    assinatura_id = int(assinatura_id)
+
+    try:
+        with get_db_cursor() as cursor:
+            # Verifica que a assinatura existe e pertence ao contexto correto
+            cursor.execute(
+                "SELECT id FROM assinaturas_digitais WHERE id = %s AND contexto = 'entrega_refeicao'",
+                (assinatura_id,)
+            )
+            if not cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Assinatura digital não encontrada ou inválida'}), 404
+
+            cursor.execute("""
+                UPDATE nutricao_solicitacoes
+                SET status = 'entregue',
+                    dt_entrega = NOW(),
+                    atualizado_em = NOW()
+                WHERE id = %s AND status = 'em_entrega'
+            """, (sid,))
+
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Solicitação não encontrada ou status inválido'}), 400
+
+        return jsonify({'success': True, 'novo_status': 'entregue'})
+    except Exception as e:
+        current_app.logger.error('Erro entregar-assinado p42 id=%s: %s', sid, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao confirmar entrega assinada'}), 500
+
+
+# =========================================================
 # CANCELAR (qualquer etapa exceto entregue)
 # =========================================================
 

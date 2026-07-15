@@ -286,6 +286,8 @@ var PAINEL_VERSAO = '1.0.52';
             colsVisiveis = ['aguardando', 'aceito'];
         } else if (vis === 'cozinha') {
             colsVisiveis = ['em_preparo', 'pronto', 'em_entrega'];
+        } else if (vis === 'entrega_refeicao') {
+            colsVisiveis = ['em_entrega'];
         } else {
             colsVisiveis = COLS;
         }
@@ -360,10 +362,16 @@ var PAINEL_VERSAO = '1.0.52';
                     escHtml(s.nm_paciente) + '">' +
                     '<i class="fa-solid fa-xmark"></i></button>';
         } else if (s.status === 'em_entrega') {
-            acoes = '<button class="btn-card btn-confirmar-entrega" data-id="' + s.id +
+            acoes = '<button class="btn-card btn-assinar-digital" data-id="' + s.id +
+                    '" data-nm="' + escHtml(s.nm_paciente) +
+                    '" data-nr="' + escHtml(s.nr_atendimento || '') +
+                    '" data-refeicao="' + escHtml(s.refeicao_nome || '') +
+                    '" data-dieta="' + escHtml(s.tipo_dieta_nome || '') + '">' +
+                    '<i class="fa-solid fa-signature"></i> Assinar Digital</button>' +
+                    '<button class="btn-card btn-confirmar-entrega" data-id="' + s.id +
                     '" data-codigo="' + escHtml(s.nr_atendimento) + '" data-desc="' +
                     escHtml(s.nm_paciente) + '">' +
-                    '<i class="fa-solid fa-box-open"></i> Confirmar Entrega</button>' +
+                    '<i class="fa-solid fa-box-open"></i> Confirmar</button>' +
                     '<button class="btn-card btn-cancelar" data-id="' + s.id + '" data-desc="' +
                     escHtml(s.nm_paciente) + '">' +
                     '<i class="fa-solid fa-xmark"></i></button>';
@@ -437,6 +445,15 @@ var PAINEL_VERSAO = '1.0.52';
         });
         bindBtn('.btn-entrega', function (el) {
             executarAcao(el.getAttribute('data-id'), 'iniciar-entrega');
+        });
+        bindBtn('.btn-assinar-digital', function (el) {
+            abrirAssinaturaDigital(
+                el.getAttribute('data-id'),
+                el.getAttribute('data-nm'),
+                el.getAttribute('data-nr'),
+                el.getAttribute('data-refeicao'),
+                el.getAttribute('data-dieta')
+            );
         });
         bindBtn('.btn-confirmar-entrega', function (el) {
             abrirModalEntregar(
@@ -1245,8 +1262,53 @@ var PAINEL_VERSAO = '1.0.52';
     }
 
     // =========================================================
+    // ASSINATURA DIGITAL (Painel 48 integração)
+    // =========================================================
+    function abrirAssinaturaDigital(sid, nm, nr, refeicao, dieta) {
+        var infoExtra = (refeicao || '');
+        if (dieta) infoExtra = dieta + (refeicao ? ' — ' + refeicao : '');
+        var url = '/painel/painel48'
+            + '?contexto=entrega_refeicao'
+            + '&ref_id=' + encodeURIComponent(sid || '')
+            + '&ref_tabela=nutricao_solicitacoes'
+            + '&nm_paciente=' + encodeURIComponent(nm || '')
+            + '&nr_atendimento=' + encodeURIComponent(nr || '')
+            + '&info_extra=' + encodeURIComponent(infoExtra);
+        window.open(url, 'p48_assin_' + sid, 'width=680,height=700,toolbar=0,menubar=0,location=0,scrollbars=1');
+    }
+
+    function confirmarEntregaAssinado(sid, assinaturaId) {
+        fetch(CONFIG.apiBase + '/solicitacoes/' + sid + '/entregar-assinado', {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assinatura_id: assinaturaId })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                carregarFila();
+                carregarHistorico();
+            } else {
+                alert('Erro ao confirmar entrega assinada: ' + (data.error || ''));
+            }
+        })
+        .catch(function (e) {
+            console.error('entregar-assinado', e);
+            alert('Falha na conexão ao confirmar entrega assinada.');
+        });
+    }
+
+    // =========================================================
     // START
     // =========================================================
     window.addEventListener('DOMContentLoaded', inicializar);
+    window.addEventListener('message', function (evt) {
+        if (evt.origin !== window.location.origin) return;
+        var msg = evt.data || {};
+        if (msg.tipo === 'assinatura_ok' && msg.contexto === 'entrega_refeicao' && msg.ref_id) {
+            confirmarEntregaAssinado(msg.ref_id, msg.id);
+        }
+    });
 
 })();

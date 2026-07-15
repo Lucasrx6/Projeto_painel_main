@@ -727,6 +727,155 @@ def api_p43_restricoes_delete(rid):
 
 
 # =========================================================
+# RELATÓRIO DE ASSINATURAS DIGITAIS
+# =========================================================
+
+@painel43_bp.route('/api/paineis/painel43/rel-assinaturas', methods=['GET'])
+@login_required
+def api_p43_rel_assinaturas():
+    setor      = request.args.get('setor') or None
+    apenas_sem = request.args.get('apenas_sem') == '1'
+
+    fd_where, fd_params = _filtro_data(request.args, dias_default=7)
+    # qualifica 'criado_em' com alias ns para evitar ambiguidade com assinaturas_digitais
+    fd_where = fd_where.replace('criado_em', 'ns.criado_em')
+
+    where  = ["ns.status = 'entregue'", fd_where]
+    params = fd_params[:]
+
+    if setor:
+        where.append('ns.setor_nome ILIKE %s')
+        params.append('%{}%'.format(setor))
+    if apenas_sem:
+        where.append('ad.id IS NULL')
+
+    where_sql = ' AND '.join(where)
+
+    # Resumo (sem apenas_sem, sem LIMIT — mesma janela de data/setor)
+    sum_where  = ["ns.status = 'entregue'", fd_where]
+    sum_params = fd_params[:]
+    if setor:
+        sum_where.append('ns.setor_nome ILIKE %s')
+        sum_params.append('%{}%'.format(setor))
+
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    ns.id, ns.codigo_entrega, ns.nm_paciente, ns.leito, ns.setor_nome,
+                    ns.tipo_dieta_nome, ns.refeicao_nome, ns.responsavel_nome,
+                    TO_CHAR(ns.dt_entrega, 'DD/MM/YYYY HH24:MI') AS dt_entrega,
+                    CASE WHEN ad.id IS NOT NULL THEN TRUE ELSE FALSE END AS tem_assinatura,
+                    ad.id     AS assinatura_id,
+                    ad.nm_signatario,
+                    ad.nm_signatario_cpf,
+                    ad.qualidade_signatario,
+                    ad.coletado_por_nome_equipe
+                FROM nutricao_solicitacoes ns
+                LEFT JOIN assinaturas_digitais ad
+                    ON ad.ref_id = ns.id
+                    AND ad.contexto = 'entrega_refeicao'
+                WHERE """ + where_sql + """
+                ORDER BY ns.dt_entrega DESC
+                LIMIT 500
+            """, params)
+            registros = [dict(r) for r in cursor.fetchall()]
+
+            cursor.execute("""
+                SELECT
+                    COUNT(*)       AS total,
+                    COUNT(ad.id)   AS com_assinatura,
+                    COUNT(*) - COUNT(ad.id) AS sem_assinatura
+                FROM nutricao_solicitacoes ns
+                LEFT JOIN assinaturas_digitais ad
+                    ON ad.ref_id = ns.id
+                    AND ad.contexto = 'entrega_refeicao'
+                WHERE """ + ' AND '.join(sum_where), sum_params)
+            resumo = dict(cursor.fetchone() or {})
+
+        return jsonify({'success': True, 'registros': registros, 'resumo': resumo})
+    except Exception as e:
+        current_app.logger.error('Erro rel-assinaturas p43: %s', e, exc_info=True)
+        msg = str(e)
+        if 'assinaturas_digitais' in msg or 'nm_signatario_cpf' in msg or 'does not exist' in msg.lower():
+            return jsonify({
+                'success': False,
+                'migration_pendente': True,
+                'error': 'Execute os scripts painel48_create_tables.sql e painel48_entrega_refeicao.sql no banco para habilitar este relatório.'
+            }), 503
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+
+
+@painel43_bp.route('/api/paineis/painel43/rel-assinaturas/exportar', methods=['GET'])
+@login_required
+def api_p43_rel_assinaturas_exportar():
+    setor      = request.args.get('setor') or None
+    apenas_sem = request.args.get('apenas_sem') == '1'
+
+    fd_where, fd_params = _filtro_data(request.args, dias_default=7)
+    fd_where = fd_where.replace('criado_em', 'ns.criado_em')
+
+    where  = ["ns.status = 'entregue'", fd_where]
+    params = fd_params[:]
+
+    if setor:
+        where.append('ns.setor_nome ILIKE %s')
+        params.append('%{}%'.format(setor))
+    if apenas_sem:
+        where.append('ad.id IS NULL')
+
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    ns.id, ns.codigo_entrega, ns.nm_paciente, ns.leito, ns.setor_nome,
+                    ns.tipo_dieta_nome, ns.refeicao_nome, ns.responsavel_nome,
+                    TO_CHAR(ns.dt_entrega, 'DD/MM/YYYY HH24:MI') AS dt_entrega,
+                    CASE WHEN ad.id IS NOT NULL THEN 'Sim' ELSE 'Não' END AS assinado,
+                    ad.nm_signatario,
+                    ad.nm_signatario_cpf,
+                    ad.qualidade_signatario,
+                    ad.coletado_por_nome_equipe
+                FROM nutricao_solicitacoes ns
+                LEFT JOIN assinaturas_digitais ad
+                    ON ad.ref_id = ns.id
+                    AND ad.contexto = 'entrega_refeicao'
+                WHERE """ + ' AND '.join(where) + """
+                ORDER BY ns.dt_entrega DESC
+            """, params)
+            rows = cursor.fetchall()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            'ID', 'Código', 'Paciente', 'Leito', 'Setor',
+            'Dieta', 'Refeição', 'Responsável', 'Entregue em',
+            'Assinado', 'Assinante', 'CPF Assinante', 'Qualidade', 'Coletado por'
+        ])
+        for r in rows:
+            writer.writerow([
+                r['id'], r['codigo_entrega'], r['nm_paciente'], r['leito'] or '',
+                r['setor_nome'] or '', r['tipo_dieta_nome'] or '', r['refeicao_nome'] or '',
+                r['responsavel_nome'] or '', r['dt_entrega'] or '',
+                r['assinado'],
+                r['nm_signatario'] or '', r['nm_signatario_cpf'] or '',
+                r['qualidade_signatario'] or '', r['coletado_por_nome_equipe'] or ''
+            ])
+
+        bom      = b'\xef\xbb\xbf'
+        conteudo = bom + output.getvalue().encode('utf-8')
+        nome     = 'assinaturas_entrega_{}.csv'.format(datetime.now().strftime('%d%m%Y'))
+        return Response(
+            conteudo,
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename="{}"'.format(nome)}
+        )
+    except Exception as e:
+        current_app.logger.error('Erro rel-assinaturas exportar p43: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao exportar'}), 500
+
+
+# =========================================================
 # CONFIG — ETIQUETA (Impressão)
 # =========================================================
 
