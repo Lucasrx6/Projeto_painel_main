@@ -3,6 +3,13 @@
 // ========================================
 
 var PAINEL_VERSAO = '1.0.18';
+
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(v);
+    return d.innerHTML;
+}
 const BASE_URL = window.location.origin;
 
 const CONFIG = {
@@ -248,15 +255,15 @@ function criarLinhaTabela(registro) {
 
     return `
         <tr>
-            <td><strong>${leito}</strong></td>
-            <td>${registro.nm_setor || '-'}</td>
-            <td>${registro.nr_atendimento || '-'}</td>
-            <td>${nomeFormatado}</td>
-            <td>${idadeFormatada}</td>
-            <td>${registro.qt_dia_permanencia || '-'}</td>
+            <td><strong>${escHtml(leito)}</strong></td>
+            <td>${escHtml(registro.nm_setor) || '-'}</td>
+            <td>${escHtml(registro.nr_atendimento) || '-'}</td>
+            <td>${escHtml(nomeFormatado)}</td>
+            <td>${escHtml(idadeFormatada)}</td>
+            <td>${escHtml(registro.qt_dia_permanencia) || '-'}</td>
             <td>
                 <div class="exames-list">
-                    ${exames.map(e => `<span class="badge-exame">${e}</span>`).join('')}
+                    ${exames.map(function(e) { return '<span class="badge-exame">' + escHtml(e) + '</span>'; }).join('')}
                 </div>
             </td>
         </tr>

@@ -423,7 +423,7 @@ def gerar_analise():
         })
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao chamar IA: ' + str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro ao processar análise'}), 500
 
 
 # ============================================================
@@ -503,7 +503,7 @@ def sugestao_abordagem():
         })
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao chamar IA: ' + str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro ao processar análise'}), 500
 
 
 # ============================================================

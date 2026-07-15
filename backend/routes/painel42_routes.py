@@ -523,4 +523,4 @@ def api_p42_imprimir_zpl():
         return jsonify({'success': True, 'impressora': printer_name})
     except Exception as e:
         current_app.logger.error('Erro impressao ZPL: %s', e, exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro ao enviar impressão'}), 500

@@ -74,7 +74,7 @@ function registrarServiceWorker() {
 function getNextUrl() {
     var params = new URLSearchParams(window.location.search);
     var next = params.get('next');
-    if (next && (next.startsWith('/') || next.startsWith(window.location.origin))) return next;
+    if (next && (/^\/[^\/]/.test(next) || next.startsWith(window.location.origin))) return next;
     return null;
 }
 

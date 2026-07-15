@@ -4,6 +4,13 @@
 // ========================================
 
 var PAINEL_VERSAO = '1.0.41';
+
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(v);
+    return d.innerHTML;
+}
 var BASE_URL = window.location.origin;
 
 var CONFIG = {
@@ -173,7 +180,7 @@ function atualizarListaSetores(setores) {
         var ocupados = parseInt(setor.leitos_ocupados) || 0;
         var livres = parseInt(setor.leitos_livres) || 0;
         var nomeSetor = setor.nm_setor || 'Setor Desconhecido';
-        var nomeSetorEscapado = nomeSetor.replace(/'/g, "\\'");
+        var nomeSetorEsc = escHtml(nomeSetor);
 
         // Define classe baseada na taxa de ocupacao
         var classeOcupacao = '';
@@ -197,8 +204,8 @@ function atualizarListaSetores(setores) {
         }
 
         html +=
-            '<div class="setor-card ' + classeOcupacao + '" onclick="abrirDetalhesSetor(\'' + nomeSetorEscapado + '\')" style="cursor: pointer;">' +
-                '<div class="setor-card-nome">' + nomeSetor + '</div>' +
+            '<div class="setor-card ' + classeOcupacao + '" data-setor="' + nomeSetorEsc + '" onclick="abrirDetalhesSetor(this.dataset.setor)" style="cursor: pointer;">' +
+                '<div class="setor-card-nome">' + nomeSetorEsc + '</div>' +
                 tempBadge +
                 '<div class="setor-card-taxa">' + taxaOcupacao.toFixed(0) + '%</div>' +
                 '<div class="setor-card-label">Ocupação</div>' +

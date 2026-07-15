@@ -559,15 +559,17 @@ var PAINEL_VERSAO = '1.0.46';
             var isCritico = minutosAberto >= CONFIG.tempoAlertaCriticoMin;
             var dataAbertura = ch.data_abertura ? formatarDataHora(ch.data_abertura) : '--';
 
-            var classeCard = 'chamado-card status-' + ch.status;
+            var statusSafe    = String(ch.status     || '').replace(/[^\w-]/g, '');
+            var prioridadeSafe= String(ch.prioridade || '').replace(/[^\w-]/g, '');
+            var classeCard = 'chamado-card status-' + statusSafe;
             if (isNovo) classeCard += ' chamado-novo';
 
-            var html = '<div class="' + classeCard + '" data-id="' + ch.id + '">';
+            var html = '<div class="' + classeCard + '" data-id="' + parseInt(ch.id || 0) + '">';
             html += '<div class="chamado-card-header">';
             html += '  <div class="chamado-card-titulo">';
             html += '    <span class="chamado-kora"><i class="fas fa-ticket-alt"></i> #' + escapeHtml(ch.numero_kora) + '</span>';
-            html += '    <span class="chamado-status-badge badge-' + ch.status + '">' + formatarStatus(ch.status) + '</span>';
-            html += '    <span class="chamado-prioridade-badge prioridade-' + ch.prioridade + '">' + ch.prioridade + '</span>';
+            html += '    <span class="chamado-status-badge badge-' + statusSafe + '">' + formatarStatus(ch.status) + '</span>';
+            html += '    <span class="chamado-prioridade-badge prioridade-' + prioridadeSafe + '">' + escapeHtml(ch.prioridade) + '</span>';
             html += '  </div>';
             html += '  <div class="chamado-tempo' + (isCritico ? ' tempo-critico' : '') + '">';
             html += '    <i class="fas fa-stopwatch"></i> ' + (ch.tempo_aberto_formatado || '00:00');
@@ -768,7 +770,8 @@ var PAINEL_VERSAO = '1.0.46';
                     if (data.data.length === 0) { timeline.innerHTML = '<p style="text-align:center;color:#999;">Nenhum registro</p>'; return; }
                     timeline.innerHTML = data.data.map(function (item) {
                         var dataReg = item.data_registro ? formatarDataHora(item.data_registro) : '--';
-                        return '<div class="timeline-item acao-' + (item.acao || '') + '">'
+                        var acaoSafe = String(item.acao || '').replace(/[^\w-]/g, '');
+                        return '<div class="timeline-item acao-' + acaoSafe + '">'
                             + '<div class="timeline-acao">' + formatarAcao(item.acao) + '</div>'
                             + '<div class="timeline-descricao">' + escapeHtml(item.descricao || '') + '</div>'
                             + '<div class="timeline-meta">' + escapeHtml(item.usuario || '') + ' - ' + dataReg + '</div>'

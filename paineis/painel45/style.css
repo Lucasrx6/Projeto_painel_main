@@ -127,6 +127,39 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700;
 }
 
+/* ── AGENDA POR DIA ──────────────────────────────── */
+.agenda-dia { margin-bottom: 24px; }
+
+.agenda-dia-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-radius: var(--radius);
+    background: #f1f3f5; border-left: 5px solid #adb5bd;
+    margin-bottom: 8px; box-shadow: var(--sombra);
+}
+.agenda-dia-label {
+    flex: 1; font-weight: 700; font-size: 14px; color: var(--texto);
+    display: flex; align-items: center; gap: 7px;
+}
+.agenda-dia-pendentes {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 20px; background: #dc3545; color: #fff; white-space: nowrap;
+}
+/* Hoje — verde */
+.agenda-dia-hoje > .agenda-dia-header { background: #d1e7dd; border-left-color: #198754; }
+.agenda-dia-hoje > .agenda-dia-header .agenda-dia-label { color: #0f5132; }
+/* Futuro — azul-claro */
+.agenda-dia-futuro > .agenda-dia-header { background: #cff4fc; border-left-color: #0dcaf0; }
+.agenda-dia-futuro > .agenda-dia-header .agenda-dia-label { color: #055160; }
+/* Passado — cinza */
+.agenda-dia-passado > .agenda-dia-header { background: #f8f9fa; border-left-color: #6c757d; opacity: 0.85; }
+/* Sem data — amarelo */
+.agenda-dia-sem-data > .agenda-dia-header { background: #fff3cd; border-left-color: #e0a800; }
+.agenda-dia-sem-data > .agenda-dia-header .agenda-dia-label { color: #664d03; }
+/* Indentação visual dos setores dentro do dia */
+.agenda-dia .setor-grupo { margin-bottom: 6px; }
+.agenda-dia .setor-grupo:last-child { margin-bottom: 0; }
+
 /* ── TABELA DE AGENDAMENTOS ──────────────────────── */
 .tabela-ag-wrapper { overflow-x: auto; }
 
@@ -207,6 +240,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .badge-radio-nolo     { background: #d1ecf1; color: #0c5460; }
 .badge-radio-exec     { background: #ffe5d0; color: #7c3b00; }
 .badge-radio-conc     { background: #d1e7dd; color: #0f5132; }
+.badge-sistema        { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #e9ecef; color: #495057; border: 1px solid #ced4da; cursor: help; }
 
 /* ── BADGE TIPO EXAME ────────────────────────────── */
 .badge-tipo {

@@ -3,6 +3,13 @@
 // ========================================
 
 var PAINEL_VERSAO = '1.0.15';
+
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(v);
+    return d.innerHTML;
+}
 const BASE_URL = window.location.origin;
 
 const CONFIG = {
@@ -472,49 +479,49 @@ function criarLinhaCirurgia(cirurgia) {
         <tr>
             <td>
                 <div class="status-container">
-                    <div class="status-icon ${statusIcon.classe}" title="${statusIcon.titulo}">
+                    <div class="status-icon ${statusIcon.classe}" title="${escHtml(statusIcon.titulo)}">
                         <i class="${statusIcon.icone}"></i>
                     </div>
-                    <div class="status-texto">${statusIcon.texto}</div>
+                    <div class="status-texto">${escHtml(statusIcon.texto)}</div>
                 </div>
             </td>
             <td>
                 <div class="previsao-hora">
-                    ${cirurgia.previsao_termino || '-'}
+                    ${escHtml(cirurgia.previsao_termino) || '-'}
                 </div>
             </td>
             <td>
-                <div class="inicio-cirurgia" title="${cirurgia.inicio_cirurgia || 'Não iniciada'}">
-                    <i class="fas fa-play-circle"></i> ${inicioFormatado}
+                <div class="inicio-cirurgia" title="${escHtml(cirurgia.inicio_cirurgia) || 'Não iniciada'}">
+                    <i class="fas fa-play-circle"></i> ${escHtml(inicioFormatado)}
                 </div>
             </td>
             <td>
                 <div class="tempo-cirurgia ${cirurgia.cirurgia_em_andamento ? 'tempo-ativo' : ''}"
                      title="Tempo decorrido">
-                    <i class="fas fa-hourglass-half"></i> ${tempoFormatado}
+                    <i class="fas fa-hourglass-half"></i> ${escHtml(tempoFormatado)}
                 </div>
             </td>
             <td>
-                <span class="badge-sala" title="${cirurgia.setor_cirurgia || '-'}">
-                    ${cirurgia.setor_cirurgia || '-'}
+                <span class="badge-sala" title="${escHtml(cirurgia.setor_cirurgia) || '-'}">
+                    ${escHtml(cirurgia.setor_cirurgia) || '-'}
                 </span>
             </td>
             <td>
-                <div class="paciente-nome" title="${cirurgia.nm_paciente_pf || '-'}">
-                    ${nomePacienteFormatado}
+                <div class="paciente-nome" title="${escHtml(cirurgia.nm_paciente_pf) || '-'}">
+                    ${escHtml(nomePacienteFormatado)}
                 </div>
-                <span class="paciente-info" title="${cirurgia.ds_convenio || '-'} • ${cirurgia.ds_idade_abrev || '-'}">
-                    ${cirurgia.ds_convenio || '-'} • ${cirurgia.ds_idade_abrev || '-'}
+                <span class="paciente-info" title="${escHtml(cirurgia.ds_convenio) || '-'} • ${escHtml(cirurgia.ds_idade_abrev) || '-'}">
+                    ${escHtml(cirurgia.ds_convenio) || '-'} • ${escHtml(cirurgia.ds_idade_abrev) || '-'}
                 </span>
             </td>
             <td>
-                <div class="medico-nome" title="${cirurgia.nm_medico || '-'}">
-                    ${nomeMedicoFormatado}
+                <div class="medico-nome" title="${escHtml(cirurgia.nm_medico) || '-'}">
+                    ${escHtml(nomeMedicoFormatado)}
                 </div>
             </td>
             <td>
-                <div class="cirurgia-desc" title="${cirurgia.ds_proc_cir || '-'}">
-                    ${cirurgia.ds_proc_cir || '-'}
+                <div class="cirurgia-desc" title="${escHtml(cirurgia.ds_proc_cir) || '-'}">
+                    ${escHtml(cirurgia.ds_proc_cir) || '-'}
                 </div>
             </td>
         </tr>

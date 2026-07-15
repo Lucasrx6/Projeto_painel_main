@@ -21,7 +21,8 @@
     var Estado = {
         tabAtiva: 'fila',
         dataConsulta: (function() { var d = new Date(); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2); })(),
-        fila: { agendados: [], pendentes: [] },
+        fila: { agendados: [], pendentes: [], recusados: [] },
+        filaRecusadosAberto: false,
         slots: [],
         exames: [],
         setoresExamesSelecionados: [],
@@ -235,6 +236,8 @@
 
         // Col: Status
         html += '<td>' + badgeStatus(item.status);
+        if (item.auto_finalizado)
+            html += '<br><span class="badge-sistema" title="Concluído automaticamente pelo sistema por falta de ação do usuário"><i class="fas fa-robot"></i> Sistema</span>';
         var trBadge = badgeTransporte(item);
         if (trBadge) html += '<br>' + trBadge;
         html += '</td>';
@@ -276,22 +279,27 @@
     function renderizarFila() {
         var agendados = Estado.fila.agendados;
         var pendentes = Estado.fila.pendentes;
+        var recusados = Estado.fila.recusados;
 
-        var loading = document.getElementById('fila-loading');
-        var vazio   = document.getElementById('fila-vazia');
-        var secAg   = document.getElementById('secao-agendados');
-        var secPend = document.getElementById('secao-pendentes');
-        var gridAg  = document.getElementById('grid-agendados');
-        var gridPend= document.getElementById('grid-pendentes');
-        var cntAg   = document.getElementById('count-agendados');
-        var cntPend = document.getElementById('count-pendentes');
+        var loading     = document.getElementById('fila-loading');
+        var vazio       = document.getElementById('fila-vazia');
+        var secAg       = document.getElementById('secao-agendados');
+        var secPend     = document.getElementById('secao-pendentes');
+        var secRecus    = document.getElementById('secao-recusados');
+        var gridAg      = document.getElementById('grid-agendados');
+        var gridPend    = document.getElementById('grid-pendentes');
+        var gridRecus   = document.getElementById('grid-recusados');
+        var cntAg       = document.getElementById('count-agendados');
+        var cntPend     = document.getElementById('count-pendentes');
+        var cntRecus    = document.getElementById('count-recusados');
 
         if (loading) loading.style.display = 'none';
 
-        if (!agendados.length && !pendentes.length) {
+        if (!agendados.length && !pendentes.length && !recusados.length) {
             if (vazio) vazio.style.display = '';
-            if (secAg) secAg.style.display = 'none';
-            if (secPend) secPend.style.display = 'none';
+            if (secAg)    secAg.style.display    = 'none';
+            if (secPend)  secPend.style.display  = 'none';
+            if (secRecus) secRecus.style.display = 'none';
             return;
         }
         if (vazio) vazio.style.display = 'none';
@@ -322,6 +330,34 @@
             if (secPend) secPend.style.display = '';
         } else {
             if (secPend) secPend.style.display = 'none';
+        }
+
+        // ── Recusados (somente leitura, recolhidos por padrão) ────
+        if (recusados.length) {
+            if (cntRecus) cntRecus.textContent = recusados.length;
+            var htmlRec = '<div class="tabela-fila-wrapper"><table class="tabela-fila tabela-recusados">'
+                        + '<thead><tr><th>Paciente</th><th>Exame</th><th>Setor / Leito</th>'
+                        + '<th>Recusado em</th><th>Motivo da recusa</th></tr></thead><tbody>';
+            for (var k = 0; k < recusados.length; k++) {
+                var rec = recusados[k];
+                htmlRec += '<tr class="linha-recusado">'
+                    + '<td><strong>' + escHtml(rec.nm_paciente || '—') + '</strong></td>'
+                    + '<td>' + escHtml(rec.ds_procedimento || '—') + '</td>'
+                    + '<td>' + escHtml((rec.setor_origem_nome || '') + (rec.leito_origem ? ' · ' + rec.leito_origem : '')) + '</td>'
+                    + '<td style="white-space:nowrap;">' + escHtml(rec.dt_recusa ? new Date(rec.dt_recusa).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—') + '</td>'
+                    + '<td>' + escHtml(rec.motivo_recusa || '—') + '</td>'
+                    + '</tr>';
+            }
+            htmlRec += '</tbody></table></div>';
+            if (gridRecus) {
+                gridRecus.innerHTML = htmlRec;
+                gridRecus.style.display = Estado.filaRecusadosAberto ? '' : 'none';
+            }
+            var iconToggle = document.getElementById('icon-toggle-recusados');
+            if (iconToggle) iconToggle.className = Estado.filaRecusadosAberto ? 'fas fa-chevron-down' : 'fas fa-chevron-right';
+            if (secRecus) secRecus.style.display = '';
+        } else {
+            if (secRecus) secRecus.style.display = 'none';
         }
     }
 
@@ -397,9 +433,12 @@
         html += '<div class="card-ex-badges">';
         html += badgeTipoExame(ex.tipo_exame);
         if (concluidoInterno) {
-            html += '<span class="badge-status badge-concluido"><i class="fas fa-check-double"></i> Concluído</span>'
-                  + '<span class="badge-status" style="background:#dee2e6;color:#6c757d;font-size:10px;">'
-                  + '<i class="fas fa-sync-alt"></i> Aguard. Tasy</span>';
+            html += '<span class="badge-status badge-concluido"><i class="fas fa-check-double"></i> Concluído</span>';
+            if (ex.auto_finalizado_sistema)
+                html += '<span class="badge-sistema" title="Concluído automaticamente pelo sistema por falta de ação do usuário"><i class="fas fa-robot"></i> Sistema</span>';
+            else
+                html += '<span class="badge-status" style="background:#dee2e6;color:#6c757d;font-size:10px;">'
+                      + '<i class="fas fa-sync-alt"></i> Aguard. Tasy</span>';
         } else if (radioId) {
             html += ' ' + badgeStatus(radioSt);
             if (slotHora) html += '<span class="badge-slot-hora"><i class="fas fa-clock"></i> ' + slotHora + '</span>';
@@ -584,6 +623,12 @@
                         if (rst !== 'concluido' && rst !== 'cancelado')
                             html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + rid + ',\'cancelado\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-times"></i></button>';
                         html += '</td>';
+                    } else if (item.concluido_interno) {
+                        html += '<td><span class="badge-status badge-concluido"><i class="fas fa-check-double"></i> Concluído</span>';
+                        if (item.auto_finalizado_sistema)
+                            html += ' <span class="badge-sistema" title="Concluído automaticamente pelo sistema por falta de ação do usuário"><i class="fas fa-robot"></i> Sistema</span>';
+                        html += '</td>';
+                        html += '<td style="color:#6c757d;font-size:11px">—</td>';
                     } else {
                         html += '<td><span class="badge-status badge-pendente" style="opacity:.6"><i class="fas fa-minus"></i> Sem controle</span></td>';
                         html += '<td style="color:#6c757d;font-size:11px">—</td>';
@@ -706,6 +751,7 @@
                 if (d.success) {
                     Estado.fila.agendados = d.agendados || [];
                     Estado.fila.pendentes = d.pendentes || [];
+                    Estado.fila.recusados = d.recusados || [];
                 }
                 renderizarFila();
                 setStatusDot(false);
@@ -1536,6 +1582,16 @@
         if (btnToggleTodos) btnToggleTodos.addEventListener('click', function() {
             Estado.mostrarTodosExames = !Estado.mostrarTodosExames;
             renderizarExamesRadio();
+        });
+
+        // Toggle seção recusados (recolher/expandir)
+        var btnToggleRecus = document.getElementById('btn-toggle-recusados');
+        if (btnToggleRecus) btnToggleRecus.addEventListener('click', function() {
+            Estado.filaRecusadosAberto = !Estado.filaRecusadosAberto;
+            var grid = document.getElementById('grid-recusados');
+            var icon = document.getElementById('icon-toggle-recusados');
+            if (grid) grid.style.display = Estado.filaRecusadosAberto ? '' : 'none';
+            if (icon) icon.className = 'fas ' + (Estado.filaRecusadosAberto ? 'fa-chevron-down' : 'fa-chevron-right');
         });
 
         // Botões gerais

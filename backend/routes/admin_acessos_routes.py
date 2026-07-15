@@ -187,7 +187,7 @@ def get_historico():
 
     except Exception as e:
         conn.close()
-        return jsonify({'erro': str(e)}), 500
+        return jsonify({'erro': 'Erro interno'}), 500
 
 
 # ─────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ def get_stats():
 
     except Exception as e:
         conn.close()
-        return jsonify({'erro': str(e)}), 500
+        return jsonify({'erro': 'Erro interno'}), 500
 
 
 # ─────────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ def exportar_csv():
 
     except Exception as e:
         conn.close()
-        return jsonify({'erro': str(e)}), 500
+        return jsonify({'erro': 'Erro interno'}), 500
 
 
 # ─────────────────────────────────────────────────────────
@@ -405,7 +405,7 @@ def limpeza():
         })
     except Exception as e:
         conn.close()
-        return jsonify({'erro': str(e)}), 500
+        return jsonify({'erro': 'Erro interno'}), 500
 
 
 # ─────────────────────────────────────────────────────────

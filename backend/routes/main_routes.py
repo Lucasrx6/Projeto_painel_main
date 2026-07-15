@@ -2,7 +2,7 @@
 Rotas principais da aplicação
 Endpoints: página inicial, frontend, static files, painéis genéricos
 """
-from flask import Blueprint, send_from_directory, session, jsonify, current_app
+from flask import Blueprint, send_from_directory, session, jsonify, current_app, redirect, url_for
 import os
 from backend.middleware.decorators import login_required, admin_required
 from backend.user_management import verificar_permissao_painel
@@ -44,9 +44,17 @@ def login_page():
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
+_PUBLIC_FRONTEND_FILES = {
+    'login.html', 'login.js', 'login.css',
+    'tema.css', 'offline.html', 'acesso-negado.html',
+}
+
 @main_bp.route('/frontend/<path:path>')
 def serve_frontend(path):
     """Serve arquivos estáticos do frontend"""
+    filename = path.split('/')[-1]
+    if filename not in _PUBLIC_FRONTEND_FILES and not session.get('usuario_id'):
+        return redirect(url_for('main.login_page'))
     try:
         return send_from_directory('frontend', path)
     except Exception as e:

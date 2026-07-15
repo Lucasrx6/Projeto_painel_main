@@ -229,7 +229,7 @@ def painel22():
 def api_painel22_dashboard():
     dados, erro = _buscar_dashboard()
     if erro:
-        return jsonify({'success': False, 'error': erro}), 500
+        return jsonify({'success': False, 'error': 'Erro ao carregar dashboard'}), 500
     return jsonify({'success': True, 'data': dados})
 
 
@@ -240,7 +240,7 @@ def api_painel22_dashboard():
 def api_painel22_dados():
     dados, erro = _buscar_dados()
     if erro:
-        return jsonify({'success': False, 'error': erro}), 500
+        return jsonify({'success': False, 'error': 'Erro ao carregar dados'}), 500
     return jsonify({'success': True, 'data': dados})
 
 
@@ -259,7 +259,7 @@ def painel22_publico():
 def api_painel22_dashboard_publico():
     dados, erro = _buscar_dashboard()
     if erro:
-        return jsonify({'success': False, 'error': erro}), 500
+        return jsonify({'success': False, 'error': 'Erro ao carregar dashboard'}), 500
     return jsonify({'success': True, 'data': dados})
 
 
@@ -268,5 +268,5 @@ def api_painel22_dashboard_publico():
 def api_painel22_dados_publico():
     dados, erro = _buscar_dados()
     if erro:
-        return jsonify({'success': False, 'error': erro}), 500
+        return jsonify({'success': False, 'error': 'Erro ao carregar dados'}), 500
     return jsonify({'success': True, 'data': dados})

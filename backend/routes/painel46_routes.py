@@ -5,6 +5,7 @@ Visão da radiologia: fila de pacientes agendados e gestão de slots de horário
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime, timedelta
 from decimal import Decimal
+import threading
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
@@ -81,6 +82,106 @@ def _serial(row):
     return resultado
 
 
+# ── Auto-finalização de exames expirados ─────────────────────
+
+_auto_fin_lock  = threading.Lock()
+_auto_fin_state = {'last_run': None}
+_AUTO_FIN_INTERVALO_S = 300  # executa no máximo 1x a cada 5 minutos
+
+
+def _auto_finalizar_expirados(logger):
+    """
+    Finaliza automaticamente agendamentos em que o Tasy já confirmou a execução
+    mas o usuário não registrou a conclusão no sistema.
+
+    Regras:
+    - Dias anteriores: finaliza imediatamente se Tasy mostra status != AGUARDANDO
+    - Hoje: aguarda 30 minutos após o horário do slot antes de auto-finalizar
+
+    Timestamps atribuídos (usando o horário do slot como referência):
+      dt_no_local        = slot_data_hora
+      dt_inicio_exame    = slot_data_hora + 5 min
+      dt_conclusao_exame = slot_data_hora + duracao_min do slot
+
+    Registro: auto_finalizado=TRUE, auto_finalizado_em=NOW()
+    Log: aviso com ids afetados para auditoria.
+    """
+    with _auto_fin_lock:
+        agora = datetime.now()
+        ultimo = _auto_fin_state['last_run']
+        if ultimo and (agora - ultimo).total_seconds() < _AUTO_FIN_INTERVALO_S:
+            return 0
+        _auto_fin_state['last_run'] = agora
+
+    try:
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            cursor.execute("""
+                UPDATE radio_agenda
+                SET status             = 'concluido',
+                    dt_no_local        = COALESCE(dt_no_local,
+                                                   rs.data_hora),
+                    dt_inicio_exame    = COALESCE(dt_inicio_exame,
+                                                   rs.data_hora + INTERVAL '5 minutes'),
+                    dt_conclusao_exame = COALESCE(dt_conclusao_exame,
+                                                   rs.data_hora
+                                                   + COALESCE(rs.duracao_min, 30)
+                                                   * INTERVAL '1 minute'),
+                    status_enfermagem  = CASE
+                                           WHEN status_enfermagem = 'pendente' THEN 'ciente'
+                                           ELSE status_enfermagem
+                                         END,
+                    dt_ciencia         = CASE
+                                           WHEN status_enfermagem = 'pendente' THEN NOW()
+                                           ELSE dt_ciencia
+                                         END,
+                    auto_finalizado    = TRUE,
+                    auto_finalizado_em = NOW(),
+                    atualizado_em      = NOW()
+                FROM radio_slots rs
+                WHERE radio_agenda.slot_id = rs.id
+                  AND radio_agenda.status NOT IN ('concluido', 'cancelado')
+                  AND radio_agenda.auto_finalizado = FALSE
+                  AND (
+                      -- Dias anteriores: finaliza imediatamente se Tasy confirmou
+                      (DATE(rs.data_hora) < CURRENT_DATE
+                       AND EXISTS (
+                           SELECT 1 FROM vw_painel19_radiologia p
+                           WHERE p.nr_atendimento::varchar = radio_agenda.nr_atendimento
+                             AND p.nr_prescricao::varchar  = radio_agenda.nr_prescricao
+                             AND p.status_radiologia NOT IN ('AGUARDANDO')
+                       )
+                      )
+                      OR
+                      -- Hoje: aguarda 30 min após o slot agendado e Tasy confirmou
+                      (DATE(rs.data_hora) = CURRENT_DATE
+                       AND rs.data_hora <= NOW() - INTERVAL '30 minutes'
+                       AND EXISTS (
+                           SELECT 1 FROM vw_painel19_radiologia p
+                           WHERE p.nr_atendimento::varchar = radio_agenda.nr_atendimento
+                             AND p.nr_prescricao::varchar  = radio_agenda.nr_prescricao
+                             AND p.status_radiologia NOT IN ('AGUARDANDO')
+                       )
+                      )
+                  )
+                RETURNING radio_agenda.id
+            """)
+            ids_afetados = [r[0] for r in cursor.fetchall()]
+            n = len(ids_afetados)
+
+        if n > 0:
+            cache_delete_pattern('painel45:*')
+            cache_delete_pattern('painel46:*')
+            logger.warning(
+                f'[Radio] Auto-finalização: {n} exame(s) concluído(s) pelo sistema '
+                f'por falta de ação do usuário. IDs: {ids_afetados}'
+            )
+        return n
+
+    except Exception as e:
+        logger.error(f'[Radio] Erro auto-finalização: {e}', exc_info=True)
+        return 0
+
+
 # ── Página HTML ──────────────────────────────────────────────
 
 @painel46_bp.route('/painel/painel46')
@@ -102,6 +203,7 @@ def api_p46_fila():
     ?data=YYYY-MM-DD  (padrão: hoje)
     """
     try:
+        _auto_finalizar_expirados(current_app.logger)
         data_str = request.args.get('data', datetime.now().strftime('%Y-%m-%d'))
 
         with get_db_cursor() as cursor:
@@ -115,6 +217,7 @@ def api_p46_fila():
                     ra.dt_no_local, ra.dt_inicio_exame, ra.dt_conclusao_exame,
                     ra.nm_medico_solicitante, ra.criado_em, ra.atualizado_em,
                     ra.requer_preparo, ra.tipo_preparo,
+                    ra.auto_finalizado, ra.auto_finalizado_em,
                     rs.id           AS slot_id,
                     rs.data_hora    AS slot_data_hora,
                     rs.duracao_min  AS slot_duracao,
@@ -174,10 +277,26 @@ def api_p46_fila():
             """)
             pendentes = [_serial(dict(r)) for r in cursor.fetchall()]
 
+            # Recusados pela enfermagem nas últimas 24h (apenas informativos — sem ações)
+            cursor.execute(f"""
+                SELECT
+                    ra.id, ra.nr_atendimento, ra.nm_paciente, ra.ds_procedimento,
+                    ra.leito_origem, ra.setor_origem_nome, ra.prioridade,
+                    ra.motivo_recusa, ra.dt_recusa,
+                    {_SQL_TIPO_EXAME_RA} AS tipo_exame
+                FROM radio_agenda ra
+                WHERE ra.status = 'cancelado'
+                  AND ra.status_enfermagem = 'recusado'
+                  AND ra.atualizado_em >= NOW() - INTERVAL '24 hours'
+                ORDER BY ra.dt_recusa DESC
+            """)
+            recusados = [_serial(dict(r)) for r in cursor.fetchall()]
+
         return jsonify({
             'success': True,
             'agendados': agendados,
             'pendentes': pendentes,
+            'recusados': recusados,
             'data': data_str,
             'timestamp': datetime.now().isoformat()
         })
@@ -710,6 +829,7 @@ def api_p46_prescricoes():
     ?setor=nome  &tipo=RX|RM|TC|USG|MAM|OUTROS
     """
     try:
+        _auto_finalizar_expirados(current_app.logger)
         setor = request.args.get('setor', '').strip()
         tipo  = request.args.get('tipo',  '').strip().upper()
 
@@ -758,7 +878,14 @@ def api_p46_prescricoes():
                         WHERE ra2.nr_atendimento = p.nr_atendimento::varchar
                           AND ra2.nr_prescricao  = p.nr_prescricao::varchar
                           AND ra2.status = 'concluido'
-                    ) AS concluido_interno
+                    ) AS concluido_interno,
+                    EXISTS (
+                        SELECT 1 FROM radio_agenda ra3
+                        WHERE ra3.nr_atendimento = p.nr_atendimento::varchar
+                          AND ra3.nr_prescricao  = p.nr_prescricao::varchar
+                          AND ra3.status = 'concluido'
+                          AND ra3.auto_finalizado = TRUE
+                    ) AS auto_finalizado_sistema
                 FROM vw_painel19_radiologia p
                 LEFT JOIN radio_agenda ra ON (
                     ra.nr_atendimento = p.nr_atendimento::varchar

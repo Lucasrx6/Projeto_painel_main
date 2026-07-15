@@ -12,6 +12,7 @@ Princípio: não atrasar NENHUMA requisição. Escritas no banco são
 assíncronas (thread daemon). Resolução DNS só ocorre na consulta admin.
 """
 
+import os
 import re
 import time
 import socket
@@ -126,6 +127,15 @@ _IGNORAR = (
     '.css', '.js', '.png', '.ico', '.woff', '.woff2',
 )
 
+# IPs do próprio servidor — atividade interna (auto-login de TVs no servidor,
+# health checks, etc.) não deve poluir os logs de auditoria.
+# Configurável via SERVER_OWN_IPS no .env (separados por vírgula).
+_SERVER_IPS = set(
+    ip.strip()
+    for ip in os.getenv('SERVER_OWN_IPS', '127.0.0.1,::1,172.16.1.75').split(',')
+    if ip.strip()
+)
+
 _PAINEL_RE = re.compile(r'/(painel\d+)(?:/|$|\?)')
 
 
@@ -199,11 +209,15 @@ def _check_throttle(key: tuple) -> bool:
     return False
 
 
-def _deve_logar(ip: str, painel_codigo, status_code: int, path: str) -> bool:
+def _deve_logar(ip: str, painel_codigo, status_code: int, path: str, metodo: str = 'GET') -> bool:
+    # IPs internos do servidor não geram ruído no log de auditoria
+    if ip in _SERVER_IPS:
+        return False
     if status_code and status_code >= 400:
         return True
+    # Só registra login no POST real de autenticação, não no GET da página HTML
     if 'login' in path or 'logout' in path:
-        return True
+        return metodo == 'POST'
     if '/admin' in path and '/admin/acessos' not in path:
         return _check_throttle((ip, '__admin__'))
     if painel_codigo:
@@ -383,11 +397,12 @@ def init_access_tracker(app) -> None:
             except Exception:
                 uid, uname = None, 'Não identificado'
 
-            # Sempre atualiza memória (operação pura, sem I/O)
-            _atualizar_sessao(ip, painel_codigo, uid, uname)
+            # Sempre atualiza memória — exceto IPs internos do servidor
+            if ip not in _SERVER_IPS:
+                _atualizar_sessao(ip, painel_codigo, uid, uname)
 
             # Banco: só quando relevante e throttled
-            if _deve_logar(ip, painel_codigo, status, path):
+            if _deve_logar(ip, painel_codigo, status, path, metodo):
                 painel_nome = PAINEIS_NOMES.get(painel_codigo) if painel_codigo else None
                 _write_log_async(
                     ip, painel_codigo, painel_nome, path,

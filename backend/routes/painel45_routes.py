@@ -9,6 +9,7 @@ from decimal import Decimal
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_delete_pattern
+from backend.routes.painel46_routes import _auto_finalizar_expirados
 
 painel45_bp = Blueprint('painel45', __name__)
 
@@ -66,6 +67,7 @@ def api_p45_agendamentos():
     Mostra: aguardando ciência, cientes e recusados dos últimos 2 dias.
     """
     try:
+        _auto_finalizar_expirados(current_app.logger)
         filtro_enf = request.args.get('status_enf', '')  # pendente|ciente|recusado
 
         filtros = ["ra.status NOT IN ('cancelado')"]
@@ -107,6 +109,8 @@ def api_p45_agendamentos():
                     ra.dt_conclusao_exame,
                     ra.requer_preparo,
                     ra.tipo_preparo,
+                    ra.auto_finalizado,
+                    ra.auto_finalizado_em,
                     -- Slot
                     rs.id           AS slot_id,
                     rs.data_hora    AS slot_data_hora,
@@ -226,14 +230,15 @@ def api_p45_recusar(radio_id):
                     WHERE id = %s
                 """, (slot_id,))
 
-            # Recusa: retorna a pendente para reagendamento
+            # Recusa: cancela o registro — o slot foi liberado, a prescrição
+            # ficará disponível para um novo agendamento limpo no painel 46.
             cursor.execute("""
                 UPDATE radio_agenda
                 SET status_enfermagem = 'recusado',
                     motivo_recusa     = %s,
                     dt_recusa         = NOW(),
                     slot_id           = NULL,
-                    status            = 'pendente',
+                    status            = 'cancelado',
                     atualizado_em     = NOW()
                 WHERE id = %s
             """, (motivo, radio_id))

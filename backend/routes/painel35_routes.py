@@ -183,16 +183,28 @@ def api_painel35_aceitar(chamado_id):
 @login_required
 @panel_permission_required('painel35')
 def api_painel35_iniciar(chamado_id):
+    dados = request.get_json() or {}
+    padioleiro_id = dados.get('padioleiro_id')
+    if not padioleiro_id:
+        return jsonify({'success': False, 'error': 'Informe o padioleiro_id'}), 400
     try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT padioleiro_id, status FROM padioleiro_chamados WHERE id = %s", (chamado_id,))
+            chamado = cursor.fetchone()
+            if not chamado:
+                return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
+            if str(chamado['padioleiro_id']) != str(padioleiro_id):
+                return jsonify({'success': False, 'error': 'Sem permissao para este chamado'}), 403
+
         with get_db_cursor(use_dict_cursor=False) as cursor:
             cursor.execute("""
                 UPDATE padioleiro_chamados
                 SET status = 'em_transporte',
                     dt_inicio_transporte = NOW(),
                     atualizado_em = NOW()
-                WHERE id = %s AND status = 'aceito'
+                WHERE id = %s AND padioleiro_id = %s AND status = 'aceito'
                 RETURNING id
-            """, (chamado_id,))
+            """, (chamado_id, padioleiro_id))
 
             if not cursor.fetchone():
                 return jsonify({'success': False, 'error': 'Chamado nao pode ser iniciado no status atual'}), 400
@@ -212,16 +224,28 @@ def api_painel35_iniciar(chamado_id):
 @login_required
 @panel_permission_required('painel35')
 def api_painel35_concluir(chamado_id):
+    dados = request.get_json() or {}
+    padioleiro_id = dados.get('padioleiro_id')
+    if not padioleiro_id:
+        return jsonify({'success': False, 'error': 'Informe o padioleiro_id'}), 400
     try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT padioleiro_id, status FROM padioleiro_chamados WHERE id = %s", (chamado_id,))
+            chamado = cursor.fetchone()
+            if not chamado:
+                return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
+            if str(chamado['padioleiro_id']) != str(padioleiro_id):
+                return jsonify({'success': False, 'error': 'Sem permissao para este chamado'}), 403
+
         with get_db_cursor(use_dict_cursor=False) as cursor:
             cursor.execute("""
                 UPDATE padioleiro_chamados
                 SET status = 'concluido',
                     dt_conclusao = NOW(),
                     atualizado_em = NOW()
-                WHERE id = %s AND status = 'em_transporte'
+                WHERE id = %s AND padioleiro_id = %s AND status = 'em_transporte'
                 RETURNING id
-            """, (chamado_id,))
+            """, (chamado_id, padioleiro_id))
 
             if not cursor.fetchone():
                 return jsonify({'success': False, 'error': 'Chamado nao pode ser concluido no status atual'}), 400

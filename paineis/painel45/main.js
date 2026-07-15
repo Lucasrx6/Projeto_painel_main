@@ -205,7 +205,10 @@
         html += '<td>' + badgeEnf(enf) + '</td>';
 
         // Status Radiologia
-        html += '<td>' + badgeRadioStatus(item.status) + '</td>';
+        html += '<td>' + badgeRadioStatus(item.status);
+        if (item.auto_finalizado)
+            html += '<br><span class="badge-sistema" title="Concluído automaticamente pelo sistema por falta de ação do usuário"><i class="fas fa-robot"></i> Sistema</span>';
+        html += '</td>';
 
         // Ações
         html += '<td><div class="ta-acoes">';
@@ -240,6 +243,38 @@
         return html;
     }
 
+    // ── Utilitários de data para a agenda ──────────
+    function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function chaveData(iso) {
+        if (!iso) return 'sem-data';
+        try {
+            var d = new Date(iso);
+            return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+        } catch(e) { return 'sem-data'; }
+    }
+
+    function formatarDia(iso) {
+        if (!iso) return null;
+        try {
+            var d = new Date(iso);
+            var hoje  = new Date();
+            var amnh  = new Date(); amnh.setDate(hoje.getDate() + 1);
+            var ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+            var mesmoDia = function(x, y) {
+                return x.getDate() === y.getDate()
+                    && x.getMonth() === y.getMonth()
+                    && x.getFullYear() === y.getFullYear();
+            };
+            var nomes = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+            var ds = d.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+            if (mesmoDia(d, hoje))  return 'Hoje';
+            if (mesmoDia(d, amnh))  return 'Amanhã — ' + ds;
+            if (mesmoDia(d, ontem)) return 'Ontem — ' + ds;
+            return nomes[d.getDay()] + ', ' + ds;
+        } catch(e) { return null; }
+    }
+
     // ── Renderizar ─────────────────────────────────
     function renderizar() {
         var mc = document.getElementById('main-content');
@@ -266,38 +301,95 @@
             return;
         }
 
-        // Agrupar por setor
-        var grupos = {}, ordem = [];
+        // Agrupar por dia → setor
+        var diasMap = {}, diasOrdem = [];
         for (var m = 0; m < filtrados.length; m++) {
-            var ex = filtrados[m];
-            var sg = ex.setor_origem_nome || 'Sem setor';
-            if (!grupos[sg]) { grupos[sg] = []; ordem.push(sg); }
-            grupos[sg].push(ex);
+            var ex    = filtrados[m];
+            var chave = chaveData(ex.slot_data_hora);
+            var sg    = ex.setor_origem_nome || 'Sem setor';
+            if (!diasMap[chave]) {
+                diasMap[chave] = { label: formatarDia(ex.slot_data_hora), setores: {}, ordemSetores: [] };
+                diasOrdem.push(chave);
+            }
+            if (!diasMap[chave].setores[sg]) {
+                diasMap[chave].setores[sg] = [];
+                diasMap[chave].ordemSetores.push(sg);
+            }
+            diasMap[chave].setores[sg].push(ex);
         }
 
+        // Ordenar dias: hoje → futuro (asc) → passado (desc) → sem-data
+        var hj = new Date();
+        var hojeChave = hj.getFullYear() + '-' + pad2(hj.getMonth()+1) + '-' + pad2(hj.getDate());
+        diasOrdem.sort(function(a, b) {
+            if (a === b) return 0;
+            if (a === 'sem-data') return 1;
+            if (b === 'sem-data') return -1;
+            var aHoj = a === hojeChave, bHoj = b === hojeChave;
+            if (aHoj) return -1; if (bHoj) return 1;
+            var aFut = a > hojeChave, bFut = b > hojeChave;
+            if (aFut && bFut)   return a < b ? -1 : 1;   // futuro ascendente
+            if (!aFut && !bFut) return a > b ? -1 : 1;   // passado descendente
+            return aFut ? -1 : 1;                          // futuro antes de passado
+        });
+
         var html = '';
-        for (var s = 0; s < ordem.length; s++) {
-            var setor = ordem[s];
-            var lista = grupos[setor];
-            var pendCount = 0;
-            for (var pi = 0; pi < lista.length; pi++) {
-                if ((lista[pi].status_enfermagem || 'pendente') === 'pendente') pendCount++;
+        for (var di = 0; di < diasOrdem.length; di++) {
+            var chaveD  = diasOrdem[di];
+            var diaInfo = diasMap[chaveD];
+            var label   = diaInfo.label || 'Sem horário definido';
+            var isHoje  = (chaveD === hojeChave);
+            var isFut   = (chaveD !== 'sem-data' && chaveD > hojeChave);
+            var isSemDt = (chaveD === 'sem-data');
+
+            // Contagem de pendentes do dia
+            var pendDia = 0;
+            for (var si2 = 0; si2 < diaInfo.ordemSetores.length; si2++) {
+                var lst2 = diaInfo.setores[diaInfo.ordemSetores[si2]];
+                for (var pi2 = 0; pi2 < lst2.length; pi2++) {
+                    if ((lst2[pi2].status_enfermagem || 'pendente') === 'pendente') pendDia++;
+                }
             }
-            html += '<div class="setor-grupo">'
-                  + '<div class="setor-titulo"><i class="fas fa-hospital-alt"></i> ' + escHtml(setor)
-                  + '<span class="setor-count">' + lista.length + '</span>';
-            if (pendCount > 0) {
-                html += '<span class="setor-pendentes">' + pendCount + ' aguard.</span>';
-            }
+
+            var diaClass = 'agenda-dia';
+            if (isHoje)       diaClass += ' agenda-dia-hoje';
+            else if (isFut)   diaClass += ' agenda-dia-futuro';
+            else if (isSemDt) diaClass += ' agenda-dia-sem-data';
+            else              diaClass += ' agenda-dia-passado';
+
+            var icone = isSemDt ? 'fa-calendar-times' : (isHoje ? 'fa-star' : 'fa-calendar-day');
+
+            html += '<div class="' + diaClass + '">';
+            html += '<div class="agenda-dia-header">'
+                  + '<span class="agenda-dia-label"><i class="fas ' + icone + '"></i> ' + escHtml(label) + '</span>';
+            if (pendDia > 0)
+                html += '<span class="agenda-dia-pendentes"><i class="fas fa-clock"></i> ' + pendDia + ' aguard. ciência</span>';
             html += '</div>';
-            html += '<div class="tabela-ag-wrapper"><table class="tabela-ag"><thead><tr>'
-                  + '<th>Paciente / Leito</th><th>Procedimento</th><th>Tipo</th>'
-                  + '<th>Horário</th><th>Enf.</th><th>Radiologia</th><th>Ações</th>'
-                  + '</tr></thead><tbody>';
-            for (var ci = 0; ci < lista.length; ci++) {
-                html += linhaAgendamentoHtml(lista[ci]);
+
+            // Setores dentro do dia
+            for (var si = 0; si < diaInfo.ordemSetores.length; si++) {
+                var setor = diaInfo.ordemSetores[si];
+                var lista = diaInfo.setores[setor];
+                var pendCount = 0;
+                for (var pi = 0; pi < lista.length; pi++) {
+                    if ((lista[pi].status_enfermagem || 'pendente') === 'pendente') pendCount++;
+                }
+                html += '<div class="setor-grupo">'
+                      + '<div class="setor-titulo"><i class="fas fa-hospital-alt"></i> ' + escHtml(setor)
+                      + '<span class="setor-count">' + lista.length + '</span>';
+                if (pendCount > 0)
+                    html += '<span class="setor-pendentes">' + pendCount + ' aguard.</span>';
+                html += '</div>';
+                html += '<div class="tabela-ag-wrapper"><table class="tabela-ag"><thead><tr>'
+                      + '<th>Paciente / Leito</th><th>Procedimento</th><th>Tipo</th>'
+                      + '<th>Horário</th><th>Enf.</th><th>Radiologia</th><th>Ações</th>'
+                      + '</tr></thead><tbody>';
+                for (var ci = 0; ci < lista.length; ci++)
+                    html += linhaAgendamentoHtml(lista[ci]);
+                html += '</tbody></table></div></div>';
             }
-            html += '</tbody></table></div></div>';
+
+            html += '</div>';  // agenda-dia
         }
         mc.innerHTML = html;
     }

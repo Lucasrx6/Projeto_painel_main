@@ -123,4 +123,4 @@ def testar_envio_ocupacao():
             'status': status
         })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Erro interno'}), 500

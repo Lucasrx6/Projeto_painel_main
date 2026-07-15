@@ -357,7 +357,8 @@ var PAINEL_VERSAO = '1.0.34';
         fetch(url, {
             method: 'PUT',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ padioleiro_id: estado.padioleiroId })
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {

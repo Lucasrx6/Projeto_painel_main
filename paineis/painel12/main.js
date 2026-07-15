@@ -3,6 +3,13 @@
 // ========================================
 
 var PAINEL_VERSAO = '1.0.73';
+
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(v);
+    return d.innerHTML;
+}
 var BASE_URL = window.location.origin;
 
 var CONFIG = {
@@ -160,7 +167,7 @@ function atualizarListaSetores(setores) {
         var leitosTemp = parseInt(setor.leitos_temporarios) || 0;
         var ocupados = parseInt(setor.leitos_ocupados) || 0;
         var livres = parseInt(setor.leitos_livres) || 0;
-        var nomeSetor = setor.nm_setor || 'Setor Desconhecido';
+        var nomeSetor = escHtml(setor.nm_setor || 'Setor Desconhecido');
 
         // Define classe baseada na taxa de ocupação
         var classeOcupacao = '';

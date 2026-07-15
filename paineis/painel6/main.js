@@ -74,9 +74,16 @@ var PAINEL_VERSAO = '1.0.89';
     }
   }
 
+  function esc(v) {
+    if (v === null || v === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(v);
+    return d.innerHTML;
+  }
+
   function safe(v) {
     if (v === null || v === undefined || v === "") return "-";
-    return v;
+    return esc(v);
   }
 
   function riscoPill(nivel) {
@@ -294,13 +301,11 @@ var PAINEL_VERSAO = '1.0.89';
       let analise = "";
 
       if (r.analise_ia && String(r.analise_ia).trim()) {
-        const texto = String(r.analise_ia);
-        analise = `<div class="analise-ia-badge">🤖 IA</div>${texto}`;
+        analise = `<div class="analise-ia-badge">🤖 IA</div>${esc(r.analise_ia)}`;
       } else if (r.resumo_clinico_completo && String(r.resumo_clinico_completo).trim()) {
-        // Fallback para resumo da view
-        analise = `<div class="analise-basica-badge">📊 Automático</div>${String(r.resumo_clinico_completo)}`;
+        analise = `<div class="analise-basica-badge">📊 Automático</div>${esc(r.resumo_clinico_completo)}`;
       } else if (r.analise_final && String(r.analise_final).trim()) {
-        analise = `<div class="analise-basica-badge">📊 Automático</div>${String(r.analise_final)}`;
+        analise = `<div class="analise-basica-badge">📊 Automático</div>${esc(r.analise_final)}`;
       } else {
         analise = "⏳ Aguardando análise...";
       }

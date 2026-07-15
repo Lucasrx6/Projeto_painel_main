@@ -1,4 +1,12 @@
 var PAINEL_VERSAO = '1.0.23';
+
+function escHtml(t) {
+    if (t === null || t === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(t);
+    return d.innerHTML;
+}
+
 const COLUNAS_CONFIG = [
     { campo: 'nr_atendimento', titulo: 'Atend', tipo: 'texto', ordenavel: true },
     { campo: 'nm_paciente', titulo: 'Paciente', tipo: 'texto', ordenavel: true },
@@ -77,7 +85,7 @@ function formatarStatus(valor) {
         return '<img width="24" height="24" src="https://img.icons8.com/color/48/close-window.png" alt="não feita" class="icon-close"/>';
     }
     else {
-        return '<span class="badge-status status-pendente">' + valor + '</span>';
+        return '<span class="badge-status status-pendente">' + escHtml(valor) + '</span>';
     }
 }
 
@@ -94,7 +102,7 @@ function formatarCampo(valor, tipo) {
         case 'numero':
             return valor || '-';
         default:
-            return valor || '-';
+            return escHtml(valor) || '-';
     }
 }
 

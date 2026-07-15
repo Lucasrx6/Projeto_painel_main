@@ -376,6 +376,15 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .painel-vazio p { font-size: 15px; font-weight: 600; }
 .painel-vazio small { font-size: 13px; }
 
+/* ── SEÇÃO RECUSADOS ─────────────────────────────── */
+.secao-titulo-recusado {
+    user-select: none; color: #842029;
+    display: flex; align-items: center;
+}
+.secao-titulo-recusado:hover { background: #f8d7da; }
+.tabela-recusados td { color: #6c757d; font-size: 12px; }
+.tabela-recusados tbody tr td:first-child strong { color: #495057; }
+
 /* ── SEÇÃO SEM ENVIO PRÉVIO ─────────────────────── */
 .secao-sem-envio { border-left: 4px solid #e0a800; }
 .secao-titulo-sem-envio {
@@ -443,6 +452,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 }
 .badge-presc-sem-ag { background: #f8f9fa; color: #6c757d; }
 .badge-slot-hora    { background: #d1ecf1; color: #0c5460; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+.badge-sistema      { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #e9ecef; color: #495057; border: 1px solid #ced4da; cursor: help; }
 
 /* Row de status de enfermagem nos cards */
 .card-enf-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
