@@ -229,17 +229,24 @@
                       + '</div>';
             }
         } else {
-            var podeAgir = item.status !== 'concluido' && item.status !== 'cancelado';
-            if (podeAgir && item.slot_id) {
-                if (enf !== 'ciente') {
-                    html += '<button class="btn-ciencia" data-acao="ciencia" data-id="' + item.id + '">'
-                          + '<i class="fas fa-check"></i> Ciência</button>';
-                    html += '<button class="btn-recusar" data-acao="recusar" data-id="' + item.id + '">'
-                          + '<i class="fas fa-times"></i> Recusar</button>';
-                } else {
+            var concluido    = item.status === 'concluido';
+            var podeCiencia  = item.status !== 'cancelado' && enf !== 'ciente';
+            var podeRecusar  = !concluido && item.status !== 'cancelado' && enf !== 'ciente';
+
+            if (item.slot_id && (enf === 'ciente' || podeCiencia)) {
+                if (enf === 'ciente') {
                     html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciente';
                     if (item.dt_ciencia) html += ' ' + escHtml(formatarDataHora(item.dt_ciencia));
                     html += '</span>';
+                } else {
+                    // Ciência: disponível mesmo após concluído
+                    html += '<button class="btn-ciencia" data-acao="ciencia" data-id="' + item.id + '">'
+                          + '<i class="fas fa-check"></i> Ciência</button>';
+                    // Recusar: somente enquanto não concluído
+                    if (podeRecusar) {
+                        html += '<button class="btn-recusar" data-acao="recusar" data-id="' + item.id + '">'
+                              + '<i class="fas fa-times"></i> Recusar</button>';
+                    }
                 }
             } else if (!item.slot_id) {
                 html += '<span class="ta-slot-sem"><i class="fas fa-hourglass-half"></i> Sem horário</span>';

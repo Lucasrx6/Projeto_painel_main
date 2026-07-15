@@ -165,7 +165,11 @@ def api_p45_agendamentos():
 @login_required
 @panel_permission_required('painel45')
 def api_p45_ciencia(radio_id):
-    """Enfermagem confirma ciência do agendamento."""
+    """
+    Enfermagem confirma ciência do agendamento.
+    Permitido mesmo após o exame estar concluído (ciência retroativa).
+    Bloqueado apenas para cancelados.
+    """
     try:
         with get_db_cursor(use_dict_cursor=False) as cursor:
             cursor.execute("""
@@ -175,8 +179,8 @@ def api_p45_ciencia(radio_id):
             row = cursor.fetchone()
             if not row:
                 return jsonify({'success': False, 'error': 'Registro não encontrado'}), 404
-            if row[1] in ('concluido', 'cancelado'):
-                return jsonify({'success': False, 'error': 'Exame já finalizado'}), 409
+            if row[1] == 'cancelado':
+                return jsonify({'success': False, 'error': 'Exame cancelado'}), 409
             if row[2] == 'ciente':
                 return jsonify({'success': True})  # idempotente
 
