@@ -13,6 +13,7 @@
             slotDelete:      '/api/paineis/painel46/slots/{id}',
             prescricoes:     '/api/paineis/painel46/prescricoes',
             agendarPrescricao: '/api/paineis/painel46/agendar-prescricao',
+            agendarLote:     '/api/paineis/painel46/agendar-lote',
             slotsPorTipo:    '/api/paineis/painel46/slots-por-tipo',
             slotDesvincular: '/api/paineis/painel46/slots/{id}/desvincular'
         },
@@ -39,7 +40,10 @@
         // Scheduling modal
         modalAgendPresc: null,           // prescrição selecionada
         modalAgendSlotId: null,          // slot selecionado
-        slotsDisponiveis: []
+        slotsDisponiveis: [],
+        // Modal de irmãos (outros exames do mesmo paciente)
+        irmaosPresc: null,               // prescrição principal recém-agendada
+        irmaosSlotInfo: null             // { data_hora, duracao_min, modalidade }
     };
 
     var DOM = {};
@@ -1086,9 +1090,9 @@
             body: JSON.stringify({
                 nr_atendimento:       String(ex.nr_atendimento || ''),
                 nr_prescricao:        String(ex.nr_prescricao || ''),
+                ds_procedimento:      ex.ds_procedimento || '',
                 slot_id:              slotId,
                 nm_paciente:          ex.nm_pessoa_fisica || '',
-                ds_procedimento:      ex.ds_procedimento || '',
                 leito_origem:         ex.leito || ex.leito_base || '',
                 setor_origem_nome:    ex.nm_setor || '',
                 cd_setor_atendimento: ex.cd_setor_atendimento || null,
@@ -1357,15 +1361,25 @@
             return;
         }
         if (btnOk) btnOk.disabled = true;
+
+        // Captura info do slot para oferecer irmãos depois
+        var slotInfoParaIrmaos = null;
+        for (var si = 0; si < Estado.slotsDisponiveis.length; si++) {
+            if (Estado.slotsDisponiveis[si].id === slotId) {
+                slotInfoParaIrmaos = Estado.slotsDisponiveis[si];
+                break;
+            }
+        }
+
         fetch(CONFIG.api.agendarPrescricao, {
             method: 'POST', credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 nr_atendimento:       String(presc.nr_atendimento || ''),
                 nr_prescricao:        String(presc.nr_prescricao || ''),
+                ds_procedimento:      presc.ds_procedimento || '',
                 slot_id:              slotId,
                 nm_paciente:          presc.nm_pessoa_fisica || '',
-                ds_procedimento:      presc.ds_procedimento || '',
                 leito_origem:         presc.leito || presc.leito_base || '',
                 setor_origem_nome:    presc.nm_setor || '',
                 cd_setor_atendimento: presc.cd_setor_atendimento || null,
@@ -1384,6 +1398,8 @@
                 toast('Exame agendado com sucesso!', 'success');
                 carregarExamesRadio();
                 carregarFila();
+                // Verifica se há outros exames do mesmo paciente para oferecer agendamento conjunto
+                _verificarIrmaos(presc, slotInfoParaIrmaos);
             } else {
                 toast('Erro: ' + (d.error || 'Falha ao agendar'), 'error');
             }
@@ -1392,6 +1408,139 @@
         .catch(function(e) {
             console.error('[P46]', e);
             toast('Erro de conexão', 'error');
+            if (btnOk) btnOk.disabled = false;
+        });
+    }
+
+    // ── Modal de irmãos (outros exames do mesmo paciente) ─────
+
+    function _verificarIrmaos(prescPrincipal, slotInfo) {
+        var nr = String(prescPrincipal.nr_atendimento || '');
+        var nr_pr = String(prescPrincipal.nr_prescricao || '');
+        var ds_pr = prescPrincipal.ds_procedimento || '';
+        var irmaos = [];
+
+        for (var i = 0; i < Estado.exames.length; i++) {
+            var ex = Estado.exames[i];
+            // Mesmo atendimento
+            if (String(ex.nr_atendimento) !== nr) continue;
+            // Exclui o próprio exame recém-agendado
+            if (String(ex.nr_prescricao) === nr_pr && ex.ds_procedimento === ds_pr) continue;
+            // Só exames pendentes (sem radio_agenda ou pendente)
+            if (ex.radio_id && ex.radio_status !== 'pendente') continue;
+            if (ex.concluido_interno) continue;
+            var stEx = (ex.status_radiologia || '').toUpperCase();
+            if (stEx && stEx !== 'AGUARDANDO') continue;
+            irmaos.push(ex);
+        }
+
+        if (!irmaos.length) return;
+
+        Estado.irmaosPresc    = prescPrincipal;
+        Estado.irmaosSlotInfo = slotInfo;
+        abrirModalIrmaos(prescPrincipal, irmaos, slotInfo);
+    }
+
+    function abrirModalIrmaos(presc, irmaos, slotInfo) {
+        var infoEl  = document.getElementById('irmaos-info');
+        var listaEl = document.getElementById('irmaos-lista');
+        if (!infoEl || !listaEl) return;
+
+        var hora = slotInfo ? formatarHora(slotInfo.data_hora) : '—';
+        infoEl.innerHTML = '<strong>' + escHtml(formatarNome(presc.nm_pessoa_fisica)) + '</strong>'
+            + ' tem mais ' + irmaos.length + ' exame(s) pendente(s).'
+            + '<br><small>Deseja agendá-los também para as <strong>' + hora + '</strong>?</small>';
+
+        var html = '';
+        for (var i = 0; i < irmaos.length; i++) {
+            var ex = irmaos[i];
+            html += '<label class="irmao-item irmao-item-checked">'
+                + '<input type="checkbox" class="irmao-chk" value="' + i + '" checked>'
+                + '<span class="irmao-proc">' + escHtml(ex.ds_procedimento || '-') + '</span>'
+                + (ex.tipo_exame ? badgeTipoExame(ex.tipo_exame) : '')
+                + '</label>';
+        }
+        listaEl.innerHTML = html;
+        listaEl._irmaos = irmaos;
+
+        // Toggle visual sem depender de :has() CSS
+        var chks = listaEl.querySelectorAll('.irmao-chk');
+        for (var ci = 0; ci < chks.length; ci++) {
+            (function(chk) {
+                chk.addEventListener('change', function() {
+                    var lbl = chk.parentNode;
+                    if (chk.checked) lbl.className = 'irmao-item irmao-item-checked';
+                    else             lbl.className = 'irmao-item';
+                });
+            })(chks[ci]);
+        }
+
+        abrirModal('modal-irmaos');
+    }
+
+    function confirmarIrmaos() {
+        var listaEl   = document.getElementById('irmaos-lista');
+        var slotInfo  = Estado.irmaosSlotInfo;
+        if (!listaEl || !slotInfo) { fecharModal('modal-irmaos'); return; }
+
+        var chks = listaEl.querySelectorAll('.irmao-chk:checked');
+        if (!chks.length) { fecharModal('modal-irmaos'); return; }
+
+        var irmaos = listaEl._irmaos || [];
+        var selecionados = [];
+        for (var i = 0; i < chks.length; i++) {
+            var idx = parseInt(chks[i].value);
+            if (irmaos[idx]) selecionados.push(irmaos[idx]);
+        }
+        if (!selecionados.length) { fecharModal('modal-irmaos'); return; }
+
+        var btnOk = document.getElementById('modal-irmaos-confirmar');
+        if (btnOk) btnOk.disabled = true;
+
+        var examesPayload = [];
+        for (var j = 0; j < selecionados.length; j++) {
+            var ex = selecionados[j];
+            examesPayload.push({
+                nr_atendimento:       String(ex.nr_atendimento || ''),
+                nr_prescricao:        String(ex.nr_prescricao || ''),
+                ds_procedimento:      ex.ds_procedimento || '',
+                nm_paciente:          ex.nm_pessoa_fisica || '',
+                leito_origem:         ex.leito || ex.leito_base || '',
+                setor_origem_nome:    ex.nm_setor || '',
+                cd_setor_atendimento: ex.cd_setor_atendimento || null,
+                nm_medico_solicitante: ex.nm_medico_solicitante || '',
+                prioridade:           ex.radio_prioridade || (ex.ie_urgente === 'S' ? 'urgente' : 'normal'),
+                requer_transporte:    true
+            });
+        }
+
+        fetch(CONFIG.api.agendarLote, {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                exames:          examesPayload,
+                slot_data_hora:  slotInfo.data_hora,
+                slot_duracao_min: slotInfo.duracao_min || 30,
+                slot_modalidade: slotInfo.modalidade || null
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            fecharModal('modal-irmaos');
+            if (d.success) {
+                var n = d.agendados || selecionados.length;
+                toast(n + ' exame(s) adicional(is) agendado(s)!', 'success');
+            } else {
+                toast('Falha ao agendar exames adicionais.', 'error');
+            }
+            carregarExamesRadio();
+            carregarFila();
+            if (btnOk) btnOk.disabled = false;
+        })
+        .catch(function(e) {
+            console.error('[P46] agendar-lote:', e);
+            toast('Erro de conexão ao agendar exames adicionais.', 'error');
+            fecharModal('modal-irmaos');
             if (btnOk) btnOk.disabled = false;
         });
     }
@@ -1728,6 +1877,10 @@
         // Modal agendar prescrição
         var btnAgOk = document.getElementById('modal-ag-confirmar');
         if (btnAgOk) btnAgOk.addEventListener('click', confirmarAgendamento);
+
+        // Modal de irmãos
+        var btnIrmaosOk = document.getElementById('modal-irmaos-confirmar');
+        if (btnIrmaosOk) btnIrmaosOk.addEventListener('click', confirmarIrmaos);
 
         // Modal avulso
         var btnAv = document.getElementById('btn-criar-avulso');

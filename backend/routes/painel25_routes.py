@@ -128,41 +128,40 @@ def api_painel25_dashboard():
     """
 
     try:
-        with get_db_cursor(use_dict_cursor=False) as cursor:
-                where_sql, params = _build_common_filters(request.args)
+        where_sql, params = _build_common_filters(request.args)
+        sql = """
+            SELECT
+                COUNT(DISTINCT nr_atendimento)                   AS qt_pacientes,
+                COUNT(*)                                         AS qt_exames_total,
+                SUM(CASE WHEN status_exame IN ('LAUDADO','LIBERADO')
+                    THEN 1 ELSE 0 END)                           AS qt_prontos,
+                SUM(CASE WHEN status_exame IN ('AGUARDANDO','SOLICITADO')
+                    THEN 1 ELSE 0 END)                           AS qt_pendentes,
+                SUM(CASE WHEN status_exame IN ('EXECUTADO','COLETADO','EM_ANALISE','RESULTADO_PARCIAL')
+                    THEN 1 ELSE 0 END)                           AS qt_em_andamento,
+                SUM(CASE WHEN tipo_exame = 'RADIOLOGIA'
+                    THEN 1 ELSE 0 END)                           AS qt_radio,
+                SUM(CASE WHEN tipo_exame = 'LABORATORIO'
+                    THEN 1 ELSE 0 END)                           AS qt_lab
+            FROM painel25_ps_exames_medico
+            {where}
+        """.format(where=where_sql)
 
-                sql = """
-                    SELECT
-                        COUNT(DISTINCT nr_atendimento)                   AS qt_pacientes,
-                        COUNT(*)                                         AS qt_exames_total,
-                        SUM(CASE WHEN status_exame IN ('LAUDADO','LIBERADO')
-                            THEN 1 ELSE 0 END)                           AS qt_prontos,
-                        SUM(CASE WHEN status_exame IN ('AGUARDANDO','SOLICITADO')
-                            THEN 1 ELSE 0 END)                           AS qt_pendentes,
-                        SUM(CASE WHEN status_exame IN ('EXECUTADO','COLETADO','EM_ANALISE','RESULTADO_PARCIAL')
-                            THEN 1 ELSE 0 END)                           AS qt_em_andamento,
-                        SUM(CASE WHEN tipo_exame = 'RADIOLOGIA'
-                            THEN 1 ELSE 0 END)                           AS qt_radio,
-                        SUM(CASE WHEN tipo_exame = 'LABORATORIO'
-                            THEN 1 ELSE 0 END)                           AS qt_lab
-                    FROM painel25_ps_exames_medico
-                    {where}
-                """.format(where=where_sql)
+        with get_db_cursor() as cursor:
+            cursor.execute(sql, params)
+            row = cursor.fetchone()
 
-                cur.execute(sql, params)
-                row = cur.fetchone()
+        dashboard = serializar_linha(row) if row else {
+            'qt_pacientes': 0,
+            'qt_exames_total': 0,
+            'qt_prontos': 0,
+            'qt_pendentes': 0,
+            'qt_em_andamento': 0,
+            'qt_radio': 0,
+            'qt_lab': 0
+        }
 
-                dashboard = serializar_linha(row) if row else {
-                    'qt_pacientes': 0,
-                    'qt_exames_total': 0,
-                    'qt_prontos': 0,
-                    'qt_pendentes': 0,
-                    'qt_em_andamento': 0,
-                    'qt_radio': 0,
-                    'qt_lab': 0
-                }
-
-                return jsonify({'success': True, 'data': dashboard})
+        return jsonify({'success': True, 'data': dashboard})
 
     except Exception as e:
         current_app.logger.error('[P25] Erro dashboard: %s', e, exc_info=True)
@@ -189,118 +188,113 @@ def api_painel25_dados():
     """
 
     try:
-        with get_db_cursor(use_dict_cursor=False) as cursor:
-                where_sql, params = _build_common_filters(request.args)
+        where_sql, params = _build_common_filters(request.args)
 
-                # Query unica: busca todos os exames ja ordenados
-                sql = """
-                    SELECT
-                        nr_atendimento,
-                        dt_entrada,
-                        tempo_no_ps,
-                        nm_pessoa_fisica,
-                        idade,
-                        ie_sexo,
-                        ds_convenio,
-                        cd_medico_resp,
-                        nm_medico_resp,
-                        ds_clinica,
-                        cd_cid_principal,
-                        nr_seq_classificacao,
-                        tipo_exame,
-                        ds_procedimento,
-                        ds_material,
-                        dt_pedido,
-                        dt_coleta_execucao,
-                        dt_resultado,
-                        status_exame,
-                        ds_status,
-                        tempo_espera,
-                        prioridade_ordem
-                    FROM painel25_ps_exames_medico
-                    {where}
-                    ORDER BY nr_atendimento, prioridade_ordem ASC, dt_pedido ASC
-                """.format(where=where_sql)
+        # Query unica: busca todos os exames ja ordenados
+        sql = """
+            SELECT
+                nr_atendimento,
+                dt_entrada,
+                tempo_no_ps,
+                nm_pessoa_fisica,
+                idade,
+                ie_sexo,
+                ds_convenio,
+                cd_medico_resp,
+                nm_medico_resp,
+                ds_clinica,
+                cd_cid_principal,
+                nr_seq_classificacao,
+                tipo_exame,
+                ds_procedimento,
+                ds_material,
+                dt_pedido,
+                dt_coleta_execucao,
+                dt_resultado,
+                status_exame,
+                ds_status,
+                tempo_espera,
+                prioridade_ordem
+            FROM painel25_ps_exames_medico
+            {where}
+            ORDER BY nr_atendimento, prioridade_ordem ASC, dt_pedido ASC
+        """.format(where=where_sql)
 
-                cur.execute(sql, params)
-                rows = cur.fetchall()
+        with get_db_cursor() as cursor:
+            cursor.execute(sql, params)
+            rows = cursor.fetchall()
 
-                # Agrupar por paciente (nr_atendimento) em Python
-                pacientes_dict = {}
-                for row in rows:
-                    r = serializar_linha(row)
-                    nr = r['nr_atendimento']
+        # Agrupar por paciente (nr_atendimento) em Python
+        pacientes_dict = {}
+        for row in rows:
+            r = serializar_linha(row)
+            nr = r['nr_atendimento']
 
-                    if nr not in pacientes_dict:
-                        pacientes_dict[nr] = {
-                            'nr_atendimento': nr,
-                            'dt_entrada': r['dt_entrada'],
-                            'tempo_no_ps': r['tempo_no_ps'],
-                            'nm_pessoa_fisica': r['nm_pessoa_fisica'],
-                            'idade': r['idade'],
-                            'ie_sexo': r['ie_sexo'],
-                            'ds_convenio': r['ds_convenio'],
-                            'cd_medico_resp': r['cd_medico_resp'],
-                            'nm_medico_resp': r['nm_medico_resp'],
-                            'ds_clinica': r['ds_clinica'],
-                            'cd_cid_principal': r['cd_cid_principal'],
-                            'nr_seq_classificacao': r['nr_seq_classificacao'],
-                            'exames': [],
-                            'qt_total': 0,
-                            'qt_prontos': 0,
-                            'qt_pendentes': 0,
-                            'qt_em_andamento': 0
-                        }
-
-                    pac = pacientes_dict[nr]
-                    pac['exames'].append({
-                        'tipo_exame': r['tipo_exame'],
-                        'ds_procedimento': r['ds_procedimento'],
-                        'ds_material': r['ds_material'],
-                        'dt_pedido': r['dt_pedido'],
-                        'dt_coleta_execucao': r['dt_coleta_execucao'],
-                        'dt_resultado': r['dt_resultado'],
-                        'status_exame': r['status_exame'],
-                        'ds_status': r['ds_status'],
-                        'tempo_espera': r['tempo_espera'],
-                        'prioridade_ordem': r['prioridade_ordem']
-                    })
-
-                    pac['qt_total'] += 1
-                    if r['status_exame'] in ('LAUDADO', 'LIBERADO'):
-                        pac['qt_prontos'] += 1
-                    elif r['status_exame'] in ('AGUARDANDO', 'SOLICITADO'):
-                        pac['qt_pendentes'] += 1
-                    else:
-                        pac['qt_em_andamento'] += 1
-
-                # Calcular situacao_geral e montar lista
-                pacientes = []
-                for pac in pacientes_dict.values():
-                    if pac['qt_total'] == pac['qt_prontos']:
-                        pac['situacao_geral'] = 'TODOS_PRONTOS'
-                    elif pac['qt_prontos'] > 0:
-                        pac['situacao_geral'] = 'PARCIAL'
-                    else:
-                        pac['situacao_geral'] = 'NENHUM_PRONTO'
-                    pacientes.append(pac)
-
-                # Ordenar: TODOS_PRONTOS primeiro (destaque verde), depois PARCIAL, depois NENHUM_PRONTO
-                ordem_situacao = {
-                    'TODOS_PRONTOS': 1,
-                    'PARCIAL': 2,
-                    'NENHUM_PRONTO': 3
+            if nr not in pacientes_dict:
+                pacientes_dict[nr] = {
+                    'nr_atendimento': nr,
+                    'dt_entrada': r['dt_entrada'],
+                    'tempo_no_ps': r['tempo_no_ps'],
+                    'nm_pessoa_fisica': r['nm_pessoa_fisica'],
+                    'idade': r['idade'],
+                    'ie_sexo': r['ie_sexo'],
+                    'ds_convenio': r['ds_convenio'],
+                    'cd_medico_resp': r['cd_medico_resp'],
+                    'nm_medico_resp': r['nm_medico_resp'],
+                    'ds_clinica': r['ds_clinica'],
+                    'cd_cid_principal': r['cd_cid_principal'],
+                    'nr_seq_classificacao': r['nr_seq_classificacao'],
+                    'exames': [],
+                    'qt_total': 0,
+                    'qt_prontos': 0,
+                    'qt_pendentes': 0,
+                    'qt_em_andamento': 0
                 }
-                pacientes.sort(key=lambda p: (
-                    ordem_situacao.get(p['situacao_geral'], 9),
-                    p['dt_entrada'] or ''
-                ))
 
-                return jsonify({
-                    'success': True,
-                    'data': pacientes,
-                    'total_pacientes': len(pacientes)
-                })
+            pac = pacientes_dict[nr]
+            pac['exames'].append({
+                'tipo_exame': r['tipo_exame'],
+                'ds_procedimento': r['ds_procedimento'],
+                'ds_material': r['ds_material'],
+                'dt_pedido': r['dt_pedido'],
+                'dt_coleta_execucao': r['dt_coleta_execucao'],
+                'dt_resultado': r['dt_resultado'],
+                'status_exame': r['status_exame'],
+                'ds_status': r['ds_status'],
+                'tempo_espera': r['tempo_espera'],
+                'prioridade_ordem': r['prioridade_ordem']
+            })
+
+            pac['qt_total'] += 1
+            if r['status_exame'] in ('LAUDADO', 'LIBERADO'):
+                pac['qt_prontos'] += 1
+            elif r['status_exame'] in ('AGUARDANDO', 'SOLICITADO'):
+                pac['qt_pendentes'] += 1
+            else:
+                pac['qt_em_andamento'] += 1
+
+        # Calcular situacao_geral e montar lista
+        pacientes = []
+        for pac in pacientes_dict.values():
+            if pac['qt_total'] == pac['qt_prontos']:
+                pac['situacao_geral'] = 'TODOS_PRONTOS'
+            elif pac['qt_prontos'] > 0:
+                pac['situacao_geral'] = 'PARCIAL'
+            else:
+                pac['situacao_geral'] = 'NENHUM_PRONTO'
+            pacientes.append(pac)
+
+        ordem_situacao = {'TODOS_PRONTOS': 1, 'PARCIAL': 2, 'NENHUM_PRONTO': 3}
+        pacientes.sort(key=lambda p: (
+            ordem_situacao.get(p['situacao_geral'], 9),
+            p['dt_entrada'] or ''
+        ))
+
+        return jsonify({
+            'success': True,
+            'data': pacientes,
+            'total_pacientes': len(pacientes)
+        })
 
     except Exception as e:
         current_app.logger.error('[P25] Erro dados: %s', e, exc_info=True)
@@ -326,39 +320,37 @@ def api_painel25_filtros():
     """
 
     try:
-        with get_db_cursor(use_dict_cursor=False) as cursor:
-                # Medicos com contagem de pacientes distintos
-                cur.execute("""
-                    SELECT
-                        cd_medico_resp,
-                        nm_medico_resp,
-                        COUNT(DISTINCT nr_atendimento) AS qt_pacientes
-                    FROM painel25_ps_exames_medico
-                    WHERE nm_medico_resp IS NOT NULL
-                      AND nm_medico_resp <> ''
-                    GROUP BY cd_medico_resp, nm_medico_resp
-                    ORDER BY nm_medico_resp
-                """)
-                medicos = [serializar_linha(r) for r in cur.fetchall()]
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    cd_medico_resp,
+                    nm_medico_resp,
+                    COUNT(DISTINCT nr_atendimento) AS qt_pacientes
+                FROM painel25_ps_exames_medico
+                WHERE nm_medico_resp IS NOT NULL
+                  AND nm_medico_resp <> ''
+                GROUP BY cd_medico_resp, nm_medico_resp
+                ORDER BY nm_medico_resp
+            """)
+            medicos = [serializar_linha(r) for r in cursor.fetchall()]
 
-                # Clinicas com contagem de pacientes distintos
-                cur.execute("""
-                    SELECT
-                        ds_clinica,
-                        COUNT(DISTINCT nr_atendimento) AS qt_pacientes
-                    FROM painel25_ps_exames_medico
-                    WHERE ds_clinica IS NOT NULL
-                      AND ds_clinica <> ''
-                    GROUP BY ds_clinica
-                    ORDER BY ds_clinica
-                """)
-                clinicas = [serializar_linha(r) for r in cur.fetchall()]
+            cursor.execute("""
+                SELECT
+                    ds_clinica,
+                    COUNT(DISTINCT nr_atendimento) AS qt_pacientes
+                FROM painel25_ps_exames_medico
+                WHERE ds_clinica IS NOT NULL
+                  AND ds_clinica <> ''
+                GROUP BY ds_clinica
+                ORDER BY ds_clinica
+            """)
+            clinicas = [serializar_linha(r) for r in cursor.fetchall()]
 
-                return jsonify({
-                    'success': True,
-                    'medicos': medicos,
-                    'clinicas': clinicas
-                })
+        return jsonify({
+            'success': True,
+            'medicos': medicos,
+            'clinicas': clinicas
+        })
 
     except Exception as e:
         current_app.logger.error('[P25] Erro filtros: %s', e, exc_info=True)

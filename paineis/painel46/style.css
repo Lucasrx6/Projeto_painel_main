@@ -405,6 +405,17 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .card-sem-envio-info { display: flex; flex-wrap: wrap; gap: 6px 12px; color: #555; }
 .card-sem-envio-info span { display: flex; align-items: center; gap: 4px; }
 
+/* ── MODAL IRMÃOS ──────────────────────────────── */
+.irmaos-lista { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; margin-top: 8px; }
+.irmao-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: #f8f9fa; border: 2px solid var(--borda);
+    border-radius: 8px; cursor: pointer; transition: border-color 0.15s;
+}
+.irmao-item-checked { border-color: var(--cor-primaria); background: var(--cor-primaria-light); }
+.irmao-chk { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; accent-color: var(--cor-primaria); }
+.irmao-proc { flex: 1; font-size: 13px; font-weight: 600; color: var(--texto); }
+
 /* ── TOAST ─────────────────────────────────────── */
 .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .toast { padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; max-width: 360px; text-align: center; }

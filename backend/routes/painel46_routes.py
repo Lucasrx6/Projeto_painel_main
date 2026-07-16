@@ -148,6 +148,7 @@ def _auto_finalizar_expirados(logger):
                            SELECT 1 FROM vw_painel19_radiologia p
                            WHERE p.nr_atendimento::varchar = radio_agenda.nr_atendimento
                              AND p.nr_prescricao::varchar  = radio_agenda.nr_prescricao
+                             AND p.ds_procedimento         = radio_agenda.ds_procedimento
                              AND p.status_radiologia NOT IN ('AGUARDANDO')
                        )
                       )
@@ -159,6 +160,7 @@ def _auto_finalizar_expirados(logger):
                            SELECT 1 FROM vw_painel19_radiologia p
                            WHERE p.nr_atendimento::varchar = radio_agenda.nr_atendimento
                              AND p.nr_prescricao::varchar  = radio_agenda.nr_prescricao
+                             AND p.ds_procedimento         = radio_agenda.ds_procedimento
                              AND p.status_radiologia NOT IN ('AGUARDANDO')
                        )
                       )
@@ -933,8 +935,9 @@ def api_p46_prescricoes():
                     ) AS auto_finalizado_sistema
                 FROM vw_painel19_radiologia p
                 LEFT JOIN radio_agenda ra ON (
-                    ra.nr_atendimento = p.nr_atendimento::varchar
-                    AND ra.nr_prescricao  = p.nr_prescricao::varchar
+                    ra.nr_atendimento  = p.nr_atendimento::varchar
+                    AND ra.nr_prescricao   = p.nr_prescricao::varchar
+                    AND ra.ds_procedimento = p.ds_procedimento
                     AND ra.status NOT IN ('concluido', 'cancelado')
                 )
                 LEFT JOIN radio_slots rs ON rs.id = ra.slot_id
@@ -971,11 +974,12 @@ def api_p46_agendar_prescricao():
     """
     try:
         dados = request.get_json() or {}
-        nr_atendimento = str(dados.get('nr_atendimento', '')).strip()
-        nr_prescricao  = str(dados.get('nr_prescricao',  '')).strip()
-        slot_id        = dados.get('slot_id')
-        requer_preparo = bool(dados.get('requer_preparo', False))
-        tipo_preparo   = str(dados.get('tipo_preparo', '') or '').strip()
+        nr_atendimento  = str(dados.get('nr_atendimento',  '')).strip()
+        nr_prescricao   = str(dados.get('nr_prescricao',   '')).strip()
+        ds_procedimento = str(dados.get('ds_procedimento', '') or '').strip()
+        slot_id         = dados.get('slot_id')
+        requer_preparo  = bool(dados.get('requer_preparo', False))
+        tipo_preparo    = str(dados.get('tipo_preparo', '') or '').strip()
 
         if not nr_atendimento or not nr_prescricao:
             return jsonify({'success': False,
@@ -1001,11 +1005,11 @@ def api_p46_agendar_prescricao():
             cursor.execute("""
                 SELECT id, status, slot_id
                 FROM radio_agenda
-                WHERE nr_atendimento = %s AND nr_prescricao = %s
+                WHERE nr_atendimento = %s AND nr_prescricao = %s AND ds_procedimento = %s
                   AND status NOT IN ('concluido', 'cancelado')
                 ORDER BY criado_em DESC
                 LIMIT 1
-            """, (nr_atendimento, nr_prescricao))
+            """, (nr_atendimento, nr_prescricao, ds_procedimento))
             existente = cursor.fetchone()
 
             if existente:
@@ -1079,6 +1083,144 @@ def api_p46_agendar_prescricao():
     except Exception as e:
         current_app.logger.error(f'Erro agendar-prescricao p46: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao agendar prescrição'}), 500
+
+
+# ── Agendar múltiplos exames no mesmo horário ────────────────
+
+@painel46_bp.route('/api/paineis/painel46/agendar-lote', methods=['POST'])
+@login_required
+@panel_permission_required('painel46')
+def api_p46_agendar_lote():
+    """
+    Agenda vários exames de uma vez, criando um slot individual para cada um.
+    Usado após agendar o exame principal para incluir irmãos no mesmo horário.
+    Body: {
+        exames:          [{nr_atendimento, nr_prescricao, ds_procedimento,
+                           nm_paciente, leito_origem, setor_origem_nome,
+                           cd_setor_atendimento, nm_medico_solicitante, prioridade}],
+        slot_data_hora:  str (ISO 8601),
+        slot_duracao_min: int,
+        slot_modalidade: str | None
+    }
+    """
+    try:
+        dados            = request.get_json() or {}
+        exames           = dados.get('exames', [])
+        data_hora_str    = dados.get('slot_data_hora', '')
+        duracao_min      = int(dados.get('slot_duracao_min', 30))
+        modalidade       = dados.get('slot_modalidade') or None
+
+        if not exames:
+            return jsonify({'success': False, 'error': 'Nenhum exame informado'}), 400
+        if not data_hora_str:
+            return jsonify({'success': False, 'error': 'slot_data_hora é obrigatório'}), 400
+
+        try:
+            slot_data_hora = datetime.fromisoformat(data_hora_str.replace('Z', ''))
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Formato de data inválido'}), 400
+
+        agendados = []
+        erros     = []
+        usuario   = session.get('nome_completo') or session.get('usuario', '')
+
+        for ex in exames:
+            nr_at  = str(ex.get('nr_atendimento',  '') or '').strip()
+            nr_pr  = str(ex.get('nr_prescricao',   '') or '').strip()
+            ds_pr  = str(ex.get('ds_procedimento', '') or '').strip()
+            if not nr_at or not nr_pr:
+                erros.append({'proc': ds_pr, 'erro': 'nr_atendimento/nr_prescricao ausente'})
+                continue
+
+            try:
+                with get_db_cursor(use_dict_cursor=False) as cursor:
+                    # Verifica registro existente por exame individual
+                    cursor.execute("""
+                        SELECT id, slot_id FROM radio_agenda
+                        WHERE nr_atendimento = %s AND nr_prescricao = %s AND ds_procedimento = %s
+                          AND status NOT IN ('concluido', 'cancelado')
+                        ORDER BY criado_em DESC LIMIT 1
+                    """, (nr_at, nr_pr, ds_pr))
+                    existente = cursor.fetchone()
+
+                    # Cria slot para este exame
+                    cursor.execute("""
+                        INSERT INTO radio_slots (data_hora, duracao_min, modalidade, criado_por_id)
+                        VALUES (%s, %s, %s, %s) RETURNING id
+                    """, (slot_data_hora, duracao_min, modalidade, session.get('usuario_id')))
+                    new_slot_id = cursor.fetchone()[0]
+
+                    if existente:
+                        radio_id      = existente[0]
+                        slot_id_atual = existente[1]
+                        # Libera slot anterior
+                        if slot_id_atual:
+                            cursor.execute("""
+                                UPDATE radio_slots
+                                SET status = 'livre', radio_agenda_id = NULL, atualizado_em = NOW()
+                                WHERE id = %s
+                            """, (slot_id_atual,))
+                        cursor.execute("""
+                            UPDATE radio_agenda
+                            SET slot_id = %s, status = 'agendado', status_enfermagem = 'pendente',
+                                motivo_recusa = NULL, dt_recusa = NULL, dt_ciencia = NULL,
+                                atualizado_em = NOW()
+                            WHERE id = %s
+                        """, (new_slot_id, radio_id))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO radio_agenda (
+                                nr_atendimento, nr_prescricao, nm_paciente, ds_procedimento,
+                                leito_origem, setor_origem_nome, cd_setor_atendimento,
+                                prioridade, requer_transporte, observacao, nm_medico_solicitante,
+                                requer_preparo, tipo_preparo,
+                                slot_id, status, criado_em, atualizado_em
+                            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'agendado',NOW(),NOW())
+                            RETURNING id
+                        """, (
+                            nr_at, nr_pr,
+                            ex.get('nm_paciente', ''), ds_pr,
+                            ex.get('leito_origem', ''), ex.get('setor_origem_nome', ''),
+                            ex.get('cd_setor_atendimento'),
+                            ex.get('prioridade', 'normal'),
+                            bool(ex.get('requer_transporte', True)),
+                            '', '', False, '',
+                            new_slot_id,
+                        ))
+                        radio_id = cursor.fetchone()[0]
+
+                    # Ocupa o slot criado
+                    cursor.execute("""
+                        UPDATE radio_slots
+                        SET status = 'ocupado', radio_agenda_id = %s, atualizado_em = NOW()
+                        WHERE id = %s
+                    """, (radio_id, new_slot_id))
+
+                agendados.append({'proc': ds_pr, 'radio_id': radio_id})
+                current_app.logger.info(
+                    f'P46 agendar-lote: atend={nr_at} presc={nr_pr} proc="{ds_pr}" '
+                    f'slot={new_slot_id} por {usuario}'
+                )
+
+            except Exception as ex_err:
+                current_app.logger.error(
+                    f'[P46] agendar-lote erro em "{ds_pr}": {ex_err}', exc_info=True
+                )
+                erros.append({'proc': ds_pr, 'erro': 'Erro interno ao agendar'})
+
+        if agendados:
+            cache_delete_pattern('painel46:*')
+            cache_delete_pattern('painel45:*')
+
+        return jsonify({
+            'success': len(agendados) > 0,
+            'agendados': len(agendados),
+            'erros': erros
+        }), (201 if agendados else 400)
+
+    except Exception as e:
+        current_app.logger.error(f'Erro agendar-lote p46: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao agendar em lote'}), 500
 
 
 # ── Slots disponíveis filtrados por tipo de exame ────────────
