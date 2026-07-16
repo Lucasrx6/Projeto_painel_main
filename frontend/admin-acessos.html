@@ -254,6 +254,9 @@
         .tema-azul .paginacao { border-top-color: #334155; }
         .tema-azul .pag-btn { background: #1e293b; border-color: #475569; color: #cbd5e1; }
         .tema-azul .btn-limpar { border-color: #475569; color: #94a3b8; }
+        .tema-azul #exp-meses {
+            background: #1e293b; border-color: #475569; color: #f1f5f9;
+        }
     </style>
 </head>
 <body>
@@ -341,6 +344,20 @@
     <div class="section-card">
         <div class="section-header">
             <h2><i class="fas fa-chart-bar" style="color:#3b82f6;"></i> Painéis Mais Acessados — Últimos 7 Dias</h2>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+                <select id="exp-meses" title="Período para exportação"
+                    style="border:1px solid #d1d5db;border-radius:8px;padding:.35rem .65rem;
+                           font-size:.8rem;background:var(--surface-primary,#fff);
+                           color:var(--text-primary,#111827);cursor:pointer;">
+                    <option value="3">Últimos 3 meses</option>
+                    <option value="6">Últimos 6 meses</option>
+                    <option value="12" selected>Últimos 12 meses</option>
+                    <option value="24">Últimos 24 meses</option>
+                </select>
+                <button class="btn-exportar" onclick="exportarMensalPaineis()" title="Baixar resumo mensal por painel (CSV / Excel)">
+                    <i class="fas fa-file-excel"></i> Excel Mensal
+                </button>
+            </div>
         </div>
         <div class="section-body" id="top-paineis-body" style="padding:.75rem 1.5rem;">
             <div style="color:var(--cinza);">Carregando...</div>
@@ -744,6 +761,14 @@ function exportarCSV() {
         dt_fim:    document.getElementById('f-dt-fim').value,
     });
     window.location.href = '/api/admin/acessos/exportar?' + params;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// EXPORTAR RESUMO MENSAL POR PAINEL
+// ══════════════════════════════════════════════════════════════════════
+function exportarMensalPaineis() {
+    const meses = document.getElementById('exp-meses').value || '12';
+    window.location.href = '/api/admin/acessos/exportar-mensal-paineis?meses=' + meses;
 }
 
 // ══════════════════════════════════════════════════════════════════════

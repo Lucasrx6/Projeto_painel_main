@@ -386,6 +386,146 @@ def exportar_csv():
 
 
 # ─────────────────────────────────────────────────────────
+# EXPORTAR RESUMO MENSAL DE PAINÉIS (pivot painel × mês)
+# ─────────────────────────────────────────────────────────
+
+@acessos_bp.route('/exportar-mensal-paineis', methods=['GET'])
+@admin_required
+def exportar_mensal_paineis():
+    """
+    Exporta CSV com pivot de requisições por painel × mês.
+    Colunas: Painel | Código | Jan/25 | Fev/25 | … | Total | Computadores
+    ?meses=12  (padrão 12, máximo 24)
+    """
+    try:
+        meses = min(24, max(1, int(request.args.get('meses', 12))))
+    except (ValueError, TypeError):
+        meses = 12
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'erro': 'Banco indisponível'}), 503
+
+    try:
+        from psycopg2.extras import RealDictCursor
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Requisições por painel × mês
+        cur.execute("""
+            SELECT
+                COALESCE(MAX(painel_nome), painel_codigo) AS nome,
+                painel_codigo,
+                TO_CHAR(DATE_TRUNC('month', dt_acesso), 'YYYY-MM') AS mes,
+                COUNT(*)            AS requisicoes
+            FROM access_log
+            WHERE painel_codigo IS NOT NULL
+              AND dt_acesso >= DATE_TRUNC('month', NOW())
+                              - (%s - 1) * INTERVAL '1 month'
+            GROUP BY painel_codigo, mes
+            ORDER BY painel_codigo, mes
+        """, (meses,))
+        linhas = cur.fetchall()
+
+        # Total do período por painel (computadores distintos exatos)
+        cur.execute("""
+            SELECT
+                COALESCE(MAX(painel_nome), painel_codigo) AS nome,
+                painel_codigo,
+                COUNT(*)            AS total_periodo,
+                COUNT(DISTINCT ip)  AS computadores_periodo
+            FROM access_log
+            WHERE painel_codigo IS NOT NULL
+              AND dt_acesso >= DATE_TRUNC('month', NOW())
+                              - (%s - 1) * INTERVAL '1 month'
+            GROUP BY painel_codigo
+        """, (meses,))
+        totais = {r['painel_codigo']: dict(r) for r in cur.fetchall()}
+
+        cur.close()
+        conn.close()
+
+        # Gera lista de meses em ordem cronológica (mais antigo → mais recente)
+        from datetime import date as _date
+        hoje = _date.today()
+        meses_lista = []
+        for i in range(meses - 1, -1, -1):
+            ano, m = hoje.year, hoje.month - i
+            while m <= 0:
+                m += 12
+                ano -= 1
+            meses_lista.append('{:04d}-{:02d}'.format(ano, m))
+
+        # Pivotear: {painel_codigo: {mes: requisicoes}}
+        pivot = {}
+        nome_map = {}
+        for r in linhas:
+            cod = r['painel_codigo']
+            nome_map[cod] = r['nome']
+            if cod not in pivot:
+                pivot[cod] = {}
+            pivot[cod][r['mes']] = r['requisicoes']
+
+        # Garante que painéis sem linha no pivot (ex.: só têm dados em alguns meses)
+        # já estão capturados via query de totais
+        for cod, t in totais.items():
+            if cod not in pivot:
+                pivot[cod] = {}
+            nome_map.setdefault(cod, t['nome'])
+
+        # Ordena painéis por total decrescente
+        paineis_ord = sorted(
+            pivot.keys(),
+            key=lambda c: totais.get(c, {}).get('total_periodo', 0),
+            reverse=True,
+        )
+
+        # CSV
+        _MESES_PT = {
+            '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
+            '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
+            '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez',
+        }
+
+        output = io.StringIO()
+        writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+
+        # Cabeçalho
+        header = ['Painel', 'Código']
+        for m in meses_lista:
+            ano, num = m.split('-')
+            header.append('{}/{}'.format(_MESES_PT[num], ano[2:]))
+        header += ['Total no Período', 'Computadores Distintos']
+        writer.writerow(header)
+
+        for cod in paineis_ord:
+            dados = pivot[cod]
+            t     = totais.get(cod, {})
+            row   = [nome_map.get(cod, cod), cod]
+            for m in meses_lista:
+                row.append(dados.get(m, 0))
+            row.append(t.get('total_periodo', 0))
+            row.append(t.get('computadores_periodo', 0))
+            writer.writerow(row)
+
+        csv_bytes = ('﻿' + output.getvalue()).encode('utf-8')
+        nome_arquivo = 'paineis_mensal_HAC_{}.csv'.format(
+            datetime.now().strftime('%Y%m%d'))
+
+        return Response(
+            csv_bytes,
+            mimetype='text/csv; charset=utf-8',
+            headers={
+                'Content-Disposition': 'attachment; filename="{}"'.format(nome_arquivo)
+            }
+        )
+
+    except Exception as e:
+        if not conn.closed:
+            conn.close()
+        return jsonify({'erro': 'Erro interno'}), 500
+
+
+# ─────────────────────────────────────────────────────────
 # EVENTO EXPLÍCITO DE USUÁRIO (clique, exportação, ação relevante)
 # ─────────────────────────────────────────────────────────
 

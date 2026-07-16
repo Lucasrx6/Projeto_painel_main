@@ -238,20 +238,19 @@
             var podeCiencia  = item.status !== 'cancelado' && enf !== 'ciente';
             var podeRecusar  = !concluido && item.status !== 'cancelado' && enf !== 'ciente';
 
-            if (item.slot_id && (enf === 'ciente' || podeCiencia)) {
-                if (enf === 'ciente') {
-                    html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciente';
-                    if (item.dt_ciencia) html += ' ' + escHtml(formatarDataHora(item.dt_ciencia));
-                    html += '</span>';
-                } else {
-                    // Ciência: disponível mesmo após concluído
-                    html += '<button class="btn-ciencia" data-acao="ciencia" data-id="' + item.id + '">'
-                          + '<i class="fas fa-check"></i> Ciência</button>';
-                    // Recusar: somente enquanto não concluído
-                    if (podeRecusar) {
-                        html += '<button class="btn-recusar" data-acao="recusar" data-id="' + item.id + '">'
-                              + '<i class="fas fa-times"></i> Recusar</button>';
-                    }
+            if (enf === 'ciente') {
+                // Mostrar confirmação independentemente de haver slot (slot pode ser liberado depois)
+                html += '<span class="txt-ciente"><i class="fas fa-check-circle"></i> Ciente';
+                if (item.dt_ciencia) html += ' ' + escHtml(formatarDataHora(item.dt_ciencia));
+                html += '</span>';
+            } else if (item.slot_id && podeCiencia) {
+                // Ciência: disponível mesmo após concluído
+                html += '<button class="btn-ciencia" data-acao="ciencia" data-id="' + item.id + '">'
+                      + '<i class="fas fa-check"></i> Ciência</button>';
+                // Recusar: somente enquanto não concluído
+                if (podeRecusar) {
+                    html += '<button class="btn-recusar" data-acao="recusar" data-id="' + item.id + '">'
+                          + '<i class="fas fa-times"></i> Recusar</button>';
                 }
             } else if (!item.slot_id) {
                 html += '<span class="ta-slot-sem"><i class="fas fa-hourglass-half"></i> Sem horário</span>';
@@ -480,12 +479,20 @@
                     headers: {'Content-Type': 'application/json'}})
             .then(function(r) { return r.json(); })
             .then(function(d) {
-                fecharCiencia();
-                if (d.success) { toast('Ciência registrada!', 'success'); carregar(); }
-                else toast('Erro: ' + (d.error || 'Falha'), 'error');
+                if (d.success) {
+                    fecharCiencia();
+                    toast('Ciência registrada!', 'success');
+                    carregar();
+                } else {
+                    toast('Erro: ' + (d.error || 'Falha'), 'error');
+                }
+                if (btn) btn.disabled = false;
             })
-            .catch(function(e) { console.error('[P45]', e); toast('Erro de conexão', 'error'); })
-            .finally(function() { if (btn) btn.disabled = false; });
+            .catch(function(e) {
+                console.error('[P45]', e);
+                toast('Erro de conexão', 'error');
+                if (btn) btn.disabled = false;
+            });
     }
 
     // ── Modal Recusar ──────────────────────────────
@@ -533,12 +540,20 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            fecharRecusar();
-            if (d.success) { toast('Agendamento recusado.', 'warning'); carregar(); }
-            else toast('Erro: ' + (d.error || 'Falha'), 'error');
+            if (d.success) {
+                fecharRecusar();
+                toast('Agendamento recusado.', 'warning');
+                carregar();
+            } else {
+                toast('Erro: ' + (d.error || 'Falha'), 'error');
+            }
+            if (btn) btn.disabled = false;
         })
-        .catch(function(e) { console.error('[P45]', e); toast('Erro de conexão', 'error'); })
-        .finally(function() { if (btn) btn.disabled = false; });
+        .catch(function(e) {
+            console.error('[P45]', e);
+            toast('Erro de conexão', 'error');
+            if (btn) btn.disabled = false;
+        });
     }
 
     // ── Inicializar ────────────────────────────────

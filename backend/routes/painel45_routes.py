@@ -81,13 +81,19 @@ def api_p45_agendamentos():
             filtros.append("ra.status_enfermagem = 'recusado'")
             filtros.append("DATE(ra.dt_recusa) = %s")
             params.append(data_str)
-        else:
+        elif filtro_enf in ('pendente', 'ciente'):
             filtros.append("ra.status NOT IN ('cancelado')")
-            if filtro_enf in ('pendente', 'ciente'):
-                filtros.append("ra.status_enfermagem = %s")
-                params.append(filtro_enf)
-            # Filtrar pelo dia do slot (ou data de criação se sem slot)
+            filtros.append("ra.status_enfermagem = %s")
+            params.append(filtro_enf)
             filtros.append("DATE(COALESCE(rs.data_hora, ra.criado_em)) = %s")
+            params.append(data_str)
+        else:
+            # Todos: não-cancelados do dia + recusados do dia (para que cnt-recusados seja correto)
+            filtros.append("""(
+                (ra.status NOT IN ('cancelado') AND DATE(COALESCE(rs.data_hora, ra.criado_em)) = %s)
+                OR (ra.status = 'cancelado' AND ra.status_enfermagem = 'recusado' AND DATE(ra.dt_recusa) = %s)
+            )""")
+            params.append(data_str)
             params.append(data_str)
 
         where = 'WHERE ' + ' AND '.join(filtros)

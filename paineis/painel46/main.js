@@ -761,9 +761,13 @@
                 setStatusDot(false);
                 var el = document.getElementById('ultima-atualizacao');
                 if (el) el.textContent = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+                Estado.carregandoFila = false;
             })
-            .catch(function(e) { console.error('[P46]', e); setStatusDot(true); })
-            .finally(function() { Estado.carregandoFila = false; });
+            .catch(function(e) {
+                console.error('[P46]', e);
+                setStatusDot(true);
+                Estado.carregandoFila = false;
+            });
     }
 
     function carregarSlots() {
@@ -802,6 +806,7 @@
                     toast('Erro ao carregar prescrições: ' + (d.error || 'Falha'), 'error');
                 }
                 renderizarExamesRadio();
+                Estado.carregandoExames = false;
             })
             .catch(function(e) {
                 console.error('[P46] exames:', e);
@@ -809,8 +814,8 @@
                 if (loading) loading.style.display = 'none';
                 if (vazio)   vazio.style.display = '';
                 toast('Erro de conexão ao carregar exames', 'error');
-            })
-            .finally(function() { Estado.carregandoExames = false; });
+                Estado.carregandoExames = false;
+            });
     }
 
     function carregarTudo() {
@@ -1289,13 +1294,14 @@
                 }
                 Estado.slotsDisponiveis = slots;
                 renderizarSlotsDaModal(slots, dataEncontrada);
+                if (loadEl) loadEl.style.display = 'none';
             })
             .catch(function(e) {
                 console.error('[P46] slots-por-tipo:', e);
                 Estado.slotsDisponiveis = [];
                 renderizarSlotsDaModal([], '');
-            })
-            .finally(function() { if (loadEl) loadEl.style.display = 'none'; });
+                if (loadEl) loadEl.style.display = 'none';
+            });
     }
 
     function renderizarSlotsDaModal(slots, dataISO) {
@@ -1373,15 +1379,21 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            fecharModal('modal-agendar-presc');
             if (d.success) {
+                fecharModal('modal-agendar-presc');
                 toast('Exame agendado com sucesso!', 'success');
                 carregarExamesRadio();
                 carregarFila();
-            } else toast('Erro: ' + (d.error || 'Falha ao agendar'), 'error');
+            } else {
+                toast('Erro: ' + (d.error || 'Falha ao agendar'), 'error');
+            }
+            if (btnOk) btnOk.disabled = false;
         })
-        .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); })
-        .finally(function() { if (btnOk) btnOk.disabled = false; });
+        .catch(function(e) {
+            console.error('[P46]', e);
+            toast('Erro de conexão', 'error');
+            if (btnOk) btnOk.disabled = false;
+        });
     }
 
     // ── Helpers modal ──────────────────────────────
