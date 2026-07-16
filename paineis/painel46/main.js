@@ -617,17 +617,21 @@
                           + '<div class="pct-atnd"># ' + escHtml(item.nr_atendimento || '') + '</div></td>';
                     html += '<td><span class="leito-badge">' + escHtml(item.leito || item.leito_base || '-') + '</span></td>';
                     html += '<td><div class="exame-nome">' + escHtml(item.ds_procedimento || '-') + '</div></td>';
+                    var _nr  = escHtml(String(item.nr_atendimento || ''));
+                    var _nrp = escHtml(String(item.nr_prescricao  || ''));
                     if (rid) {
                         html += '<td>' + badgeStatus(rst)
                               + (item.slot_data_hora ? '<div class="pct-atnd"><i class="fas fa-clock"></i> ' + formatarHora(item.slot_data_hora) + '</div>' : '')
                               + '</td>';
-                        html += '<td>';
+                        html += '<td style="white-space:nowrap;">';
                         if (rst === 'pendente' || rst === 'agendado')
                             html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + rid + ',\'no_local\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-map-marker-alt"></i> Chegou</button> ';
                         if (rst === 'no_local')
                             html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + rid + ',\'executando\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-play"></i> Iniciar</button> ';
                         if (rst === 'executando')
                             html += '<button class="btn-card-acao btn-concluir" onclick="P46.atualizarStatus(' + rid + ',\'concluido\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-check"></i> Concluir</button> ';
+                        if (rst !== 'concluido' && rst !== 'cancelado')
+                            html += '<button class="btn-card-acao btn-agendar-presc" onclick="P46.abrirAgendarPresc(\'' + _nr + '\',\'' + _nrp + '\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-calendar-alt"></i> Reagendar</button> ';
                         if (rst !== 'concluido' && rst !== 'cancelado')
                             html += '<button class="btn-card-acao btn-cancelar-card" onclick="P46.atualizarStatus(' + rid + ',\'cancelado\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-times"></i></button>';
                         html += '</td>';
@@ -638,8 +642,8 @@
                         html += '</td>';
                         html += '<td style="color:#6c757d;font-size:11px">—</td>';
                     } else {
-                        html += '<td><span class="badge-status badge-pendente" style="opacity:.6"><i class="fas fa-minus"></i> Sem controle</span></td>';
-                        html += '<td style="color:#6c757d;font-size:11px">—</td>';
+                        html += '<td><span class="badge-status badge-presc-sem-ag"><i class="fas fa-calendar-plus"></i> Sem agendamento</span></td>';
+                        html += '<td><button class="btn-card-acao btn-agendar-presc-novo" onclick="P46.abrirAgendarPresc(\'' + _nr + '\',\'' + _nrp + '\')" style="padding:4px 8px;font-size:11px"><i class="fas fa-calendar-plus"></i> Agendar</button></td>';
                     }
                     html += '</tr>';
                 }
