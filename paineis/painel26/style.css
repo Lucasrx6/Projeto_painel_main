@@ -196,11 +196,6 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
 .tabela-dest tbody tr.inativo { opacity: 0.5; }
 
 
-.timeline-wrapper { max-height: 350px; overflow-y: auto; padding: var(--espacamento-sm) var(--espacamento-md); }
-.timeline-wrapper::-webkit-scrollbar { width: 6px; }
-.timeline-wrapper::-webkit-scrollbar-track { background: var(--cor-borda); border-radius: var(--raio-sm); }
-.timeline-wrapper::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: var(--raio-sm); }
-
 .secao-content.recolhido { max-height: 0; overflow: hidden; padding: 0; }
 .secao-toggle { cursor: pointer; }
 .secao-toggle .toggle-icon { font-size: 0.7rem; transition: transform 0.3s ease; color: var(--cor-texto-muted); }
@@ -232,7 +227,7 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
 /* =========================================================
    10. TIMELINE HISTORICO
    ========================================================= */
-.timeline-wrapper { max-height: 400px; overflow-y: auto; padding: var(--espacamento-sm) var(--espacamento-md); }
+.timeline-wrapper { overflow-y: auto; padding: var(--espacamento-sm) var(--espacamento-md); }
 .timeline-wrapper::-webkit-scrollbar { width: 5px; }
 .timeline-wrapper::-webkit-scrollbar-thumb { background: var(--cor-borda); border-radius: 3px; }
 .timeline-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--cor-borda-light); animation: fadeIn 0.2s ease both; }
@@ -307,44 +302,69 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
 .dest-descricao { font-size: 0.68rem; color: var(--cor-texto-muted); display: block; margin-top: 1px; }
 
 /* =========================================================
-   16. HISTÓRICO — STATS E TIMELINE
+   16. HISTÓRICO — LAYOUT E CONTEÚDO
    ========================================================= */
-.hist-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: var(--espacamento-md); }
-.hist-kpi-card { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--cor-fundo-card); border-radius: var(--raio-md); box-shadow: var(--sombra-card); border-left: 3px solid var(--cor-primaria); }
-.hist-kpi-sucesso { border-left-color: #28a745; }
-.hist-kpi-erro    { border-left-color: #dc3545; }
-.hist-kpi-taxa    { border-left-color: #6f42c1; }
-.hist-kpi-icon { font-size: 1.2rem; }
-.hist-kpi-sucesso .hist-kpi-icon { color: #28a745; }
-.hist-kpi-erro    .hist-kpi-icon { color: #dc3545; }
-.hist-kpi-taxa    .hist-kpi-icon { color: #6f42c1; }
-.hist-kpi-card:not([class*=hist-kpi-s]):not([class*=hist-kpi-e]):not([class*=hist-kpi-t]) .hist-kpi-icon { color: var(--cor-primaria); }
-.hist-kpi-info { display: flex; flex-direction: column; }
-.hist-kpi-val { font-size: 1.4rem; font-weight: 700; line-height: 1.1; color: var(--cor-texto); }
-.hist-kpi-label { font-size: 0.65rem; color: var(--cor-texto-muted); text-transform: uppercase; letter-spacing: 0.3px; }
 
-/* Envios por tipo — wrapper com padding */
-#hist-por-tipo { padding: var(--espacamento-md); }
-/* Barras por tipo */
-.hist-bar-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--cor-borda-light); }
+/* Wrapper do histórico — substitui .painel-main para controle total de altura */
+.hist-painel-wrapper {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacamento-sm);
+    padding: var(--espacamento-sm) var(--espacamento-md) var(--espacamento-md);
+    overflow: hidden;
+}
+
+/* Linha superior: KPIs (esq) + Envios por Tipo (dir) lado a lado */
+.hist-upper-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--espacamento-sm);
+    flex-shrink: 0;
+}
+
+/* KPI grid: 2 × 2 (compacto, sem precisar de 4 colunas) */
+.hist-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: var(--espacamento-sm); }
+.hist-kpi-card { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--cor-fundo-card); border-radius: var(--raio-md); box-shadow: var(--sombra-card); border-left: 3px solid var(--cor-primaria); }
+.hist-kpi-sucesso { border-left-color: var(--cor-sucesso); }
+.hist-kpi-erro    { border-left-color: var(--cor-perigo); }
+.hist-kpi-taxa    { border-left-color: #6f42c1; }
+.hist-kpi-icon { font-size: 1rem; flex-shrink: 0; }
+.hist-kpi-sucesso .hist-kpi-icon { color: var(--cor-sucesso); }
+.hist-kpi-erro    .hist-kpi-icon { color: var(--cor-perigo); }
+.hist-kpi-taxa    .hist-kpi-icon { color: #6f42c1; }
+.hist-kpi-card:not(.hist-kpi-sucesso):not(.hist-kpi-erro):not(.hist-kpi-taxa) .hist-kpi-icon { color: var(--cor-primaria); }
+.hist-kpi-info { display: flex; flex-direction: column; min-width: 0; }
+.hist-kpi-val   { font-size: 1.2rem; font-weight: 700; line-height: 1.1; color: var(--cor-texto); }
+.hist-kpi-label { font-size: 0.6rem; color: var(--cor-texto-muted); text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+
+/* Envios por tipo: area com scroll para nao empurrar a timeline */
+#hist-por-tipo { padding: var(--espacamento-sm) var(--espacamento-md); overflow-y: auto; max-height: 155px; }
+.hist-bar-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--cor-borda-light); }
 .hist-bar-row:last-child { border-bottom: none; }
-.hist-bar-label { min-width: 160px; font-size: 0.8rem; font-weight: 500; color: var(--cor-texto); }
-.hist-bar-track { flex: 1; height: 10px; background: #f0f0f0; border-radius: 5px; overflow: hidden; }
-.hist-bar-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; min-width: 4px; }
-.hist-bar-count { min-width: 80px; font-size: 0.75rem; font-weight: 600; color: var(--cor-texto-secundario); text-align: right; }
+.hist-bar-label { min-width: 110px; max-width: 110px; font-size: 0.75rem; font-weight: 500; color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-bar-track { flex: 1; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+.hist-bar-fill  { height: 100%; border-radius: 4px; transition: width 0.5s ease; min-width: 4px; }
+.hist-bar-count { min-width: 56px; font-size: 0.7rem; font-weight: 600; color: var(--cor-texto-secundario); text-align: right; }
 .hist-bar-count small { font-weight: 400; color: var(--cor-texto-muted); }
 
+/* Timeline: ocupa todo o espaco restante apos a linha superior */
+.hist-timeline-secao { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.hist-timeline-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.hist-timeline-secao .timeline-wrapper { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+
 /* Canal badges na timeline */
-.canal-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 0.6rem; padding: 1px 6px; border-radius: 10px; font-weight: 600; }
+.canal-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 0.58rem; padding: 1px 5px; border-radius: 8px; font-weight: 600; }
 .canal-email { background: #e3f2fd; color: #1565c0; }
 .canal-ntfy  { background: #e8f5e9; color: #2e7d32; }
 .timeline-tipo { font-weight: 500; color: var(--cor-texto); }
-.timeline-qtd  { font-size: 0.65rem; background: #f0f0f0; padding: 1px 5px; border-radius: 8px; color: var(--cor-texto-secundario); }
+.timeline-qtd  { font-size: 0.6rem; background: #f0f0f0; padding: 1px 4px; border-radius: 6px; color: var(--cor-texto-secundario); }
 
 /* Emails na timeline */
-.timeline-emails { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-.timeline-email-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 0.65rem; background: #fff8e1; color: #5d4037; border: 1px solid #ffe082; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
-.timeline-email-badge i { font-size: 0.6rem; color: #8d6e63; }
+.timeline-emails { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.timeline-email-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 0.6rem; background: #fff8e1; color: #5d4037; border: 1px solid #ffe082; padding: 1px 5px; border-radius: 8px; font-weight: 500; }
+.timeline-email-badge i { font-size: 0.55rem; color: #8d6e63; }
 
 /* =========================================================
    14. RESPONSIVIDADE

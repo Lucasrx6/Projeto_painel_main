@@ -89,34 +89,38 @@
 
             <!-- ABA HISTÓRICO (estática) -->
             <div class="tab-panel" id="tab-historico">
-                <div class="painel-main content-scroll">
+                <div class="hist-painel-wrapper">
 
-                    <section class="secao-analise">
-                        <div class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-chart-bar"></i><h2>Resumo do Dia</h2></div>
-                        </div>
-                        <div class="secao-content">
-                            <div class="hist-kpis" id="hist-kpis">
-                                <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                    <!-- Linha superior: KPIs + Envios por Tipo lado a lado -->
+                    <div class="hist-upper-row">
+                        <section class="secao-analise">
+                            <div class="secao-header">
+                                <div class="secao-titulo"><i class="fas fa-chart-bar"></i><h2>Resumo do Dia</h2></div>
                             </div>
-                        </div>
-                    </section>
+                            <div class="secao-content">
+                                <div class="hist-kpis" id="hist-kpis">
+                                    <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                                </div>
+                            </div>
+                        </section>
 
-                    <section class="secao-analise">
-                        <div class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-chart-pie"></i><h2>Envios por Tipo de Evento</h2></div>
-                        </div>
-                        <div class="secao-content">
-                            <div id="hist-por-tipo"><p class="texto-vazio">Carregando...</p></div>
-                        </div>
-                    </section>
+                        <section class="secao-analise">
+                            <div class="secao-header">
+                                <div class="secao-titulo"><i class="fas fa-chart-pie"></i><h2>Envios por Tipo de Evento</h2></div>
+                            </div>
+                            <div class="secao-content">
+                                <div id="hist-por-tipo"><p class="texto-vazio">Carregando...</p></div>
+                            </div>
+                        </section>
+                    </div>
 
-                    <section class="secao-analise">
+                    <!-- Timeline ocupa todo o espaco restante -->
+                    <section class="secao-analise hist-timeline-secao">
                         <div class="secao-header">
                             <div class="secao-titulo"><i class="fas fa-history"></i><h2>Timeline de Envios</h2></div>
                             <span class="secao-contador" id="contador-historico">-</span>
                         </div>
-                        <div class="secao-content">
+                        <div class="secao-content hist-timeline-content">
                             <div class="timeline-wrapper" id="timeline-historico">
                                 <div class="loading-container"><div class="loading-spinner"></div><p>Carregando...</p></div>
                             </div>
