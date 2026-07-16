@@ -13,7 +13,8 @@
             slotDelete:      '/api/paineis/painel46/slots/{id}',
             prescricoes:     '/api/paineis/painel46/prescricoes',
             agendarPrescricao: '/api/paineis/painel46/agendar-prescricao',
-            slotsPorTipo:    '/api/paineis/painel46/slots-por-tipo'
+            slotsPorTipo:    '/api/paineis/painel46/slots-por-tipo',
+            slotDesvincular: '/api/paineis/painel46/slots/{id}/desvincular'
         },
         intervalo: 45000
     };
@@ -261,6 +262,9 @@
         if (item.status === 'pendente' || item.status === 'agendado')
             html += '<button class="btn-card-acao btn-no-local" onclick="P46.atualizarStatus(' + item.id + ',\'no_local\')" style="font-size:11px;padding:5px 9px">'
                   + '<i class="fas fa-map-marker-alt"></i> Chegou</button>';
+        if (item.status === 'agendado')
+            html += '<button class="btn-card-acao btn-agendar-presc" onclick="P46.reagendarDaFila(' + item.id + ')" style="font-size:11px;padding:5px 9px">'
+                  + '<i class="fas fa-calendar-alt"></i> Reagendar</button>';
         if (item.status === 'no_local')
             html += '<button class="btn-card-acao btn-executando" onclick="P46.atualizarStatus(' + item.id + ',\'executando\')" style="font-size:11px;padding:5px 9px">'
                   + '<i class="fas fa-play"></i> Iniciar</button>';
@@ -674,7 +678,7 @@
                   + '<i class="fas fa-trash"></i></button>';
         }
         if (slot.status === 'ocupado') {
-            html += '<button class="btn-slot btn-slot-desvincular" onclick="P46.desagendar(' + slot.id + ',' + (slot.radio_id || 0) + ')">'
+            html += '<button class="btn-slot btn-slot-desvincular" onclick="P46.desagendar(' + slot.id + ')">'
                   + '<i class="fas fa-user-times"></i> Desvincular</button>';
         }
         if (slot.status === 'bloqueado') {
@@ -882,12 +886,11 @@
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
     }
 
-    function desagendar(slotId, radioId) {
+    function desagendar(slotId) {
         if (!confirm('Desvincular paciente desta vaga?')) return;
-        fetch(CONFIG.api.agendar.replace('{id}', radioId), {
+        fetch(CONFIG.api.slotDesvincular.replace('{id}', slotId), {
             method: 'PUT', credentials: 'same-origin',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({slot_id: null})
+            headers: {'Content-Type': 'application/json'}
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
@@ -895,6 +898,68 @@
             else toast('Erro: ' + (d.error || 'Falha'), 'error');
         })
         .catch(function(e) { console.error('[P46]', e); toast('Erro de conexão', 'error'); });
+    }
+
+    function reagendarDaFila(radioId) {
+        var item = null;
+        var lista = Estado.fila.agendados.concat(Estado.fila.pendentes);
+        for (var i = 0; i < lista.length; i++) {
+            if (lista[i].id === radioId) { item = lista[i]; break; }
+        }
+        if (!item) { toast('Item não encontrado. Atualize a tela.', 'warning'); return; }
+
+        var presc = {
+            nr_atendimento:        item.nr_atendimento,
+            nr_prescricao:         item.nr_prescricao || '',
+            nm_pessoa_fisica:      item.nm_paciente || '',
+            ds_procedimento:       item.ds_procedimento || '',
+            leito:                 item.leito_origem || '',
+            leito_base:            item.leito_origem || '',
+            nm_setor:              item.setor_origem_nome || '',
+            cd_setor_atendimento:  item.cd_setor_atendimento,
+            tipo_exame:            item.tipo_exame || 'OUTROS',
+            radio_id:              item.id,
+            radio_status:          item.status,
+            radio_prioridade:      item.prioridade || 'normal',
+            nm_medico_solicitante: item.nm_medico_solicitante || '',
+            requer_preparo:        !!item.requer_preparo,
+            radio_preparo:         item.tipo_preparo || '',
+            concluido_interno:     false
+        };
+
+        Estado.modalAgendPresc  = presc;
+        Estado.modalAgendSlotId = null;
+
+        var infoEl = document.getElementById('modal-ag-info');
+        if (infoEl) {
+            infoEl.innerHTML = '<strong>' + escHtml(formatarNome(presc.nm_pessoa_fisica)) + '</strong><br>'
+                + '<small>' + escHtml(presc.ds_procedimento || '-') + '</small>'
+                + (presc.leito ? '<br><small><i class="fas fa-bed"></i> ' + escHtml(presc.leito) + '</small>' : '');
+        }
+        var tipoEl = document.getElementById('ag-tipo');
+        if (tipoEl) tipoEl.value = presc.tipo_exame || 'OUTROS';
+        var dataEl = document.getElementById('ag-data');
+        if (dataEl) dataEl.value = '';
+        var obsEl = document.getElementById('ag-obs');
+        if (obsEl) obsEl.value = item.observacao || '';
+        var btnPreparoNaoEl = document.getElementById('btn-preparo-nao');
+        var btnPreparoSimEl = document.getElementById('btn-preparo-sim');
+        var preparoGrupoEl  = document.getElementById('ag-preparo-grupo');
+        var preparoTextoEl  = document.getElementById('ag-preparo-texto');
+        var preparoHintEl   = document.getElementById('ag-preparo-hint');
+        if (btnPreparoNaoEl) btnPreparoNaoEl.className = 'btn-preparo btn-preparo-nao ativo';
+        if (btnPreparoSimEl) btnPreparoSimEl.className = 'btn-preparo btn-preparo-sim';
+        if (preparoGrupoEl)  preparoGrupoEl.style.display = 'none';
+        if (preparoTextoEl)  preparoTextoEl.value = '';
+        if (preparoHintEl)   preparoHintEl.textContent = '0 / 15 mínimo';
+        var priEl = document.getElementById('ag-prioridade');
+        if (priEl) priEl.value = presc.radio_prioridade || 'normal';
+        var btnOk = document.getElementById('modal-ag-confirmar');
+        if (btnOk) btnOk.disabled = true;
+
+        renderizarSlotsDaModal([]);
+        buscarSlotsPorTipo('auto');
+        abrirModal('modal-agendar-presc');
     }
 
     // ── Modal vincular paciente ────────────────────
@@ -1705,6 +1770,7 @@
         desbloquearSlot:     desbloquearSlot,
         removerSlot:         removerSlot,
         desagendar:          desagendar,
+        reagendarDaFila:     reagendarDaFila,
         abrirAgendar:        abrirAgendar,
         vincularPaciente:    vincularPaciente,
         vincularPrescricao:  vincularPrescricao,

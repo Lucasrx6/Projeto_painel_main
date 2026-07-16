@@ -210,7 +210,7 @@ def api_p46_fila():
             # Agendados para a data (com slot) — inclui ciência/recusa
             cursor.execute(f"""
                 SELECT
-                    ra.id, ra.nr_atendimento, ra.nm_paciente, ra.ds_procedimento,
+                    ra.id, ra.nr_atendimento, ra.nr_prescricao, ra.nm_paciente, ra.ds_procedimento,
                     ra.leito_origem, ra.setor_origem_nome, ra.cd_setor_atendimento,
                     ra.prioridade, ra.status, ra.requer_transporte, ra.observacao,
                     ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
@@ -252,7 +252,7 @@ def api_p46_fila():
             # Pendentes sem slot (aguardando agendamento pela radiologia / recusados)
             cursor.execute(f"""
                 SELECT
-                    ra.id, ra.nr_atendimento, ra.nm_paciente, ra.ds_procedimento,
+                    ra.id, ra.nr_atendimento, ra.nr_prescricao, ra.nm_paciente, ra.ds_procedimento,
                     ra.leito_origem, ra.setor_origem_nome, ra.cd_setor_atendimento,
                     ra.prioridade, ra.status, ra.requer_transporte, ra.observacao,
                     ra.status_enfermagem, ra.motivo_recusa, ra.dt_ciencia, ra.dt_recusa,
@@ -815,6 +815,51 @@ def api_p46_slots_deletar(slot_id):
     except Exception as e:
         current_app.logger.error(f'Erro delete slot p46: {e}', exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao remover slot'}), 500
+
+
+@painel46_bp.route('/api/paineis/painel46/slots/<int:slot_id>/desvincular', methods=['PUT'])
+@login_required
+@panel_permission_required('painel46')
+def api_p46_slot_desvincular(slot_id):
+    """Desvincula paciente de uma vaga operando pelo slot (não pelo radio_agenda)."""
+    try:
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            cursor.execute(
+                "SELECT id, status, radio_agenda_id FROM radio_slots WHERE id = %s",
+                (slot_id,)
+            )
+            slot = cursor.fetchone()
+            if not slot:
+                return jsonify({'success': False, 'error': 'Vaga não encontrada'}), 404
+            if slot[1] != 'ocupado':
+                return jsonify({'success': False, 'error': 'Vaga não está ocupada'}), 409
+
+            radio_id = slot[2]
+
+            cursor.execute("""
+                UPDATE radio_slots
+                SET status = 'livre', radio_agenda_id = NULL, atualizado_em = NOW()
+                WHERE id = %s
+            """, (slot_id,))
+
+            if radio_id:
+                cursor.execute("""
+                    UPDATE radio_agenda
+                    SET slot_id           = NULL,
+                        status            = CASE WHEN status = 'agendado' THEN 'pendente' ELSE status END,
+                        status_enfermagem = 'pendente',
+                        dt_ciencia        = NULL,
+                        atualizado_em     = NOW()
+                    WHERE id = %s AND status NOT IN ('concluido', 'cancelado')
+                """, (radio_id,))
+
+        cache_delete_pattern('painel46:*')
+        cache_delete_pattern('painel45:*')
+        return jsonify({'success': True})
+
+    except Exception as e:
+        current_app.logger.error(f'Erro desvincular slot p46: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao desvincular'}), 500
 
 
 # ── Prescrições Tasy (nova aba principal) ────────────────────
