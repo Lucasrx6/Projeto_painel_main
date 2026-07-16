@@ -190,7 +190,12 @@
               + '</td>';
 
         // Procedimento
-        html += '<td><div class="ta-proc">' + escHtml(item.ds_procedimento || '-') + '</div></td>';
+        html += '<td><div class="ta-proc">' + escHtml(item.ds_procedimento || '-') + '</div>';
+        if (item.requer_preparo && item.tipo_preparo) {
+            html += '<div class="ta-preparo"><i class="fas fa-exclamation-triangle"></i>'
+                  + escHtml(item.tipo_preparo) + '</div>';
+        }
+        html += '</td>';
 
         // Tipo
         html += '<td>' + badgeTipo(item.tipo_exame) + '</td>';
@@ -448,6 +453,13 @@
         if (info && item) {
             info.innerHTML = '<strong>' + escHtml(formatarNome(item.nm_paciente || '')) + '</strong><br>'
                            + '<small>' + escHtml(item.ds_procedimento || '') + '</small>';
+            if (item.requer_preparo && item.tipo_preparo) {
+                info.innerHTML += '<div class="modal-preparo-alerta">'
+                    + '<i class="fas fa-exclamation-triangle"></i>'
+                    + '<strong>Preparo necessário:</strong> '
+                    + escHtml(item.tipo_preparo)
+                    + '</div>';
+            }
         }
         var modal = document.getElementById('modal-ciencia');
         if (modal) modal.style.display = 'flex';

@@ -215,6 +215,21 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .ta-nome { font-size: 13px; font-weight: 700; color: var(--texto); }
 .ta-sub  { font-size: 11px; color: var(--texto-sec); margin-top: 2px; }
 .ta-proc { font-size: 12px; font-weight: 600; color: var(--texto); word-break: break-word; max-width: 220px; }
+.ta-preparo {
+    display: inline-flex; align-items: flex-start; gap: 4px;
+    font-size: 10px; line-height: 1.35;
+    color: #92400e; background: #fef3c7;
+    border: 1px solid #fbbf24; border-radius: 4px;
+    padding: 2px 6px; margin-top: 4px;
+    word-break: break-word; max-width: 220px;
+}
+.ta-preparo i { margin-top: 1px; flex-shrink: 0; }
+.modal-preparo-alerta {
+    margin-top: 10px; padding: 10px 12px;
+    background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px;
+    font-size: 13px; color: #92400e; line-height: 1.45;
+}
+.modal-preparo-alerta i { color: #d97706; margin-right: 5px; }
 .ta-slot     { font-size: 12px; font-weight: 600; color: #0c5460; white-space: nowrap; }
 .ta-slot-sem { font-size: 11px; color: var(--texto-sec); font-style: italic; white-space: nowrap; }
 .ta-acoes    { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
