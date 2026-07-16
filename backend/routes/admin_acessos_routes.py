@@ -14,11 +14,14 @@ import csv
 import io
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, send_from_directory, request, Response
+from flask import Blueprint, jsonify, send_from_directory, request, Response, session
 
-from backend.middleware.decorators import admin_required
+from backend.middleware.decorators import admin_required, login_required
 from backend.database import get_db_connection
-from backend.access_tracker import get_connected_users, PAINEIS_NOMES
+from backend.access_tracker import (
+    get_connected_users, PAINEIS_NOMES,
+    _write_log_async, _SERVER_IPS,
+)
 
 acessos_bp = Blueprint('admin_acessos', __name__, url_prefix='/api/admin/acessos')
 
@@ -350,6 +353,7 @@ def exportar_csv():
                 'admin':   'Ação Administrativa',
                 'erro':    'Erro de Acesso',
                 'sistema': 'Acesso ao Sistema',
+                'evento':  'Ação do Usuário',
             }
             tipo_pt = tipos_pt.get(r['tipo_acesso'] or '', r['tipo_acesso'] or '—')
 
@@ -379,6 +383,47 @@ def exportar_csv():
     except Exception as e:
         conn.close()
         return jsonify({'erro': 'Erro interno'}), 500
+
+
+# ─────────────────────────────────────────────────────────
+# EVENTO EXPLÍCITO DE USUÁRIO (clique, exportação, ação relevante)
+# ─────────────────────────────────────────────────────────
+
+@acessos_bp.route('/evento', methods=['POST'])
+@login_required
+def registrar_evento():
+    """
+    Registra uma ação explícita do usuário no log de acessos.
+    Qualquer painel pode chamar: POST /api/admin/acessos/evento
+    Body JSON: { acao: str, descricao: str, painel: str }
+    """
+    dados    = request.get_json(silent=True) or {}
+    acao     = str(dados.get('acao', '')).strip()[:100]
+    descricao = str(dados.get('descricao', '')).strip()[:300]
+    painel   = str(dados.get('painel', '')).strip()[:30]
+
+    if not acao:
+        return jsonify({'ok': False, 'erro': 'Campo "acao" é obrigatório'}), 400
+
+    ip = (request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
+          or request.remote_addr or '0.0.0.0')
+
+    if ip not in _SERVER_IPS:
+        uid   = session.get('usuario_id')
+        uname = (session.get('nome_completo')
+                 or session.get('usuario')
+                 or 'Não identificado')
+        painel_nome = PAINEIS_NOMES.get(painel) if painel else None
+
+        _write_log_async(
+            ip, painel or None, painel_nome,
+            '/evento/' + acao,
+            descricao or acao,
+            'POST', 200, 0,
+            uid, uname, 'evento',
+        )
+
+    return jsonify({'ok': True})
 
 
 # ─────────────────────────────────────────────────────────

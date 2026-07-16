@@ -69,6 +69,14 @@ PAINEIS_NOMES = {
     'painel38': 'Score Farmacêutico',
     'painel39': 'Interações Medicamentosas',
     'painel40': 'Requisições Urgentes',
+    'painel41': 'Solicitar Dieta',
+    'painel42': 'Kanban de Nutrição',
+    'painel43': 'Gestão e Relatórios de Nutrição',
+    'painel44': 'Hub de Serviços',
+    'painel45': 'Radiologia — Enfermagem',
+    'painel46': 'Radiologia',
+    'painel47': 'Gestão de Radiologia',
+    'painel48': 'Assinatura Digital HUB',
 }
 
 # Descrição humanizada de sub-endpoints
@@ -95,6 +103,33 @@ _SUB_DESCRICOES = {
     'especialidades':         'consultou especialidades',
     'responsaveis':           'consultou responsáveis',
     'analise':                'executou análise de dados',
+    # Nutrição (painéis 41–43)
+    'solicitacoes':           'consultou as solicitações',
+    'solicitacoes-hoje':      'consultou as solicitações do dia',
+    'kanban':                 'visualizou o kanban de nutrição',
+    'fila-entrega':           'consultou a fila de entrega',
+    'entregar':               'confirmou entrega de dieta',
+    'entregar-assinado':      'confirmou entrega com assinatura',
+    'rel-kanban':             'consultou relatório do kanban',
+    'rel-assinaturas':        'consultou relatório de assinaturas',
+    'exportar':               'exportou dados em CSV',
+    'protocolo':              'gerou protocolo de entrega',
+    # Assinatura Digital (painel 48)
+    'assinar':                'coletou assinatura digital',
+    'contextos':              'consultou contextos de assinatura',
+    'fila':                   'consultou a fila de assinaturas',
+    'comprovante':            'consultou comprovante de assinatura',
+    # Radiologia (painéis 45–47)
+    'imagens':                'consultou imagens de radiologia',
+    'agenda':                 'consultou agenda de radiologia',
+    'laudos':                 'consultou laudos',
+    'exames':                 'consultou exames de radiologia',
+    'por-setor':              'consultou dados por setor',
+    'por-medico':             'consultou dados por médico',
+    'pendentes':              'consultou pendências',
+    # Hub de Serviços (painel 44)
+    'hub':                    'acessou o hub de serviços',
+    'servicos':               'consultou lista de serviços',
 }
 
 
@@ -136,7 +171,9 @@ _SERVER_IPS = set(
     if ip.strip()
 )
 
-_PAINEL_RE = re.compile(r'/(painel\d+)(?:/|$|\?)')
+_PAINEL_RE      = re.compile(r'/(painel\d+)(?:/|$|\?)')
+# Detecta a carga real da página HTML do painel (ex: GET /painel/painel42)
+_PAINEL_PAGE_RE = re.compile(r'^/painel/painel\d+$')
 
 
 # ─────────────────────────────────────────────────────────
@@ -221,6 +258,12 @@ def _deve_logar(ip: str, painel_codigo, status_code: int, path: str, metodo: str
     if '/admin' in path and '/admin/acessos' not in path:
         return _check_throttle((ip, '__admin__'))
     if painel_codigo:
+        # Carga real da página HTML (/painel/painel42): sempre registra —
+        # é o momento em que um usuário realmente abriu o painel.
+        if _PAINEL_PAGE_RE.match(path):
+            return True
+        # Chamadas de API (polling 15–60s, /api/paineis/...): throttle de 10 min
+        # para não poluir o log com centenas de entradas por sessão.
         return _check_throttle((ip, painel_codigo))
     return False
 
