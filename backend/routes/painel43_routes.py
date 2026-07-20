@@ -888,21 +888,24 @@ _SQL_ETIQUETA_INIT = """
         atualizado_em   TIMESTAMP NOT NULL DEFAULT NOW()
     )
 """
-_SQL_ETIQUETA_MIGRAR = """
-    ALTER TABLE nutricao_etiqueta_config
-    ADD COLUMN IF NOT EXISTS pdf_template  TEXT        NOT NULL DEFAULT '';
-    ALTER TABLE nutricao_etiqueta_config
-    ADD COLUMN IF NOT EXISTS printer_name  VARCHAR(200) NOT NULL DEFAULT '';
-    ALTER TABLE nutricao_etiqueta_config
-    ADD COLUMN IF NOT EXISTS printer_ip    VARCHAR(50)  NOT NULL DEFAULT '';
-    ALTER TABLE nutricao_etiqueta_config
-    ADD COLUMN IF NOT EXISTS printer_port  INTEGER      NOT NULL DEFAULT 9100
-"""
+_SQL_ETIQUETA_MIGRACOES = [
+    "ALTER TABLE nutricao_etiqueta_config ADD COLUMN IF NOT EXISTS pdf_template  TEXT         NOT NULL DEFAULT ''",
+    "ALTER TABLE nutricao_etiqueta_config ADD COLUMN IF NOT EXISTS printer_name  VARCHAR(200) NOT NULL DEFAULT ''",
+    "ALTER TABLE nutricao_etiqueta_config ADD COLUMN IF NOT EXISTS printer_ip    VARCHAR(50)  NOT NULL DEFAULT ''",
+    "ALTER TABLE nutricao_etiqueta_config ADD COLUMN IF NOT EXISTS printer_port  INTEGER      NOT NULL DEFAULT 9100",
+]
 
 
 def _etiqueta_init(cursor):
     cursor.execute(_SQL_ETIQUETA_INIT)
-    cursor.execute(_SQL_ETIQUETA_MIGRAR)
+    for i, ddl in enumerate(_SQL_ETIQUETA_MIGRACOES):
+        sp = 'sp_etiq_%d' % i
+        cursor.execute('SAVEPOINT ' + sp)
+        try:
+            cursor.execute(ddl)
+            cursor.execute('RELEASE SAVEPOINT ' + sp)
+        except Exception:
+            cursor.execute('ROLLBACK TO SAVEPOINT ' + sp)
 
 
 @painel43_bp.route('/api/paineis/painel43/config/etiqueta', methods=['GET'])

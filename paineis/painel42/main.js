@@ -1234,10 +1234,14 @@ var PAINEL_VERSAO = '1.0.52';
         fetch('/api/paineis/painel43/config/etiqueta', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (cfg) {
-                _imprimirZPL(sol, cfg.zpl_template || '');
+                _imprimirZPL(sol, cfg.zpl_template || '', {
+                    printer_name: cfg.printer_name || '',
+                    printer_ip:   cfg.printer_ip   || '',
+                    printer_port: cfg.printer_port || 9100
+                });
             })
             .catch(function () {
-                _imprimirZPL(sol, '');
+                _imprimirZPL(sol, '', {});
             });
     }
 
@@ -1254,17 +1258,23 @@ var PAINEL_VERSAO = '1.0.52';
             .replace(/\{\{CODIGO\}\}/g,         sol.codigo_entrega     || '');
     }
 
-    function _imprimirZPL(sol, template) {
+    function _imprimirZPL(sol, template, impressoraCfg) {
         if (!template) {
             alert('Configure o template ZPL no Painel 43 → Configurações → Etiqueta.');
             return;
         }
+        var cfg = impressoraCfg || {};
         var zpl = _preencherVarsZPL(template, sol);
         fetch('/api/paineis/painel42/imprimir-zpl', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ zpl: zpl })
+            body: JSON.stringify({
+                zpl:          zpl,
+                printer_name: cfg.printer_name || '',
+                printer_ip:   cfg.printer_ip   || '',
+                printer_port: cfg.printer_port || 9100
+            })
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
