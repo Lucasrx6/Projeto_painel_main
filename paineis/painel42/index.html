@@ -134,6 +134,9 @@
             <i class="fa-solid fa-history"></i> Histórico do Dia
             <span id="badge-historico" class="badge-hist">0</span>
             <div class="hist-filtro-wrapper" id="hist-filtro-wrapper">
+                <button id="btn-relatorio-hist" class="btn-relatorio-hist" title="Gerar relatório PDF do histórico">
+                    <i class="fa-solid fa-file-pdf"></i> Relatório
+                </button>
                 <span class="hist-filtro-label"><i class="fa-solid fa-filter"></i> Setor:</span>
                 <select id="filtro-setor-42" class="hist-filtro-select">
                     <option value="">Todos</option>
@@ -148,7 +151,7 @@
                         <th>Dia</th><th>Código</th><th>Paciente</th><th>Leito</th>
                         <th>Dieta</th><th>Refeição</th><th>Responsável</th>
                         <th>Status</th><th>Criado</th><th>Finalizado</th>
-                        <th>T.Total</th><th>Motivo Cancel.</th>
+                        <th>T.Total</th><th>Motivo Cancel.</th><th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-historico"></tbody>
@@ -299,6 +302,19 @@
                     <i class="fa-solid fa-print"></i> Imprimir Protocolo
                 </button>
                 <button id="btn-prot-fechar" class="btn-fechar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DETALHES DO HISTÓRICO -->
+    <div id="modal-detalhe-hist" class="modal-overlay" style="display:none;">
+        <div class="modal-box modal-box-wide">
+            <div class="modal-titulo">
+                <i class="fa-solid fa-magnifying-glass" style="color:#17A2B8;"></i> Detalhes da Entrega
+            </div>
+            <div id="detalhe-hist-corpo" class="detalhe-hist-corpo"></div>
+            <div class="modal-actions" style="margin-top:16px;">
+                <button id="btn-detalhe-hist-fechar" class="btn-fechar">Fechar</button>
             </div>
         </div>
     </div>

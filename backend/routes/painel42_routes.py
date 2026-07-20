@@ -347,8 +347,8 @@ def api_p42_historico_hoje():
         with get_db_cursor() as cursor:
             if responsavel_id:
                 cursor.execute("""
-                    SELECT id, codigo_entrega, nm_paciente, leito, setor_nome,
-                        tipo_dieta_nome, refeicao_nome, prioridade, status,
+                    SELECT id, codigo_entrega, nr_atendimento, nm_paciente, leito, setor_nome,
+                        tipo_dieta_nome, refeicao_nome, restricoes, observacao, prioridade, status,
                         responsavel_nome, entregue_por, motivo_cancelamento,
                         TO_CHAR(criado_em,       'DD/MM/YYYY') AS data_pedido,
                         TO_CHAR(criado_em,       'HH24:MI')   AS criado_em,
@@ -365,8 +365,8 @@ def api_p42_historico_hoje():
                 """, (responsavel_id,))
             else:
                 cursor.execute("""
-                    SELECT id, codigo_entrega, nm_paciente, leito, setor_nome,
-                        tipo_dieta_nome, refeicao_nome, prioridade, status,
+                    SELECT id, codigo_entrega, nr_atendimento, nm_paciente, leito, setor_nome,
+                        tipo_dieta_nome, refeicao_nome, restricoes, observacao, prioridade, status,
                         responsavel_nome, entregue_por, motivo_cancelamento,
                         TO_CHAR(criado_em,       'DD/MM/YYYY') AS data_pedido,
                         TO_CHAR(criado_em,       'HH24:MI')   AS criado_em,

@@ -695,6 +695,89 @@ body {
 .btn-protocolo-header:hover { background: rgba(255,255,255,0.3); }
 
 /* =========================================================
+   BOTÃO RELATÓRIO (histórico)
+   ========================================================= */
+.btn-relatorio-hist {
+    background: #28A745;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.btn-relatorio-hist:hover { background: #218838; }
+
+.btn-ver-hist {
+    background: #17A2B8;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background .15s;
+}
+.btn-ver-hist:hover { background: #138496; }
+
+.td-acoes-hist {
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   MODAL DETALHES DO HISTÓRICO
+   ========================================================= */
+.modal-box-wide {
+    max-width: 680px;
+}
+.detalhe-hist-corpo {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.detalhe-hist-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+}
+.detalhe-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.detalhe-item.span-full {
+    grid-column: 1 / -1;
+}
+.detalhe-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #999;
+    letter-spacing: 0.5px;
+}
+.detalhe-valor {
+    font-size: 14px;
+    color: #222;
+    word-break: break-word;
+    line-height: 1.4;
+}
+.detalhe-hist-grid hr,
+.detalhe-separador {
+    grid-column: 1 / -1;
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 4px 0;
+}
+
+/* =========================================================
    NOTIFICAÇÃO VISUAL — NOVA SOLICITAÇÃO
    ========================================================= */
 @keyframes flash-nova {

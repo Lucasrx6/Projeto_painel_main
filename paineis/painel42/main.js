@@ -174,6 +174,12 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.modalEditar.addEventListener('click', function (e) { if (e.target === DOM.modalEditar) fecharModal(DOM.modalEditar); });
         DOM.modalVoltar.addEventListener('click', function (e) { if (e.target === DOM.modalVoltar) fecharModal(DOM.modalVoltar); });
 
+        // Modal detalhes histórico
+        DOM.modalDetalheHist      = document.getElementById('modal-detalhe-hist');
+        DOM.detalheHistCorpo      = document.getElementById('detalhe-hist-corpo');
+        DOM.btnDetalheHistFechar  = document.getElementById('btn-detalhe-hist-fechar');
+        DOM.btnRelatorioHist      = document.getElementById('btn-relatorio-hist');
+
         // Modal protocolo
         DOM.btnProtocolo      = document.getElementById('btn-protocolo');
         DOM.modalProtocolo    = document.getElementById('modal-protocolo');
@@ -181,6 +187,21 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.protSetor         = document.getElementById('prot-setor');
         DOM.btnProtConfirmar  = document.getElementById('btn-prot-confirmar');
         DOM.btnProtFechar     = document.getElementById('btn-prot-fechar');
+
+        if (DOM.btnDetalheHistFechar) {
+            DOM.btnDetalheHistFechar.addEventListener('click', function () { fecharModal(DOM.modalDetalheHist); });
+        }
+        if (DOM.modalDetalheHist) {
+            DOM.modalDetalheHist.addEventListener('click', function (e) {
+                if (e.target === DOM.modalDetalheHist) fecharModal(DOM.modalDetalheHist);
+            });
+        }
+        if (DOM.btnRelatorioHist) {
+            DOM.btnRelatorioHist.addEventListener('click', function (e) {
+                e.stopPropagation();
+                gerarRelatorioHistorico();
+            });
+        }
 
         if (DOM.btnProtocolo) {
             DOM.btnProtocolo.addEventListener('click', abrirModalProtocolo);
@@ -259,6 +280,7 @@ var PAINEL_VERSAO = '1.0.52';
                     if (_temNovo) {
                         tocarAlerta();
                         piscarTela();
+                        alertarTitulo();
                     }
                 }
 
@@ -288,6 +310,26 @@ var PAINEL_VERSAO = '1.0.52';
         void container.offsetWidth; // força reflow para reiniciar a animação
         container.classList.add('notificacao-nova');
     }
+
+    var _tituloOriginal = document.title;
+    var _tituloTimer = null;
+
+    function alertarTitulo() {
+        if (_tituloTimer) clearTimeout(_tituloTimer);
+        document.title = '● NOVA SOLICITAÇÃO — Tela Nutrição';
+        _tituloTimer = setTimeout(function () {
+            document.title = _tituloOriginal;
+            _tituloTimer = null;
+        }, 15000);
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && _tituloTimer) {
+            clearTimeout(_tituloTimer);
+            _tituloTimer = null;
+            document.title = _tituloOriginal;
+        }
+    });
 
     // =========================================================
     // RENDER KANBAN
@@ -801,9 +843,15 @@ var PAINEL_VERSAO = '1.0.52';
                 '<td class="td-motivo-cancel">' +
                     (h.motivo_cancelamento ? escHtml(h.motivo_cancelamento) : '--') +
                 '</td>' +
+                '<td class="td-acoes-hist">' +
+                    '<button class="btn-ver-hist" data-id="' + h.id + '" title="Ver detalhes">' +
+                        '<i class="fa-solid fa-eye"></i>' +
+                    '</button>' +
+                '</td>' +
             '</tr>';
         }
         DOM.tbodyHistorico.innerHTML = html;
+        bindHistBtns();
     }
 
     function toggleHistorico() {
@@ -812,6 +860,164 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.iconeToggle.className = visivel
             ? 'fa-solid fa-chevron-down'
             : 'fa-solid fa-chevron-up';
+    }
+
+    function bindHistBtns() {
+        var btns = DOM.tbodyHistorico.querySelectorAll('.btn-ver-hist');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].addEventListener('click', function () {
+                abrirDetalhesHistorico(this.getAttribute('data-id'));
+            });
+        }
+    }
+
+    function _detalheItem(label, valorHtml, fullSpan) {
+        return '<div class="detalhe-item' + (fullSpan ? ' span-full' : '') + '">' +
+            '<span class="detalhe-label">' + escHtml(label) + '</span>' +
+            '<span class="detalhe-valor">' + valorHtml + '</span>' +
+        '</div>';
+    }
+
+    function abrirDetalhesHistorico(id) {
+        var h = null;
+        for (var i = 0; i < Estado.historico.length; i++) {
+            if (String(Estado.historico[i].id) === String(id)) {
+                h = Estado.historico[i];
+                break;
+            }
+        }
+        if (!h || !DOM.modalDetalheHist) return;
+
+        DOM.detalheHistCorpo.innerHTML =
+            '<div class="detalhe-hist-grid">' +
+                _detalheItem('Código de Entrega', escHtml(h.codigo_entrega || '—')) +
+                _detalheItem('Nº Atendimento',    escHtml(h.nr_atendimento || '—')) +
+                _detalheItem('Paciente',           escHtml(h.nm_paciente   || '—')) +
+                _detalheItem('Status',             badgeStatus(h.status)) +
+                _detalheItem('Leito',   escHtml(h.leito      || '—')) +
+                _detalheItem('Setor',   escHtml(h.setor_nome || '—')) +
+                _detalheItem('Dieta',   escHtml(h.tipo_dieta_nome || '—')) +
+                _detalheItem('Refeição', escHtml(h.refeicao_nome || '—')) +
+                '<hr class="detalhe-separador">' +
+                _detalheItem('Restrições', escHtml(h.restricoes || '—'), true) +
+                _detalheItem('Observação', escHtml(h.observacao || '—'), true) +
+                (h.motivo_cancelamento ? _detalheItem('Motivo Cancelamento', escHtml(h.motivo_cancelamento), true) : '') +
+                '<hr class="detalhe-separador">' +
+                _detalheItem('Responsável pelo preparo', escHtml(h.responsavel_nome || '—')) +
+                _detalheItem('Entregue por',             escHtml(h.entregue_por     || '—')) +
+                _detalheItem('Solicitado em', escHtml((h.data_pedido || '') + ' ' + (h.criado_em || ''))) +
+                _detalheItem('Finalizado em', escHtml(h.dt_entrega || h.dt_cancelamento || '—')) +
+                _detalheItem('Tempo total', h.t_total_min != null ? escHtml(fmtMin(h.t_total_min)) : '—') +
+                _detalheItem('Prioridade', escHtml(h.prioridade === 'urgente' ? 'URGENTE' : 'Normal')) +
+            '</div>';
+
+        DOM.modalDetalheHist.style.display = 'flex';
+    }
+
+    function gerarRelatorioHistorico() {
+        var setorFiltro = DOM.filtroSetor42 ? DOM.filtroSetor42.value : '';
+        var lista = [];
+        for (var i = 0; i < Estado.historico.length; i++) {
+            var h = Estado.historico[i];
+            if (!setorFiltro || h.setor_nome === setorFiltro) lista.push(h);
+        }
+
+        if (!lista.length) {
+            alert('Sem registros no histórico para gerar o relatório.');
+            return;
+        }
+
+        var agora  = new Date();
+        var data   = agora.toLocaleDateString('pt-BR');
+        var hora   = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        var titulo = setorFiltro ? escHtml(setorFiltro) : 'Todos os setores';
+
+        var linhas = '';
+        for (var j = 0; j < lista.length; j++) {
+            var s = lista[j];
+            var statusCfg = STATUS_CFG[s.status] || { label: s.status, cor: '#6C757D' };
+            linhas +=
+                '<tr>' +
+                '<td>' + escHtml(s.data_pedido || '--') + '</td>' +
+                '<td class="td-cod">' + escHtml(s.codigo_entrega || '--') + '</td>' +
+                '<td class="td-pac">' + escHtml(s.nm_paciente || '--') + '</td>' +
+                '<td>' + escHtml(s.nr_atendimento || '--') + '</td>' +
+                '<td>' + escHtml(s.leito || '--') + '</td>' +
+                '<td>' + escHtml(s.setor_nome || '--') + '</td>' +
+                '<td>' + escHtml(s.tipo_dieta_nome || '--') + '</td>' +
+                '<td>' + escHtml(s.refeicao_nome || '--') + '</td>' +
+                '<td class="td-obs">' + escHtml(s.observacao || '--') + '</td>' +
+                '<td>' + escHtml(s.responsavel_nome || '--') + '</td>' +
+                '<td><span style="background:' + statusCfg.cor + ';color:#fff;padding:2px 6px;border-radius:3px;font-size:8px;white-space:nowrap;">' + escHtml(statusCfg.label) + '</span></td>' +
+                '<td>' + escHtml(s.criado_em || '--') + '</td>' +
+                '<td>' + escHtml(s.dt_entrega || s.dt_cancelamento || '--') + '</td>' +
+                '<td>' + (s.t_total_min != null ? fmtMin(s.t_total_min) : '--') + '</td>' +
+                '</tr>';
+        }
+
+        var html =
+            '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+            '<title>Relatório de Dietas - HAC</title>' +
+            '<style>' +
+                '@page{size:A4 landscape;margin:10mm}' +
+                'body{font-family:Arial,sans-serif;font-size:9px;color:#000;margin:0;padding:0}' +
+                '.cabecalho{display:flex;align-items:center;gap:14px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:10px}' +
+                '.logo-hospital{height:52px;width:auto;flex-shrink:0}' +
+                '.cabecalho-texto{flex:1;text-align:center}' +
+                '.cabecalho h1{font-size:13px;margin:0 0 3px;font-weight:bold;letter-spacing:.5px}' +
+                '.cabecalho h2{font-size:11px;margin:0;font-weight:bold;color:#555;letter-spacing:.5px}' +
+                '.info-linha{display:flex;justify-content:space-between;margin-bottom:8px;font-size:9px;border-bottom:1px dashed #bbb;padding-bottom:6px;gap:8px}' +
+                'table{width:100%;border-collapse:collapse;margin-top:4px}' +
+                'thead th{background:#333;color:#fff;padding:5px 4px;text-align:left;font-size:8px;font-weight:bold;border:1px solid #000}' +
+                'tbody td{padding:4px;border:1px solid #ccc;font-size:8px;vertical-align:top}' +
+                '.td-pac{font-weight:bold;min-width:90px}' +
+                '.td-cod{font-family:monospace}' +
+                '.td-obs{min-width:80px;white-space:normal;word-break:break-word}' +
+                'tbody tr:nth-child(even) td{background:#f5f5f5}' +
+                '@media print{@page{size:A4 landscape;margin:10mm}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}' +
+            '</style>' +
+            '</head><body>' +
+            '<div class="cabecalho">' +
+                '<img src="/static/img/logo.png" class="logo-hospital" alt="Hospital Anchieta">' +
+                '<div class="cabecalho-texto">' +
+                    '<h1>HOSPITAL ANCHIETA CEILÂNDIA</h1>' +
+                    '<h2>RELATÓRIO DE ENTREGAS DE DIETAS — ' + data + '</h2>' +
+                '</div>' +
+            '</div>' +
+            '<div class="info-linha">' +
+                '<span><b>Data:</b> ' + data + '</span>' +
+                '<span><b>Emissão:</b> ' + hora + '</span>' +
+                '<span><b>Setor:</b> ' + titulo + '</span>' +
+                '<span><b>Total de registros:</b> ' + lista.length + '</span>' +
+            '</div>' +
+            '<table>' +
+                '<thead><tr>' +
+                    '<th>Dia</th>' +
+                    '<th>Código</th>' +
+                    '<th>Paciente</th>' +
+                    '<th>NR Atend.</th>' +
+                    '<th>Leito</th>' +
+                    '<th>Setor</th>' +
+                    '<th>Dieta</th>' +
+                    '<th>Refeição</th>' +
+                    '<th>Observação</th>' +
+                    '<th>Responsável</th>' +
+                    '<th>Status</th>' +
+                    '<th>Solicitado</th>' +
+                    '<th>Finalizado</th>' +
+                    '<th>Tempo</th>' +
+                '</tr></thead>' +
+                '<tbody>' + linhas + '</tbody>' +
+            '</table>' +
+            '<script>window.onload=function(){window.print();};<\/script>' +
+            '</body></html>';
+
+        var w = window.open('', '_blank', 'width=1100,height=700,toolbar=0,menubar=0,location=0,scrollbars=1');
+        if (!w) { alert('Permita pop-ups para imprimir o relatório.'); return; }
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
     }
 
     // =========================================================
