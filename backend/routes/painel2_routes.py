@@ -15,7 +15,7 @@ painel2_bp = Blueprint('painel2', __name__)
 @painel2_bp.route('/api/paineis/painel2/evolucoes', methods=['GET'])
 @login_required
 @panel_permission_required('painel2')
-@cache_route(ttl=60, key_prefix='painel2:evolucoes')
+@cache_route(ttl=60, key_prefix='painel2:evolucoes', vary_by_user=False)
 def get_evolucoes():
     """
     Retorna lista de evoluções de turno

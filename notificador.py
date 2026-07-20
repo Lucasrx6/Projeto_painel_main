@@ -631,8 +631,17 @@ def verificar_prescricao_pendente(configs):
 # CICLO PRINCIPAL
 # =========================================================
 
+_ciclo_em_execucao = False  # P6.6: evita sobreposição de ciclos
+
+
 def ciclo_verificacao():
     """Executa todos os modulos."""
+    global _ciclo_em_execucao
+    if _ciclo_em_execucao:
+        logger.warning('Ciclo anterior ainda em execucao — pulando.')
+        return
+    _ciclo_em_execucao = True
+
     logger.info('=' * 50)
     logger.info('Iniciando ciclo de verificacao...')
 
@@ -640,7 +649,7 @@ def ciclo_verificacao():
         configs = carregar_configs()
         if not configs:
             logger.warning('Nenhuma configuracao ativa')
-            return
+            return  # finally ainda executa, limpando a flag
 
         verificar_admissao_nova(configs)
         verificar_parecer_pendente(configs)
@@ -650,6 +659,8 @@ def ciclo_verificacao():
 
     except Exception as e:
         logger.error('Erro no ciclo: %s', e)
+    finally:
+        _ciclo_em_execucao = False
 
 
 # =========================================================

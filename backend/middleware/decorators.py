@@ -122,6 +122,21 @@ def panel_permission_required(panel_name):
             if is_admin:
                 return f(*args, **kwargs)
 
+            # Dispositivo TV — permissões armazenadas diretamente na sessão
+            if session.get('is_tv'):
+                if panel_name in set(session.get('permissoes', [])):
+                    return f(*args, **kwargs)
+                current_app.logger.warning(
+                    'TV sem permissão para %s: %s', panel_name, session.get('usuario')
+                )
+                if _e_requisicao_de_pagina():
+                    from flask import send_from_directory
+                    return send_from_directory('frontend', 'acesso-negado.html')
+                return jsonify({
+                    'success': False,
+                    'error': 'Dispositivo TV sem permissão para {}'.format(panel_name)
+                }), 403
+
             # Verifica permissão específica do painel
             if not verificar_permissao_painel(usuario_id, panel_name):
                 current_app.logger.warning(

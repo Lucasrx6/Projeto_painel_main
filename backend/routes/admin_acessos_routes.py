@@ -208,7 +208,7 @@ def get_stats():
         from psycopg2.extras import RealDictCursor
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Totais
+        # Totais — limitado a 6 meses para evitar full scan em tabela grande
         cur.execute("""
             SELECT
                 COUNT(*)                                            AS total,
@@ -219,6 +219,7 @@ def get_stats():
                 COUNT(*) FILTER (WHERE tipo_acesso = 'erro'
                                    AND dt_acesso::date = CURRENT_DATE)                AS erros_hoje
             FROM access_log
+            WHERE dt_acesso >= NOW() - INTERVAL '6 months'
         """)
         totais = cur.fetchone()
 

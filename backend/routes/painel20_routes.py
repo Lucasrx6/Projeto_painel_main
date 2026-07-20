@@ -64,7 +64,7 @@ def serializar_linha(row):
 @painel20_bp.route('/api/paineis/painel20/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel20')
-@cache_route(ttl=120, key_prefix='painel20:dashboard')
+@cache_route(ttl=120, key_prefix='painel20:dashboard', vary_by_user=False)
 def api_painel20_dashboard():
     """
     Contadores gerais para os cards do dashboard
@@ -111,7 +111,7 @@ def api_painel20_dashboard():
 @painel20_bp.route('/api/paineis/painel20/dados', methods=['GET'])
 @login_required
 @panel_permission_required('painel20')
-@cache_route(ttl=120, key_prefix='painel20:dados', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel20:dados', vary_by_user=False, vary_by_query=True)
 def api_painel20_dados():
     """
     Retorna todos os exames de radiologia do PS com detalhes completos.

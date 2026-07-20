@@ -70,7 +70,7 @@ def _build_setor_filter(setores):
 @painel13_bp.route('/api/paineis/painel13/nutricao', methods=['GET'])
 @login_required
 @panel_permission_required('painel13')
-@cache_route(ttl=180, key_prefix='painel13:nutricao', vary_by_query=True)
+@cache_route(ttl=180, key_prefix='painel13:nutricao', vary_by_user=False, vary_by_query=True)
 def api_painel13_nutricao():
     """
     Retorna dados das prescrições de nutrição
@@ -145,7 +145,7 @@ def api_painel13_nutricao():
 @painel13_bp.route('/api/paineis/painel13/setores', methods=['GET'])
 @login_required
 @panel_permission_required('painel13')
-@cache_route(ttl=180, key_prefix='painel13:setores')
+@cache_route(ttl=180, key_prefix='painel13:setores', vary_by_user=False)
 def api_painel13_setores():
     """
     Retorna lista de setores disponíveis
@@ -184,7 +184,7 @@ def api_painel13_setores():
 @painel13_bp.route('/api/paineis/painel13/stats', methods=['GET'])
 @login_required
 @panel_permission_required('painel13')
-@cache_route(ttl=180, key_prefix='painel13:stats')
+@cache_route(ttl=180, key_prefix='painel13:stats', vary_by_user=False)
 def api_painel13_stats():
     """
     Retorna estatísticas de prescrições

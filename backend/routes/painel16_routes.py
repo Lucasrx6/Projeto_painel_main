@@ -58,7 +58,7 @@ def painel16():
 @painel16_bp.route('/api/paineis/painel16/maquinas', methods=['GET'])
 @login_required
 @panel_permission_required('painel16')
-@cache_route(ttl=120, key_prefix='painel16:maquinas')
+@cache_route(ttl=120, key_prefix='painel16:maquinas', vary_by_user=False)
 def api_painel16_maquinas():
     """
     Retorna usuarios conectados nas maquinas de recepcao com contagem de atendimentos
@@ -144,7 +144,7 @@ def api_painel16_maquinas():
 @painel16_bp.route('/api/paineis/painel16/atendimentos', methods=['GET'])
 @login_required
 @panel_permission_required('painel16')
-@cache_route(ttl=120, key_prefix='painel16:atendimentos', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel16:atendimentos', vary_by_user=False, vary_by_query=True)
 def api_painel16_atendimentos():
     """
     Retorna contagem de atendimentos por recepcionista no dia
@@ -251,7 +251,7 @@ def api_painel16_atendimentos():
 @painel16_bp.route('/api/paineis/painel16/stats', methods=['GET'])
 @login_required
 @panel_permission_required('painel16')
-@cache_route(ttl=120, key_prefix='painel16:stats')
+@cache_route(ttl=120, key_prefix='painel16:stats', vary_by_user=False)
 def api_painel16_stats():
     """
     Retorna estatisticas gerais do painel

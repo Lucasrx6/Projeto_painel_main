@@ -50,7 +50,7 @@ def serializar_linha(row):
 @painel19_bp.route('/api/paineis/painel19/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel19')
-@cache_route(ttl=180, key_prefix='painel19:dashboard')
+@cache_route(ttl=180, key_prefix='painel19:dashboard', vary_by_user=False)
 def api_painel19_dashboard():
     """
     Contadores gerais para os cards do dashboard
@@ -105,7 +105,7 @@ def api_painel19_dashboard():
 @painel19_bp.route('/api/paineis/painel19/dados', methods=['GET'])
 @login_required
 @panel_permission_required('painel19')
-@cache_route(ttl=180, key_prefix='painel19:dados', vary_by_query=True)
+@cache_route(ttl=180, key_prefix='painel19:dados', vary_by_user=False, vary_by_query=True)
 def api_painel19_dados():
     """
     Retorna todos os exames de radiologia com detalhes completos.
@@ -162,7 +162,7 @@ def api_painel19_dados():
 @painel19_bp.route('/api/paineis/painel19/setores', methods=['GET'])
 @login_required
 @panel_permission_required('painel19')
-@cache_route(ttl=180, key_prefix='painel19:setores')
+@cache_route(ttl=180, key_prefix='painel19:setores', vary_by_user=False)
 def api_painel19_setores():
     """
     Lista setores que possuem exames de radiologia

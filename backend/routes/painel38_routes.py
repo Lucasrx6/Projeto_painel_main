@@ -94,7 +94,7 @@ def painel38_static(filename):
 @painel38_bp.route('/api/paineis/painel38/filtros', methods=['GET'])
 @login_required
 @panel_permission_required('painel38')
-@cache_route(ttl=300, key_prefix='painel38:filtros')
+@cache_route(ttl=300, key_prefix='painel38:filtros', vary_by_user=False)
 def api_painel38_filtros():
     try:
         with get_db_cursor() as cursor:
@@ -133,7 +133,7 @@ def api_painel38_filtros():
 @painel38_bp.route('/api/paineis/painel38/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel38')
-@cache_route(ttl=120, key_prefix='painel38:dashboard', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel38:dashboard', vary_by_user=False, vary_by_query=True)
 def api_painel38_dashboard():
     try:
         with get_db_cursor() as cursor:
@@ -194,7 +194,7 @@ def api_painel38_dashboard():
 @painel38_bp.route('/api/paineis/painel38/dados', methods=['GET'])
 @login_required
 @panel_permission_required('painel38')
-@cache_route(ttl=120, key_prefix='painel38:dados', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel38:dados', vary_by_user=False, vary_by_query=True)
 def api_painel38_dados():
     try:
         with get_db_cursor() as cursor:

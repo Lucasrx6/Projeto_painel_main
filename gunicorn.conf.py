@@ -18,6 +18,10 @@ import os
 workers     = int(os.getenv('GUNICORN_WORKERS', '1'))   # Mantenha 1 (veja nota acima)
 worker_class = 'gthread'                                 # Threads por worker (não processos)
 threads     = int(os.getenv('GUNICORN_THREADS', '8'))   # Requisições simultâneas
+# Reinicia o worker após N requisições para liberar fragmentação de memória.
+# Jitter evita que todos os workers reiniciem ao mesmo tempo.
+max_requests        = int(os.getenv('GUNICORN_MAX_REQUESTS', '1000'))
+max_requests_jitter = int(os.getenv('GUNICORN_MAX_REQUESTS_JITTER', '200'))
 
 # ── Rede ────────────────────────────────────────────────────────────────────
 bind        = os.getenv('GUNICORN_BIND', '0.0.0.0:5000')

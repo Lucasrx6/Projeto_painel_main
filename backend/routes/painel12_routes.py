@@ -32,7 +32,7 @@ def painel12():
 @painel12_bp.route('/api/paineis/painel12/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel12')
-@cache_route(ttl=180, key_prefix='painel12:dashboard')
+@cache_route(ttl=180, key_prefix='painel12:dashboard', vary_by_user=False)
 def api_painel12_dashboard():
     """
     Dashboard de ocupação e produção
@@ -93,7 +93,7 @@ def api_painel12_dashboard():
 @painel12_bp.route('/api/paineis/painel12/setores', methods=['GET'])
 @login_required
 @panel_permission_required('painel12')
-@cache_route(ttl=180, key_prefix='painel12:setores', vary_by_query=True)
+@cache_route(ttl=180, key_prefix='painel12:setores', vary_by_user=False, vary_by_query=True)
 def api_painel12_setores():
     """
     Lista ocupação por setores

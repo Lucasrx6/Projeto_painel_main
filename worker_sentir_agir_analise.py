@@ -189,11 +189,7 @@ def buscar_dados_dia(data_str):
         cur.execute("""
             SELECT
                 v.id AS visita_id,
-                v.nm_paciente,
-                v.nr_atendimento,
-                v.leito,
                 v.avaliacao_final,
-                v.observacoes AS obs_geral,
                 s.nome AS setor_nome,
                 s.sigla AS setor_sigla,
                 s.ordem AS setor_ordem,
@@ -315,8 +311,7 @@ def gerar_analise_ia(dados):
             s['total'], s['criticos'], s['atencao'], s['adequados']
         )
         itens_relevantes = []
-        obs_gerais = []
-        for v in s.get('visitas', []):
+        for idx, v in enumerate(s.get('visitas', []), 1):
             for item in v.get('itens_problema', []):
                 linha = '  [{}] {} > {}'.format(
                     item['resultado'].upper(),
@@ -325,15 +320,11 @@ def gerar_analise_ia(dados):
                 )
                 if item.get('obs_item'):
                     linha += ' -- Critica: ' + item['obs_item'][:150]
-                linha += ' (Leito {})'.format(v.get('leito', '?'))
+                linha += ' (Vis. {})'.format(idx)
                 itens_relevantes.append(linha)
-            if v.get('obs_geral'):
-                obs_gerais.append(v['obs_geral'][:200])
 
         if itens_relevantes:
             blocos += 'Itens criticos/atencao:\n' + '\n'.join(itens_relevantes[:20]) + '\n'
-        if obs_gerais:
-            blocos += 'Observacoes gerais:\n' + '\n'.join('  - ' + o for o in obs_gerais[:8]) + '\n'
 
     prompt = (
         'Voce e um analista de qualidade assistencial do Hospital Anchieta Ceilandia, '

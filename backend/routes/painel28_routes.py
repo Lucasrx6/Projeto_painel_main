@@ -13,6 +13,7 @@ from flask import current_app, Blueprint, request, jsonify, send_from_directory,
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
+from backend.cache import cache_route
 
 painel28_bp = Blueprint(
     'painel28',
@@ -47,34 +48,80 @@ def invalidate_cache_on_write(response):
 
 
 # ----------------------------------------------------------
-# LOCK EM MEMORIA: pacientes sendo visitados no momento
-# Chave: str(nr_atendimento), Valor: {dupla_id, ts}
-# TTL de 30 min — expira automaticamente
+# RESERVAS DE VISITA: pacientes sendo visitados no momento
+# Backend Redis (preferido) com fallback in-memory (P4.7).
+# Redis usa SETEX com TTL — sem limpeza manual.
+# Fallback in-memory mantém limpeza manual por TTL.
 # ----------------------------------------------------------
+import json as _json
 _visita_lock = threading.Lock()
-_em_visita: dict = {}
+_em_visita_fallback: dict = {}
 _EM_VISITA_TTL_SEG = 600  # 10 minutos
+_EM_VISITA_KEY_PREFIX = 'painel28:em_visita:'
 
 
-def _limpar_expirados():
+def _redis_visita():
+    """Retorna cliente Redis ou None se indisponível."""
+    try:
+        from backend.cache import get_redis
+        return get_redis()
+    except Exception:
+        return None
+
+
+def _limpar_expirados_fallback():
     agora = datetime.now()
     with _visita_lock:
-        expirados = [k for k, v in _em_visita.items()
+        expirados = [k for k, v in _em_visita_fallback.items()
                      if (agora - v['ts']).total_seconds() > _EM_VISITA_TTL_SEG]
         for k in expirados:
-            del _em_visita[k]
+            del _em_visita_fallback[k]
 
 
 def _get_em_visita_agora() -> set:
-    _limpar_expirados()
+    r = _redis_visita()
+    if r is not None:
+        try:
+            cursor_val = '0'
+            keys = set()
+            while True:
+                cursor_val, batch = r.scan(cursor=cursor_val,
+                                           match=_EM_VISITA_KEY_PREFIX + '*', count=50)
+                for k in batch:
+                    keys.add(k.replace(_EM_VISITA_KEY_PREFIX, '', 1))
+                if cursor_val == 0:
+                    break
+            return keys
+        except Exception:
+            pass
+    _limpar_expirados_fallback()
     with _visita_lock:
-        return set(_em_visita.keys())
+        return set(_em_visita_fallback.keys())
 
 
 def _get_em_visita_agora_dict() -> dict:
-    _limpar_expirados()
+    r = _redis_visita()
+    if r is not None:
+        try:
+            cursor_val = '0'
+            resultado = {}
+            while True:
+                cursor_val, batch = r.scan(cursor=cursor_val,
+                                           match=_EM_VISITA_KEY_PREFIX + '*', count=50)
+                for k in batch:
+                    val = r.get(k)
+                    if val:
+                        nr = k.replace(_EM_VISITA_KEY_PREFIX, '', 1)
+                        resultado[nr] = _json.loads(val)
+                if cursor_val == 0:
+                    break
+            return resultado
+        except Exception:
+            pass
+    _limpar_expirados_fallback()
     with _visita_lock:
-        return dict(_em_visita)
+        return {k: {kk: vv for kk, vv in v.items() if kk != 'ts'}
+                for k, v in _em_visita_fallback.items()}
 
 
 PAINEL_DIR = os.path.join(os.path.dirname(__file__))
@@ -195,6 +242,7 @@ def servir_formulario():
 
 
 @painel28_bp.route('/api/paineis/painel28/style_form.css', endpoint='style_form_css', methods=['GET'])
+@login_required
 def servir_style_form():
     return send_from_directory('paineis/painel28', 'style_form.css')
 
@@ -412,6 +460,68 @@ def obter_config():
         return jsonify({'success': False, 'error': 'Erro interno do servidor'}), 500
 
 
+# SQL compartilhado por fila_pacientes e proximo_paciente (P2.4/P2.5).
+# CTEs pré-calculam agregados de visitas, eliminando 6 subqueries correlacionadas por linha.
+_FILA_SQL = """
+    WITH visitas_hoje AS (
+        SELECT
+            v.nr_atendimento,
+            EXTRACT(EPOCH FROM (NOW() - MAX(v.criado_em))) / 3600 AS horas_desde_visita
+        FROM sentir_agir_visitas v
+        WHERE v.avaliacao_final != 'impossibilitada'
+          AND v.criado_em >= CURRENT_DATE
+        GROUP BY v.nr_atendimento
+    ),
+    historico_visitas AS (
+        SELECT
+            v.nr_atendimento,
+            EXTRACT(EPOCH FROM (NOW() - MAX(v.criado_em))) / 3600 AS horas_desde_ultima
+        FROM sentir_agir_visitas v
+        WHERE v.avaliacao_final NOT IN ('impossibilitada')
+        GROUP BY v.nr_atendimento
+    ),
+    dupla_visita AS (
+        SELECT DISTINCT ON (v2.nr_atendimento)
+            v2.nr_atendimento,
+            d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2 AS dupla_nome,
+            d2.id AS dupla_id
+        FROM sentir_agir_visitas v2
+        JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
+        JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
+        WHERE r2.status = 'em_andamento'
+          AND v2.criado_em >= CURRENT_DATE
+        ORDER BY v2.nr_atendimento, v2.criado_em DESC
+    )
+    SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
+           f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
+           f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
+           f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
+           f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
+           (vh.nr_atendimento IS NOT NULL)  AS ja_visitado_hoje,
+           vh.horas_desde_visita            AS horas_desde_visita_hoje,
+           dv.dupla_nome                    AS dupla_em_visita,
+           dv.dupla_id                      AS dupla_id_em_visita
+    FROM vw_sentir_agir_fila_pacientes f
+    LEFT JOIN visitas_hoje vh  ON vh.nr_atendimento = f.nr_atendimento
+    LEFT JOIN historico_visitas hv ON hv.nr_atendimento = f.nr_atendimento
+    LEFT JOIN dupla_visita dv  ON dv.nr_atendimento  = f.nr_atendimento
+    WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
+      AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
+      AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
+      AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
+      AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
+      AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
+      AND NOT EXISTS (
+          SELECT 1 FROM sentir_agir_precaucao_contato pc
+          WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
+      )
+    ORDER BY
+        CASE WHEN hv.nr_atendimento IS NULL THEN 0 ELSE 1 END ASC,
+        COALESCE(hv.horas_desde_ultima, f.qt_dia_permanencia * 24.0) DESC NULLS LAST
+    LIMIT %s
+"""
+
+
 # ============================================================
 # API: FILA DE PACIENTES (integração com ocupação hospitalar)
 # ============================================================
@@ -419,6 +529,7 @@ def obter_config():
 @painel28_bp.route('/api/paineis/painel28/fila-pacientes', methods=['GET'])
 @login_required
 @panel_permission_required('painel28')
+@cache_route(ttl=15, key_prefix='painel28:fila', vary_by_user=False, vary_by_query=True)
 def fila_pacientes():
     try:
         limite = request.args.get('limite', '20')
@@ -434,78 +545,7 @@ def fila_pacientes():
             # Finaliza rondas esquecidas antes de calcular a fila
             _auto_finalizar_rondas_expiradas(cursor)
 
-            cursor.execute("""
-                SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
-                       f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
-                       f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
-                       f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
-                       f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
-                       EXISTS (
-                           SELECT 1 FROM sentir_agir_visitas v
-                           WHERE v.nr_atendimento = f.nr_atendimento
-                             AND v.avaliacao_final != 'impossibilitada'
-                             AND v.criado_em >= CURRENT_DATE
-                       ) AS ja_visitado_hoje,
-                       (
-                           SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
-                           FROM sentir_agir_visitas v
-                           WHERE v.nr_atendimento = f.nr_atendimento
-                             AND v.avaliacao_final != 'impossibilitada'
-                             AND v.criado_em >= CURRENT_DATE
-                           ORDER BY v.criado_em DESC LIMIT 1
-                       ) AS horas_desde_visita_hoje,
-                       (
-                           SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
-                           FROM sentir_agir_visitas v2
-                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                           WHERE v2.nr_atendimento = f.nr_atendimento
-                             AND r2.status = 'em_andamento'
-                             AND v2.criado_em >= CURRENT_DATE
-                           ORDER BY v2.criado_em DESC LIMIT 1
-                       ) AS dupla_em_visita,
-                       (
-                           SELECT d2.id
-                           FROM sentir_agir_visitas v2
-                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                           WHERE v2.nr_atendimento = f.nr_atendimento
-                             AND r2.status = 'em_andamento'
-                             AND v2.criado_em >= CURRENT_DATE
-                           ORDER BY v2.criado_em DESC LIMIT 1
-                       ) AS dupla_id_em_visita
-                FROM vw_sentir_agir_fila_pacientes f
-                WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
-                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
-                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
-                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
-                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
-                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM sentir_agir_precaucao_contato pc
-                      WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
-                  )
-                ORDER BY
-                    CASE
-                        WHEN NOT EXISTS (
-                            SELECT 1 FROM sentir_agir_visitas v
-                            WHERE v.nr_atendimento = f.nr_atendimento
-                              AND v.avaliacao_final NOT IN ('impossibilitada')
-                        ) THEN 0
-                        ELSE 1
-                    END ASC,
-                    COALESCE(
-                        (
-                            SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
-                            FROM sentir_agir_visitas v
-                            WHERE v.nr_atendimento = f.nr_atendimento
-                              AND v.avaliacao_final NOT IN ('impossibilitada')
-                            ORDER BY v.criado_em DESC LIMIT 1
-                        ),
-                        f.qt_dia_permanencia * 24.0
-                    ) DESC NULLS LAST
-                LIMIT %s
-            """, (limite,))
+            cursor.execute(_FILA_SQL, (limite,))
             pacientes = cursor.fetchall()
 
             resultado = []
@@ -540,6 +580,7 @@ def fila_pacientes():
 @painel28_bp.route('/api/paineis/painel28/proximo-paciente', methods=['GET'])
 @login_required
 @panel_permission_required('painel28')
+@cache_route(ttl=15, key_prefix='painel28:proximo', vary_by_user=False)
 def proximo_paciente():
     try:
         with get_db_cursor() as cursor:
@@ -547,78 +588,7 @@ def proximo_paciente():
             # Finaliza rondas esquecidas antes de calcular a fila
             _auto_finalizar_rondas_expiradas(cursor)
 
-            cursor.execute("""
-                SELECT f.nr_atendimento, f.nm_paciente, f.leito, f.setor_ocupacao,
-                       f.cd_setor_atendimento, f.setor_sa_id, f.setor_sa_nome, f.setor_sa_sigla,
-                       f.dt_entrada_unidade, f.qt_dia_permanencia, f.ds_clinica,
-                       f.medico_responsavel, f.ds_convenio, f.ds_tipo_acomodacao,
-                       f.ultima_ronda_em, f.horas_desde_ultima_ronda, f.prioridade,
-                       EXISTS (
-                           SELECT 1 FROM sentir_agir_visitas v
-                           WHERE v.nr_atendimento = f.nr_atendimento
-                             AND v.avaliacao_final != 'impossibilitada'
-                             AND v.criado_em >= CURRENT_DATE
-                       ) AS ja_visitado_hoje,
-                       (
-                           SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
-                           FROM sentir_agir_visitas v
-                           WHERE v.nr_atendimento = f.nr_atendimento
-                             AND v.avaliacao_final != 'impossibilitada'
-                             AND v.criado_em >= CURRENT_DATE
-                           ORDER BY v.criado_em DESC LIMIT 1
-                       ) AS horas_desde_visita_hoje,
-                       (
-                           SELECT d2.nome_visitante_1 || ' e ' || d2.nome_visitante_2
-                           FROM sentir_agir_visitas v2
-                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                           WHERE v2.nr_atendimento = f.nr_atendimento
-                             AND r2.status = 'em_andamento'
-                             AND v2.criado_em >= CURRENT_DATE
-                           ORDER BY v2.criado_em DESC LIMIT 1
-                       ) AS dupla_em_visita,
-                       (
-                           SELECT d2.id
-                           FROM sentir_agir_visitas v2
-                           JOIN sentir_agir_rondas r2 ON r2.id = v2.ronda_id
-                           JOIN sentir_agir_duplas d2 ON d2.id = r2.dupla_id
-                           WHERE v2.nr_atendimento = f.nr_atendimento
-                             AND r2.status = 'em_andamento'
-                             AND v2.criado_em >= CURRENT_DATE
-                           ORDER BY v2.criado_em DESC LIMIT 1
-                       ) AS dupla_id_em_visita
-                FROM vw_sentir_agir_fila_pacientes f
-                WHERE COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Neo%%'
-                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI-NP%%'
-                  AND COALESCE(f.setor_ocupacao, '') NOT ILIKE '%%UTI Ped%%'
-                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Neo%%'
-                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI-NP%%'
-                  AND COALESCE(f.ds_clinica, '') NOT ILIKE '%%UTI Ped%%'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM sentir_agir_precaucao_contato pc
-                      WHERE pc.nr_atendimento = CAST(f.nr_atendimento AS VARCHAR)
-                  )
-                ORDER BY
-                    CASE
-                        WHEN NOT EXISTS (
-                            SELECT 1 FROM sentir_agir_visitas v
-                            WHERE v.nr_atendimento = f.nr_atendimento
-                              AND v.avaliacao_final NOT IN ('impossibilitada')
-                        ) THEN 0
-                        ELSE 1
-                    END ASC,
-                    COALESCE(
-                        (
-                            SELECT EXTRACT(EPOCH FROM (NOW() - v.criado_em)) / 3600
-                            FROM sentir_agir_visitas v
-                            WHERE v.nr_atendimento = f.nr_atendimento
-                              AND v.avaliacao_final NOT IN ('impossibilitada')
-                            ORDER BY v.criado_em DESC LIMIT 1
-                        ),
-                        f.qt_dia_permanencia * 24.0
-                    ) DESC NULLS LAST
-                LIMIT 1
-            """)
+            cursor.execute(_FILA_SQL, (1,))
             paciente = cursor.fetchone()
 
             if not paciente:
@@ -675,19 +645,34 @@ def reservar_paciente():
         except Exception:
             pass
 
+    payload = {'dupla_id': str(dupla_id), 'nome_dupla': nome_dupla or 'Dupla em visita'}
+    r = _redis_visita()
+    if r is not None:
+        try:
+            redis_key = _EM_VISITA_KEY_PREFIX + nr
+            existing = r.get(redis_key)
+            if existing:
+                existing_data = _json.loads(existing)
+                if str(existing_data.get('dupla_id')) != str(dupla_id):
+                    return jsonify({
+                        'success': False,
+                        'error': 'Paciente ja esta em visita por outra dupla',
+                        'dupla_em_visita': existing_data.get('nome_dupla', 'Outra dupla')
+                    }), 409
+            r.setex(redis_key, _EM_VISITA_TTL_SEG, _json.dumps(payload))
+            return jsonify({'success': True})
+        except Exception:
+            pass  # fallback in-memory abaixo
+
     with _visita_lock:
-        if nr in _em_visita and str(_em_visita[nr]['dupla_id']) != str(dupla_id):
+        existing_fb = _em_visita_fallback.get(nr)
+        if existing_fb and str(existing_fb['dupla_id']) != str(dupla_id):
             return jsonify({
                 'success': False,
                 'error': 'Paciente ja esta em visita por outra dupla',
-                'dupla_em_visita': _em_visita[nr].get('nome_dupla', 'Outra dupla')
+                'dupla_em_visita': existing_fb.get('nome_dupla', 'Outra dupla')
             }), 409
-
-        _em_visita[nr] = {
-            'dupla_id': dupla_id,
-            'nome_dupla': nome_dupla or 'Dupla em visita',
-            'ts': datetime.now()
-        }
+        _em_visita_fallback[nr] = {**payload, 'ts': datetime.now()}
     return jsonify({'success': True})
 
 
@@ -700,8 +685,15 @@ def liberar_paciente():
     nr = str(dados.get('nr_atendimento', '')).strip()
     if not nr:
         return jsonify({'success': False, 'error': 'nr_atendimento obrigatorio'}), 400
+    r = _redis_visita()
+    if r is not None:
+        try:
+            r.delete(_EM_VISITA_KEY_PREFIX + nr)
+            return jsonify({'success': True})
+        except Exception:
+            pass
     with _visita_lock:
-        _em_visita.pop(nr, None)
+        _em_visita_fallback.pop(nr, None)
     return jsonify({'success': True})
 
 
@@ -760,9 +752,15 @@ def marcar_precaucao_contato():
                         marcado_por = EXCLUDED.marcado_por,
                         marcado_em  = NOW()
             """, (nr, nm_paciente, leito, usuario))
-            # Liberar lock de visita caso exista
+            # Liberar reserva de visita caso exista
+            _r = _redis_visita()
+            if _r is not None:
+                try:
+                    _r.delete(_EM_VISITA_KEY_PREFIX + nr)
+                except Exception:
+                    pass
             with _visita_lock:
-                _em_visita.pop(nr, None)
+                _em_visita_fallback.pop(nr, None)
             return jsonify({'success': True, 'message': 'Paciente marcado em precaução de contato. Removido da fila.'})
     except Exception as e:
         current_app.logger.error("Erro no endpoint: %s", e, exc_info=True)
@@ -977,10 +975,16 @@ def registrar_visita():
             critico_quando_map = {}
             if item_ids:
                 cursor.execute("""
-                    SELECT id, COALESCE(tipo, 'semaforo') AS tipo,
-                           COALESCE(critico_quando, 'nao') AS critico_quando,
-                           COALESCE(gera_critico, TRUE) AS gera_critico
-                    FROM sentir_agir_itens WHERE id = ANY(%s)
+                    SELECT i.id,
+                           COALESCE(i.tipo, 'semaforo') AS tipo,
+                           COALESCE(i.critico_quando, 'nao') AS critico_quando,
+                           COALESCE(i.gera_critico, TRUE) AS gera_critico,
+                           i.descricao AS item_descricao,
+                           c.id AS categoria_id,
+                           c.nome AS categoria_nome
+                    FROM sentir_agir_itens i
+                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                    WHERE i.id = ANY(%s)
                 """, (item_ids,))
                 for row in cursor.fetchall():
                     critico_quando_map[row['id']] = row
@@ -1015,15 +1019,7 @@ def registrar_visita():
 
             if auto_criar == 'true' and avaliacoes_criticas:
                 for avaliacao_id, item_id, obs_item in avaliacoes_criticas:
-                    # Buscar dados do item e categoria
-                    cursor.execute("""
-                        SELECT i.id AS item_id, i.descricao AS item_descricao,
-                               c.id AS categoria_id, c.nome AS categoria_nome
-                        FROM sentir_agir_itens i
-                        JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                        WHERE i.id = %s
-                    """, (item_id,))
-                    item_info = cursor.fetchone()
+                    item_info = critico_quando_map.get(item_id)
 
                     if not item_info:
                         continue
@@ -1115,18 +1111,27 @@ def upload_imagem():
             if not cursor.fetchone():
                 return jsonify({'success': False, 'error': 'Visita nao encontrada'}), 404
 
-            max_imagens = int(_get_config(cursor, 'max_imagens_por_visita', '5'))
+            # Busca todas as configs de imagem em 1 query (P2.13)
+            cursor.execute("""
+                SELECT chave, valor FROM sentir_agir_config
+                WHERE chave = ANY(%s)
+            """, (['max_imagens_por_visita', 'tipos_imagem_permitidos',
+                   'tamanho_max_imagem_mb', 'caminho_imagens'],))
+            _cfg = {r['chave']: r['valor'] for r in cursor.fetchall()}
+            _default_path = os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir')
+
+            max_imagens = int(_cfg.get('max_imagens_por_visita', '5'))
             cursor.execute("SELECT COUNT(*) as total FROM sentir_agir_imagens WHERE visita_id = %s", (visita_id,))
             if cursor.fetchone()['total'] >= max_imagens:
                 return jsonify({'success': False, 'error': 'Limite de %d imagens atingido' % max_imagens}), 400
 
-            tipos_permitidos = _get_config(cursor, 'tipos_imagem_permitidos', 'image/jpeg,image/png,image/webp')
+            tipos_permitidos = _cfg.get('tipos_imagem_permitidos', 'image/jpeg,image/png,image/webp')
             tipos_lista = [t.strip() for t in tipos_permitidos.split(',')]
             tipo_mime = arquivo.content_type or ''
             if tipo_mime not in tipos_lista:
                 return jsonify({'success': False, 'error': 'Tipo nao permitido. Aceitos: %s' % tipos_permitidos}), 400
 
-            max_mb = float(_get_config(cursor, 'tamanho_max_imagem_mb', '10'))
+            max_mb = float(_cfg.get('tamanho_max_imagem_mb', '10'))
             arquivo.seek(0, 2)
             tamanho_bytes = arquivo.tell()
             arquivo.seek(0)
@@ -1136,8 +1141,7 @@ def upload_imagem():
             extensao = os.path.splitext(arquivo.filename)[1].lower() or '.jpg'
             nome_unico = '%s_%s%s' % (datetime.now().strftime('%Y%m%d_%H%M%S'), uuid.uuid4().hex[:8], extensao)
 
-            caminho_base = _get_config(cursor, 'caminho_imagens',
-                                       os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'sentir_agir'))
+            caminho_base = _cfg.get('caminho_imagens', _default_path)
             subpasta = datetime.now().strftime('%Y/%m')
             caminho_completo = os.path.join(caminho_base, subpasta)
             os.makedirs(caminho_completo, exist_ok=True)
@@ -1618,11 +1622,13 @@ def servir_configurar_formulario():
 
 
 @painel28_bp.route('/api/paineis/painel28/main_config.js', endpoint='main_config_js', methods=['GET'])
+@login_required
 def servir_main_config():
     return send_from_directory(PAINEL_DIR, 'main_config.js')
 
 
 @painel28_bp.route('/api/paineis/painel28/style_config.css', endpoint='style_config_css', methods=['GET'])
+@login_required
 def servir_style_config():
     return send_from_directory(PAINEL_DIR, 'style_config.css')
 

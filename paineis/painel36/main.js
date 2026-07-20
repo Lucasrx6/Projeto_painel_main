@@ -15,7 +15,7 @@ var PAINEL_VERSAO = '1.0.48';
         cfgTipos:       BASE_URL + '/api/paineis/painel36/config/tipos-movimento',
         cfgDestinos:    BASE_URL + '/api/paineis/painel36/config/destinos',
         cfgOrigens:     BASE_URL + '/api/paineis/painel36/config/origens',
-        intervaloRefresh: 20000
+        intervaloRefresh: 30000
     };
 
     var estado = {

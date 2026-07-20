@@ -16,7 +16,7 @@ var PAINEL_VERSAO = '1.0.89';
     isLoading: false,
   };
 
-  const REFRESH_MS = 30_000;
+  const REFRESH_MS = 60000;
   const CONFIG = {
     velocidadeScroll: 0.5,
     delayInicioAutoScroll: 10000,

@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, send_from_directory, request, session, cur
 from datetime import datetime, timedelta
 from decimal import Decimal
 import threading
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
 from backend.cache import cache_route, cache_delete_pattern
@@ -313,6 +313,7 @@ def api_p46_fila():
 @painel46_bp.route('/api/paineis/painel46/sem-envio')
 @login_required
 @panel_permission_required('painel46')
+@cache_route(ttl=30, key_prefix='painel46:sem-envio', vary_by_user=False, vary_by_query=True)
 def api_p46_sem_envio():
     """
     Retorna exames que já foram executados/laudados no Tasy (status != AGUARDANDO)
@@ -636,31 +637,43 @@ def api_p46_slots_lote():
         slots_criados = 0
         slots_ignorados = 0
         agora = datetime.now()
+
+        # Gera todos os timestamps válidos de uma vez (evita N+1 — P2.17)
+        timestamps = []
         dt_atual = dt_inicio
+        while dt_atual < dt_fim:
+            if dt_atual < agora:
+                slots_ignorados += 1
+            else:
+                timestamps.append(dt_atual)
+            dt_atual += timedelta(minutes=duracao_min)
 
         with get_db_cursor(use_dict_cursor=False) as cursor:
-            while dt_atual < dt_fim:
-                # Pula horários que já passaram
-                if dt_atual < agora:
-                    slots_ignorados += 1
-                    dt_atual += timedelta(minutes=duracao_min)
-                    continue
-
-                # Ignora se já existe slot no mesmo horário e modalidade
-                cursor.execute("""
-                    SELECT id FROM radio_slots
-                    WHERE data_hora = %s
-                      AND (modalidade = %s OR (%s IS NULL AND modalidade IS NULL))
-                """, (dt_atual, modalidade, modalidade))
-                if cursor.fetchone():
-                    slots_ignorados += 1
+            if timestamps:
+                # Busca conflitos em lote — 1 SELECT no lugar de N
+                if modalidade is not None:
+                    cursor.execute("""
+                        SELECT data_hora FROM radio_slots
+                        WHERE data_hora = ANY(%s) AND modalidade = %s
+                    """, (timestamps, modalidade))
                 else:
                     cursor.execute("""
+                        SELECT data_hora FROM radio_slots
+                        WHERE data_hora = ANY(%s) AND modalidade IS NULL
+                    """, (timestamps,))
+                existentes = {row[0] for row in cursor.fetchall()}
+
+                novos = [t for t in timestamps if t not in existentes]
+                slots_ignorados += len(timestamps) - len(novos)
+
+                # Insere todos de uma vez — 1 INSERT no lugar de N
+                if novos:
+                    uid = session.get('usuario_id')
+                    execute_values(cursor, """
                         INSERT INTO radio_slots (data_hora, duracao_min, modalidade, criado_por_id)
-                        VALUES (%s, %s, %s, %s)
-                    """, (dt_atual, duracao_min, modalidade, session.get('usuario_id')))
-                    slots_criados += 1
-                dt_atual += timedelta(minutes=duracao_min)
+                        VALUES %s
+                    """, [(t, duracao_min, modalidade, uid) for t in novos])
+                    slots_criados = len(novos)
 
         cache_delete_pattern('painel46:*')
         cache_delete_pattern('painel45:*')
@@ -739,6 +752,7 @@ def api_p46_slots_atualizar(slot_id):
 @painel46_bp.route('/api/paineis/painel46/todos-exames')
 @login_required
 @panel_permission_required('painel46')
+@cache_route(ttl=30, key_prefix='painel46:todos-exames', vary_by_user=False, vary_by_query=True)
 def api_p46_todos_exames():
     """
     Retorna todos os exames de radiologia prescritos (vw_painel19_radiologia)
@@ -1228,6 +1242,7 @@ def api_p46_agendar_lote():
 @painel46_bp.route('/api/paineis/painel46/slots-por-tipo')
 @login_required
 @panel_permission_required('painel46')
+@cache_route(ttl=15, key_prefix='painel46:slots-por-tipo', vary_by_user=False, vary_by_query=True)
 def api_p46_slots_por_tipo():
     """
     Slots livres filtrados por tipo de exame e data.

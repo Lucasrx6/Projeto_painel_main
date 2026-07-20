@@ -12,6 +12,7 @@ import csv
 import io
 import json
 import traceback
+import functools
 from datetime import datetime, date
 from decimal import Decimal
 from flask import current_app, Blueprint, request, jsonify, send_from_directory, session, Response
@@ -32,12 +33,9 @@ painel32_bp = Blueprint('painel32', __name__)
 # HELPERS
 # ============================================================
 
+@functools.lru_cache(maxsize=1)
 def _get_groq_client():
-    # Recarregar o .env a cada chamada para garantir que a chave
-    # seja lida mesmo que o arquivo tenha sido criado/renomeado
-    # depois que o servidor subiu
-    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env')
-    load_dotenv(_env_path, override=True)
+    """Inicializa o cliente Groq uma vez por ciclo de vida do worker (P4.3)."""
     api_key = os.environ.get('GROQ_API_KEY', '').strip()
     if not api_key:
         return None
@@ -105,7 +103,7 @@ def painel32_static(filename):
 @painel32_bp.route('/api/paineis/painel32/analise-salva', methods=['GET'])
 @login_required
 @panel_permission_required('painel32')
-@cache_route(ttl=120, key_prefix='painel32:analise-salva')
+@cache_route(ttl=120, key_prefix='painel32:analise-salva', vary_by_user=False)
 def analise_salva():
     """
     Retorna a analise ja persistida para uma data (gerada pelo
@@ -139,7 +137,7 @@ def analise_salva():
 @painel32_bp.route('/api/paineis/painel32/historico', methods=['GET'])
 @login_required
 @panel_permission_required('painel32')
-@cache_route(ttl=120, key_prefix='painel32:historico', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel32:historico', vary_by_user=False, vary_by_query=True)
 def historico():
     """
     Retorna lista de dias que possuem analise salva,
@@ -180,7 +178,7 @@ def historico():
 @painel32_bp.route('/api/paineis/painel32/dados', methods=['GET'])
 @login_required
 @panel_permission_required('painel32')
-@cache_route(ttl=120, key_prefix='painel32:dados', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel32:dados', vary_by_user=False, vary_by_query=True)
 def dados():
     """
     Retorna todas as visitas do dia agrupadas por setor,
@@ -215,10 +213,12 @@ def dados():
             """, (data_str,))
             visitas = [_serial_row(r) for r in cursor.fetchall()]
 
-            # Buscar itens criticos/atencao de cada visita
-            for v in visitas:
+            # Buscar todos os itens de todas as visitas em uma única query (P2.2)
+            if visitas:
+                ids_visitas = [v['visita_id'] for v in visitas]
                 cursor.execute("""
                     SELECT
+                        a.visita_id,
                         i.descricao AS item_descricao,
                         c.nome AS categoria_nome,
                         a.resultado,
@@ -228,16 +228,21 @@ def dados():
                     JOIN sentir_agir_categorias c ON c.id = i.categoria_id
                     LEFT JOIN sentir_agir_tratativas t
                         ON t.visita_id = a.visita_id AND t.item_id = a.item_id
-                    WHERE a.visita_id = %s
+                    WHERE a.visita_id = ANY(%s)
                       AND a.resultado IN ('critico', 'atencao')
-                    ORDER BY c.ordem, i.ordem
-                """, (v['visita_id'],))
-                itens = []
+                    ORDER BY a.visita_id, c.ordem, i.ordem
+                """, (ids_visitas,))
+                itens_por_visita = {}
                 for r in cursor.fetchall():
                     item = _serial_row(r)
                     item['obs_item'] = _extrair_obs_item(item.get('descricao_problema'))
-                    itens.append(item)
-                v['itens_problema'] = itens
+                    vid = item.pop('visita_id')
+                    itens_por_visita.setdefault(vid, []).append(item)
+                for v in visitas:
+                    v['itens_problema'] = itens_por_visita.get(v['visita_id'], [])
+            else:
+                for v in visitas:
+                    v['itens_problema'] = []
 
 
             # Agrupar por setor
@@ -519,45 +524,7 @@ def exportar():
     try:
         with get_db_cursor() as cursor:
 
-            cursor.execute("""
-                SELECT
-                    s.nome AS setor,
-                    v.leito,
-                    v.nm_paciente AS paciente,
-                    v.nr_atendimento AS atendimento,
-                    v.avaliacao_final AS avaliacao,
-                    d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS dupla,
-                    r.data_ronda,
-                    v.observacoes AS obs_geral,
-                    v.criado_em
-                FROM sentir_agir_visitas v
-                JOIN sentir_agir_rondas r ON r.id = v.ronda_id
-                JOIN sentir_agir_setores s ON s.id = v.setor_id
-                JOIN sentir_agir_duplas d ON d.id = r.dupla_id
-                WHERE DATE(v.criado_em) = %s
-                  AND v.avaliacao_final != 'impossibilitada'
-                ORDER BY COALESCE(s.ordem, 999), s.nome, v.leito
-            """, (data_str,))
-            visitas = cursor.fetchall()
-
-            # Buscar itens criticos por visita para incluir no CSV
-            visitas_com_itens = []
-            for v in visitas:
-                vd = dict(v)
-                cursor.execute("""
-                    SELECT i.descricao AS item, c.nome AS categoria, a.resultado, t.descricao_problema
-                    FROM sentir_agir_avaliacoes a
-                    JOIN sentir_agir_itens i ON i.id = a.item_id
-                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                    LEFT JOIN sentir_agir_tratativas t
-                        ON t.visita_id = a.visita_id AND t.item_id = a.item_id
-                    WHERE a.visita_id = %s AND a.resultado IN ('critico', 'atencao')
-                    ORDER BY c.ordem, i.ordem
-                """, (v['nr_atendimento'],))
-                # na verdade precisa do visita_id — vamos buscar ele
-                visitas_com_itens.append(vd)
-
-            # Buscar de novo com visita_id
+            # Uma única query com visita_id incluído (P2.3)
             cursor.execute("""
                 SELECT
                     v.id AS visita_id,
@@ -578,6 +545,25 @@ def exportar():
             """, (data_str,))
             visitas2 = cursor.fetchall()
 
+            # Busca todos os itens de uma vez (evita N+1 — P2.3)
+            itens_por_visita = {}
+            if visitas2:
+                ids_visitas = [v['visita_id'] for v in visitas2]
+                cursor.execute("""
+                    SELECT a.visita_id, i.descricao AS item, c.nome AS categoria,
+                           a.resultado, t.descricao_problema
+                    FROM sentir_agir_avaliacoes a
+                    JOIN sentir_agir_itens i ON i.id = a.item_id
+                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
+                    LEFT JOIN sentir_agir_tratativas t
+                        ON t.visita_id = a.visita_id AND t.item_id = a.item_id
+                    WHERE a.visita_id = ANY(%s) AND a.resultado IN ('critico', 'atencao')
+                    ORDER BY a.visita_id, c.ordem, i.ordem
+                """, (ids_visitas,))
+                for row in cursor.fetchall():
+                    vid = row['visita_id']
+                    itens_por_visita.setdefault(vid, []).append(dict(row))
+
             output = io.StringIO()
             writer = csv.writer(output, delimiter=';')
             writer.writerow([
@@ -587,17 +573,7 @@ def exportar():
             ])
 
             for v in visitas2:
-                cursor.execute("""
-                    SELECT i.descricao AS item, c.nome AS categoria, a.resultado, t.descricao_problema
-                    FROM sentir_agir_avaliacoes a
-                    JOIN sentir_agir_itens i ON i.id = a.item_id
-                    JOIN sentir_agir_categorias c ON c.id = i.categoria_id
-                    LEFT JOIN sentir_agir_tratativas t
-                        ON t.visita_id = a.visita_id AND t.item_id = a.item_id
-                    WHERE a.visita_id = %s AND a.resultado IN ('critico', 'atencao')
-                    ORDER BY c.ordem, i.ordem
-                """, (v['visita_id'],))
-                itens = cursor.fetchall()
+                itens = itens_por_visita.get(v['visita_id'], [])
 
                 itens_texto = ' | '.join(
                     '[{}] {}: {}'.format(i['resultado'].upper(), i['categoria'], i['item'])

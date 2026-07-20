@@ -75,6 +75,7 @@ from backend.routes.painel47_routes import painel47_bp
 from backend.routes.painel48_routes import painel48_bp
 from backend.routes.tests_admin_routes import tests_bp
 from backend.routes.admin_acessos_routes import acessos_bp
+from backend.routes.tv_routes import tv_bp
 
 # =========================================================
 # CONFIGURAÇÃO INICIAL
@@ -154,6 +155,7 @@ app.register_blueprint(pwa_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(tests_bp)
 app.register_blueprint(acessos_bp)
+app.register_blueprint(tv_bp)
 
 # Blueprints de Painéis
 paineis = [
@@ -199,6 +201,52 @@ def health_ocupacao():
     """Status do worker de ocupação hospitalar: thread viva, último envio, próximo envio."""
     from backend.notificador_ocupacao_hospitalar import get_status as _get_status
     return jsonify(_get_status())
+
+
+# =========================================================
+# CACHE INVALIDATION — chamado pelo ETL (Apache Hop) após carga
+# =========================================================
+
+import re as _re
+_PAINEL_RE = _re.compile(r'^painel\d+$')
+
+@app.route('/api/health/cache-invalidate', methods=['POST'])
+def health_cache_invalidate():
+    """
+    Invalida o cache Redis de um ou mais painéis imediatamente após uma carga ETL.
+    Protegido por CACHE_INVALIDATE_KEY no .env.
+
+    Uso pelo Apache Hop: POST /api/health/cache-invalidate?key=SECRET
+    Body JSON: {"paineis": "painel4,painel12"}
+    Ou query string: ?paineis=painel4,painel12
+    """
+    from flask import request as _req
+    from backend.cache import cache_delete_pattern
+
+    expected_key = os.environ.get('CACHE_INVALIDATE_KEY', '').strip()
+    if not expected_key:
+        return jsonify({'success': False, 'error': 'CACHE_INVALIDATE_KEY nao configurada'}), 503
+
+    provided_key = (_req.args.get('key') or (_req.get_json(silent=True) or {}).get('key', '')).strip()
+    if provided_key != expected_key:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+
+    body = _req.get_json(silent=True) or {}
+    paineis_raw = (_req.args.get('paineis') or body.get('paineis', '')).strip()
+    if not paineis_raw:
+        return jsonify({'success': False, 'error': 'Parametro paineis e obrigatorio'}), 400
+
+    nomes = [p.strip() for p in paineis_raw.split(',') if p.strip()]
+    invalidos = [n for n in nomes if not _PAINEL_RE.match(n)]
+    if invalidos:
+        return jsonify({'success': False, 'error': 'Nome de painel invalido: ' + ', '.join(invalidos)}), 400
+
+    resultado = {}
+    for nome in nomes:
+        resultado[nome] = cache_delete_pattern(nome + ':*')
+
+    app.logger.info('[cache-invalidate] ETL limpou: %s', resultado)
+    return jsonify({'success': True, 'deletados': resultado})
 
 
 # =========================================================

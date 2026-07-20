@@ -2,11 +2,12 @@
 Painel 36 - Gestao e Relatorios do Sistema Padioleiro
 Endpoints para gestao analitica, relatorios e configuracao do sistema
 """
-from flask import Blueprint, jsonify, request, send_from_directory, session, current_app, Response
+from flask import Blueprint, jsonify, request, send_from_directory, send_file, session, current_app, Response
 from datetime import datetime, date
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
+from backend.cache import cache_route
 import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -105,6 +106,7 @@ def painel36():
 @painel36_bp.route('/api/paineis/painel36/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel36')
+@cache_route(ttl=30, key_prefix='painel36:dashboard', vary_by_user=False)
 def api_painel36_dashboard():
     try:
         with get_db_cursor() as cursor:
@@ -182,6 +184,7 @@ def api_painel36_dashboard():
 @painel36_bp.route('/api/paineis/painel36/chamados', methods=['GET'])
 @login_required
 @panel_permission_required('painel36')
+@cache_route(ttl=30, key_prefix='painel36:chamados', vary_by_user=False, vary_by_query=True)
 def api_painel36_chamados():
     setor         = request.args.get('setor', '').strip()
     padioleiro_id = request.args.get('padioleiro_id', '').strip()
@@ -310,6 +313,7 @@ def api_painel36_cancelar(chamado_id):
 @painel36_bp.route('/api/paineis/painel36/por-setor', methods=['GET'])
 @login_required
 @panel_permission_required('painel36')
+@cache_route(ttl=120, key_prefix='painel36:por-setor', vary_by_user=False, vary_by_query=True)
 def api_painel36_por_setor():
     try:
         with get_db_cursor() as cursor:
@@ -353,6 +357,7 @@ def api_painel36_por_setor():
 @painel36_bp.route('/api/paineis/painel36/por-padioleiro', methods=['GET'])
 @login_required
 @panel_permission_required('painel36')
+@cache_route(ttl=120, key_prefix='painel36:por-padioleiro', vary_by_user=False, vary_by_query=True)
 def api_painel36_por_padioleiro():
     try:
         with get_db_cursor() as cursor:
@@ -639,10 +644,11 @@ def api_painel36_exportar():
         buf.seek(0)
 
         nome_arquivo = f'chamados_padioleiro_{date.today().strftime("%Y%m%d")}.xlsx'
-        return Response(
-            buf.getvalue(),
+        return send_file(
+            buf,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={'Content-Disposition': f'attachment; filename={nome_arquivo}'}
+            as_attachment=True,
+            download_name=nome_arquivo
         )
 
     except Exception as e:

@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 # Cliente Redis global — None enquanto nao inicializado ou indisponivel
 _redis_client = None
 
+# Contador de fallbacks (P1.4): exposto no health check para detectar degradação
+_fallback_count = 0
+
 
 # =========================================================
 # INICIALIZACAO
@@ -184,6 +187,8 @@ def cache_route(ttl: int = 120, key_prefix: str = None,
         def wrapper(*args, **kwargs):
             # Se Redis estiver offline, executa normalmente sem cache
             if _redis_client is None:
+                global _fallback_count
+                _fallback_count += 1
                 return func(*args, **kwargs)
 
             import hashlib
@@ -244,7 +249,8 @@ def cache_health() -> dict:
     if _redis_client is None:
         return {
             'status': 'disabled',
-            'message': 'Redis nao conectado ou desabilitado por configuracao'
+            'message': 'Redis nao conectado ou desabilitado por configuracao',
+            'fallback_count': _fallback_count,
         }
 
     try:
@@ -270,6 +276,7 @@ def cache_health() -> dict:
             'total_commands_processed': info_stats.get('total_commands_processed', 0),
             'keyspace_hits': info_stats.get('keyspace_hits', 0),
             'keyspace_misses': info_stats.get('keyspace_misses', 0),
+            'fallback_count': _fallback_count,
         }
 
     except Exception as e:

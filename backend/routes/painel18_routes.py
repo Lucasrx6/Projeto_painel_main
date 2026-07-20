@@ -77,7 +77,7 @@ def _get_filtro_clinica(args):
 
 @painel18_bp.route('/api/paineis/painel18/medicos')
 @login_required
-@cache_route(ttl=60, key_prefix='painel18:medicos')
+@cache_route(ttl=60, key_prefix='painel18:medicos', vary_by_user=False)
 def api_painel18_medicos():
     """
     Retorna medicos logados nos consultorios do PS com metricas individuais.
@@ -212,7 +212,7 @@ def api_painel18_medicos():
 
 @painel18_bp.route('/api/paineis/painel18/ranking')
 @login_required
-@cache_route(ttl=120, key_prefix='painel18:ranking', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel18:ranking', vary_by_user=False, vary_by_query=True)
 def api_painel18_ranking():
     """
     Ranking de todos os medicos que atenderam hoje, ordenados por volume.
@@ -307,7 +307,7 @@ def api_painel18_ranking():
 
 @painel18_bp.route('/api/paineis/painel18/stats')
 @login_required
-@cache_route(ttl=60, key_prefix='painel18:stats')
+@cache_route(ttl=60, key_prefix='painel18:stats', vary_by_user=False)
 def api_painel18_stats():
     """
     Resumo geral para o dashboard:

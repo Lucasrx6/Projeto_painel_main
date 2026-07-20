@@ -129,7 +129,7 @@ def painel10():
 @painel10_bp.route('/api/paineis/painel10/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
-@cache_route(ttl=120, key_prefix='painel10:dashboard')
+@cache_route(ttl=120, key_prefix='painel10:dashboard', vary_by_user=False)
 def api_painel10_dashboard():
     """
     Resumo geral do dia.
@@ -164,7 +164,7 @@ def api_painel10_dashboard():
 @painel10_bp.route('/api/paineis/painel10/tempo-clinica', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
-@cache_route(ttl=120, key_prefix='painel10:tempo-clinica', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel10:tempo-clinica', vary_by_user=False, vary_by_query=True)
 def api_painel10_tempo_clinica():
     """
     Tempo medio de espera por clinica.
@@ -190,7 +190,7 @@ def api_painel10_tempo_clinica():
 @painel10_bp.route('/api/paineis/painel10/aguardando-clinica', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
-@cache_route(ttl=90, key_prefix='painel10:aguardando-clinica', vary_by_query=True)
+@cache_route(ttl=90, key_prefix='painel10:aguardando-clinica', vary_by_user=False, vary_by_query=True)
 def api_painel10_aguardando_clinica():
     """
     Pacientes aguardando atendimento por clinica.
@@ -216,7 +216,7 @@ def api_painel10_aguardando_clinica():
 @painel10_bp.route('/api/paineis/painel10/atendimentos-hora', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
-@cache_route(ttl=120, key_prefix='painel10:atendimentos-hora')
+@cache_route(ttl=120, key_prefix='painel10:atendimentos-hora', vary_by_user=False)
 def api_painel10_atendimentos_hora():
     """
     Distribuicao de atendimentos por hora do dia.
@@ -242,7 +242,7 @@ def api_painel10_atendimentos_hora():
 @painel10_bp.route('/api/paineis/painel10/desempenho-medico', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
-@cache_route(ttl=180, key_prefix='painel10:desempenho-medico', vary_by_query=True)
+@cache_route(ttl=180, key_prefix='painel10:desempenho-medico', vary_by_user=False, vary_by_query=True)
 def api_painel10_desempenho_medico():
     """
     Desempenho dos medicos do dia.
@@ -268,7 +268,7 @@ def api_painel10_desempenho_medico():
 @painel10_bp.route('/api/paineis/painel10/desempenho-recepcao', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
-@cache_route(ttl=180, key_prefix='painel10:desempenho-recepcao')
+@cache_route(ttl=180, key_prefix='painel10:desempenho-recepcao', vary_by_user=False)
 def api_painel10_desempenho_recepcao():
     """
     Metricas de desempenho da recepcao.
@@ -300,7 +300,7 @@ def api_painel10_desempenho_recepcao():
 @painel10_bp.route('/api/paineis/painel10/clinicas-consolidado', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
-@cache_route(ttl=90, key_prefix='painel10:clinicas-consolidado')
+@cache_route(ttl=90, key_prefix='painel10:clinicas-consolidado', vary_by_user=False)
 def api_painel10_clinicas_consolidado():
     """
     Endpoint unificado que combina dados de aguardando, tempo por clínica e mediana.

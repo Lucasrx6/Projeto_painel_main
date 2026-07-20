@@ -152,7 +152,7 @@ def painel17():
 @painel17_bp.route('/api/paineis/painel17/tempos', methods=['GET'])
 @login_required
 @panel_permission_required('painel17')
-@cache_route(ttl=120, key_prefix='painel17:tempos', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel17:tempos', vary_by_user=False, vary_by_query=True)
 def api_painel17_tempos():
     """
     Retorna tempo estimado de espera por clinica + card de Acolhimento.

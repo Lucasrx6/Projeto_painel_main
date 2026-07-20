@@ -225,7 +225,7 @@ def painel22():
 @painel22_bp.route('/api/paineis/painel22/dashboard')
 @login_required
 @panel_permission_required('painel22')
-@cache_route(ttl=60, key_prefix='painel22:dashboard')
+@cache_route(ttl=60, key_prefix='painel22:dashboard', vary_by_user=False)
 def api_painel22_dashboard():
     dados, erro = _buscar_dashboard()
     if erro:
@@ -236,7 +236,7 @@ def api_painel22_dashboard():
 @painel22_bp.route('/api/paineis/painel22/dados')
 @login_required
 @panel_permission_required('painel22')
-@cache_route(ttl=60, key_prefix='painel22:dados', vary_by_query=True)
+@cache_route(ttl=60, key_prefix='painel22:dados', vary_by_user=False, vary_by_query=True)
 def api_painel22_dados():
     dados, erro = _buscar_dados()
     if erro:
@@ -245,17 +245,21 @@ def api_painel22_dados():
 
 
 # =========================================================
-# ROTAS PÚBLICAS
+# ROTAS ANTERIORMENTE PÚBLICAS — agora requerem autenticação
 # =========================================================
 
 @painel22_bp.route('/publico/painel22')
+@login_required
+@panel_permission_required('painel22')
 def painel22_publico():
-    current_app.logger.info(f'[P22] Acesso público de {request.remote_addr}')
+    current_app.logger.info(f'[P22] Acesso de {request.remote_addr}')
     return send_from_directory('paineis/painel22', 'index.html')
 
 
 @painel22_bp.route('/api/publico/painel22/dashboard')
-@cache_route(ttl=60, key_prefix='painel22:dashboard-publico', vary_by_user=False)
+@login_required
+@panel_permission_required('painel22')
+@cache_route(ttl=60, key_prefix='painel22:pub:dashboard', vary_by_user=False)
 def api_painel22_dashboard_publico():
     dados, erro = _buscar_dashboard()
     if erro:
@@ -264,7 +268,9 @@ def api_painel22_dashboard_publico():
 
 
 @painel22_bp.route('/api/publico/painel22/dados')
-@cache_route(ttl=60, key_prefix='painel22:dados-publico', vary_by_user=False, vary_by_query=True)
+@login_required
+@panel_permission_required('painel22')
+@cache_route(ttl=60, key_prefix='painel22:pub:dados', vary_by_user=False, vary_by_query=True)
 def api_painel22_dados_publico():
     dados, erro = _buscar_dados()
     if erro:

@@ -187,13 +187,10 @@ def _anonimizar(nome):
 
 def montar_email_html(parecer):
     """
-    Monta corpo do email HTML com dados do parecer.
-    LGPD:
-      - nm_paciente anonimizado via _anonimizar() (iniciais + sobrenome)
-      - ds_motivo_consulta removido — dado clinico sensivel, nao transmitido por email
+    Monta corpo do email HTML com o minimo necessario para identificar o parecer.
+    LGPD: apenas especialidade e nr_atendimento trafegam por email (canal externo).
+    Removidos: nome do paciente, setor, leito, convenio, solicitante, data de solicitacao.
     """
-    nm_paciente_anon = _anonimizar(parecer.get('nm_paciente', '')) or '-'
-
     html = """
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
@@ -209,35 +206,15 @@ def montar_email_html(parecer):
                     <td style="padding: 8px 0; font-weight: bold;">%s</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 0; color: #6c757d;">Paciente:</td>
-                    <td style="padding: 8px 0;">%s</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6c757d;">Setor:</td>
-                    <td style="padding: 8px 0;">%s</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6c757d;">Leito:</td>
-                    <td style="padding: 8px 0;">%s</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6c757d;">Atendimento:</td>
-                    <td style="padding: 8px 0;">%s</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6c757d;">Convenio:</td>
-                    <td style="padding: 8px 0;">%s</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6c757d;">Solicitante:</td>
-                    <td style="padding: 8px 0;">%s</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6c757d;">Solicitado em:</td>
-                    <td style="padding: 8px 0;">%s</td>
+                    <td style="padding: 8px 0; color: #6c757d;">Nr. Atendimento:</td>
+                    <td style="padding: 8px 0; font-family: monospace; font-size: 15px;">%s</td>
                 </tr>
             </table>
 
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #6c757d; margin: 0;">
+                Acesse o sistema para visualizar os detalhes completos do parecer.
+            </p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
                 Notificacao automatica - Sistema de Paineis HAC<br>
@@ -247,13 +224,7 @@ def montar_email_html(parecer):
     </div>
     """ % (
         parecer.get('especialidade_destino', '-'),
-        nm_paciente_anon,
-        parecer.get('nm_setor', '-'),
-        parecer.get('cd_leito', '-'),
         parecer.get('nr_atendimento', '-'),
-        parecer.get('ds_convenio', '-'),
-        parecer.get('nm_medico_solicitante', '-'),
-        parecer.get('dt_solicitacao', '-'),
         datetime.now().strftime('%d/%m/%Y %H:%M')
     )
 
@@ -454,14 +425,11 @@ def verificar_pareceres():
         # Busca topicos ntfy do banco (uma vez por ciclo)
         topicos_ntfy = buscar_topicos_ntfy(conn)
 
-        # LGPD: ds_motivo_consulta removido do SELECT — dado clinico sensivel,
-        # nao mais exibido no email (canal externo ao hospital).
+        # LGPD: apenas nr_atendimento e especialidade_destino trafegam por email.
+        # Nome, leito, setor, convenio, solicitante e motivo sao omitidos (canal externo).
         cursor.execute("""
-            SELECT nr_parecer, nr_atendimento, nm_paciente,
-                   nm_medico_solicitante, especialidade_destino,
-                   dt_solicitacao, horas_pendente,
-                   ds_convenio, nm_setor, cd_leito,
-                   ds_tipo_atendimento, status_parecer
+            SELECT nr_parecer, nr_atendimento, especialidade_destino,
+                   horas_pendente, ds_tipo_atendimento, status_parecer
             FROM pareceres_pendentes
             WHERE status_parecer = 'A' OR status_parecer IS NULL
         """)
@@ -518,10 +486,7 @@ def verificar_pareceres():
             destinatarios = buscar_destinatarios_email(conn, especialidade)
 
             # Monta titulo
-            titulo = 'Parecer Pendente - {} - {}'.format(
-                especialidade or 'Sem especialidade',
-                parecer.get('nm_setor', '-')
-            )
+            titulo = 'Parecer Pendente - {}'.format(especialidade or 'Sem especialidade')
 
             # Envia email (se houver destinatarios)
             sucesso_email = False
@@ -533,12 +498,8 @@ def verificar_pareceres():
             else:
                 logger.info('[pareceres] Sem destinatarios email para: %s', especialidade)
 
-            # LGPD: ntfy e servico publico — mensagem contem apenas especialidade e setor.
-            # nr_atendimento, cd_leito e nm_paciente sao VETADOS neste canal.
-            mensagem_ntfy = 'Novo parecer pendente: {} | Setor: {}'.format(
-                especialidade or '-',
-                parecer.get('nm_setor', '-')
-            )
+            # LGPD: ntfy e servico publico — apenas especialidade, sem dados do paciente.
+            mensagem_ntfy = 'Novo parecer pendente: {}'.format(especialidade or '-')
             enviar_ntfy_topicos(topicos_ntfy, titulo, mensagem_ntfy)
 
             # Registra no log

@@ -390,6 +390,8 @@ def check_db_health():
     """
     start_time = time.time()
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection(retry_count=1, retry_delay=1)
         if conn is None:
@@ -420,9 +422,6 @@ def check_db_health():
         """)
         stats = cursor.fetchone()
 
-        cursor.close()
-        release_connection(conn)
-
         response_time = (time.time() - start_time) * 1000
 
         return {
@@ -442,6 +441,14 @@ def check_db_health():
             'error': str(e),
             'response_time_ms': round(response_time, 2)
         }
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            release_connection(conn)
 
 
 def wait_for_db(max_attempts=30, delay=2):
@@ -619,6 +626,23 @@ def init_db():
                 ON access_log(tipo_acesso, dt_acesso DESC);
         """)
 
+        # Dispositivos TV — terminais de plantão com autenticação por token
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dispositivos_tv (
+                id         SERIAL PRIMARY KEY,
+                nome       VARCHAR(100) NOT NULL,
+                token      VARCHAR(64)  NOT NULL UNIQUE,
+                paineis    TEXT,
+                ativo      BOOLEAN      DEFAULT TRUE,
+                criado_em  TIMESTAMP    DEFAULT NOW(),
+                ultimo_uso TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_dispositivos_tv_token
+                ON dispositivos_tv(token);
+        """)
+
         # Migracoes incrementais: adicionar colunas que podem nao existir ainda
         try:
             cursor.execute("""
@@ -627,6 +651,44 @@ def init_db():
             """)
         except Exception:
             pass  # tabela pode nao existir ainda (criada depois pelo painel)
+
+        # Índices de performance — idempotentes (IF NOT EXISTS)
+        for idx_ddl in [
+            # P2.7 — sentir_agir_visitas: buscas por atendimento e por data
+            "CREATE INDEX IF NOT EXISTS idx_sa_visitas_nr_atend ON sentir_agir_visitas (nr_atendimento)",
+            "CREATE INDEX IF NOT EXISTS idx_sa_visitas_data ON sentir_agir_visitas ((DATE(criado_em)))",
+            # P2.8 — sentir_agir_avaliacoes: JOIN/COUNT por visita
+            "CREATE INDEX IF NOT EXISTS idx_sa_avaliacoes_visita ON sentir_agir_avaliacoes (visita_id)",
+            # P2.9 — padioleiro_chamados: dashboard e filtros de status
+            "CREATE INDEX IF NOT EXISTS idx_pad_chamados_status_dt ON padioleiro_chamados (status, criado_em DESC)",
+        ]:
+            try:
+                cursor.execute(idx_ddl)
+            except Exception:
+                conn.rollback()
+
+        # P2.10 — gestao_tempo_ps: filtros por clínica e data
+        try:
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_gestao_tempo_ps_clinica_dt
+                    ON gestao_tempo_ps (clinica, dt_geracao_senha)
+            """)
+        except Exception:
+            conn.rollback()  # tabela pode não existir neste schema
+
+        # P2.12 — access_log GIN trigram para ILIKE bilateral
+        try:
+            cursor.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_access_log_descricao_gin
+                    ON access_log USING GIN (descricao gin_trgm_ops)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_access_log_usuario_gin
+                    ON access_log USING GIN (usuario_nome gin_trgm_ops)
+            """)
+        except Exception:
+            conn.rollback()  # pg_trgm pode não estar disponível — sem impacto funcional
 
         conn.commit()
         cursor.close()

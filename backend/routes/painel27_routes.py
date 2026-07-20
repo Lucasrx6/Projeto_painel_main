@@ -29,7 +29,7 @@ def painel27():
 @painel27_bp.route('/api/paineis/painel27/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel27')
-@cache_route(ttl=120, key_prefix='painel27:dashboard', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel27:dashboard', vary_by_user=False, vary_by_query=True)
 def api_painel27_dashboard():
 
     try:
@@ -98,7 +98,7 @@ def api_painel27_dashboard():
 @painel27_bp.route('/api/paineis/painel27/dados', methods=['GET'])
 @login_required
 @panel_permission_required('painel27')
-@cache_route(ttl=120, key_prefix='painel27:dados', vary_by_query=True)
+@cache_route(ttl=120, key_prefix='painel27:dados', vary_by_user=False, vary_by_query=True)
 def api_painel27_dados():
 
     try:
@@ -123,7 +123,7 @@ def api_painel27_dados():
                 params.append('%%' + busca + '%%')
                 params.append('%%' + busca + '%%')
 
-            # Pacientes com sinais vitais
+            # Pacientes com sinais vitais — LIMIT 300 defensivo (P2.14)
             cursor.execute("""
                 SELECT
                     nr_atendimento, cd_paciente, nm_paciente, idade, ie_sexo,
@@ -142,6 +142,7 @@ def api_painel27_dados():
                 ORDER BY
                     CASE WHEN status_paciente = 'INTERNADO' THEN 0 ELSE 1 END,
                     nm_setor, cd_leito
+                LIMIT 300
             """, params)
 
             pacientes = cursor.fetchall()
@@ -217,7 +218,7 @@ def api_painel27_historico_sinais(nr_atendimento):
                     saturacao_o2, glicemia_capilar, escala_dor
                 FROM p27_historico_sinais
                 WHERE nr_atendimento = %s
-                  AND dt_registro >= CURRENT_TIMESTAMP - INTERVAL '%s days'
+                  AND dt_registro >= CURRENT_TIMESTAMP - (INTERVAL '1 day' * %s)
                 ORDER BY dt_registro ASC
             """, (nr_atendimento, dias))
 
@@ -287,7 +288,7 @@ def api_painel27_historico_exames(nr_atendimento):
 @painel27_bp.route('/api/paineis/painel27/filtros', methods=['GET'])
 @login_required
 @panel_permission_required('painel27')
-@cache_route(ttl=300, key_prefix='painel27:filtros')
+@cache_route(ttl=300, key_prefix='painel27:filtros', vary_by_user=False)
 def api_painel27_filtros():
 
     try:
