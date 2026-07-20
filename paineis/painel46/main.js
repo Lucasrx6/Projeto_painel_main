@@ -99,6 +99,12 @@
         catch(e) { return iso; }
     }
 
+    function formatarDataHora(iso) {
+        if (!iso) return '-';
+        try { var d = new Date(iso); return d.toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); }
+        catch(e) { return iso; }
+    }
+
     function labelData(iso) {
         try {
             var hoje = new Date().toISOString().slice(0, 10);
@@ -436,7 +442,9 @@
               + '<div class="card-ex-nome">' + escHtml(formatarNome(ex.nm_pessoa_fisica)) + '</div>'
               + '<div class="card-ex-atnd"><i class="fas fa-hashtag" style="font-size:9px"></i> ' + escHtml(String(ex.nr_atendimento || '')) + '</div>'
               + '<div class="card-ex-proc"><i class="fas fa-x-ray"></i> ' + escHtml(ex.ds_procedimento || '-') + '</div>'
-              + '<div class="card-ex-leito"><i class="fas fa-bed"></i> ' + escHtml(ex.leito || ex.leito_base || '-') + '</div>';
+              + '<div class="card-ex-leito"><i class="fas fa-bed"></i> ' + escHtml(ex.leito || ex.leito_base || '-') + '</div>'
+              + (ex.nr_prescricao ? '<div class="card-ex-atnd"><i class="fas fa-file-medical-alt" style="font-size:9px"></i> Nr. Presc.: ' + escHtml(String(ex.nr_prescricao)) + '</div>' : '')
+              + (ex.dt_pedido ? '<div class="card-ex-atnd"><i class="fas fa-calendar-alt" style="font-size:9px"></i> Dt. Pedido: ' + formatarDataHora(ex.dt_pedido) + '</div>' : '');
 
         html += '<div class="card-ex-badges">';
         html += badgeTipoExame(ex.tipo_exame);
@@ -607,7 +615,7 @@
                 html += '</div>';
             } else {
                 html += '<div class="tabela-wrapper"><table class="tabela-exames">';
-                html += '<thead><tr><th>Paciente</th><th>Leito</th><th>Exame</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+                html += '<thead><tr><th>Paciente</th><th>Leito</th><th>Exame</th><th>Nr. Presc.</th><th>Dt. Pedido</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
                 for (var m = 0; m < itens.length; m++) {
                     var item = itens[m];
                     var rid  = item.radio_id;
@@ -617,6 +625,8 @@
                           + '<div class="pct-atnd"># ' + escHtml(item.nr_atendimento || '') + '</div></td>';
                     html += '<td><span class="leito-badge">' + escHtml(item.leito || item.leito_base || '-') + '</span></td>';
                     html += '<td><div class="exame-nome">' + escHtml(item.ds_procedimento || '-') + '</div></td>';
+                    html += '<td><div class="pct-atnd">' + escHtml(String(item.nr_prescricao || '-')) + '</div></td>';
+                    html += '<td><div class="pct-atnd">' + (item.dt_pedido ? formatarDataHora(item.dt_pedido) : '-') + '</div></td>';
                     var _nr  = escHtml(String(item.nr_atendimento || ''));
                     var _nrp = escHtml(String(item.nr_prescricao  || ''));
                     if (rid) {
