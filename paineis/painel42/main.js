@@ -249,11 +249,16 @@ var PAINEL_VERSAO = '1.0.52';
                 }
 
                 if (Estado.idsAnteriores.length > 0) {
-                    for (var j = 0; j < urgentesIds.length; j++) {
-                        if (Estado.idsUrgentesAnteriores.indexOf(urgentesIds[j]) === -1) {
-                            tocarAlerta();
+                    var _temNovo = false;
+                    for (var j = 0; j < novosIds.length; j++) {
+                        if (Estado.idsAnteriores.indexOf(novosIds[j]) === -1) {
+                            _temNovo = true;
                             break;
                         }
+                    }
+                    if (_temNovo) {
+                        tocarAlerta();
+                        piscarTela();
                     }
                 }
 
@@ -270,7 +275,18 @@ var PAINEL_VERSAO = '1.0.52';
     }
 
     function tocarAlerta() {
-        try { DOM.audioAlerta.play(); } catch (e) { /* autoplay bloqueado */ }
+        try {
+            DOM.audioAlerta.currentTime = 0;
+            DOM.audioAlerta.play();
+        } catch (e) { /* autoplay bloqueado */ }
+    }
+
+    function piscarTela() {
+        var container = document.querySelector('.painel-container');
+        if (!container) return;
+        container.classList.remove('notificacao-nova');
+        void container.offsetWidth; // força reflow para reiniciar a animação
+        container.classList.add('notificacao-nova');
     }
 
     // =========================================================
