@@ -459,6 +459,24 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .etq-msg-ok  { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
 .etq-msg-err { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
 
+.etq-ip-group          { border-top: 1px solid var(--borda); padding-top: 16px; margin-top: 4px; }
+.etq-ip-hint           { font-size: 11px; font-weight: 400; color: #17A2B8; margin-left: 6px; }
+.etq-printer-opcao     { display: flex; flex-direction: column; gap: 6px; }
+.etq-printer-opcao-label { font-size: 12px; font-weight: 600; color: var(--texto-sec); }
+.etq-ip-row   { display: flex; align-items: center; gap: 8px; }
+.etq-ip-sep   { font-weight: 700; font-size: 16px; color: var(--texto-sec); }
+.etq-form-input {
+    border: 1px solid var(--borda); border-radius: 8px; padding: 9px 12px;
+    font-size: 14px; color: var(--texto); outline: none; flex: 1;
+}
+.etq-form-input:focus { border-color: var(--cor-primaria); }
+.etq-port-input { max-width: 90px; flex: 0 0 90px; }
+.etq-ip-info {
+    font-size: 11px; color: var(--texto-sec); line-height: 1.5;
+    background: #f8f9fa; border: 1px solid var(--borda); border-radius: 6px;
+    padding: 8px 12px; margin-top: 4px;
+}
+
 /* ── REL ASSINATURAS ──────────────────────────── */
 .rel-assin-filtros {
     display: flex; align-items: center; gap: 16px; flex-wrap: wrap;

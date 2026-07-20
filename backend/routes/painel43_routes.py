@@ -890,7 +890,13 @@ _SQL_ETIQUETA_INIT = """
 """
 _SQL_ETIQUETA_MIGRAR = """
     ALTER TABLE nutricao_etiqueta_config
-    ADD COLUMN IF NOT EXISTS pdf_template TEXT NOT NULL DEFAULT ''
+    ADD COLUMN IF NOT EXISTS pdf_template  TEXT        NOT NULL DEFAULT '';
+    ALTER TABLE nutricao_etiqueta_config
+    ADD COLUMN IF NOT EXISTS printer_name  VARCHAR(200) NOT NULL DEFAULT '';
+    ALTER TABLE nutricao_etiqueta_config
+    ADD COLUMN IF NOT EXISTS printer_ip    VARCHAR(50)  NOT NULL DEFAULT '';
+    ALTER TABLE nutricao_etiqueta_config
+    ADD COLUMN IF NOT EXISTS printer_port  INTEGER      NOT NULL DEFAULT 9100
 """
 
 
@@ -906,7 +912,7 @@ def api_p43_etiqueta_get():
         with get_db_cursor() as cursor:
             _etiqueta_init(cursor)
             cursor.execute(
-                "SELECT modo_impressao, zpl_template, pdf_template FROM nutricao_etiqueta_config WHERE id = 1"
+                "SELECT modo_impressao, zpl_template, pdf_template, printer_name, printer_ip, printer_port FROM nutricao_etiqueta_config WHERE id = 1"
             )
             row = cursor.fetchone()
             if not row:
@@ -914,12 +920,15 @@ def api_p43_etiqueta_get():
                     "INSERT INTO nutricao_etiqueta_config (id, modo_impressao, zpl_template, pdf_template)"
                     " VALUES (1, 'pdf', '', '')"
                 )
-                return jsonify({'success': True, 'modo_impressao': 'pdf', 'zpl_template': '', 'pdf_template': ''})
+                return jsonify({'success': True, 'modo_impressao': 'pdf', 'zpl_template': '', 'pdf_template': '', 'printer_name': '', 'printer_ip': '', 'printer_port': 9100})
         return jsonify({
             'success': True,
             'modo_impressao': row['modo_impressao'],
             'zpl_template':   row['zpl_template']   or '',
-            'pdf_template':   row['pdf_template']   or ''
+            'pdf_template':   row['pdf_template']   or '',
+            'printer_name':   row['printer_name']   or '',
+            'printer_ip':     row['printer_ip']     or '',
+            'printer_port':   row['printer_port']   or 9100
         })
     except Exception as e:
         current_app.logger.error('Erro config/etiqueta GET p43: %s', e, exc_info=True)
@@ -938,24 +947,32 @@ def api_p43_etiqueta_admin_check():
 @login_required
 @admin_required
 def api_p43_etiqueta_save():
-    dados = request.get_json(silent=True) or {}
-    modo  = (dados.get('modo_impressao') or 'pdf').strip()
+    dados         = request.get_json(silent=True) or {}
+    modo          = (dados.get('modo_impressao') or 'pdf').strip()
     if modo not in ('pdf', 'zpl'):
         modo = 'pdf'
-    zpl = (dados.get('zpl_template') or '').strip()
-    pdf = (dados.get('pdf_template')  or '').strip()
+    zpl           = (dados.get('zpl_template')  or '').strip()
+    pdf           = (dados.get('pdf_template')   or '').strip()
+    printer_name  = (dados.get('printer_name')   or '').strip()
+    printer_ip    = (dados.get('printer_ip')     or '').strip()
+    printer_port  = int(dados.get('printer_port') or 9100)
+    if printer_port < 1 or printer_port > 65535:
+        printer_port = 9100
     try:
         with get_db_cursor() as cursor:
             _etiqueta_init(cursor)
             cursor.execute("""
-                INSERT INTO nutricao_etiqueta_config (id, modo_impressao, zpl_template, pdf_template, atualizado_em)
-                VALUES (1, %s, %s, %s, NOW())
+                INSERT INTO nutricao_etiqueta_config (id, modo_impressao, zpl_template, pdf_template, printer_name, printer_ip, printer_port, atualizado_em)
+                VALUES (1, %s, %s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (id) DO UPDATE
                     SET modo_impressao = EXCLUDED.modo_impressao,
                         zpl_template   = EXCLUDED.zpl_template,
                         pdf_template   = EXCLUDED.pdf_template,
+                        printer_name   = EXCLUDED.printer_name,
+                        printer_ip     = EXCLUDED.printer_ip,
+                        printer_port   = EXCLUDED.printer_port,
                         atualizado_em  = NOW()
-            """, (modo, zpl, pdf))
+            """, (modo, zpl, pdf, printer_name, printer_ip, printer_port))
         return jsonify({'success': True})
     except Exception as e:
         current_app.logger.error('Erro config/etiqueta POST p43: %s', e, exc_info=True)

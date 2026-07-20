@@ -1275,6 +1275,12 @@ var PAINEL_VERSAO = '1.0.28';
                     document.getElementById('etq-modo').value = data.modo_impressao || 'pdf';
                     document.getElementById('etq-zpl').value  = data.zpl_template  || _ZPL_TEMPLATE_PADRAO;
                     document.getElementById('etq-pdf').value  = data.pdf_template  || _PDF_TEMPLATE_PADRAO;
+                    var nameEl = document.getElementById('etq-printer-name');
+                    var ipEl   = document.getElementById('etq-printer-ip');
+                    var portEl = document.getElementById('etq-printer-port');
+                    if (nameEl) nameEl.value  = data.printer_name || '';
+                    if (ipEl)   ipEl.value    = data.printer_ip   || '';
+                    if (portEl) portEl.value  = data.printer_port || 9100;
                     _toggleEtiquetaGrupos();
                     _atualizarPreview();
                     _atualizarPreviewZPL();
@@ -1284,11 +1290,17 @@ var PAINEL_VERSAO = '1.0.28';
     }
 
     function salvarEtiqueta() {
-        var modo = document.getElementById('etq-modo').value;
-        var zpl  = document.getElementById('etq-zpl').value;
-        var pdf  = document.getElementById('etq-pdf').value;
-        var btn  = document.getElementById('btn-salvar-etiqueta');
-        var msg  = document.getElementById('etq-msg');
+        var modo        = document.getElementById('etq-modo').value;
+        var zpl         = document.getElementById('etq-zpl').value;
+        var pdf         = document.getElementById('etq-pdf').value;
+        var nameEl      = document.getElementById('etq-printer-name');
+        var ipEl        = document.getElementById('etq-printer-ip');
+        var portEl      = document.getElementById('etq-printer-port');
+        var printerName = nameEl ? (nameEl.value || '').trim() : '';
+        var printerIp   = ipEl   ? (ipEl.value   || '').trim() : '';
+        var printerPort = portEl ? (parseInt(portEl.value) || 9100) : 9100;
+        var btn        = document.getElementById('btn-salvar-etiqueta');
+        var msg        = document.getElementById('etq-msg');
         btn.disabled = true;
         msg.style.display = 'none';
 
@@ -1296,7 +1308,7 @@ var PAINEL_VERSAO = '1.0.28';
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ modo_impressao: modo, zpl_template: zpl, pdf_template: pdf })
+            body: JSON.stringify({ modo_impressao: modo, zpl_template: zpl, pdf_template: pdf, printer_name: printerName, printer_ip: printerIp, printer_port: printerPort })
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {

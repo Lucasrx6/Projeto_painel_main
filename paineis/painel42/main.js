@@ -180,6 +180,12 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.btnDetalheHistFechar  = document.getElementById('btn-detalhe-hist-fechar');
         DOM.btnRelatorioHist      = document.getElementById('btn-relatorio-hist');
 
+        // Modal opções relatório
+        DOM.modalRelatorioHist    = document.getElementById('modal-relatorio-hist');
+        DOM.chkIncluirCancelados  = document.getElementById('chk-incluir-cancelados');
+        DOM.btnRelConfirmar       = document.getElementById('btn-rel-confirmar');
+        DOM.btnRelFechar          = document.getElementById('btn-rel-fechar');
+
         // Modal protocolo
         DOM.btnProtocolo      = document.getElementById('btn-protocolo');
         DOM.modalProtocolo    = document.getElementById('modal-protocolo');
@@ -199,7 +205,22 @@ var PAINEL_VERSAO = '1.0.52';
         if (DOM.btnRelatorioHist) {
             DOM.btnRelatorioHist.addEventListener('click', function (e) {
                 e.stopPropagation();
-                gerarRelatorioHistorico();
+                if (DOM.modalRelatorioHist) DOM.modalRelatorioHist.style.display = 'flex';
+            });
+        }
+        if (DOM.btnRelFechar) {
+            DOM.btnRelFechar.addEventListener('click', function () { fecharModal(DOM.modalRelatorioHist); });
+        }
+        if (DOM.btnRelConfirmar) {
+            DOM.btnRelConfirmar.addEventListener('click', function () {
+                var incluir = DOM.chkIncluirCancelados ? DOM.chkIncluirCancelados.checked : true;
+                fecharModal(DOM.modalRelatorioHist);
+                gerarRelatorioHistorico(incluir);
+            });
+        }
+        if (DOM.modalRelatorioHist) {
+            DOM.modalRelatorioHist.addEventListener('click', function (e) {
+                if (e.target === DOM.modalRelatorioHist) fecharModal(DOM.modalRelatorioHist);
             });
         }
 
@@ -914,12 +935,14 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.modalDetalheHist.style.display = 'flex';
     }
 
-    function gerarRelatorioHistorico() {
+    function gerarRelatorioHistorico(incluirCancelados) {
         var setorFiltro = DOM.filtroSetor42 ? DOM.filtroSetor42.value : '';
         var lista = [];
         for (var i = 0; i < Estado.historico.length; i++) {
             var h = Estado.historico[i];
-            if (!setorFiltro || h.setor_nome === setorFiltro) lista.push(h);
+            if (setorFiltro && h.setor_nome !== setorFiltro) continue;
+            if (!incluirCancelados && h.status === 'cancelado') continue;
+            lista.push(h);
         }
 
         if (!lista.length) {
@@ -948,7 +971,7 @@ var PAINEL_VERSAO = '1.0.52';
                 '<td>' + escHtml(s.refeicao_nome || '--') + '</td>' +
                 '<td class="td-obs">' + escHtml(s.observacao || '--') + '</td>' +
                 '<td>' + escHtml(s.responsavel_nome || '--') + '</td>' +
-                '<td><span style="background:' + statusCfg.cor + ';color:#fff;padding:2px 6px;border-radius:3px;font-size:8px;white-space:nowrap;">' + escHtml(statusCfg.label) + '</span></td>' +
+                '<td>' + escHtml(statusCfg.label) + '</td>' +
                 '<td>' + escHtml(s.criado_em || '--') + '</td>' +
                 '<td>' + escHtml(s.dt_entrega || s.dt_cancelamento || '--') + '</td>' +
                 '<td>' + (s.t_total_min != null ? fmtMin(s.t_total_min) : '--') + '</td>' +

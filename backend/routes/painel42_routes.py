@@ -546,23 +546,58 @@ def api_p42_imprimir_zpl():
     if not zpl:
         return jsonify({'success': False, 'error': 'ZPL não informado'}), 400
 
+    # Busca configuração de impressora
+    printer_name = ''
+    printer_ip   = ''
+    printer_port = 9100
     try:
-        import win32print
-        printer_name = win32print.GetDefaultPrinter()
-        h = win32print.OpenPrinter(printer_name)
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                "SELECT printer_name, printer_ip, printer_port FROM nutricao_etiqueta_config WHERE id = 1"
+            )
+            cfg = cursor.fetchone()
+            if cfg:
+                printer_name = (cfg['printer_name'] or '').strip()
+                printer_ip   = (cfg['printer_ip']   or '').strip()
+                printer_port = int(cfg['printer_port'] or 9100)
+    except Exception:
+        pass
+
+    if printer_ip:
+        # Opção 1: TCP direto para impressora Zebra com IP próprio (porta 9100)
         try:
-            j = win32print.StartDocPrinter(h, 1, ('Etiqueta HAC', None, 'RAW'))
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            s.connect((printer_ip, printer_port))
+            s.sendall(zpl.encode('utf-8'))
+            s.close()
+            current_app.logger.info('Etiqueta ZPL TCP → %s:%s (usuario: %s)',
+                                    printer_ip, printer_port, session.get('usuario', '?'))
+            return jsonify({'success': True, 'impressora': '%s:%s' % (printer_ip, printer_port)})
+        except Exception as e:
+            current_app.logger.error('Erro ZPL TCP %s:%s: %s', printer_ip, printer_port, e, exc_info=True)
+            return jsonify({'success': False, 'error': 'Falha na conexão TCP com a impressora (%s:%s): %s' % (printer_ip, printer_port, e)}), 500
+
+    else:
+        # Opção 2: win32print com nome/caminho específico (ex: \\servidor\impressora) ou padrão Windows
+        try:
+            import win32print
+            nome = printer_name if printer_name else win32print.GetDefaultPrinter()
+            h = win32print.OpenPrinter(nome)
             try:
-                win32print.StartPagePrinter(h)
-                win32print.WritePrinter(h, zpl.encode('utf-8'))
-                win32print.EndPagePrinter(h)
+                win32print.StartDocPrinter(h, 1, ('Etiqueta HAC', None, 'RAW'))
+                try:
+                    win32print.StartPagePrinter(h)
+                    win32print.WritePrinter(h, zpl.encode('utf-8'))
+                    win32print.EndPagePrinter(h)
+                finally:
+                    win32print.EndDocPrinter(h)
             finally:
-                win32print.EndDocPrinter(h)
-        finally:
-            win32print.ClosePrinter(h)
-        current_app.logger.info('Etiqueta ZPL → %s (usuario: %s)',
-                                printer_name, session.get('usuario', '?'))
-        return jsonify({'success': True, 'impressora': printer_name})
-    except Exception as e:
-        current_app.logger.error('Erro impressao ZPL: %s', e, exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao enviar impressão'}), 500
+                win32print.ClosePrinter(h)
+            current_app.logger.info('Etiqueta ZPL win32 → %s (usuario: %s)',
+                                    nome, session.get('usuario', '?'))
+            return jsonify({'success': True, 'impressora': nome})
+        except Exception as e:
+            current_app.logger.error('Erro ZPL win32print [%s]: %s', printer_name or 'padrão', e, exc_info=True)
+            return jsonify({'success': False, 'error': 'Erro ao imprimir em "%s": %s' % (printer_name or 'impressora padrão', e)}), 500

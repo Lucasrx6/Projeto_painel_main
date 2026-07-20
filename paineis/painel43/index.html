@@ -490,6 +490,43 @@
                             </div>
                         </div>
 
+                        <!-- Configuração da impressora ZPL -->
+                        <div class="etq-form-group etq-ip-group">
+                            <label class="etq-form-label">
+                                <i class="fas fa-print"></i> Impressora ZPL (Windows / Rede)
+                                <span class="etq-ip-hint">funciona em qualquer browser</span>
+                            </label>
+
+                            <div class="etq-printer-opcao">
+                                <span class="etq-printer-opcao-label">Opção A — Nome Windows (local ou compartilhada em rede):</span>
+                                <input type="text" id="etq-printer-name" class="etq-form-input"
+                                    placeholder="Ex: \\servidor\136-Etiqueta Cozinha" maxlength="200">
+                                <div class="etq-ip-info">
+                                    Aceita caminho UNC (<code>\\servidor\impressora</code>) ou nome local.
+                                    O servidor Flask envia o ZPL diretamente para esta impressora via win32print.
+                                </div>
+                            </div>
+
+                            <div class="etq-printer-opcao" style="margin-top:10px;">
+                                <span class="etq-printer-opcao-label">Opção B — IP direto TCP (impressora Zebra com IP próprio):</span>
+                                <div class="etq-ip-row">
+                                    <input type="text" id="etq-printer-ip" class="etq-form-input"
+                                        placeholder="Ex: 192.168.1.100" maxlength="50">
+                                    <span class="etq-ip-sep">:</span>
+                                    <input type="number" id="etq-printer-port" class="etq-form-input etq-port-input"
+                                        placeholder="9100" min="1" max="65535" value="9100">
+                                </div>
+                                <div class="etq-ip-info">
+                                    Envia ZPL via socket TCP (porta 9100). Use quando a impressora tem IP próprio na rede.
+                                </div>
+                            </div>
+
+                            <div class="etq-ip-info" style="margin-top:8px;background:#fff3cd;border-color:#ffc107;">
+                                <b>Prioridade:</b> IP direto (Opção B) &gt; Nome Windows (Opção A) &gt; Impressora padrão do servidor.
+                                Configure apenas uma opção. Deixe ambas em branco para usar a impressora padrão do Windows Server.
+                            </div>
+                        </div>
+
                         <div id="etq-msg" class="etq-msg" style="display:none;"></div>
                         <button id="btn-salvar-etiqueta" class="btn-novo">
                             <i class="fas fa-save"></i> Salvar Configuração

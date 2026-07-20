@@ -715,6 +715,16 @@ body {
 }
 .btn-relatorio-hist:hover { background: #218838; }
 
+.label-checkbox-rel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #444;
+    cursor: pointer;
+}
+
 .btn-ver-hist {
     background: #17A2B8;
     color: #fff;
