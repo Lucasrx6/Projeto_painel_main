@@ -114,7 +114,10 @@ def _auto_finalizar_expirados(logger):
         _auto_fin_state['last_run'] = agora
 
     try:
+        ids_afetados = []
+
         with get_db_cursor(use_dict_cursor=False) as cursor:
+            # Passagem 1: exames COM slot vinculado (lógica original).
             cursor.execute("""
                 UPDATE radio_agenda
                 SET status             = 'concluido',
@@ -142,7 +145,6 @@ def _auto_finalizar_expirados(logger):
                   AND radio_agenda.status NOT IN ('concluido', 'cancelado')
                   AND radio_agenda.auto_finalizado = FALSE
                   AND (
-                      -- Dias anteriores: finaliza imediatamente se Tasy confirmou
                       (DATE(rs.data_hora) < CURRENT_DATE
                        AND EXISTS (
                            SELECT 1 FROM vw_painel19_radiologia p
@@ -153,7 +155,6 @@ def _auto_finalizar_expirados(logger):
                        )
                       )
                       OR
-                      -- Hoje: aguarda 30 min após o slot agendado e Tasy confirmou
                       (DATE(rs.data_hora) = CURRENT_DATE
                        AND rs.data_hora <= NOW() - INTERVAL '30 minutes'
                        AND EXISTS (
@@ -167,9 +168,54 @@ def _auto_finalizar_expirados(logger):
                   )
                 RETURNING radio_agenda.id
             """)
-            ids_afetados = [r[0] for r in cursor.fetchall()]
-            n = len(ids_afetados)
+            ids_afetados += [r[0] for r in cursor.fetchall()]
 
+            # Passagem 2: exames pendentes SEM slot (fila "Sem Horário Agendado").
+            # Esses registros escapam da passagem 1 porque não há slot para fazer JOIN.
+            # Regra: Tasy confirma execução E o exame está pendente há mais de 1h
+            # (ou é de um dia anterior) → auto-finaliza usando os timestamps do Tasy.
+            cursor.execute("""
+                UPDATE radio_agenda ra
+                SET status             = 'concluido',
+                    dt_no_local        = COALESCE(ra.dt_no_local,
+                                            (SELECT p.dt_execucao
+                                             FROM vw_painel19_radiologia p
+                                             WHERE p.nr_atendimento::varchar = ra.nr_atendimento
+                                               AND p.nr_prescricao::varchar  = ra.nr_prescricao
+                                               AND p.ds_procedimento         = ra.ds_procedimento
+                                             LIMIT 1),
+                                            NOW()),
+                    dt_inicio_exame    = COALESCE(ra.dt_inicio_exame, NOW()),
+                    dt_conclusao_exame = COALESCE(ra.dt_conclusao_exame, NOW()),
+                    status_enfermagem  = CASE
+                                           WHEN ra.status_enfermagem = 'pendente' THEN 'ciente'
+                                           ELSE ra.status_enfermagem
+                                         END,
+                    dt_ciencia         = CASE
+                                           WHEN ra.status_enfermagem = 'pendente' THEN NOW()
+                                           ELSE ra.dt_ciencia
+                                         END,
+                    auto_finalizado    = TRUE,
+                    auto_finalizado_em = NOW(),
+                    atualizado_em      = NOW()
+                WHERE ra.slot_id IS NULL
+                  AND ra.status = 'pendente'
+                  AND ra.auto_finalizado = FALSE
+                  AND (DATE(ra.criado_em) < CURRENT_DATE
+                       OR ra.criado_em <= NOW() - INTERVAL '1 hour')
+                  AND EXISTS (
+                      SELECT 1 FROM vw_painel19_radiologia p
+                      WHERE p.nr_atendimento::varchar = ra.nr_atendimento
+                        AND p.nr_prescricao::varchar  = ra.nr_prescricao
+                        AND p.ds_procedimento         = ra.ds_procedimento
+                        AND p.status_radiologia NOT IN ('AGUARDANDO')
+                  )
+                RETURNING ra.id
+            """)
+            ids_sem_slot = [r[0] for r in cursor.fetchall()]
+            ids_afetados += ids_sem_slot
+
+        n = len(ids_afetados)
         if n > 0:
             cache_delete_pattern('painel45:*')
             cache_delete_pattern('painel46:*')

@@ -769,7 +769,7 @@
     // =========================================================
 
     var _HEADERS_EXPORT = [
-        'Setor', 'Leito', 'Paciente', 'Idade/Sexo', 'Dias Internado',
+        'Setor', 'Leito', 'Nr. Atendimento', 'Paciente', 'Idade/Sexo', 'Dias Internado',
         'Medico', 'Convenio', 'Score Total', 'Qtd Criterios', 'Classificacao',
         'Ultima Visita', 'Farmaceutico', 'Status Visita', 'Dias Sem Visita'
     ];
@@ -782,6 +782,7 @@
         return [
             p.ds_setor_atendimento   || '',
             p.cd_unidade_basica      || '',
+            p.nr_atendimento         || '',
             p.nm_paciente            || '',
             idadeSexo,
             p.qt_dia_permanencia !== null && p.qt_dia_permanencia !== undefined ? p.qt_dia_permanencia : '',
