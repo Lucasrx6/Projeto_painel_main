@@ -1,0 +1,688 @@
+/* ========================================
+   PAINEL 49: SALAS CIRÚRGICAS
+   Filho do Painel 5 — mesma linguagem visual
+   ======================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #f5f7fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.painel-container {
+    background: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   CABEÇALHO — idêntico ao Painel 5
+   ======================================== */
+
+.painel-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 8px 15px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-left img {
+    max-height: 30px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.painel-header h1 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.painel-header h1 i { font-size: 0.9rem; }
+
+.header-right {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Botões do Header — mesmos do Painel 5 */
+.btn-voltar,
+.btn-refresh,
+.btn-periodo-header,
+.btn-secao,
+.btn-modo-header,
+.btn-exportar-header {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.btn-voltar i,
+.btn-refresh i,
+.btn-periodo-header i,
+.btn-secao i,
+.btn-modo-header i,
+.btn-exportar-header i { font-size: 0.75rem; }
+
+.btn-voltar:hover,
+.btn-refresh i:hover,
+.btn-periodo-header:hover,
+.btn-secao:hover,
+.btn-modo-header:hover,
+.btn-exportar-header:hover,
+.btn-refresh:hover {
+    background: white;
+    color: #dc3545;
+    transform: translateY(-2px);
+}
+
+/* Período ativo */
+.btn-periodo-header.ativo {
+    background: white;
+    color: #dc3545;
+}
+
+/* Secão Hemo ativa */
+.btn-secao.hemo-ativo {
+    background: #17a2b8;
+    border-color: #17a2b8;
+    animation: pulse-hemo 2s infinite;
+}
+
+@keyframes pulse-hemo {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(23,162,184,0.7); }
+    50%       { box-shadow: 0 0 0 10px rgba(23,162,184,0); }
+}
+
+/* Modo Detalhe ativo */
+.btn-modo-header.detalhe-ativo {
+    background: #6f42c1;
+    border-color: #6f42c1;
+}
+
+/* Excel — verde */
+.btn-exportar-header:hover {
+    background: white;
+    color: #28a745;
+    transform: translateY(-2px);
+}
+
+.ultima-atualizacao {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+/* Custom date picker */
+.filtro-custom-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 2px 0;
+    flex-wrap: wrap;
+}
+
+.filtro-custom-header label {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.9);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.input-data-header {
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    color-scheme: dark;
+}
+
+.btn-aplicar-header {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 3px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+}
+
+.btn-aplicar-header:hover { background: white; color: #dc3545; }
+
+.oculto { display: none !important; }
+
+/* ========================================
+   MINI DASHBOARD — idêntico ao Painel 5
+   ======================================== */
+
+.mini-dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 10px 15px;
+    background: white;
+    border-bottom: 2px solid #e9ecef;
+    flex-shrink: 0;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+}
+
+.stat-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon i { font-size: 1.3rem; color: white; }
+
+.icon-total  { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.icon-ocupado{ background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+.icon-ocioso { background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); }
+.icon-util   { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+
+.stat-info h3 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+    line-height: 1;
+}
+
+.stat-info p {
+    font-size: 0.75rem;
+    color: #666;
+    margin: 3px 0 0 0;
+}
+
+/* ========================================
+   CONTEÚDO — flex fill, overflow hidden
+   ======================================== */
+
+.cirurgias-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ========================================
+   GRUPO POR SEÇÃO (CC / Hemo)
+   ======================================== */
+
+.grupo-secao {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.grupo-secao-header {
+    color: white;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.grupo-secao-header.cc-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.grupo-secao-header.hemo-header {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+}
+
+.grupo-secao-header i { font-size: 0.9rem; }
+
+.grupo-secao-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-left: auto;
+}
+
+/* ========================================
+   TABELA — idêntica ao Painel 5
+   ======================================== */
+
+.cirurgias-table-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: white;
+}
+
+.cirurgias-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.cirurgias-table thead {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.cirurgias-table thead tr { display: table-row; }
+
+.cirurgias-table thead th {
+    padding: 10px 8px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cirurgias-table tbody {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.cirurgias-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s ease;
+}
+
+.cirurgias-table tbody tr:hover { background: #fff5f5; }
+
+.cirurgias-table tbody tr.tr-total { background: #f8f9fa; }
+.cirurgias-table tbody tr.tr-total:hover { background: #f8f9fa; }
+
+.cirurgias-table tbody td {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    color: #333;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Scrollbar — igual ao Painel 5 */
+.cirurgias-table tbody::-webkit-scrollbar { width: 6px; }
+.cirurgias-table tbody::-webkit-scrollbar-track { background: #f1f1f1; }
+.cirurgias-table tbody::-webkit-scrollbar-thumb { background: #dc3545; border-radius: 3px; }
+
+/* ========================================
+   COLUNAS — MODO RESUMO
+   ======================================== */
+
+.modo-resumo .cirurgias-table thead th:nth-child(1) { width: 180px; }  /* Sala */
+.modo-resumo .cirurgias-table thead th:nth-child(2) { width: 80px;  }  /* Cirurgias */
+.modo-resumo .cirurgias-table thead th:nth-child(3) { width: 95px;  }  /* T. Sala */
+.modo-resumo .cirurgias-table thead th:nth-child(4) { width: 95px;  }  /* Média/Cir */
+.modo-resumo .cirurgias-table thead th:nth-child(5) { width: 95px;  }  /* T. Cirurgia */
+.modo-resumo .cirurgias-table thead th:nth-child(6) { width: 95px;  }  /* Ociosidade */
+.modo-resumo .cirurgias-table thead th:nth-child(7) { width: 90px;  }  /* Utilização */
+.modo-resumo .cirurgias-table thead th:nth-child(8) { width: 70px;  }  /* Dias */
+
+.modo-resumo .cirurgias-table tbody td:nth-child(1) { width: 180px; }
+.modo-resumo .cirurgias-table tbody td:nth-child(2) { width: 80px;  }
+.modo-resumo .cirurgias-table tbody td:nth-child(3) { width: 95px;  }
+.modo-resumo .cirurgias-table tbody td:nth-child(4) { width: 95px;  }
+.modo-resumo .cirurgias-table tbody td:nth-child(5) { width: 95px;  }
+.modo-resumo .cirurgias-table tbody td:nth-child(6) { width: 95px;  }
+.modo-resumo .cirurgias-table tbody td:nth-child(7) { width: 90px;  }
+.modo-resumo .cirurgias-table tbody td:nth-child(8) { width: 70px;  }
+
+/* ========================================
+   COLUNAS — MODO DETALHE
+   ======================================== */
+
+.modo-detalhe .cirurgias-table thead th:nth-child(1) { width: 95px;  }  /* Status */
+.modo-detalhe .cirurgias-table thead th:nth-child(2) { width: 80px;  }  /* Data */
+.modo-detalhe .cirurgias-table thead th:nth-child(3) { width: 65px;  }  /* Hr.Prev */
+.modo-detalhe .cirurgias-table thead th:nth-child(4) { width: 90px;  }  /* Entrada CC */
+.modo-detalhe .cirurgias-table thead th:nth-child(5) { width: 80px;  }  /* T. Sala */
+.modo-detalhe .cirurgias-table thead th:nth-child(6) { width: 80px;  }  /* T. Cir. */
+.modo-detalhe .cirurgias-table thead th:nth-child(7) { width: 80px;  }  /* Ociosidade */
+.modo-detalhe .cirurgias-table thead th:nth-child(8) { width: 150px; }  /* Sala */
+.modo-detalhe .cirurgias-table thead th:nth-child(9) { width: 16%;   }  /* Paciente */
+.modo-detalhe .cirurgias-table thead th:nth-child(10){ width: 13%;   }  /* Médico */
+.modo-detalhe .cirurgias-table thead th:nth-child(11){ width: calc(56% - 720px); } /* Procedimento */
+
+.modo-detalhe .cirurgias-table tbody td:nth-child(1) { width: 95px;  }
+.modo-detalhe .cirurgias-table tbody td:nth-child(2) { width: 80px;  }
+.modo-detalhe .cirurgias-table tbody td:nth-child(3) { width: 65px;  }
+.modo-detalhe .cirurgias-table tbody td:nth-child(4) { width: 90px;  }
+.modo-detalhe .cirurgias-table tbody td:nth-child(5) { width: 80px;  }
+.modo-detalhe .cirurgias-table tbody td:nth-child(6) { width: 80px;  }
+.modo-detalhe .cirurgias-table tbody td:nth-child(7) { width: 80px;  }
+.modo-detalhe .cirurgias-table tbody td:nth-child(8) { width: 150px; }
+.modo-detalhe .cirurgias-table tbody td:nth-child(9) { width: 16%;   }
+.modo-detalhe .cirurgias-table tbody td:nth-child(10){ width: 13%;   }
+.modo-detalhe .cirurgias-table tbody td:nth-child(11){ width: calc(56% - 720px); }
+
+/* Coluna status centralizada */
+.modo-detalhe .cirurgias-table thead th:nth-child(1),
+.modo-detalhe .cirurgias-table tbody td:nth-child(1) { text-align: center; }
+
+/* ========================================
+   ÍCONES DE STATUS — mesmos do Painel 5
+   ======================================== */
+
+.status-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.status-texto {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.1;
+    max-width: 85px;
+}
+
+.status-prevista {
+    background: #e0f7fa;
+    color: #00838f;
+    border: 2px solid #00acc1;
+}
+.status-prevista + .status-texto { color: #00838f; }
+
+.status-em-andamento {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 2px solid #17a2b8;
+    animation: pulse-inicio 2s infinite;
+}
+.status-em-andamento + .status-texto { color: #0c5460; }
+
+@keyframes pulse-inicio {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(23,162,184,0.7); }
+    50%       { box-shadow: 0 0 0 8px rgba(23,162,184,0); }
+}
+
+.status-concluida {
+    background: #c8e6c9;
+    color: #2e7d32;
+    border: 2px solid #4caf50;
+}
+.status-concluida + .status-texto { color: #2e7d32; }
+
+/* ========================================
+   CÉLULAS ESPECIALIZADAS
+   ======================================== */
+
+/* Sala — igual badge-sala do Painel 5 */
+.badge-sala {
+    background: #e3f2fd;
+    color: #1565c0;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Sala Hemo */
+.badge-sala-hemo {
+    background: #e0f7fa;
+    color: #006064;
+}
+
+/* Paciente */
+.paciente-nome {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.8rem;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.paciente-info {
+    color: #6c757d;
+    font-size: 0.7rem;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+.medico-nome {
+    color: #495057;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.cirurgia-desc {
+    color: #6c757d;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Horário previsto */
+.previsao-hora {
+    font-weight: 600;
+    color: #dc3545;
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+/* Tempo — igual ao Painel 5 */
+.tempo-cirurgia {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    white-space: nowrap;
+}
+.tempo-cirurgia i { font-size: 0.85rem; }
+
+.tempo-sala-valor { color: #dc3545; }
+.tempo-cir-valor  { color: #17a2b8; }
+
+/* Ociosidade */
+.ocio-valor       { color: #fd7e14; font-weight: 600; }
+.ocio-zero        { color: #ced4da; }
+
+/* Número de cirurgias */
+.num-cirurgias {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #333;
+}
+
+/* Badge utilização */
+.badge-util {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 48px;
+    text-align: center;
+}
+.badge-util-alto  { background: #c8e6c9; color: #2e7d32; }
+.badge-util-medio { background: #fff3cd; color: #856404; }
+.badge-util-baixo { background: #fde8e8; color: #c82333; }
+
+/* Linha total */
+.cirurgias-table tbody tr.tr-total td {
+    font-weight: 700;
+    border-top: 2px solid #dee2e6;
+    font-size: 0.8rem;
+}
+
+/* ========================================
+   LOADING / VAZIO — igual ao Painel 5
+   ======================================== */
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #dc3545;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #dc3545;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-container p { font-size: 1rem; color: #666; font-weight: 500; }
+
+.empty-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+.empty-message i { font-size: 3.5rem; margin-bottom: 15px; display: block; color: #ccc; }
+.empty-message h3 { font-size: 1.2rem; margin-bottom: 8px; color: #333; }
+.empty-message p  { font-size: 0.9rem; color: #666; }
+
+/* ========================================
+   RESPONSIVO
+   ======================================== */
+
+@media (max-width: 1200px) {
+    .mini-dashboard { grid-template-columns: repeat(2, 1fr); }
+
+    .modo-detalhe .cirurgias-table thead th:nth-child(10),
+    .modo-detalhe .cirurgias-table tbody td:nth-child(10) { display: none; }
+
+    .modo-detalhe .cirurgias-table thead th:nth-child(11),
+    .modo-detalhe .cirurgias-table tbody td:nth-child(11) { width: calc(56% - 560px); }
+}
+
+@media (max-width: 868px) {
+    .painel-header { padding: 6px 10px; }
+    .btn-periodo-header { padding: 3px 7px; font-size: 0.7rem; }
+    .mini-dashboard { grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 8px 10px; }
+    .cirurgias-content { padding: 8px 10px; }
+
+    .modo-detalhe .cirurgias-table thead th:nth-child(6),
+    .modo-detalhe .cirurgias-table tbody td:nth-child(6),
+    .modo-detalhe .cirurgias-table thead th:nth-child(10),
+    .modo-detalhe .cirurgias-table tbody td:nth-child(10),
+    .modo-detalhe .cirurgias-table thead th:nth-child(11),
+    .modo-detalhe .cirurgias-table tbody td:nth-child(11) { display: none; }
+}
+
+@media (max-width: 600px) {
+    .btn-voltar span { display: none; }
+    .mini-dashboard { grid-template-columns: repeat(2, 1fr); gap: 4px; padding: 6px 8px; }
+    .cirurgias-content { padding: 6px 8px; }
+    .grupo-secao-header { font-size: 0.8rem; padding: 6px 8px; }
+}

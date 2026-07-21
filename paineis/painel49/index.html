@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salas Cirúrgicas - Anchieta Ceilândia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel49/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div class="painel-container">
+
+    <!-- CABEÇALHO -->
+    <div class="painel-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/img/logo.png" alt="Anchieta Ceilândia" onerror="this.style.display='none'">
+                <h1><i class="fas fa-door-open"></i> Salas Cirúrgicas</h1>
+            </div>
+            <div class="header-right">
+                <!-- Período -->
+                <button class="btn-periodo-header ativo" data-periodo="7d">7 dias</button>
+                <button class="btn-periodo-header" data-periodo="14d">14 dias</button>
+                <button class="btn-periodo-header" data-periodo="30d">30 dias</button>
+                <button class="btn-periodo-header" data-periodo="mes">Mês</button>
+                <button class="btn-periodo-header" data-periodo="custom" id="btn-custom">
+                    <i class="fas fa-calendar-alt"></i> Datas
+                </button>
+                <!-- Seção -->
+                <button id="btn-secao" class="btn-secao">
+                    <i class="fas fa-hospital"></i> <span id="btn-secao-texto">CC</span>
+                </button>
+                <!-- Modo -->
+                <button id="btn-modo" class="btn-modo-header">
+                    <i class="fas fa-chart-bar"></i> <span id="btn-modo-texto">Resumo</span>
+                </button>
+                <!-- Excel -->
+                <button id="btn-exportar" class="btn-exportar-header" title="Exportar Excel">
+                    <i class="fas fa-file-excel"></i>
+                </button>
+                <button id="btn-refresh" class="btn-refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <a href="/dashboard" class="btn-voltar">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <span class="ultima-atualizacao" id="ultima-atualizacao">-</span>
+            </div>
+        </div>
+        <!-- Custom date picker (oculto) -->
+        <div id="filtro-custom" class="filtro-custom-header oculto">
+            <label>De <input type="date" id="dt-inicio" class="input-data-header"></label>
+            <label>Até <input type="date" id="dt-fim" class="input-data-header"></label>
+            <button id="btn-aplicar" class="btn-aplicar-header">
+                <i class="fas fa-search"></i> Aplicar
+            </button>
+        </div>
+    </div>
+
+    <!-- MINI DASHBOARD -->
+    <div class="mini-dashboard">
+        <div class="stat-card">
+            <div class="stat-icon icon-total">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-total">-</h3>
+                <p>Cirurgias</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-ocupado">
+                <i class="fas fa-door-open"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-tempo">-</h3>
+                <p>Tempo Ocupado</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-ocioso">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-ocioso">-</h3>
+                <p>Ociosidade</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon icon-util">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="stat-util">-</h3>
+                <p>Utilização</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="cirurgias-content" id="cirurgias-content">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+    </div>
+
+    <footer class="sistema-footer">
+        <span id="sistema-versao-footer">Central de Informações V 1.1.4</span>
+    </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="/paineis/painel49/main.js"></script>
+<script src="/static/js/versao.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

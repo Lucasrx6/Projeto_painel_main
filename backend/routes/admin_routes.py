@@ -48,7 +48,7 @@ def api_minhas_permissoes():
                     'painel34', 'painel35', 'painel36', 'painel37', 
                     'painel38', 'painel39', 'painel40',
                     'painel41', 'painel42', 'painel43', 'painel44',
-                    'painel45', 'painel46', 'painel47', 'painel48'
+                    'painel45', 'painel46', 'painel47', 'painel48', 'painel49'
                 ],
                 'is_admin': True
             })
@@ -425,6 +425,8 @@ def api_listar_paineis():
             {'nome': 'painel36', 'titulo': 'Padioleiro — Gestão',      'descricao': '[Aux] Gestão, relatórios e configurações do padioleiro', 'ativo': True, 'categoria': 'auxiliar'},
             {'nome': 'painel44', 'titulo': 'Hub de Serviços',          'descricao': 'Central de navegação para todos os subsistemas do HAC',  'ativo': True, 'categoria': 'auxiliar'},
             {'nome': 'painel48', 'titulo': 'Assinatura Digital — HUB', 'descricao': '[Aux] Coleta de assinaturas eletrônicas (AES) com PIN e auditoria completa', 'ativo': True, 'categoria': 'auxiliar'},
+            # --- Centro Cirúrgico / Hemodinâmica ---
+            {'nome': 'painel49', 'titulo': 'Relatório de Salas Cirúrgicas', 'descricao': 'Relatório de tempo de uso e ociosidade das salas — CC e Hemodinâmica', 'ativo': True, 'categoria': 'cirurgia'},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

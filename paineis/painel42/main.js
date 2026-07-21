@@ -78,6 +78,8 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.filtroSetor42         = document.getElementById('filtro-setor-42');
         DOM.audioAlerta           = document.getElementById('audio-alerta');
         DOM.chkImprimirAceitar    = document.getElementById('chk-imprimir-aceitar');
+        DOM.btnNotifToggle        = document.getElementById('btn-notif-toggle');
+        DOM.iconeNotif            = document.getElementById('icone-notif');
 
         // Modal aceitar
         DOM.modalAceitar      = document.getElementById('modal-aceitar');
@@ -128,6 +130,10 @@ var PAINEL_VERSAO = '1.0.52';
         DOM.voltErro          = document.getElementById('volt-erro');
         DOM.btnVoltConfirmar  = document.getElementById('btn-volt-confirmar');
         DOM.btnVoltFechar     = document.getElementById('btn-volt-fechar');
+
+        // Botão de notificações do SO
+        if (DOM.btnNotifToggle) DOM.btnNotifToggle.addEventListener('click', pedirPermissaoNotif);
+        atualizarIconeNotif();
 
         // Restaurar visualização salva
         var visSalva = localStorage.getItem('p42_visualizacao') || 'geral';
@@ -291,6 +297,7 @@ var PAINEL_VERSAO = '1.0.52';
                 }
 
                 if (Estado.idsAnteriores.length > 0) {
+                    // Detectar nova solicitação na fila
                     var _temNovo = false;
                     for (var j = 0; j < novosIds.length; j++) {
                         if (Estado.idsAnteriores.indexOf(novosIds[j]) === -1) {
@@ -302,6 +309,29 @@ var PAINEL_VERSAO = '1.0.52';
                         tocarAlerta();
                         piscarTela();
                         alertarTitulo();
+                        notificarNavegador('Nova Solicitacao - Tela Nutricao', 'Nova dieta solicitada aguardando aceite.');
+                    }
+
+                    // Detectar transicao aceito -> em_preparo
+                    var aceitoAntes = {};
+                    for (var a = 0; a < Estado.fila.length; a++) {
+                        if (Estado.fila[a].status === 'aceito') aceitoAntes[Estado.fila[a].id] = true;
+                    }
+                    var _temPreparo = false;
+                    var _nomePreparo = '';
+                    for (var b = 0; b < data.fila.length; b++) {
+                        if (data.fila[b].status === 'em_preparo' && aceitoAntes[data.fila[b].id]) {
+                            _temPreparo = true;
+                            _nomePreparo = data.fila[b].nm_paciente || '';
+                            break;
+                        }
+                    }
+                    if (_temPreparo) {
+                        tocarAlerta();
+                        piscarTela();
+                        alertarTituloEmPreparo();
+                        notificarNavegador('Em Preparo - Tela Nutricao',
+                            'Dieta em preparo' + (_nomePreparo ? ': ' + _nomePreparo : '.'));
                     }
                 }
 
@@ -342,6 +372,73 @@ var PAINEL_VERSAO = '1.0.52';
             document.title = _tituloOriginal;
             _tituloTimer = null;
         }, 15000);
+    }
+
+    function alertarTituloEmPreparo() {
+        if (_tituloTimer) clearTimeout(_tituloTimer);
+        document.title = 'EM PREPARO - Tela Nutricao';
+        _tituloTimer = setTimeout(function () {
+            document.title = _tituloOriginal;
+            _tituloTimer = null;
+        }, 15000);
+    }
+
+    // =========================================================
+    // NOTIFICAÇÕES DO SISTEMA OPERACIONAL (Web Notification API)
+    // =========================================================
+    function atualizarIconeNotif() {
+        if (!DOM.btnNotifToggle || !DOM.iconeNotif) return;
+        if (!('Notification' in window)) {
+            DOM.btnNotifToggle.style.display = 'none';
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            DOM.iconeNotif.className = 'fa-solid fa-bell';
+            DOM.btnNotifToggle.title = 'Notificacoes ativas — clique para testar';
+            DOM.btnNotifToggle.style.color = '#28a745';
+        } else if (Notification.permission === 'denied') {
+            DOM.iconeNotif.className = 'fa-solid fa-bell-slash';
+            DOM.btnNotifToggle.title = 'Notificacoes bloqueadas — ative no cadeado da barra de endereco';
+            DOM.btnNotifToggle.style.color = '#dc3545';
+        } else {
+            DOM.iconeNotif.className = 'fa-solid fa-bell';
+            DOM.btnNotifToggle.title = 'Clique para ativar notificacoes do Windows';
+            DOM.btnNotifToggle.style.color = '#6c757d';
+        }
+    }
+
+    function pedirPermissaoNotif() {
+        if (!('Notification' in window)) {
+            alert('Este navegador nao suporta notificacoes.');
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            notificarNavegador('Notificacoes ativas!', 'Voce ja recebe alertas mesmo com o navegador minimizado.');
+            return;
+        }
+        if (Notification.permission === 'denied') {
+            alert('Notificacoes bloqueadas.\n\nPara ativar: clique no cadeado na barra de endereco > Notificacoes > Permitir.');
+            return;
+        }
+        Notification.requestPermission().then(function (perm) {
+            atualizarIconeNotif();
+            if (perm === 'granted') {
+                notificarNavegador('Notificacoes ativas!', 'Voce recebera alertas mesmo com o navegador minimizado.');
+            }
+        });
+    }
+
+    function notificarNavegador(titulo, corpo) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        try {
+            var n = new Notification(titulo, {
+                body:      corpo,
+                icon:      '/static/img/favicon.png',
+                tag:       'p42-nutricao',
+                renotify:  true
+            });
+            setTimeout(function () { n.close(); }, 8000);
+        } catch (e) { /* silencioso — pode falhar em kiosk mode */ }
     }
 
     document.addEventListener('visibilitychange', function () {
