@@ -316,7 +316,7 @@
         html += '<th><i class="fas fa-door-open"></i> T. Sala</th>';
         html += '<th><i class="fas fa-divide"></i> Média/Cir.</th>';
         html += '<th><i class="fas fa-heartbeat"></i> T. Cirurgia</th>';
-        html += '<th><i class="fas fa-hourglass-half"></i> Ociosidade</th>';
+        html += '<th><i class="fas fa-hourglass-half"></i> Ociosidade 24h</th>';
         html += '<th>Utilização</th>';
         html += '<th>Dias</th>';
         html += '</tr></thead>';
@@ -324,7 +324,7 @@
 
         for (var i = 0; i < salas.length; i++) {
             var s   = salas[i];
-            var pct = calcUtil(s.total_sala_min, s.total_ociosidade_min);
+            var pct = parseFloat(s.pct_utilizacao) || 0;
             html += '<tr>';
             html += '<td><span class="badge-sala' + (s.tipo_sala === 'hemo' ? ' badge-sala-hemo' : '') + '">' + escHtml(s.ds_agenda) + '</span></td>';
             html += '<td><span class="num-cirurgias">' + escHtml(String(s.total_cirurgias)) + '</span></td>';
@@ -387,7 +387,7 @@
             html += '<th>Entrada CC</th>';
             html += '<th>T. Sala</th>';
             html += '<th>T. Cir.</th>';
-            html += '<th>Ociosidade</th>';
+            html += '<th title="Tempo de sala parada antes desta cirurgia">Espera ant.</th>';
             html += '<th>Sala</th>';
             html += '<th>Paciente</th>';
             html += '<th>Médico</th>';
@@ -518,7 +518,7 @@
 
     function adicionarAbaResumo(wb, nome, dados) {
         var rows = [['Sala', 'Cirurgias', 'T.Sala (min)', 'Média/Cir. (min)',
-                     'T.Cirurgia (min)', 'Ociosidade (min)', 'Utilização %', 'Dias c/ cirurgia']];
+                     'T.Cirurgia (min)', 'Ociosidade 24h (min)', 'Utilização %', 'Dias c/ cirurgia']];
         for (var i = 0; i < dados.length; i++) {
             var s = dados[i];
             rows.push([
@@ -540,7 +540,7 @@
     function adicionarAbaDetalhe(wb, nome, dados) {
         var rows = [['Data', 'Sala', 'Ordem', 'Hr.Previsto',
                      'Entrada CC', 'Fim Cirurgia',
-                     'T.Sala (min)', 'T.Cirurgia (min)', 'Ociosidade (min)',
+                     'T.Sala (min)', 'T.Cirurgia (min)', 'Espera ant. (min)',
                      'Status', 'Paciente', 'Médico', 'Procedimento', 'Convênio']];
         for (var i = 0; i < dados.length; i++) {
             var r = dados[i];
