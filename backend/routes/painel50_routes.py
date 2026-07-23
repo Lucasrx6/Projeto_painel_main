@@ -120,23 +120,21 @@ def api_painel50_dados():
     try:
         plantao = _plantao_atual()
         with get_db_cursor() as cursor:
+            # enf_ativos_agora é TRUNCATE+INSERT — snapshot dos ativos no momento
             cursor.execute("""
                 SELECT
-                    ela.setor,
-                    ela.ds_usuario,
-                    ela.nm_usuario,
-                    ela.especialidade,
-                    TO_CHAR(ela.logon_time, 'HH24:MI') AS logon_fmt,
-                    TO_CHAR(ela.dt_saida,   'HH24:MI') AS saida_fmt,
-                    ela.ativo
-                FROM enf_log_acesso ela
-                WHERE ela.dt_plantao   = %s
-                  AND ela.tipo_plantao = %s
-                ORDER BY ela.setor, ela.ativo DESC, ela.ds_usuario
-            """, (plantao['dt_plantao'], plantao['tipo']))
+                    setor,
+                    ds_usuario,
+                    nm_usuario,
+                    especialidade,
+                    TO_CHAR(logon_time, 'HH24:MI') AS logon_fmt,
+                    tempo_conectado
+                FROM enf_ativos_agora
+                ORDER BY setor, ds_usuario
+            """)
             registros = [dict(r) for r in cursor.fetchall()]
 
-        # Agrupa por setor
+        # Agrupa por setor — todos os registros são ativos (snapshot atual)
         mapa = {}
         for r in registros:
             setor = (r['setor'] or 'OUTROS').strip()
@@ -146,12 +144,10 @@ def api_painel50_dados():
                 'nome': r['ds_usuario'] or r['nm_usuario'],
                 'especialidade': r['especialidade'] or '',
                 'logon': r['logon_fmt'] or '--',
-                'saida': r['saida_fmt'],
+                'tempo': r['tempo_conectado'] or '',
+                'saida': None,
             }
-            if r['ativo']:
-                mapa[setor]['ativos'].append(prof)
-            else:
-                mapa[setor]['saidos'].append(prof)
+            mapa[setor]['ativos'].append(prof)
 
         # Ordena setores: padrão primeiro, depois alfabético
         lista_setores = []

@@ -166,6 +166,7 @@
 
     function htmlProfAtivo(p) {
         var t = tipoEsp(p.especialidade);
+        var tempo = p.tempo ? escHtml(p.tempo) : (p.logon ? 'desde ' + escHtml(p.logon) : '');
         return '<div class="prof-item">' +
             '<div class="prof-info">' +
                 '<span class="prof-dot ativo"></span>' +
@@ -173,7 +174,7 @@
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;">' +
                 '<span class="prof-esp esp-' + t + '">' + labelEsp(t) + '</span>' +
-                '<span class="prof-tempo">' + escHtml(p.logon || '') + '</span>' +
+                (tempo ? '<span class="prof-tempo">' + tempo + '</span>' : '') +
             '</div>' +
         '</div>';
     }
