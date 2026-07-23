@@ -11,9 +11,138 @@
     <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
+
+<!--
+================================================================================
+  PAINEL 47 — GESTÃO DE RADIOLOGIA
+  Arquivo de entrada: index.html
+================================================================================
+
+  ESTRUTURA DE ARQUIVOS JS
+  ─────────────────────────────────────────────────────────────────────────────
+  Os scripts são carregados em ordem no final do <body>. Cada arquivo tem uma
+  única responsabilidade. Todas as funções vivem em window.P47 (namespace).
+
+  estado.js    — Cria window.P47 com CONFIG (URLs da API, intervalo de polling)
+                 e Estado (aba ativa, dados do histórico, período de produção…).
+                 Edite aqui para mudar URLs de API ou adicionar novos campos de estado.
+                 Funções: (nenhuma — só dados)
+
+  utils.js     — Funções auxiliares usadas por todos os outros arquivos.
+                 Edite aqui para mudar formatação de datas, nomes, badges de status.
+                 Funções: escHtml · toast · formatarNome · formatarDataHora
+                          atualizarHora · badgeStatus · badgeStatusEnf · badgeProdStatus
+
+  tabs.js      — Troca de abas (Dashboard / Histórico / Produção).
+                 Edite aqui para adicionar uma nova aba ou mudar o comportamento
+                 de carregamento ao entrar em cada aba.
+                 Funções: mudarTab
+
+  dashboard.js — Aba Dashboard: métricas do dia e tabela de exames em andamento.
+                 Edite aqui para mudar os cards de métricas ou as colunas da tabela.
+                 Funções: carregarDashboard · renderizarMetricas · renderizarAtivos
+
+  historico.js — Aba Histórico: tabela filtrada com linha expandível de timeline.
+                 Edite aqui para mudar colunas, filtros ou as etapas da timeline.
+                 Funções: carregarHistorico · renderizarHistorico · selecionarItem
+
+  cancelar.js  — Modal de cancelamento de exame e exportação CSV do histórico.
+                 Edite aqui para mudar validação do motivo ou colunas do CSV.
+                 Funções: abrirCancelar · confirmarCancelar · exportar
+
+  producao.js  — Aba Produção: KPIs, por setor, por tipo e lista de exames.
+                 Edite aqui para mudar colunas, fórmulas ou a lógica de sincronização.
+                 Funções: carregarProducao · carregarProdKpis · renderizarProdKpis
+                          carregarProdSetor · renderizarProdSetor
+                          carregarProdTipo  · renderizarProdTipo
+                          carregarProdExames · renderizarProdExames
+                          sincronizarProducao · exportarProducao
+
+  main.js      — Bootstrap: vincula todos os eventos de botões e inicia o painel.
+                 Edite aqui para adicionar novos listeners ou mudar o intervalo de polling.
+                 Funções: inicializar · _agendarSincronizacaoAutomatica (privada)
+
+  ─────────────────────────────────────────────────────────────────────────────
+  MAPA DE IDs IMPORTANTES (HTML → arquivo JS que os usa)
+  ─────────────────────────────────────────────────────────────────────────────
+  #ultima-atualizacao        utils.js (atualizarHora) → exibe hora do último refresh
+
+  #btn-refresh               main.js → chama carregarDashboard ou carregarHistorico
+  #btn-voltar                main.js → history.back()
+
+  .aba [data-aba]            main.js → chama tabs.js (mudarTab)
+  #aba-dashboard             tabs.js → exibe/oculta conforme aba ativa
+  #aba-historico             tabs.js → exibe/oculta conforme aba ativa
+  #aba-producao              tabs.js → exibe/oculta conforme aba ativa
+
+  #stats-grid                (contêiner dos cards de métricas)
+  #m-total                   dashboard.js (renderizarMetricas) → total hoje
+  #m-pendentes               dashboard.js → exames pendentes
+  #m-executando              dashboard.js → em execução
+  #m-concluidos              dashboard.js → concluídos
+  #m-cancelados              dashboard.js → cancelados
+  #m-slots                   dashboard.js → slots agendados hoje
+
+  #lista-ativos              dashboard.js (renderizarAtivos) → tabela de andamento
+
+  #filtro-dias               historico.js (carregarHistorico) → select de período
+  #filtro-status             historico.js → select de status
+  #filtro-setor              historico.js → input de texto
+  #btn-buscar                main.js → chama carregarHistorico
+  #btn-exportar              main.js → chama cancelar.js (exportar)
+  #secao-historico           historico.js → área onde a tabela é renderizada
+
+  .tl-clicavel [data-id]     historico.js → linha da tabela; clique chama selecionarItem
+  #tl-row-{id}               historico.js → sub-linha de timeline expandível
+
+  #prod-periodo-pills        main.js → pills Hoje / Este Mês / 30 dias / 90 dias
+  .prod-pill [data-periodo]  main.js → altera Estado.producaoPeriodo e recarrega produção
+  #producao-ultima-sync      producao.js (renderizarProdKpis) → data da última sync
+  #btn-prod-sync             main.js → chama sincronizarProducao
+  #btn-prod-exportar         main.js → chama exportarProducao
+
+  #prod-kpi-grid             producao.js (renderizarProdKpis) → 8 cards de KPI
+  #prod-setor                producao.js (renderizarProdSetor) → tabela por setor
+  #prod-tipo                 producao.js (renderizarProdTipo) → tabela por tipo de exame
+
+  #prod-filtro-status        producao.js (carregarProdExames) → select de status
+  #prod-filtro-setor         producao.js → input de setor
+  #prod-btn-buscar           main.js → chama carregarProdExames
+  #prod-exames               producao.js (renderizarProdExames) → tabela de exames
+
+  #modal-cancelar            cancelar.js (abrirCancelar) + main.js (fechamento)
+  #modal-cancelar-info       cancelar.js → texto "Cancelar exame de: <nome>"
+  #modal-cancelar-motivo     cancelar.js (confirmarCancelar) → textarea do motivo
+  #modal-cancelar-fechar     main.js → fecha o modal
+  #modal-cancelar-btn-fechar main.js → fecha o modal (botão alternativo)
+  #modal-cancelar-confirmar  main.js → chama confirmarCancelar
+
+  #toast-container           utils.js (toast) → mensagens temporárias de feedback
+
+  ─────────────────────────────────────────────────────────────────────────────
+  ATENÇÃO — onclick inline nos botões "Cancelar" das tabelas
+  ─────────────────────────────────────────────────────────────────────────────
+  As tabelas de dashboard e histórico geram HTML dinamicamente e usam:
+    onclick="P47.abrirCancelar(id, nome)"
+    onclick="event.stopPropagation(); P47.selecionarItem(id)"
+  Esses nomes precisam bater exatamente com as funções expostas no namespace
+  window.P47, definidas em cancelar.js e historico.js respectivamente.
+
+  ─────────────────────────────────────────────────────────────────────────────
+  SINCRONIZAÇÃO AUTOMÁTICA DE PRODUÇÃO
+  ─────────────────────────────────────────────────────────────────────────────
+  main.js agenda disparos automáticos de sincronizarProducao() para os horários
+  00h, 06h, 12h e 18h usando setTimeout recursivo (função _agendarSincronizacaoAutomatica).
+  Nenhuma alteração no HTML é necessária para isso funcionar.
+================================================================================
+-->
+
 <div class="painel-container">
 
-    <!-- HEADER -->
+    <!-- HEADER
+         #btn-refresh  → main.js atualiza a aba ativa
+         #btn-voltar   → main.js faz history.back()
+         #ultima-atualizacao → utils.js (atualizarHora) preenche após cada carga -->
     <header class="painel-header">
         <div class="header-content">
             <div class="header-left">
@@ -23,24 +152,25 @@
             <div class="header-right">
                 <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
                 <button class="btn-header" id="btn-refresh" title="Atualizar"><i class="fas fa-sync-alt"></i></button>
-                <button class="btn-header" id="btn-voltar" title="Voltar"><i class="fas fa-arrow-left"></i></button>
+                <button class="btn-header" id="btn-voltar"  title="Voltar"><i class="fas fa-arrow-left"></i></button>
             </div>
         </div>
     </header>
 
-    <!-- ABAS -->
+    <!-- ABAS — cada botão tem data-aba; main.js ouve o click e chama tabs.js (mudarTab) -->
     <div class="abas-bar">
         <div class="abas-content">
             <button class="aba aba-ativa" data-aba="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
-            <button class="aba" data-aba="historico"><i class="fas fa-history"></i> Histórico</button>
-            <button class="aba" data-aba="producao"><i class="fas fa-chart-line"></i> Produção</button>
+            <button class="aba"           data-aba="historico"><i class="fas fa-history"></i> Histórico</button>
+            <button class="aba"           data-aba="producao"><i class="fas fa-chart-line"></i> Produção</button>
         </div>
     </div>
 
-    <!-- MAIN -->
     <main class="main-content">
 
-        <!-- ABA: DASHBOARD -->
+        <!-- ABA: DASHBOARD
+             Cards de métricas: preenchidos por dashboard.js (renderizarMetricas)
+             Tabela #lista-ativos: preenchida por dashboard.js (renderizarAtivos) -->
         <div id="aba-dashboard" class="aba-conteudo">
             <div class="stats-grid" id="stats-grid">
                 <div class="stat-card stat-total">
@@ -76,11 +206,15 @@
             </div>
             <div class="secao">
                 <div class="secao-titulo"><i class="fas fa-list-ul"></i> Exames em andamento</div>
+                <!-- Substituído dinamicamente por dashboard.js (renderizarAtivos) -->
                 <div id="lista-ativos"><div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div></div>
             </div>
         </div>
 
-        <!-- ABA: HISTÓRICO -->
+        <!-- ABA: HISTÓRICO
+             Filtros lidos por historico.js (carregarHistorico)
+             Tabela e timelines renderizadas por historico.js
+             Exportação acionada por cancelar.js (exportar) -->
         <div id="aba-historico" class="aba-conteudo" style="display:none;">
             <div class="filtro-bar">
                 <div class="filtro-content">
@@ -111,47 +245,58 @@
                         <input type="text" id="filtro-setor" placeholder="Filtrar setor...">
                     </div>
                     <button class="btn-aplicar-filtro" id="btn-buscar"><i class="fas fa-search"></i> Buscar</button>
-                    <button class="btn-exportar-csv" id="btn-exportar"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+                    <button class="btn-exportar-csv"   id="btn-exportar"><i class="fas fa-file-csv"></i> Exportar CSV</button>
                 </div>
             </div>
+            <!-- Substituído dinamicamente por historico.js (renderizarHistorico) -->
             <div class="secao" id="secao-historico">
                 <div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
             </div>
         </div>
 
-        <!-- ABA: PRODUÇÃO -->
+        <!-- ABA: PRODUÇÃO
+             Pills de período → main.js atualiza Estado.producaoPeriodo
+             KPIs → producao.js (renderizarProdKpis)
+             Por Setor → producao.js (renderizarProdSetor)
+             Por Tipo  → producao.js (renderizarProdTipo)
+             Lista de exames → producao.js (renderizarProdExames)
+             Sync manual → producao.js (sincronizarProducao) -->
         <div id="aba-producao" class="aba-conteudo" style="display:none;">
             <div class="filtro-bar">
                 <div class="filtro-content" style="flex-wrap:wrap;gap:10px;">
                     <div class="prod-periodo-pills" id="prod-periodo-pills">
                         <button class="prod-pill ativo" data-periodo="hoje">Hoje</button>
-                        <button class="prod-pill" data-periodo="mes">Este Mês</button>
-                        <button class="prod-pill" data-periodo="30">30 dias</button>
-                        <button class="prod-pill" data-periodo="90">90 dias</button>
+                        <button class="prod-pill"       data-periodo="mes">Este Mês</button>
+                        <button class="prod-pill"       data-periodo="30">30 dias</button>
+                        <button class="prod-pill"       data-periodo="90">90 dias</button>
                     </div>
                     <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <!-- Preenchido por producao.js (renderizarProdKpis) -->
                         <span id="producao-ultima-sync" style="font-size:11px;color:#6c757d;"></span>
                         <button class="btn-aplicar-filtro" id="btn-prod-sync"><i class="fas fa-sync-alt"></i> Sincronizar</button>
-                        <button class="btn-exportar-csv" id="btn-prod-exportar"><i class="fas fa-file-csv"></i> Exportar</button>
+                        <button class="btn-exportar-csv"   id="btn-prod-exportar"><i class="fas fa-file-csv"></i> Exportar</button>
                     </div>
                 </div>
             </div>
-            <!-- KPIs -->
+
+            <!-- Substituído por producao.js (renderizarProdKpis) -->
             <div class="prod-kpi-grid" id="prod-kpi-grid">
                 <div class="loading"><div class="loading-spinner"></div></div>
             </div>
-            <!-- Por Setor + Por Tipo -->
+
             <div class="prod-bi-grid">
                 <div class="secao">
                     <div class="secao-titulo"><i class="fas fa-hospital-alt"></i> Por Setor</div>
+                    <!-- Substituído por producao.js (renderizarProdSetor) -->
                     <div id="prod-setor"><div class="loading"><div class="loading-spinner"></div></div></div>
                 </div>
                 <div class="secao">
                     <div class="secao-titulo"><i class="fas fa-x-ray"></i> Por Tipo de Exame</div>
+                    <!-- Substituído por producao.js (renderizarProdTipo) -->
                     <div id="prod-tipo"><div class="loading"><div class="loading-spinner"></div></div></div>
                 </div>
             </div>
-            <!-- Lista de exames -->
+
             <div class="secao" style="margin-top:16px;">
                 <div class="secao-titulo" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <span><i class="fas fa-list"></i> Exames</span>
@@ -162,17 +307,22 @@
                             <option value="EXECUTADO_SEM_LAUDO">Sem Laudo</option>
                             <option value="LAUDADO">Laudado</option>
                         </select>
-                        <input type="text" id="prod-filtro-setor" placeholder="Filtrar setor..." style="border:1.5px solid #dee2e6;border-radius:7px;padding:4px 8px;font-size:12px;width:140px;">
+                        <input type="text" id="prod-filtro-setor" placeholder="Filtrar setor..."
+                               style="border:1.5px solid #dee2e6;border-radius:7px;padding:4px 8px;font-size:12px;width:140px;">
                         <button class="btn-aplicar-filtro" id="prod-btn-buscar"><i class="fas fa-search"></i></button>
                     </div>
                 </div>
+                <!-- Substituído por producao.js (renderizarProdExames) -->
                 <div id="prod-exames"><div class="loading"><div class="loading-spinner"></div></div></div>
             </div>
         </div>
 
     </main>
 
-    <!-- MODAL CANCELAR -->
+    <!-- MODAL: CANCELAR EXAME
+         Aberto por cancelar.js (abrirCancelar), chamado via onclick="P47.abrirCancelar(id, nome)"
+         nas tabelas de dashboard.js e historico.js.
+         Fechamento e confirmação gerenciados por main.js. -->
     <div id="modal-cancelar" class="modal-overlay" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
@@ -180,6 +330,7 @@
                 <button class="btn-fechar-modal" id="modal-cancelar-fechar"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
+                <!-- Preenchido por cancelar.js (abrirCancelar) -->
                 <div class="modal-info" id="modal-cancelar-info"></div>
                 <div class="form-group">
                     <label>Motivo do cancelamento</label>
@@ -187,13 +338,13 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-modal btn-modal-sec" id="modal-cancelar-btn-fechar">Fechar</button>
+                <button class="btn-modal btn-modal-sec"    id="modal-cancelar-btn-fechar">Fechar</button>
                 <button class="btn-modal btn-modal-danger" id="modal-cancelar-confirmar"><i class="fas fa-ban"></i> Cancelar Exame</button>
             </div>
         </div>
     </div>
 
-    <!-- TOAST -->
+    <!-- TOAST — mensagens temporárias; preenchido por utils.js → toast() -->
     <div class="toast-container" id="toast-container"></div>
 
     <footer class="sistema-footer">
@@ -201,6 +352,24 @@
     </footer>
 </div>
 
+<!-- SCRIPTS — ordem obrigatória: cada arquivo depende do anterior
+     1. estado.js   → cria window.P47 (todos os outros dependem disto)
+     2. utils.js    → funções auxiliares (usadas por todos)
+     3. tabs.js     → troca de abas (depende de utils + dashboard + historico + producao)
+     4. dashboard.js → aba Dashboard
+     5. historico.js → aba Histórico
+     6. cancelar.js  → modal de cancelamento e exportação
+     7. producao.js  → aba Produção
+     8. main.js      → bootstrap e wiring final
+     9. versao.js    → atualiza rodapé com versão do sistema
+    10. auto-auth.js → auto-login para TVs de plantão -->
+<script src="/paineis/painel47/estado.js"></script>
+<script src="/paineis/painel47/utils.js"></script>
+<script src="/paineis/painel47/tabs.js"></script>
+<script src="/paineis/painel47/dashboard.js"></script>
+<script src="/paineis/painel47/historico.js"></script>
+<script src="/paineis/painel47/cancelar.js"></script>
+<script src="/paineis/painel47/producao.js"></script>
 <script src="/paineis/painel47/main.js"></script>
 <script src="/static/js/versao.js"></script>
 <script src="/static/js/auto-auth.js"></script>

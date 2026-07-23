@@ -64,6 +64,44 @@
     </footer>
 </div>
 
+<!--
+=============================================================================
+  PAINEL 44 — Hub de Serviços — Mapa de arquivos JS
+=============================================================================
+
+  ARQUIVO              RESPONSABILIDADE
+  ──────────────────── ─────────────────────────────────────────────────────
+  estado.js            PAINEL_VERSAO (global) + window.P44 — CONFIG, DOM
+  utils.js             escHtml
+  renderizar.js        mostrarVazio, renderCardSubsistema,
+                       renderSubsistemas, renderServicos
+  carregar.js          carregarCatalogo — fetch /catalogo, chama render
+  main.js              inicializar — mapeia DOM refs, wiring botão voltar,
+                       dispara carregarCatalogo no DOMContentLoaded
+
+  MAPA DE IDs (elemento → função responsável)
+  ──────────────────── ─────────────────────────────────────────────────────
+  #loading-hub          carregarCatalogo()       [carregar.js]
+  #secao-subsistemas    carregarCatalogo()       [carregar.js]
+  #secao-servicos       carregarCatalogo()       [carregar.js]
+  #subsistemas-grid     renderSubsistemas()      [renderizar.js]
+  #servicos-grid        renderServicos()         [renderizar.js]
+  #hub-vazio            mostrarVazio()           [renderizar.js]
+  #header-usuario       DOM ref (reservado)      [main.js]
+  #btn-voltar-dashboard inicializar()            [main.js]
+
+  FUNÇÕES NO NAMESPACE window.P44
+  ─────────────────────────────────────────────────────────────────────────
+  escHtml                                        [utils.js]
+  mostrarVazio, renderCardSubsistema,
+  renderSubsistemas, renderServicos              [renderizar.js]
+  carregarCatalogo                               [carregar.js]
+=============================================================================
+-->
+<script src="/paineis/painel44/estado.js"></script>
+<script src="/paineis/painel44/utils.js"></script>
+<script src="/paineis/painel44/renderizar.js"></script>
+<script src="/paineis/painel44/carregar.js"></script>
 <script src="/paineis/painel44/main.js"></script>
 <script src="/static/js/versao.js"></script>
 <script src="/static/js/auto-auth.js"></script>

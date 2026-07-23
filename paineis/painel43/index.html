@@ -588,6 +588,49 @@
 
     <div class="toast-container" id="toast-container"></div>
 
+    <!--
+    ╔══════════════════════════════════════════════════════════════════════════════╗
+    ║  PAINEL 43 — Gestão Nutrição  (namespace: window.P43)                      ║
+    ╠══════════════════════════════════════════════════════════════════════════════╣
+    ║  ARQUIVOS (ordem de carregamento obrigatória)                               ║
+    ║  estado.js     → window.P43 base: CONFIG, Estado, STATUS_COR/LABEL         ║
+    ║  utils.js      → escHtml, fmtMin, badgeStatus                              ║
+    ║  navegacao.js  → trocarAba, trocarSubaba                                   ║
+    ║  dashboard.js  → carregarDashboard, renderBarras, confirmarCancelAativo    ║
+    ║  relatorios.js → initRelDatas, carregarDietasFiltro, trocarRelAba,         ║
+    ║                  carregarRelatorios, carregarRelAbaAtiva, exportarCSV      ║
+    ║  config.js     → carregarConfiguracoes, carregarSubabaAtiva                ║
+    ║  form.js       → abrirFormNovo, abrirFormEdicao, fecharModalForm, salvarForm║
+    ║  etiqueta.js   → carregarEtiqueta, salvarEtiqueta, atualizarPreviewPDF,    ║
+    ║                  atualizarPreviewZPL, toggleEtiquetaGrupos,                ║
+    ║                  PDF_TEMPLATE_PADRAO, ZPL_TEMPLATE_PADRAO                  ║
+    ║  main.js       → inicializar + DOMContentLoaded; var _previewTimer         ║
+    ╠══════════════════════════════════════════════════════════════════════════════╣
+    ║  ELEMENTOS PRINCIPAIS → GERENCIADO POR                                      ║
+    ║  #stats-grid, #tbody-ativos          dashboard.js (renderKPIs)             ║
+    ║  #grafico-dieta, #grafico-setor      dashboard.js (renderBarras)           ║
+    ║  #grafico-hora                       dashboard.js (renderGraficoHora)      ║
+    ║  #modal-canc-ativo                   dashboard.js (confirmarCancelAativo)  ║
+    ║  [data-relaba], #rel-*               relatorios.js (trocarRelAba)          ║
+    ║  #tbody-historico, #tbody-rel-*      relatorios.js (carregarHistorico etc) ║
+    ║  #tbody-rel-assinaturas              relatorios.js (carregarRelAssinaturas)║
+    ║  #tbody-equipe, #tbody-tipos-dieta   config.js (renderEquipe/Tipos)        ║
+    ║  #tbody-refeicoes, #tbody-restricoes config.js (renderRefeicoes/Restricoes)║
+    ║  .btn-edit, .btn-toggle-ativo        config.js (bindActionBtns)            ║
+    ║  #modal-form, #modal-form-corpo      form.js (abrirFormNovo/Edicao)        ║
+    ║  #etq-modo, #etq-pdf, #etq-zpl       etiqueta.js (carregarEtiqueta)        ║
+    ║  #etq-preview, #etq-zpl-preview      etiqueta.js (atualizarPreviewPDF/ZPL) ║
+    ║  .aba, .sub-aba                      main.js → navegacao.js               ║
+    ╚══════════════════════════════════════════════════════════════════════════════╝
+    -->
+    <script src="/paineis/painel43/estado.js"></script>
+    <script src="/paineis/painel43/utils.js"></script>
+    <script src="/paineis/painel43/navegacao.js"></script>
+    <script src="/paineis/painel43/dashboard.js"></script>
+    <script src="/paineis/painel43/relatorios.js"></script>
+    <script src="/paineis/painel43/config.js"></script>
+    <script src="/paineis/painel43/form.js"></script>
+    <script src="/paineis/painel43/etiqueta.js"></script>
     <script src="/paineis/painel43/main.js"></script>
     <script src="/static/js/versao.js"></script>
     <script src="/static/js/auto-auth.js"></script>

@@ -13,6 +13,7 @@ from flask import current_app, Blueprint, request, jsonify, send_from_directory,
 from psycopg2.extras import RealDictCursor
 from backend.database import get_db_connection, get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
+from backend.notificador_utils import render_email
 
 try:
     import apprise as _apprise_lib
@@ -200,38 +201,7 @@ def _enviar_notificacao_tratativa(dados):
         dados.get('tratativa_id', 0)
     )
 
-    html = (
-        '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;'
-        'max-width:600px;margin:0 auto;padding:20px;">'
-        '<div style="background:{cor};color:white;padding:15px 20px;border-radius:8px 8px 0 0;">'
-        '<h2 style="margin:0;font-size:18px;">Nova Tratativa - CRITICO</h2>'
-        '<p style="margin:5px 0 0;font-size:13px;opacity:0.9;">Hospital Anchieta Ceilandia - Projeto Sentir e Agir</p>'
-        '</div>'
-        '<div style="border:1px solid #dee2e6;border-top:none;padding:20px;border-radius:0 0 8px 8px;">'
-        '<div style="background:#fff0f0;border-left:4px solid {cor};padding:12px 16px;border-radius:4px;margin-bottom:16px;">'
-        '<strong style="color:{cor};font-size:15px;">{item}</strong><br>'
-        '<small style="color:#555;margin-top:4px;display:block;">Categoria: {categoria}</small>'
-        '</div>'
-        '<table style="width:100%%;border-collapse:collapse;font-size:14px;margin-top:8px;">'
-        '<tr><td style="padding:6px 0;color:#6c757d;width:130px;">Paciente:</td>'
-        '<td style="padding:6px 0;font-weight:bold;">{paciente}</td></tr>'
-        '<tr><td style="padding:6px 0;color:#6c757d;">Atendimento:</td>'
-        '<td style="padding:6px 0;">{atendimento}</td></tr>'
-        '<tr><td style="padding:6px 0;color:#6c757d;">Setor:</td>'
-        '<td style="padding:6px 0;">{setor}</td></tr>'
-        '<tr><td style="padding:6px 0;color:#6c757d;">Leito:</td>'
-        '<td style="padding:6px 0;">{leito}</td></tr>'
-        '<tr><td style="padding:6px 0;color:#6c757d;">Data da Ronda:</td>'
-        '<td style="padding:6px 0;">{data_ronda}</td></tr>'
-        '<tr><td style="padding:6px 0;color:#6c757d;">Dupla:</td>'
-        '<td style="padding:6px 0;">{dupla}</td></tr>'
-        '</table>'
-        '{bloco_link}'
-        '<hr style="border:none;border-top:1px solid #eee;margin:18px 0;">'
-        '<p style="font-size:11px;color:#999;margin:0;text-align:center;">'
-        'Notificacao automatica - Sistema de Paineis HAC<br>Enviado em {enviado_em}</p>'
-        '</div></div>'
-    ).format(
+    html = render_email('painel30_tratativa.html',
         cor=cor,
         item=dados.get('item_descricao', '-'),
         categoria=dados.get('categoria_nome', '-'),

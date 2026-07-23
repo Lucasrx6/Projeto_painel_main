@@ -1,0 +1,37 @@
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:620px;margin:0 auto;padding:20px;">
+
+    <div style="background:#dc3545;color:white;padding:16px 20px;border-radius:8px 8px 0 0;">
+        <h2 style="margin:0;font-size:18px;">&#9888; Alerta: Pacientes sem Medico no PS</h2>
+        <p style="margin:5px 0 0;font-size:13px;opacity:0.9;">Hospital Anchieta Ceilandia &mdash; {{ agora }}</p>
+    </div>
+
+    <div style="border:1px solid #dee2e6;border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">
+
+        <div style="padding:16px 20px;background:#fff8f8;border-bottom:1px solid #f5c6cb;">
+            <p style="margin:0;font-size:14px;color:#721c24;">
+                <strong>{{ qt_clinicas }} cl&iacute;nica(s)</strong> com paciente(s) aguardando h&aacute; mais de
+                <strong>{{ espera_min }} minutos</strong> sem m&eacute;dico atendendo.
+            </p>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <thead>
+                <tr style="background:#f8f9fa;">
+                    <th style="padding:10px 12px;text-align:left;color:#6c757d;font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Cl&iacute;nica</th>
+                    <th style="padding:10px 12px;text-align:center;color:#6c757d;font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Aguardando</th>
+                    <th style="padding:10px 12px;text-align:center;color:#6c757d;font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Maior Espera</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ linhas }}
+            </tbody>
+        </table>
+
+        <div style="padding:16px 20px;background:#f8f9fa;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#999;">
+                Notifica&ccedil;&atilde;o autom&aacute;tica &mdash; Sistema de Pain&eacute;is HAC<br>
+                Repete a cada {{ intervalo }} minutos enquanto a condi&ccedil;&atilde;o persistir.
+            </p>
+        </div>
+    </div>
+</div>

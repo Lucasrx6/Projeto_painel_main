@@ -11,9 +11,110 @@
     <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
 </head>
 <body>
+
+<!--
+================================================================================
+  PAINEL 48 — ASSINATURA DIGITAL
+  Arquivo de entrada: index.html
+================================================================================
+
+  ESTRUTURA DE ARQUIVOS JS
+  ─────────────────────────────────────────────────────────────────────────────
+  Os scripts são carregados em ordem no final do <body>. Cada arquivo tem uma
+  única responsabilidade. Todas as funções vivem em window.P48 (namespace).
+
+  estado.js   — Cria window.P48 com CONFIG e Estado compartilhado.
+                Edite aqui para mudar a URL da API ou adicionar campos de estado.
+                Funções: (nenhuma — só dados)
+
+  utils.js    — Funções auxiliares usadas por todos os outros arquivos.
+                Edite aqui para mudar formatação, mensagens toast, máscara de CPF.
+                Funções: escHtml · mascaraCpf · lerParams · toast
+                         mostrarLoading · formatarDataHora · nomeContexto · pad2
+
+  hub.js      — Tela inicial: grade de contextos disponíveis para o usuário.
+                Edite aqui para mudar o layout dos cards ou a navegação entre telas.
+                Funções: encontrarContexto · irParaHub · renderizarHub
+
+  assinatura.js — Formulário completo de coleta de assinatura.
+                  Edite aqui para mudar campos do formulário, canvas, validação de PIN
+                  ou o que acontece após confirmar (comprovante / painel42).
+                  Funções: renderizarAssinatura · validarPin · confirmarAssinatura
+                           mostrarComprovante
+
+  fila.js     — Lista de itens pendentes (contexto: entrega_refeicao).
+                Edite aqui para mudar o layout dos cards da fila ou a seleção de item.
+                Funções: renderizarFilaEntrega
+
+  historico.js — Tabela de assinaturas já coletadas + visualização da imagem.
+                 Edite aqui para mudar colunas da tabela ou o modal de visualização.
+                 Funções: renderizarHistorico · verAssinatura
+
+  admin.js    — Tela de administração (contextos e permissões, somente admins).
+                Edite aqui para adicionar ações inline na tela de admin.
+                Funções: renderizarAdmin
+
+  main.js     — Bootstrap: conecta tudo na carga da página.
+                Edite aqui para mudar o comportamento dos botões do header,
+                o fluxo de inicialização ou o wiring dos modais.
+                Funções: carregarContextos · inicializar (via DOMContentLoaded)
+
+  ─────────────────────────────────────────────────────────────────────────────
+  MAPA DE IDs IMPORTANTES (HTML → arquivo JS que os usa)
+  ─────────────────────────────────────────────────────────────────────────────
+  #titulo-painel          hub.js · assinatura.js · historico.js · admin.js
+                          (cada tela altera o título do header)
+
+  #btn-voltar             main.js   → history.back()
+  #btn-voltar-hub         main.js   → volta à fila (modoFila=true) ou ao hub
+
+  #main-content           Substituído dinamicamente por cada tela:
+                            hub.js        → grade de contextos
+                            assinatura.js → formulário de assinatura
+                            fila.js       → lista da fila de entrega
+                            historico.js  → tabela de histórico
+                            admin.js      → tabela de contextos e permissões
+
+  #modal-comprovante      Exibido por assinatura.js (mostrarComprovante)
+  #modal-comp-fechar      main.js → fecha o modal
+  #modal-comp-finalizar   main.js → volta à fila ou ao hub após comprovante
+  #modal-comp-body        assinatura.js → preenchido com dados do comprovante
+
+  #modal-ver              Exibido por historico.js (verAssinatura)
+  #modal-ver-fechar       main.js → fecha o modal
+  #modal-ver-fechar2      main.js → fecha o modal (botão alternativo)
+  #modal-ver-body         historico.js → preenchido com imagem da assinatura
+
+  #toast-container        utils.js (toast) → mensagens temporárias de feedback
+
+  ─────────────────────────────────────────────────────────────────────────────
+  FLUXO PRINCIPAL
+  ─────────────────────────────────────────────────────────────────────────────
+  1. main.js: DOMContentLoaded → inicializar()
+  2. Lê params da URL (contexto= e ref_id= indicam modo embedded)
+  3. Chama carregarContextos() → API GET /api/paineis/painel48/contextos
+  4a. Modo normal   → irParaHub()        → renderizarHub()
+  4b. Modo embedded → renderizarAssinatura() diretamente
+
+  Navegação a partir do hub:
+    card "Coletar Assinatura" (entrega_refeicao) → renderizarFilaEntrega()
+                                                    → item selecionado
+                                                    → renderizarAssinatura()
+    card "Coletar Assinatura" (outros)           → renderizarAssinatura()
+    card "Histórico"                             → renderizarHistorico()
+    botão "Administração"   (só admin)           → renderizarAdmin()
+
+  Após confirmar assinatura:
+    → mostrarComprovante() abre #modal-comprovante
+    → botão Finalizar fecha o modal e volta ao hub ou à fila
+================================================================================
+-->
+
 <div class="painel-container">
 
-    <!-- HEADER -->
+    <!-- HEADER
+         Título (#titulo-painel) é atualizado por hub.js, assinatura.js,
+         historico.js e admin.js cada vez que a tela muda. -->
     <header class="painel-header">
         <div class="header-content">
             <div class="header-left">
@@ -21,6 +122,7 @@
                 <h1><i class="fas fa-signature"></i> <span id="titulo-painel">Assinatura Digital</span></h1>
             </div>
             <div class="header-right">
+                <!-- Visível só nas telas internas; lógica em main.js -->
                 <button class="btn-header" id="btn-voltar-hub" title="Voltar ao HUB" style="display:none;">
                     <i class="fas fa-th-large"></i>
                 </button>
@@ -29,20 +131,27 @@
         </div>
     </header>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN CONTENT
+         Substituído dinamicamente por hub.js / assinatura.js / fila.js /
+         historico.js / admin.js. Contém o spinner inicial enquanto a API
+         de contextos ainda não respondeu. -->
     <main class="main-content" id="main-content">
         <div class="loading"><div class="loading-spinner"></div><span>Carregando...</span></div>
     </main>
 
-    <!-- MODAL: COMPROVANTE -->
+    <!-- MODAL: COMPROVANTE
+         Exibido por assinatura.js → mostrarComprovante().
+         Fechamento e navegação pós-confirmação gerenciados por main.js. -->
     <div id="modal-comprovante" class="modal-overlay" style="display:none;">
         <div class="modal-box modal-comprovante">
             <div class="modal-header">
                 <h3><i class="fas fa-check-circle" style="color:#198754"></i> Assinatura Registrada</h3>
                 <button class="btn-fechar-modal" id="modal-comp-fechar"><i class="fas fa-times"></i></button>
             </div>
+            <!-- Preenchido por assinatura.js (mostrarComprovante) -->
             <div class="modal-body" id="modal-comp-body"></div>
             <div class="modal-footer">
+                <!-- Texto alterado por mostrarComprovante: "Voltar à Fila" ou "Finalizar" -->
                 <button class="btn-modal btn-modal-prim" id="modal-comp-finalizar">
                     <i class="fas fa-check"></i> Finalizar
                 </button>
@@ -50,13 +159,16 @@
         </div>
     </div>
 
-    <!-- MODAL: VER ASSINATURA (detalhes) -->
+    <!-- MODAL: VER ASSINATURA
+         Exibido por historico.js → verAssinatura().
+         Fechamento gerenciado por main.js. -->
     <div id="modal-ver" class="modal-overlay" style="display:none;">
         <div class="modal-box modal-ver">
             <div class="modal-header">
                 <h3><i class="fas fa-signature"></i> Comprovante de Assinatura</h3>
                 <button class="btn-fechar-modal" id="modal-ver-fechar"><i class="fas fa-times"></i></button>
             </div>
+            <!-- Preenchido por historico.js (verAssinatura) -->
             <div class="modal-body" id="modal-ver-body"></div>
             <div class="modal-footer">
                 <button class="btn-modal" id="modal-ver-fechar2">Fechar</button>
@@ -64,7 +176,7 @@
         </div>
     </div>
 
-    <!-- TOAST -->
+    <!-- TOAST — mensagens temporárias; preenchido por utils.js → toast() -->
     <div class="toast-container" id="toast-container"></div>
 
     <footer class="sistema-footer">
@@ -72,7 +184,26 @@
     </footer>
 </div>
 
+<!-- SCRIPTS — ordem obrigatória: cada arquivo depende do anterior
+     1. signature_pad  → biblioteca externa de canvas (usada por assinatura.js)
+     2. estado.js      → cria window.P48 (todos os outros dependem disto)
+     3. utils.js       → funções auxiliares (usadas por hub/assinatura/fila/historico/admin)
+     4. hub.js         → tela inicial
+     5. assinatura.js  → formulário de coleta
+     6. fila.js        → fila de entrega de refeição
+     7. historico.js   → tabela de histórico
+     8. admin.js       → tela de administração
+     9. main.js        → bootstrap e wiring final (DOMContentLoaded)
+    10. versao.js      → atualiza rodapé com versão do sistema
+    11. auto-auth.js   → auto-login para TVs de plantão -->
 <script src="/static/js/signature_pad.umd.min.js"></script>
+<script src="/paineis/painel48/estado.js"></script>
+<script src="/paineis/painel48/utils.js"></script>
+<script src="/paineis/painel48/hub.js"></script>
+<script src="/paineis/painel48/assinatura.js"></script>
+<script src="/paineis/painel48/fila.js"></script>
+<script src="/paineis/painel48/historico.js"></script>
+<script src="/paineis/painel48/admin.js"></script>
 <script src="/paineis/painel48/main.js"></script>
 <script src="/static/js/versao.js"></script>
 <script src="/static/js/auto-auth.js"></script>

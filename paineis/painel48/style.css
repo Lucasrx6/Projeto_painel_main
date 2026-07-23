@@ -248,6 +248,24 @@ html, body {
     margin-top: 24px;
 }
 
+.fila-vazia,
+.fila-erro,
+.hist-erro,
+.admin-erro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--texto-sec);
+    gap: 12px;
+}
+.fila-vazia i  { font-size: 48px; color: #28a745; }
+.fila-erro i,
+.hist-erro i,
+.admin-erro i  { font-size: 40px; color: var(--cor-perigo, #dc3545); }
+
 .btn-admin {
     background: none;
     border: 1px dashed var(--borda);

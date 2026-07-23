@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;margin:0;padding:0;background:#f4f4f4">
+<div style="max-width:700px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
+
+  <div style="background:#dc3545;padding:24px 30px;color:#fff">
+    <h1 style="margin:0;font-size:20px">Relatório de Ocupação Hospitalar</h1>
+    <p style="margin:4px 0 0;font-size:13px;opacity:0.85">Hospital Anchieta Ceilândia — {{ data_hora }}</p>
+  </div>
+
+  <div style="padding:24px 30px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+
+      <div style="flex:1;min-width:120px;background:#fff5f5;border-radius:8px;padding:16px;text-align:center;border-top:4px solid {{ cor_taxa }}">
+        <div style="font-size:32px;font-weight:bold;color:{{ cor_taxa }}">{{ taxa }}%</div>
+        <div style="font-size:12px;color:#555;margin-top:4px">Taxa de Ocupação</div>
+        <div style="font-size:11px;font-weight:bold;color:{{ cor_taxa }}">{{ status_taxa }}</div>
+      </div>
+
+      <div style="flex:1;min-width:120px;background:#fff0f0;border-radius:8px;padding:16px;text-align:center;border-top:4px solid #C00000">
+        <div style="font-size:32px;font-weight:bold;color:#C00000">{{ ocupados }}</div>
+        <div style="font-size:12px;color:#555;margin-top:4px">Leitos Ocupados</div>
+        <div style="font-size:11px;color:#888">de {{ total }} no total</div>
+      </div>
+
+      <div style="flex:1;min-width:120px;background:#f0fff4;border-radius:8px;padding:16px;text-align:center;border-top:4px solid #375623">
+        <div style="font-size:32px;font-weight:bold;color:#375623">{{ livres }}</div>
+        <div style="font-size:12px;color:#555;margin-top:4px">Leitos Livres</div>
+      </div>
+
+      <div style="flex:1;min-width:120px;background:#fffaf0;border-radius:8px;padding:16px;text-align:center;border-top:4px solid #FF8C00">
+        <div style="font-size:24px;font-weight:bold;color:#FF8C00">{{ higieniz }} / {{ interdit }}</div>
+        <div style="font-size:12px;color:#555;margin-top:4px">Higienização / Interditados</div>
+      </div>
+
+    </div>
+
+    <div style="background:#f9f9f9;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#444">
+      <strong>{{ setores_n }}</strong> setores monitorados &nbsp;|&nbsp;
+      Média de permanência: <strong>{{ perm }} dias</strong>
+    </div>
+
+    <h2 style="font-size:15px;color:#dc3545;margin:0 0 8px">Ocupação por Setor</h2>
+    {{ tabela }}
+
+    <p style="font-size:12px;color:#888;margin-top:20px;border-top:1px solid #eee;padding-top:12px">
+      O arquivo Excel em anexo contém a lista completa de pacientes internados.<br>
+      Nomes anonimizados conforme LGPD. Gerado automaticamente pelo Sistema de Painéis — HAC.
+    </p>
+  </div>
+
+</div>
+</body></html>

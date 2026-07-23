@@ -260,6 +260,81 @@
     </footer>
 </div><!-- /painel-container -->
 
+<!--
+====================================================================
+PAINEL 41 — Solicitar Dieta  |  Arquitetura de scripts (ES5 / IIFE)
+====================================================================
+
+ORDEM DE CARREGAMENTO (obrigatória — cada arquivo depende do anterior):
+  1. estado.js        — window.P41 (CONFIG, Estado, STATUS_CONFIG, DOM:{})
+  2. utils.js         — escHtml, badgeStatus, debounce
+  3. configuracoes.js — carregarConfiguracoes (tipos-dieta, refeicoes,
+                        restricoes, setores)
+  4. busca.js         — buscarPaciente, abrirFormManual, fecharFormManual,
+                        confirmarManual, selecionarPaciente, limparPaciente
+  5. solicitacao.js   — toggleUrgente, submeterSolicitacao, resetarForm,
+                        mostrarModalSucesso, fecharModalSucesso
+  6. minhas.js        — carregarMinhasSolicitacoes, renderMinhasSolicitacoes,
+                        exportarPDF
+  7. cancelar.js      — abrirModalCancelar, fecharModalCancelar,
+                        confirmarCancelamento
+  8. main.js          — inicializar(): DOM refs + eventos + carga inicial
+
+--------------------------------------------------------------------
+ELEMENTOS HTML GERENCIADOS POR ARQUIVO:
+--------------------------------------------------------------------
+  busca.js        → #input-busca, #spinner-busca, #lista-pacientes,
+                    #link-manual-wrapper, #form-manual,
+                    #manual-nome/atendimento/leito/setor/nasc, #manual-erro,
+                    #card-paciente, #pac-nome-texto/leito/setor/clinica/
+                    dias/nasc, #card-info-extra, #card-info-nasc,
+                    #badge-manual
+  configuracoes.js → #sel-tipo-dieta, #sel-refeicao, #lista-restricoes,
+                     #manual-setor (opções)
+  solicitacao.js  → #btn-urgente, #form-solicitar, #erro-form,
+                    #btn-solicitar, #modal-sucesso, #modal-codigo
+  minhas.js       → #tbody-minhas, #tabela-minhas, #tabela-minhas-empty,
+                    #badge-total, #filtro-setor-41, #filtro-refeicao-41
+  cancelar.js     → #modal-cancelar, #modal-canc-id, #modal-canc-motivo,
+                    #modal-canc-erro, #btn-canc-confirmar
+  main.js         → todos os addEventListener + #btn-voltar-hub,
+                    #busca-hist-41, #btn-exportar-pdf-41
+
+--------------------------------------------------------------------
+NAMESPACE: window.P41.*
+--------------------------------------------------------------------
+  CONFIG              apiBase, refreshInterval, minCharsSearch, debounceMs
+  Estado              paciente, tipos, refeicoes, restricoes, setores,
+                      minhasSolicitacoes, urgente, enviando, buscando,
+                      buscaHist, filtroRefeicao41, listaFiltrada,
+                      _debounceTimer, _debounceHistTimer
+  STATUS_CONFIG       label/cor por status
+  DOM                 referências centralizadas (preenchidas em main.js)
+  escHtml             sanitização XSS
+  badgeStatus         <span> colorido por status
+  debounce            função debounce genérica
+  carregarConfiguracoes  carrega tipos, refeições, restrições e setores
+  buscarPaciente      GET /pacientes?q=... (com race prevention _buscaGen)
+  abrirFormManual / fecharFormManual / confirmarManual
+  selecionarPaciente  preenche card do paciente e exibe formulário
+  limparPaciente      reseta seleção, formulário e busca
+  toggleUrgente       alterna flag e classe CSS urgente-ativo
+  submeterSolicitacao POST /solicitar com corpo completo
+  resetarForm         limpa selects, checkboxes, obs e urgente
+  mostrarModalSucesso / fecharModalSucesso
+  carregarMinhasSolicitacoes  GET /minhas-solicitacoes
+  renderMinhasSolicitacoes    renderiza tabela com filtros aplicados
+  exportarPDF         abre popup A4 landscape para impressão
+  abrirModalCancelar / fecharModalCancelar / confirmarCancelamento
+====================================================================
+-->
+<script src="/paineis/painel41/estado.js"></script>
+<script src="/paineis/painel41/utils.js"></script>
+<script src="/paineis/painel41/configuracoes.js"></script>
+<script src="/paineis/painel41/busca.js"></script>
+<script src="/paineis/painel41/solicitacao.js"></script>
+<script src="/paineis/painel41/minhas.js"></script>
+<script src="/paineis/painel41/cancelar.js"></script>
 <script src="/paineis/painel41/main.js"></script>
 <script src="/static/js/versao.js"></script>
 <script src="/static/js/auto-auth.js"></script>

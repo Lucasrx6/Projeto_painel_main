@@ -1,0 +1,75 @@
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: {{ cor }}; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin: 0; font-size: 18px;">Alerta de Atencao - Visita</h2>
+        <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Hospital Anchieta Ceilandia - Projeto Sentir e Agir</p>
+    </div>
+
+    <div style="border: 1px solid #dee2e6; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
+
+        <div style="background: #fff8f0; border-left: 4px solid {{ cor }}; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px;">
+            <strong style="color: {{ cor }}; font-size: 14px;">Itens que requerem atencao nesta visita:</strong>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;font-size:14px;background:#fff8f0;border-radius:6px;overflow:hidden;">
+            <thead>
+                <tr style="background:{{ cor }}22;">
+                    <th style="padding:8px;text-align:left;font-size:12px;color:{{ cor }};font-weight:bold;">Item</th>
+                    <th style="padding:8px;text-align:left;font-size:12px;color:{{ cor }};font-weight:bold;">Categoria</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ linhas_itens }}
+            </tbody>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 16px;">
+            <tr>
+                <td style="padding: 7px 0; color: #6c757d; width: 130px;">Paciente:</td>
+                <td style="padding: 7px 0; font-weight: bold;">{{ paciente }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 7px 0; color: #6c757d;">Atendimento:</td>
+                <td style="padding: 7px 0;">{{ atendimento }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 7px 0; color: #6c757d;">Setor:</td>
+                <td style="padding: 7px 0;">{{ setor }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 7px 0; color: #6c757d;">Leito:</td>
+                <td style="padding: 7px 0;">{{ leito }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 7px 0; color: #6c757d;">Data da Ronda:</td>
+                <td style="padding: 7px 0;">{{ data_ronda }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 7px 0; color: #6c757d;">Dupla:</td>
+                <td style="padding: 7px 0;">{{ dupla }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 7px 0; color: #6c757d;">Avaliacao:</td>
+                <td style="padding: 7px 0;">
+                    <span style="background:{{ cor }}; color:white; padding:2px 10px; border-radius:4px; font-size:12px; font-weight:bold;">ATENCAO</span>
+                </td>
+            </tr>
+        </table>
+
+        {{ bloco_obs }}
+
+        <div style="margin-top:20px;padding:14px 16px;background:#fff8e1;border-radius:6px;border-left:5px solid #fd7e14;">
+            <p style="margin:0;font-size:13px;color:#fd7e14;font-weight:bold;">Como registrar o acompanhamento?</p>
+            <p style="margin:6px 0 0;font-size:13px;color:#333;line-height:1.5;">
+                Acesse o sistema (Painel 29 &mdash; Gestao Sentir e Agir) para registrar
+                as tratativas desta visita com o status <strong>Em Tratativa</strong>
+                e finalize quando resolvido.
+            </p>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 11px; color: #999; margin: 0; text-align: center;">
+            Notificacao automatica - Sistema de Paineis HAC<br>
+            Enviado em {{ enviado_em }}
+        </p>
+    </div>
+</div>

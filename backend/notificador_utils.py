@@ -6,6 +6,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 import psycopg2
+import jinja2
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -63,3 +64,13 @@ def get_smtp_config() -> dict:
 def conectar_db():
     """Cria e retorna conexão PostgreSQL direta (sem pool) para uso em workers."""
     return psycopg2.connect(**get_db_config())
+
+
+def render_email(nome_template, **kwargs):
+    """Renderiza um template HTML de email a partir de backend/templates_email/."""
+    templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates_email')
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(templates_dir),
+        autoescape=False
+    )
+    return env.get_template(nome_template).render(**kwargs)

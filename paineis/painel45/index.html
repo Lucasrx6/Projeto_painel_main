@@ -144,6 +144,64 @@
     </footer>
 </div>
 
+<!--
+=============================================================================
+  PAINEL 45 — Radiologia / Enfermagem — Mapa de arquivos JS
+=============================================================================
+
+  ARQUIVO              RESPONSABILIDADE
+  ──────────────────── ─────────────────────────────────────────────────────
+  estado.js            window.P45 — CONFIG, Estado (dados, filtros, modalId)
+  utils.js             pad2, hojeISO, toast, escHtml, formatarNome,
+                       formatarHora, formatarDataHora
+  badges.js            badgeEnf, badgeTipo, badgeRadioStatus
+  renderizar.js        chaveData, formatarDia, popularPills,
+                       atualizarContadores, linhaAgendamentoHtml, renderizar
+  carregar.js          carregar — fetch /agendamentos, atualiza Estado.dados
+  modais.js            abrirCiencia, fecharCiencia, confirmarCiencia,
+                       abrirRecusar, fecharRecusar, confirmarRecusar
+  main.js              inicializar — event listeners, pills de status,
+                       delegação data-acao, polling
+
+  MAPA DE IDs (elemento → função responsável)
+  ──────────────────── ─────────────────────────────────────────────────────
+  #pills-setor          popularPills()      [renderizar.js]
+  #filtro-status-pills  inicializar()       [main.js]
+  #label-data-p45       atualizarNavData()  [main.js]
+  #btn-data-ant/prox/   inicializar()       [main.js]
+    hoje
+  #main-content         renderizar()        [renderizar.js]
+  #cnt-total/urgentes/  atualizarContadores() [renderizar.js]
+    pendentes/cientes/
+    recusados
+  #ultima-atualizacao   carregar()          [carregar.js]
+  #modal-ciencia        abrirCiencia()      [modais.js]
+  #modal-cien-info      abrirCiencia()      [modais.js]
+  #modal-cien-confirmar confirmarCiencia()  [modais.js]
+  #modal-recusar        abrirRecusar()      [modais.js]
+  #modal-rec-info       abrirRecusar()      [modais.js]
+  #modal-rec-motivo     confirmarRecusar()  [modais.js]
+  #modal-rec-contador   input listener      [main.js]
+  #toast-container      toast()             [utils.js]
+
+  FUNÇÕES NO NAMESPACE window.P45
+  ─────────────────────────────────────────────────────────────────────────
+  pad2, hojeISO, toast, escHtml, formatarNome, formatarHora,
+  formatarDataHora                                     [utils.js]
+  badgeEnf, badgeTipo, badgeRadioStatus                [badges.js]
+  chaveData, formatarDia, popularPills,
+  atualizarContadores, linhaAgendamentoHtml, renderizar [renderizar.js]
+  carregar                                             [carregar.js]
+  abrirCiencia, fecharCiencia, confirmarCiencia,
+  abrirRecusar, fecharRecusar, confirmarRecusar         [modais.js]
+=============================================================================
+-->
+<script src="/paineis/painel45/estado.js"></script>
+<script src="/paineis/painel45/utils.js"></script>
+<script src="/paineis/painel45/badges.js"></script>
+<script src="/paineis/painel45/renderizar.js"></script>
+<script src="/paineis/painel45/carregar.js"></script>
+<script src="/paineis/painel45/modais.js"></script>
 <script src="/paineis/painel45/main.js"></script>
 <script src="/static/js/versao.js"></script>
 <script src="/static/js/auto-auth.js"></script>

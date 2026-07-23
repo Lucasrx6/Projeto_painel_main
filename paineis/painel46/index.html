@@ -349,6 +349,160 @@
     </footer>
 </div>
 
+<!--
+=============================================================================
+  PAINEL 46 — RADIOLOGIA (Tela Operacional)
+  Arquitetura de arquivos JS — ordem de carregamento obrigatória
+=============================================================================
+
+  ARQUIVO          RESPONSABILIDADE
+  ──────────────── ─────────────────────────────────────────────────────────
+  estado.js        Cria window.P46 com CONFIG (12 endpoints API), Estado
+                   (18 campos de estado da UI) e DOM (cache de elementos)
+  utils.js         Funções puras reutilizáveis: toast, escHtml, formatarNome,
+                   formatarHora, formatarDataHora, isoParaDisplay,
+                   displayParaISO, hojeISO, labelData, setStatusDot,
+                   abrirModal, fecharModal, badgeTipoExame, badgeStatusEnf
+  tabs.js          mudarTab — alterna as 3 abas (fila/exames/agenda),
+                   mostra/oculta nav-data e agenda-acoes, dispara carga lazy
+  fila.js          badgeStatus, badgeTransporte, linhaPacienteHtml,
+                   renderizarFila, carregarFila
+  exames.js        popularPillsExames (pills por setor), inicializarPillsTipo
+                   (pills por tipo de exame), cardExameHtml, renderizarExamesRadio,
+                   carregarExamesRadio
+  agenda.js        inicializarPillsAgenda (pills por modalidade), slotCardHtml,
+                   atualizarInfoSlots (badges dos contadores das pills),
+                   renderizarAgenda, carregarSlots
+  acoes.js         atualizarStatus, bloquearSlot, desbloquearSlot, removerSlot,
+                   desagendar, reagendarDaFila, abrirAgendar, vincularPaciente,
+                   vincularPrescricao, carregarTudo
+  agendar.js       abrirAgendarPresc, buscarSlotsPorTipo, renderizarSlotsDaModal,
+                   selecionarSlot, confirmarAgendamento, _verificarIrmaos (privado),
+                   abrirModalIrmaos, confirmarIrmaos, abrirAvulsoParaAgendamento
+  vagas.js         criarLote, criarAvulso
+                   (usa Estado.avulsoParaPresc para saber se veio do modal de agendamento)
+  exportar.js      gerarAgendaPDF (abre janela para impressão), exportarAgendaExcel
+                   (gera CSV com BOM UTF-8 pronto para o Excel BR)
+  main.js          inicializar — conecta todos os event listeners da página;
+                   inicia polling com setInterval(carregarTudo, 45000)
+
+=============================================================================
+  MAPA DE IDs HTML → FUNÇÃO RESPONSÁVEL
+=============================================================================
+
+  ID ELEMENTO                  GERENCIADO POR
+  ──────────────────────────── ─────────────────────────────────────────────
+  #status-dot                  utils.js → setStatusDot()
+  #ultima-atualizacao          fila.js → carregarFila()
+  #btn-refresh                 main.js → carregarTudo()
+  #btn-voltar                  main.js → history.back()
+
+  -- Abas --
+  .aba[data-aba]               main.js (listener) → tabs.js → mudarTab()
+  #aba-fila / #aba-exames / #aba-agenda   tabs.js → mudarTab()
+  #nav-data                    tabs.js → mudarTab() (mostra/oculta)
+  #agenda-acoes                tabs.js → mudarTab() (mostra/oculta)
+  #label-data                  tabs.js / main.js (btn ← →)
+
+  -- Aba Fila --
+  #fila-loading                fila.js → renderizarFila()
+  #fila-vazia                  fila.js → renderizarFila()
+  #secao-agendados             fila.js → renderizarFila()
+  #secao-pendentes             fila.js → renderizarFila()
+  #secao-recusados             fila.js → renderizarFila()
+  #grid-agendados              fila.js → renderizarFila() (innerHTML)
+  #grid-pendentes              fila.js → renderizarFila() (innerHTML)
+  #grid-recusados              fila.js → renderizarFila() (innerHTML)
+  #count-agendados             fila.js → renderizarFila()
+  #count-pendentes             fila.js → renderizarFila()
+  #count-recusados             fila.js → renderizarFila()
+  #btn-toggle-recusados        main.js (listener) → expande/recolhe seção
+  #icon-toggle-recusados       main.js / fila.js
+
+  -- Aba Prescrições --
+  #exames-pills-tipo           exames.js → inicializarPillsTipo()
+  #exames-pills-setor          exames.js → popularPillsExames()
+  #exames-toggle-sem-controle  main.js (listener) → renderizarExamesRadio()
+  #btn-toggle-todos-exames     main.js (listener) → renderizarExamesRadio()
+  #badge-exames-ocultos        exames.js → renderizarExamesRadio()
+  #label-toggle-exames         exames.js → renderizarExamesRadio()
+  #icon-toggle-exames          exames.js → renderizarExamesRadio()
+  #exames-btn-cards            main.js (listener) → renderizarExamesRadio()
+  #exames-btn-tabela           main.js (listener) → renderizarExamesRadio()
+  #exames-loading              exames.js → carregarExamesRadio()
+  #exames-vazio                exames.js → renderizarExamesRadio()
+  #exames-conteudo             exames.js → renderizarExamesRadio() (innerHTML)
+
+  -- Aba Agenda --
+  #agenda-pills-bar            agenda.js → inicializarPillsAgenda()
+  #acnt-todos / #acnt-rm / … / #acnt-outros   agenda.js → atualizarInfoSlots()
+  #slots-info-bar              agenda.js → atualizarInfoSlots()
+  #btn-dia-anterior            main.js (listener) → E.dataConsulta-=1d → carregarSlots()
+  #btn-dia-proximo             main.js (listener) → E.dataConsulta+=1d → carregarSlots()
+  #btn-export-pdf              main.js (listener) → exportar.js → gerarAgendaPDF()
+  #btn-export-excel            main.js (listener) → exportar.js → exportarAgendaExcel()
+  #btn-criar-lote              main.js (listener) → abrirModal('modal-lote')
+  #btn-criar-avulso            main.js (listener) → abrirModal('modal-avulso')
+  #agenda-loading              agenda.js → carregarSlots()
+  #agenda-vazia                agenda.js → renderizarAgenda()
+  #grade-slots                 agenda.js → renderizarAgenda() (innerHTML)
+
+  -- Modal criar lote --
+  #lote-data / #lote-inicio / #lote-fim / #lote-duracao / #lote-modalidade
+                               vagas.js → criarLote() (lê valores)
+  #modal-lote-confirmar        main.js (listener) → criarLote()
+
+  -- Modal vaga avulsa --
+  #avulso-data / #avulso-hora / #avulso-duracao / #avulso-modalidade
+                               vagas.js → criarAvulso() (lê valores)
+  #modal-avulso-confirmar      main.js (listener) → criarAvulso()
+
+  -- Modal vincular paciente --
+  #modal-vincular-info         acoes.js → abrirAgendar()
+  #lista-vincular              acoes.js → abrirAgendar() (innerHTML + listeners)
+
+  -- Modal agendar prescrição --
+  #modal-ag-info               agendar.js / acoes.js → abrirAgendarPresc() / reagendarDaFila()
+  #ag-data                     agendar.js → buscarSlotsPorTipo() (listener input@10chars)
+  #ag-tipo / #ag-prioridade / #ag-obs   agendar.js → confirmarAgendamento()
+  #btn-preparo-nao / #btn-preparo-sim   main.js (toggle visual)
+  #ag-preparo-grupo / #ag-preparo-texto / #ag-preparo-hint  main.js + agendar.js
+  #ag-slots-loading            agendar.js → buscarSlotsPorTipo()
+  #ag-lista-slots              agendar.js → renderizarSlotsDaModal() (innerHTML)
+  #btn-nova-vaga-ag            main.js (listener) → abrirAvulsoParaAgendamento()
+  #modal-ag-confirmar          main.js (listener) → confirmarAgendamento()
+
+  -- Modal irmãos --
+  #irmaos-info / #irmaos-lista  agendar.js → abrirModalIrmaos()
+  #modal-irmaos-confirmar       main.js (listener) → confirmarIrmaos()
+
+=============================================================================
+  FUNÇÕES EXPOSTAS NO NAMESPACE window.P46 PARA onclick INLINE
+  (geradas dinamicamente por fila.js, exames.js e agenda.js)
+=============================================================================
+
+  P46.atualizarStatus(id, status)   acoes.js   — botões Chegou/Iniciar/Concluir/Cancelar
+  P46.reagendarDaFila(id)            acoes.js   — botão Reagendar (linha da fila)
+  P46.abrirAgendar(slotId)           acoes.js   — botão Vincular (slot livre)
+  P46.bloquearSlot(slotId)           acoes.js   — botão Bloquear (slot livre)
+  P46.desbloquearSlot(slotId)        acoes.js   — botão Desbloquear (slot bloqueado)
+  P46.removerSlot(slotId)            acoes.js   — botão Remover slot
+  P46.desagendar(slotId)             acoes.js   — botão Desvincular (slot ocupado)
+  P46.abrirAgendarPresc(nr, nrp)     agendar.js — botão Agendar/Reagendar (card exame)
+  P46.selecionarSlot(slotId)         agendar.js — click nos slots do modal de agendamento
+
+=============================================================================
+-->
+<script src="/paineis/painel46/estado.js"></script>
+<script src="/paineis/painel46/utils.js"></script>
+<script src="/paineis/painel46/tabs.js"></script>
+<script src="/paineis/painel46/fila.js"></script>
+<script src="/paineis/painel46/exames.js"></script>
+<script src="/paineis/painel46/agenda.js"></script>
+<script src="/paineis/painel46/acoes.js"></script>
+<script src="/paineis/painel46/agendar.js"></script>
+<script src="/paineis/painel46/vagas.js"></script>
+<script src="/paineis/painel46/exportar.js"></script>
 <script src="/paineis/painel46/main.js"></script>
 <script src="/static/js/versao.js"></script>
 <script src="/static/js/auto-auth.js"></script>

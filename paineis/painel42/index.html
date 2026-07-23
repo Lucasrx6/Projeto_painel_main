@@ -350,6 +350,102 @@
 
 <audio id="audio-alerta" src="/static/audio/chamado.mp3" preload="auto"></audio>
 
+<!--
+====================================================================
+PAINEL 42 — Tela Nutrição  |  Arquitetura de scripts (ES5 / IIFE)
+====================================================================
+
+ORDEM DE CARREGAMENTO (obrigatória — cada arquivo depende do anterior):
+  1. estado.js     — window.P42 (CONFIG, Estado, STATUS_CFG, DOM:{})
+  2. utils.js      — escHtml, fmtMin, badgeStatus, fecharModal, atualizarTimestamp
+  3. equipe.js     — carregarEquipe (popula acc-sel-membro)
+  4. alertas.js    — tocarAlerta, piscarTela, alertarTitulo*, notificarNavegador,
+                     atualizarIconeNotif, pedirPermissaoNotif
+  5. kanban.js     — renderKanban, renderContadores
+  6. fila.js       — carregarFila, cicloAtualizar, executarAcao
+  7. historico.js  — carregarHistorico, renderHistorico, toggleHistorico,
+                     gerarRelatorioHistorico
+  8. impressao.js  — imprimirEtiqueta (ZPL via painel43 config)
+  9. modais.js     — abrirModal*/confirmar* para aceitar/entregar/cancelar/
+                     editar/voltarStatus
+ 10. protocolo.js  — abrirModalProtocolo, gerarProtocolo (A4 portrait)
+ 11. assinatura.js — abrirAssinaturaDigital, confirmarEntregaAssinado
+ 12. main.js       — inicializar(): DOM refs + eventos + carga inicial
+
+--------------------------------------------------------------------
+ELEMENTOS HTML GERENCIADOS POR ARQUIVO:
+--------------------------------------------------------------------
+  equipe.js     → #acc-sel-membro (select de responsáveis)
+  kanban.js     → #col-aguardando/aceito/em_preparo/pronto/em_entrega
+                  #badge-* (contadores nas colunas)
+                  #cnt-* (contadores no header)
+  historico.js  → #historico-body, #tbody-historico, #hist-empty,
+                  #badge-historico, #filtro-setor-42
+                  #modal-detalhe-hist, #detalhe-hist-corpo
+  alertas.js    → #audio-alerta, #icone-notif, document.title
+  impressao.js  → abre popup de impressão (ZPL ou PDF)
+  modais.js     → #modal-aceitar, #modal-entregar, #modal-editar,
+                  #modal-voltar, #modal-cancelar
+  protocolo.js  → #modal-protocolo, #prot-setor, #prot-desc
+  assinatura.js → abre popup /painel/painel48
+  main.js       → #sel-visualizacao, #ultimo-update, #btn-voltar-hub,
+                  #btn-notif-toggle, #chk-imprimir-aceitar,
+                  #btn-protocolo, #btn-toggle-historico,
+                  #btn-relatorio-hist, #modal-relatorio-hist,
+                  todos os btn-fechar e overlay-click dos modais
+
+--------------------------------------------------------------------
+NAMESPACE: window.P42.*
+--------------------------------------------------------------------
+  CONFIG              apiBase, refreshInterval
+  Estado              fila, equipe, historico, tiposDieta, refeicoes,
+                      contadores, visualizacao, idsAnteriores,
+                      idsUrgentesAnteriores, processando
+  STATUS_CFG          label/cor/col por status
+  DOM                 referências centralizadas (preenchidas em main.js)
+  escHtml             sanitização XSS
+  fmtMin              formata minutos como "1h 05m"
+  badgeStatus         <span> colorido por status
+  fecharModal         fecha qualquer modal-overlay
+  atualizarTimestamp  atualiza #ultimo-update
+  carregarEquipe      GET /equipe → popula select de responsáveis
+  tocarAlerta         toca audio-alerta
+  piscarTela          flash visual de alerta
+  alertarTitulo       pisca título da aba (novas solicitações)
+  alertarTituloEmPreparo  pisca título (item em preparo)
+  notificarNavegador  Notification API
+  atualizarIconeNotif ícone bell/bell-slash
+  pedirPermissaoNotif solicita permissão e atualiza ícone
+  renderKanban        renderiza colunas kanban com Estado.fila
+  renderContadores    atualiza badges do header e colunas
+  carregarFila        GET /fila?visualizacao=...
+  cicloAtualizar      carregarFila + carregarHistorico (usado no setInterval)
+  executarAcao        PUT /solicitacoes/:id/:acao (mudanças rápidas de status)
+  carregarHistorico   GET /historico-hoje
+  renderHistorico     renderiza #tbody-historico com filtro de setor
+  toggleHistorico     mostra/oculta #historico-body
+  gerarRelatorioHistorico  abre popup A4 landscape para impressão
+  imprimirEtiqueta    busca config ZPL do painel43 e imprime/baixa
+  abrirModalAceitar / confirmarAceitar
+  abrirModalEntregar / validarCodigoInput / confirmarEntrega
+  abrirModalCancelar / confirmarCancelar
+  abrirModalEditar   / confirmarEditar
+  abrirModalVoltarStatus / confirmarVoltarStatus
+  abrirModalProtocolo / gerarProtocolo
+  abrirAssinaturaDigital / confirmarEntregaAssinado
+====================================================================
+-->
+<script src="/paineis/painel42/estado.js"></script>
+<script src="/paineis/painel42/utils.js"></script>
+<script src="/paineis/painel42/equipe.js"></script>
+<script src="/paineis/painel42/alertas.js"></script>
+<script src="/paineis/painel42/kanban.js"></script>
+<script src="/paineis/painel42/fila.js"></script>
+<script src="/paineis/painel42/historico.js"></script>
+<script src="/paineis/painel42/impressao.js"></script>
+<script src="/paineis/painel42/modais.js"></script>
+<script src="/paineis/painel42/protocolo.js"></script>
+<script src="/paineis/painel42/assinatura.js"></script>
 <script src="/paineis/painel42/main.js"></script>
 <script src="/static/js/versao.js"></script>
 <script src="/static/js/auto-auth.js"></script>
