@@ -69,6 +69,50 @@ def painel50():
     return send_from_directory('paineis/painel50', 'index.html')
 
 
+@painel50_bp.route('/api/paineis/painel50/debug')
+@login_required
+def api_painel50_debug():
+    """Endpoint temporário de diagnóstico — mostra estrutura e amostra da tabela."""
+    try:
+        plantao = _plantao_atual()
+        with get_db_cursor() as cursor:
+            # Colunas reais da tabela
+            cursor.execute("""
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_name = 'enf_log_acesso'
+                ORDER BY ordinal_position
+            """)
+            colunas = [dict(r) for r in cursor.fetchall()]
+
+            # Total de registros
+            cursor.execute("SELECT COUNT(*) AS total FROM enf_log_acesso")
+            total = cursor.fetchone()['total']
+
+            # Valores distintos de dt_plantao e tipo_plantao
+            cursor.execute("""
+                SELECT DISTINCT dt_plantao, tipo_plantao
+                FROM enf_log_acesso
+                ORDER BY dt_plantao DESC
+                LIMIT 10
+            """)
+            valores = [dict(r) for r in cursor.fetchall()]
+
+            # Amostra de 5 registros brutos
+            cursor.execute("SELECT * FROM enf_log_acesso LIMIT 5")
+            amostra = [dict(r) for r in cursor.fetchall()]
+
+        return jsonify({
+            'filtro_aplicado': plantao,
+            'total_registros': total,
+            'colunas': colunas,
+            'valores_dt_tipo': valores,
+            'amostra': amostra,
+        })
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @painel50_bp.route('/api/paineis/painel50/dados')
 @login_required
 @cache_route(ttl=60, key_prefix='painel50:dados')
