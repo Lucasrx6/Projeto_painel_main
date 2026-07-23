@@ -474,6 +474,33 @@ body {
     text-align: center;
 }
 
+/* Saídos no plantão */
+.saidos-divider {
+    height: 1px;
+    background: #ebebeb;
+    margin: 2px 14px;
+}
+
+.prof-row.saido {
+    opacity: 0.45;
+}
+
+.prof-row.saido .prof-nome-new {
+    font-weight: 400;
+    font-size: 0.78rem;
+}
+
+.prof-dot-new.saido {
+    background: #bbb;
+}
+
+.prof-saiu-time {
+    font-size: 0.65rem;
+    color: var(--cor-texto-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 /* 10. ESTADOS DE CARREGAMENTO */
 .loading-container {
     display: flex;

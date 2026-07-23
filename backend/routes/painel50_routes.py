@@ -120,7 +120,6 @@ def api_painel50_dados():
     try:
         plantao = _plantao_atual()
         with get_db_cursor() as cursor:
-            # enf_ativos_agora é TRUNCATE+INSERT — snapshot dos ativos no momento
             cursor.execute("""
                 SELECT
                     setor,
@@ -128,26 +127,48 @@ def api_painel50_dados():
                     nm_usuario,
                     especialidade,
                     TO_CHAR(logon_time, 'HH24:MI') AS logon_fmt,
-                    tempo_conectado
-                FROM enf_ativos_agora
-                ORDER BY setor, ds_usuario
-            """)
+                    TO_CHAR(dt_saida,   'HH24:MI') AS saida_fmt,
+                    ativo
+                FROM enf_log_acesso
+                WHERE dt_plantao   = %s
+                  AND tipo_plantao = %s
+                ORDER BY setor, ativo DESC, ds_usuario
+            """, (plantao['dt_plantao'], plantao['tipo']))
             registros = [dict(r) for r in cursor.fetchall()]
 
-        # Agrupa por setor — todos os registros são ativos (snapshot atual)
+        # Fallback: se enf_log_acesso ainda não tem dados, usa snapshot atual
+        if not registros:
+            with get_db_cursor() as cursor:
+                cursor.execute("""
+                    SELECT
+                        setor,
+                        ds_usuario,
+                        nm_usuario,
+                        especialidade,
+                        TO_CHAR(logon_time, 'HH24:MI') AS logon_fmt,
+                        NULL AS saida_fmt,
+                        TRUE  AS ativo
+                    FROM enf_ativos_agora
+                    ORDER BY setor, ds_usuario
+                """)
+                registros = [dict(r) for r in cursor.fetchall()]
+
+        # Agrupa por setor
         mapa = {}
         for r in registros:
             setor = (r['setor'] or 'OUTROS').strip()
             if setor not in mapa:
                 mapa[setor] = {'setor': setor, 'ativos': [], 'saidos': []}
             prof = {
-                'nome': r['ds_usuario'] or r['nm_usuario'],
+                'nome':         r['ds_usuario'] or r['nm_usuario'],
                 'especialidade': r['especialidade'] or '',
-                'logon': r['logon_fmt'] or '--',
-                'tempo': r['tempo_conectado'] or '',
-                'saida': None,
+                'logon':        r['logon_fmt'] or '--',
+                'saida':        r['saida_fmt'],
             }
-            mapa[setor]['ativos'].append(prof)
+            if r['ativo']:
+                mapa[setor]['ativos'].append(prof)
+            else:
+                mapa[setor]['saidos'].append(prof)
 
         # Ordena setores: padrão primeiro, depois alfabético
         lista_setores = []

@@ -140,7 +140,7 @@
         }
         if (!comp) comp = '<span class="comp-vazio">Sem profissionais</span>';
 
-        // Lista
+        // Lista de ativos
         var lista = '';
         if (ativos.length > 0) {
             for (var a = 0; a < ativos.length; a++) {
@@ -148,6 +148,15 @@
             }
         } else {
             lista = '<p class="sem-profissional">Nenhum ativo no momento</p>';
+        }
+
+        // Saídos no mesmo card (sem título, apenas horário de saída)
+        var saidos = s.saidos || [];
+        if (saidos.length > 0) {
+            lista += '<div class="saidos-divider"></div>';
+            for (var b = 0; b < saidos.length; b++) {
+                lista += htmlProfSaido(saidos[b]);
+            }
         }
 
         return '<div class="setor-card setor-' + tipo + '">' +
@@ -175,6 +184,16 @@
                 '<span class="prof-badge-new ' + t + '">' + labelEsp(t, p.especialidade) + '</span>' +
                 (tempo ? '<span class="prof-dur-new">' + escHtml(tempo) + '</span>' : '') +
             '</div>' +
+        '</div>';
+    }
+
+    function htmlProfSaido(p) {
+        return '<div class="prof-row saido">' +
+            '<div class="prof-left">' +
+                '<span class="prof-dot-new saido"></span>' +
+                '<span class="prof-nome-new">' + escHtml(nomeResumido(p.nome)) + '</span>' +
+            '</div>' +
+            (p.saida ? '<span class="prof-saiu-time">saiu ' + escHtml(p.saida) + '</span>' : '') +
         '</div>';
     }
 
