@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enfermagem por Setor - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel50/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+    <div class="painel-container">
+
+        <!-- Cabecalho -->
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="Anchieta Ceilandia" class="header-logo" onerror="this.style.display='none'">
+                    <div class="header-title">
+                        <h1><i class="fas fa-user-nurse"></i> Enfermagem por Setor</h1>
+                        <span class="header-subtitle">Profissionais ativos no plantao atual</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div id="plantao-badge" class="plantao-badge">
+                        <i class="fas fa-moon"></i>
+                        <span id="plantao-label">--</span>
+                        <span id="plantao-horario" class="plantao-horario">--:-- - --:--</span>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btn-voltar" class="btn-header" onclick="history.back()">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="btn-text">Voltar</span>
+                        </button>
+                        <button id="btn-refresh" class="btn-header btn-refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="header-status">
+                        <span class="status-indicator status-loading" id="status-indicator"></span>
+                        <span class="ultima-atualizacao" id="ultima-atualizacao">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumo Global -->
+        <div class="dashboard-resumo">
+            <div class="resumo-grid">
+                <div class="resumo-card card-enf">
+                    <div class="card-icon"><i class="fas fa-user-nurse"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-enfermeiros">-</span>
+                        <span class="card-label">Enfermeiros no Plantao</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-tec">
+                    <div class="card-icon"><i class="fas fa-syringe"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-tecnicos">-</span>
+                        <span class="card-label">Tecnicos no Plantao</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-ativos">
+                    <div class="card-icon"><i class="fas fa-circle-dot"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-ativos">-</span>
+                        <span class="card-label">Ativos Agora</span>
+                    </div>
+                </div>
+                <div class="resumo-card card-setores">
+                    <div class="card-icon"><i class="fas fa-hospital"></i></div>
+                    <div class="card-content">
+                        <span class="card-value" id="stat-setores">-</span>
+                        <span class="card-label">Setores com Ativo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteudo Principal -->
+        <div class="painel-main">
+            <div class="content-scroll">
+                <div class="setores-grid" id="setores-grid">
+                    <div class="loading-container">
+                        <div class="loading-spinner"></div>
+                        <p>Carregando dados...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="sistema-footer">
+            <span id="sistema-versao-footer">Central de Informacoes V 1.1.4</span>
+        </footer>
+    </div>
+
+    <script src="/paineis/painel50/main.js"></script>
+    <script src="/static/js/versao.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

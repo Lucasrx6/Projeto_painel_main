@@ -1,0 +1,528 @@
+/* =========================================================
+   PAINEL 50 - Enfermagem por Setor
+   Baseado no padrao visual do Painel 18
+   ========================================================= */
+
+/* 1. VARIAVEIS CSS */
+:root {
+    --cor-primaria: #dc3545;
+    --cor-primaria-hover: #c82333;
+    --cor-primaria-light: #f8d7da;
+
+    --cor-sucesso: #28a745;
+    --cor-sucesso-light: #d4edda;
+    --cor-alerta: #ffc107;
+    --cor-alerta-light: #fff3cd;
+    --cor-info: #17a2b8;
+    --cor-info-light: #d1ecf1;
+
+    --cor-enf: #1565c0;
+    --cor-enf-light: #e3f2fd;
+    --cor-tec: #00796b;
+    --cor-tec-light: #e0f2f1;
+
+    --cor-texto: #333333;
+    --cor-texto-secundario: #666666;
+    --cor-texto-muted: #999999;
+    --cor-fundo: #f5f7fa;
+    --cor-fundo-card: #ffffff;
+    --cor-borda: #e9ecef;
+    --cor-borda-light: #f0f0f0;
+
+    --grad-header: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    --grad-enf: linear-gradient(135deg, #1565c0 0%, #42a5f5 100%);
+    --grad-tec: linear-gradient(135deg, #00796b 0%, #26a69a 100%);
+    --grad-ativos: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    --grad-setores: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    --sombra-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --sombra-md: 0 4px 12px rgba(0,0,0,0.10);
+    --sombra-card: 0 2px 8px rgba(0,0,0,0.08);
+    --sombra-card-hover: 0 4px 16px rgba(0,0,0,0.12);
+
+    --espacamento-xs: 4px;
+    --espacamento-sm: 8px;
+    --espacamento-md: 16px;
+    --espacamento-lg: 24px;
+    --espacamento-xl: 32px;
+
+    --raio-sm: 4px;
+    --raio-md: 8px;
+    --raio-lg: 12px;
+    --raio-full: 50%;
+
+    --fonte-principal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    --transicao-rapida: 150ms ease;
+    --transicao-normal: 250ms ease;
+
+    --z-header: 100;
+}
+
+/* 2. RESET E BASE */
+*, *::before, *::after {
+    margin: 0; padding: 0; box-sizing: border-box;
+}
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+body {
+    font-family: var(--fonte-principal);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* 3. LAYOUT */
+.painel-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--cor-fundo);
+}
+
+/* 4. CABECALHO */
+.painel-header {
+    background: var(--grad-header);
+    color: white;
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    flex-shrink: 0;
+    box-shadow: var(--sombra-md);
+    z-index: var(--z-header);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--espacamento-md);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+}
+
+.header-logo {
+    height: 32px;
+    padding: 4px 6px;
+    background: white;
+    border-radius: var(--raio-sm);
+    box-shadow: var(--sombra-sm);
+}
+
+.header-title h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.header-subtitle {
+    font-size: 0.7rem;
+    opacity: 0.85;
+    display: block;
+    margin-top: 2px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-md);
+}
+
+.header-actions {
+    display: flex;
+    gap: var(--espacamento-xs);
+}
+
+.header-status {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--raio-full);
+    background: rgba(255,255,255,0.5);
+}
+
+.status-indicator.status-online {
+    background: #2ecc71;
+    box-shadow: 0 0 8px rgba(46,204,113,0.6);
+}
+
+.status-indicator.status-loading {
+    background: #f1c40f;
+    animation: pulsar 1s ease-in-out infinite;
+}
+
+.ultima-atualizacao {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.btn-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1.5px solid rgba(255,255,255,0.4);
+    border-radius: var(--raio-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+    font-family: var(--fonte-principal);
+}
+
+.btn-header:hover {
+    background: white;
+    color: var(--cor-primaria);
+}
+
+.btn-refresh.girando i { animation: girar 0.5s linear; }
+
+/* Badge do plantao no header */
+.plantao-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.2);
+    border: 1.5px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.plantao-badge.diurno { background: rgba(255,193,7,0.25); border-color: rgba(255,193,7,0.6); }
+.plantao-badge.noturno { background: rgba(103,126,234,0.25); border-color: rgba(103,126,234,0.6); }
+
+.plantao-horario {
+    font-size: 0.7rem;
+    opacity: 0.85;
+    font-weight: 500;
+}
+
+/* 5. RESUMO GLOBAL */
+.dashboard-resumo {
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: linear-gradient(180deg, #ffffff 0%, var(--cor-fundo) 100%);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--espacamento-sm);
+}
+
+.resumo-card {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-card);
+    border-left: 3px solid transparent;
+    transition: var(--transicao-rapida);
+}
+
+.resumo-card:hover { transform: translateY(-2px); box-shadow: var(--sombra-card-hover); }
+
+.card-enf    { border-left-color: var(--cor-enf); }
+.card-tec    { border-left-color: var(--cor-tec); }
+.card-ativos { border-left-color: var(--cor-sucesso); }
+.card-setores{ border-left-color: #667eea; }
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--raio-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.card-icon i { font-size: 1rem; color: white; }
+
+.card-enf    .card-icon { background: var(--grad-enf); }
+.card-tec    .card-icon { background: var(--grad-tec); }
+.card-ativos .card-icon { background: var(--grad-ativos); }
+.card-setores .card-icon { background: var(--grad-setores); }
+
+.card-content { display: flex; flex-direction: column; min-width: 0; }
+
+.card-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.2;
+}
+
+.card-label {
+    font-size: 0.65rem;
+    color: var(--cor-texto-secundario);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+/* 6. CONTEUDO PRINCIPAL */
+.painel-main {
+    flex: 1;
+    overflow: hidden;
+    padding: var(--espacamento-sm) var(--espacamento-md);
+}
+
+.content-scroll {
+    height: 100%;
+    overflow-y: auto;
+    padding-right: var(--espacamento-sm);
+    scroll-behavior: smooth;
+}
+
+.content-scroll::-webkit-scrollbar { width: 6px; }
+.content-scroll::-webkit-scrollbar-track { background: var(--cor-borda); border-radius: var(--raio-sm); }
+.content-scroll::-webkit-scrollbar-thumb { background: var(--cor-primaria); border-radius: var(--raio-sm); }
+
+/* 7. GRID DE SETORES */
+.setores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--espacamento-md);
+    align-items: start;
+}
+
+/* 8. CARD DE SETOR */
+.setor-card {
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-card);
+    overflow: hidden;
+    border-top: 3px solid var(--cor-primaria);
+    transition: var(--transicao-rapida);
+}
+
+.setor-card:hover { box-shadow: var(--sombra-card-hover); }
+
+.setor-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.setor-nome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--cor-texto);
+}
+
+.setor-nome i {
+    color: var(--cor-primaria);
+    font-size: 0.9rem;
+}
+
+.setor-badges {
+    display: flex;
+    gap: 4px;
+}
+
+.badge-enf, .badge-tec, .badge-out {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--raio-sm);
+    letter-spacing: 0.2px;
+}
+
+.badge-enf {
+    background: var(--cor-enf-light);
+    color: var(--cor-enf);
+    border: 1px solid #90caf9;
+}
+
+.badge-tec {
+    background: var(--cor-tec-light);
+    color: var(--cor-tec);
+    border: 1px solid #80cbc4;
+}
+
+.badge-out {
+    background: var(--cor-fundo);
+    color: var(--cor-texto-muted);
+    border: 1px solid var(--cor-borda);
+}
+
+/* 9. LISTA DE PROFISSIONAIS */
+.setor-card-body { padding: var(--espacamento-sm) var(--espacamento-md); }
+
+.grupo-titulo {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--cor-texto-muted);
+    margin-bottom: 6px;
+    margin-top: var(--espacamento-sm);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.grupo-titulo:first-child { margin-top: 0; }
+
+.grupo-titulo i { font-size: 0.55rem; }
+
+.prof-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--cor-borda-light);
+    gap: 8px;
+}
+
+.prof-item:last-child { border-bottom: none; }
+
+.prof-info {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.prof-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--raio-full);
+    flex-shrink: 0;
+}
+
+.prof-dot.ativo   { background: var(--cor-sucesso); animation: pulsar-dot 2s ease-in-out infinite; }
+.prof-dot.saido   { background: var(--cor-texto-muted); }
+
+.prof-nome {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.prof-saido .prof-nome { color: var(--cor-texto-muted); font-weight: 400; }
+
+.prof-esp {
+    font-size: 0.65rem;
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: var(--raio-sm);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.esp-enfermeiro { background: var(--cor-enf-light); color: var(--cor-enf); }
+.esp-tecnico    { background: var(--cor-tec-light); color: var(--cor-tec); }
+.esp-outro      { background: var(--cor-fundo); color: var(--cor-texto-muted); }
+
+.prof-tempo {
+    font-size: 0.68rem;
+    color: var(--cor-texto-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.prof-saiu-badge {
+    font-size: 0.65rem;
+    color: var(--cor-texto-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.sem-profissional {
+    font-size: 0.78rem;
+    color: var(--cor-texto-muted);
+    padding: 8px 0;
+    text-align: center;
+}
+
+/* 10. ESTADOS DE CARREGAMENTO */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--espacamento-xl);
+    gap: var(--espacamento-md);
+    grid-column: 1 / -1;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria);
+    border-radius: var(--raio-full);
+    animation: girar 0.8s linear infinite;
+}
+
+.loading-container p { color: var(--cor-texto-secundario); font-size: 0.85rem; }
+
+.erro-container {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--espacamento-xl);
+    color: var(--cor-primaria);
+}
+
+/* 11. ANIMACOES */
+@keyframes girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulsar { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes pulsar-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.8); } }
+
+/* 12. RESPONSIVIDADE */
+@media (max-width: 1200px) {
+    .setores-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+
+@media (max-width: 992px) {
+    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
+    .btn-text { display: none; }
+    .plantao-badge .plantao-horario { display: none; }
+}
+
+@media (max-width: 768px) {
+    .resumo-grid { grid-template-columns: repeat(2, 1fr); }
+    .setores-grid { grid-template-columns: 1fr; }
+    .header-subtitle { display: none; }
+}

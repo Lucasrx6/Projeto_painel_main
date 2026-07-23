@@ -48,7 +48,8 @@ def api_minhas_permissoes():
                     'painel34', 'painel35', 'painel36', 'painel37', 
                     'painel38', 'painel39', 'painel40',
                     'painel41', 'painel42', 'painel43', 'painel44',
-                    'painel45', 'painel46', 'painel47', 'painel48', 'painel49'
+                    'painel45', 'painel46', 'painel47', 'painel48', 'painel49',
+                    'painel50'
                 ],
                 'is_admin': True
             })
@@ -427,6 +428,8 @@ def api_listar_paineis():
             {'nome': 'painel48', 'titulo': 'Assinatura Digital — HUB', 'descricao': '[Aux] Coleta de assinaturas eletrônicas (AES) com PIN e auditoria completa', 'ativo': True, 'categoria': 'auxiliar'},
             # --- Centro Cirúrgico / Hemodinâmica ---
             {'nome': 'painel49', 'titulo': 'Relatório de Salas Cirúrgicas', 'descricao': 'Relatório de tempo de uso e ociosidade das salas — CC e Hemodinâmica', 'ativo': True, 'categoria': 'cirurgia'},
+            # --- Enfermagem ---
+            {'nome': 'painel50', 'titulo': 'Enfermagem por Setor',          'descricao': 'Profissionais de enfermagem ativos por setor no plantão atual', 'ativo': True, 'categoria': 'clinico'},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200
