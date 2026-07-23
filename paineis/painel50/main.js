@@ -116,79 +116,64 @@
 
     function htmlSetor(s) {
         var ativos = s.ativos || [];
-        var saidos = s.saidos || [];
-        var todos  = ativos.concat(saidos);
+        var tipo   = tipoSetor(s.setor);
 
-        // Contar por tipo (apenas ativos para badges)
+        // Contagem por especialidade
         var cEnf = 0, cTec = 0, cOut = 0;
-        for (var j = 0; j < todos.length; j++) {
-            var t = tipoEsp(todos[j].especialidade);
-            if (t === 'enfermeiro') cEnf++;
-            else if (t === 'tecnico') cTec++;
-            else cOut++;
+        for (var j = 0; j < ativos.length; j++) {
+            var t = tipoEsp(ativos[j].especialidade);
+            if (t === 'enfermeiro')    cEnf++;
+            else if (t === 'tecnico')  cTec++;
+            else                       cOut++;
         }
 
-        var badges = '';
-        if (cEnf > 0) badges += '<span class="badge-enf"><i class="fas fa-user-nurse"></i> ' + cEnf + ' Enf</span>';
-        if (cTec > 0) badges += '<span class="badge-tec"><i class="fas fa-syringe"></i> ' + cTec + ' Tec</span>';
-        if (cOut > 0) badges += '<span class="badge-out">' + cOut + ' Out</span>';
+        // Linha de composição
+        var comp = '';
+        if (cEnf > 0) comp += '<span class="comp-item comp-enf"><i class="fas fa-user-nurse"></i> ' + cEnf + ' ENF</span>';
+        if (cTec > 0) {
+            if (comp) comp += '<span class="comp-sep">·</span>';
+            comp += '<span class="comp-item comp-tec"><i class="fas fa-syringe"></i> ' + cTec + ' TÉC</span>';
+        }
+        if (cOut > 0) {
+            if (comp) comp += '<span class="comp-sep">·</span>';
+            comp += '<span class="comp-item comp-out">' + cOut + ' outros</span>';
+        }
+        if (!comp) comp = '<span class="comp-vazio">Sem profissionais</span>';
 
-        var listaAtivos = '';
+        // Lista
+        var lista = '';
         if (ativos.length > 0) {
             for (var a = 0; a < ativos.length; a++) {
-                listaAtivos += htmlProfAtivo(ativos[a]);
+                lista += htmlProfItem(ativos[a]);
             }
         } else {
-            listaAtivos = '<p class="sem-profissional">Nenhum ativo no momento</p>';
+            lista = '<p class="sem-profissional">Nenhum ativo no momento</p>';
         }
 
-        var listaSaidos = '';
-        if (saidos.length > 0) {
-            listaSaidos =
-                '<p class="grupo-titulo"><i class="fas fa-circle" style="color:#ccc;"></i> Sairam neste plantao</p>';
-            for (var b = 0; b < saidos.length; b++) {
-                listaSaidos += htmlProfSaido(saidos[b]);
-            }
-        }
-
-        return '<div class="setor-card">' +
-            '<div class="setor-card-header">' +
-                '<div class="setor-nome"><i class="' + iconeSetor(s.setor) + '"></i>' + escHtml(s.setor) + '</div>' +
-                '<div class="setor-badges">' + badges + '</div>' +
+        return '<div class="setor-card setor-' + tipo + '">' +
+            '<div class="setor-header-band">' +
+                '<div class="setor-header-left">' +
+                    '<i class="' + iconeSetor(s.setor) + ' setor-icone"></i>' +
+                    '<span class="setor-nome-texto">' + escHtml(s.setor) + '</span>' +
+                '</div>' +
+                '<div class="setor-total-num">' + ativos.length + '</div>' +
             '</div>' +
-            '<div class="setor-card-body">' +
-                '<p class="grupo-titulo"><i class="fas fa-circle" style="color:#28a745;"></i> Ativos agora</p>' +
-                listaAtivos +
-                listaSaidos +
-            '</div>' +
+            '<div class="setor-composicao">' + comp + '</div>' +
+            '<div class="setor-lista">' + lista + '</div>' +
         '</div>';
     }
 
-    function htmlProfAtivo(p) {
-        var t = tipoEsp(p.especialidade);
-        var tempo = p.tempo ? escHtml(p.tempo) : (p.logon ? 'desde ' + escHtml(p.logon) : '');
-        return '<div class="prof-item">' +
-            '<div class="prof-info">' +
-                '<span class="prof-dot ativo"></span>' +
-                '<span class="prof-nome">' + escHtml(nomeResumido(p.nome)) + '</span>' +
+    function htmlProfItem(p) {
+        var t     = tipoEsp(p.especialidade);
+        var tempo = p.tempo || (p.logon ? 'desde ' + p.logon : '');
+        return '<div class="prof-row">' +
+            '<div class="prof-left">' +
+                '<span class="prof-dot-new ativo"></span>' +
+                '<span class="prof-nome-new">' + escHtml(nomeResumido(p.nome)) + '</span>' +
             '</div>' +
-            '<div style="display:flex;align-items:center;gap:6px;">' +
-                '<span class="prof-esp esp-' + t + '">' + labelEsp(t) + '</span>' +
-                (tempo ? '<span class="prof-tempo">' + tempo + '</span>' : '') +
-            '</div>' +
-        '</div>';
-    }
-
-    function htmlProfSaido(p) {
-        var t = tipoEsp(p.especialidade);
-        return '<div class="prof-item prof-saido">' +
-            '<div class="prof-info">' +
-                '<span class="prof-dot saido"></span>' +
-                '<span class="prof-nome">' + escHtml(nomeResumido(p.nome)) + '</span>' +
-            '</div>' +
-            '<div style="display:flex;align-items:center;gap:6px;">' +
-                '<span class="prof-esp esp-' + t + '">' + labelEsp(t) + '</span>' +
-                (p.saida ? '<span class="prof-saiu-badge"><i class="fas fa-arrow-right-from-bracket"></i>' + escHtml(p.saida) + '</span>' : '') +
+            '<div class="prof-right">' +
+                '<span class="prof-badge-new ' + t + '">' + labelEsp(t, p.especialidade) + '</span>' +
+                (tempo ? '<span class="prof-dur-new">' + escHtml(tempo) + '</span>' : '') +
             '</div>' +
         '</div>';
     }
@@ -213,6 +198,16 @@
         }).join(' ');
     }
 
+    function tipoSetor(nome) {
+        var n = (nome || '').toUpperCase();
+        if (n.indexOf('NEO')        !== -1) return 'neo';
+        if (n.indexOf('PED')        !== -1) return 'ped';
+        if (n.indexOf('UTI')        !== -1) return 'uti';
+        if (n.indexOf('MATERNI')    !== -1) return 'maternidade';
+        if (n.indexOf('INTERNACAO') !== -1 || n.indexOf('INTERNAÇÃO') !== -1) return 'internacao';
+        return 'outro';
+    }
+
     function tipoEsp(esp) {
         var e = (esp || '').toLowerCase();
         if (e.indexOf('enfermeiro') !== -1) return 'enfermeiro';
@@ -220,9 +215,10 @@
         return 'outro';
     }
 
-    function labelEsp(tipo) {
+    function labelEsp(tipo, espRaw) {
         if (tipo === 'enfermeiro') return 'ENF';
         if (tipo === 'tecnico')    return 'TÉC';
+        if (espRaw) return capitalizar(espRaw.split(' ')[0]);
         return 'OUT';
     }
 
