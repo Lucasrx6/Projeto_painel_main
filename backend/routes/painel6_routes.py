@@ -31,7 +31,8 @@ def painel6():
 
 @painel6_bp.route('/api/paineis/painel6/dashboard', methods=['GET'])
 @login_required
-@cache_route(ttl=60, key_prefix='painel6:dashboard')
+@panel_permission_required('painel6')
+@cache_route(ttl=60, key_prefix='painel6:dashboard', vary_by_user=False)
 def painel6_dashboard():
     """
     Dashboard de criticidade
@@ -70,6 +71,7 @@ def painel6_dashboard():
 
 @painel6_bp.route('/api/paineis/painel6/lista', methods=['GET'])
 @login_required
+@panel_permission_required('painel6')
 @cache_route(ttl=60, key_prefix='painel6:lista', vary_by_query=True)
 def painel6_lista():
     """

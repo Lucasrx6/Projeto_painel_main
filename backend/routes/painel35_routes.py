@@ -196,7 +196,6 @@ def api_painel35_iniciar(chamado_id):
             if str(chamado['padioleiro_id']) != str(padioleiro_id):
                 return jsonify({'success': False, 'error': 'Sem permissao para este chamado'}), 403
 
-        with get_db_cursor(use_dict_cursor=False) as cursor:
             cursor.execute("""
                 UPDATE padioleiro_chamados
                 SET status = 'em_transporte',
@@ -237,7 +236,6 @@ def api_painel35_concluir(chamado_id):
             if str(chamado['padioleiro_id']) != str(padioleiro_id):
                 return jsonify({'success': False, 'error': 'Sem permissao para este chamado'}), 403
 
-        with get_db_cursor(use_dict_cursor=False) as cursor:
             cursor.execute("""
                 UPDATE padioleiro_chamados
                 SET status = 'concluido',

@@ -40,7 +40,7 @@ def painel4_detalhes():
 @painel4_bp.route('/api/paineis/painel4/dashboard', methods=['GET'])
 @login_required
 @panel_permission_required('painel4')
-@cache_route(ttl=180, key_prefix='painel4:dashboard')
+@cache_route(ttl=180, key_prefix='painel4:dashboard', vary_by_user=False)
 def api_painel4_dashboard():
     """
     Dashboard geral de ocupação
@@ -81,7 +81,7 @@ def api_painel4_dashboard():
 @painel4_bp.route('/api/paineis/painel4/setores', methods=['GET'])
 @login_required
 @panel_permission_required('painel4')
-@cache_route(ttl=180, key_prefix='painel4:setores')
+@cache_route(ttl=180, key_prefix='painel4:setores', vary_by_user=False)
 def api_painel4_setores():
     """
     Lista ocupação por setor
@@ -108,7 +108,7 @@ def api_painel4_setores():
 @painel4_bp.route('/api/paineis/painel4/leitos-ocupados', methods=['GET'])
 @login_required
 @panel_permission_required('painel4')
-@cache_route(ttl=120, key_prefix='painel4:leitos-ocupados')
+@cache_route(ttl=120, key_prefix='painel4:leitos-ocupados', vary_by_user=False)
 def api_painel4_leitos_ocupados():
     """
     Lista leitos ocupados
@@ -135,7 +135,7 @@ def api_painel4_leitos_ocupados():
 @painel4_bp.route('/api/paineis/painel4/leitos-disponiveis', methods=['GET'])
 @login_required
 @panel_permission_required('painel4')
-@cache_route(ttl=120, key_prefix='painel4:leitos-disponiveis')
+@cache_route(ttl=120, key_prefix='painel4:leitos-disponiveis', vary_by_user=False)
 def api_painel4_leitos_disponiveis():
     """
     Lista leitos disponíveis
@@ -162,7 +162,7 @@ def api_painel4_leitos_disponiveis():
 @painel4_bp.route('/api/paineis/painel4/todos-leitos', methods=['GET'])
 @login_required
 @panel_permission_required('painel4')
-@cache_route(ttl=180, key_prefix='painel4:todos-leitos')
+@cache_route(ttl=180, key_prefix='painel4:todos-leitos', vary_by_user=False)
 def api_painel4_todos_leitos():
     """
     Lista todos os leitos do hospital

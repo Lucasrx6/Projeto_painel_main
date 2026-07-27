@@ -176,7 +176,6 @@ def get_historico():
             })
 
         cur.close()
-        conn.close()
 
         total_paginas = max(1, -(-total // por_pagina))  # ceil division
 
@@ -189,8 +188,10 @@ def get_historico():
         })
 
     except Exception as e:
-        conn.close()
         return jsonify({'erro': 'Erro interno'}), 500
+    finally:
+        if not conn.closed:
+            conn.close()
 
 
 # ─────────────────────────────────────────────────────────
@@ -282,7 +283,6 @@ def get_stats():
             })
 
         cur.close()
-        conn.close()
 
         return jsonify({
             'totais':           dict(totais),
@@ -293,8 +293,10 @@ def get_stats():
         })
 
     except Exception as e:
-        conn.close()
         return jsonify({'erro': 'Erro interno'}), 500
+    finally:
+        if not conn.closed:
+            conn.close()
 
 
 # ─────────────────────────────────────────────────────────
@@ -317,7 +319,6 @@ def exportar_csv():
         cur.execute(q_data + ' LIMIT 50000', params)
         rows = cur.fetchall()
         cur.close()
-        conn.close()
 
         output = io.StringIO()
         writer = csv.writer(output, quoting=csv.QUOTE_ALL)
@@ -382,8 +383,10 @@ def exportar_csv():
         )
 
     except Exception as e:
-        conn.close()
         return jsonify({'erro': 'Erro interno'}), 500
+    finally:
+        if not conn.closed:
+            conn.close()
 
 
 # ─────────────────────────────────────────────────────────
@@ -443,7 +446,6 @@ def exportar_mensal_paineis():
         totais = {r['painel_codigo']: dict(r) for r in cur.fetchall()}
 
         cur.close()
-        conn.close()
 
         # Gera lista de meses em ordem cronológica (mais antigo → mais recente)
         from datetime import date as _date
@@ -521,9 +523,10 @@ def exportar_mensal_paineis():
         )
 
     except Exception as e:
+        return jsonify({'erro': 'Erro interno'}), 500
+    finally:
         if not conn.closed:
             conn.close()
-        return jsonify({'erro': 'Erro interno'}), 500
 
 
 # ─────────────────────────────────────────────────────────
@@ -584,14 +587,15 @@ def limpeza():
         removidos = cur.rowcount
         conn.commit()
         cur.close()
-        conn.close()
         return jsonify({
             'removidos': removidos,
             'msg': '{} registro(s) removido(s) (anteriores a 6 meses)'.format(removidos)
         })
     except Exception as e:
-        conn.close()
         return jsonify({'erro': 'Erro interno'}), 500
+    finally:
+        if not conn.closed:
+            conn.close()
 
 
 # ─────────────────────────────────────────────────────────
@@ -612,13 +616,15 @@ def paineis_lista():
             SELECT painel_codigo, painel_nome, COUNT(*) AS total
             FROM access_log
             WHERE painel_codigo IS NOT NULL
+              AND dt_acesso >= NOW() - INTERVAL '6 months'
             GROUP BY painel_codigo, painel_nome
             ORDER BY total DESC
         """)
         lista = [dict(r) for r in cur.fetchall()]
         cur.close()
-        conn.close()
         return jsonify(lista)
     except Exception as e:
-        conn.close()
         return jsonify([])
+    finally:
+        if not conn.closed:
+            conn.close()

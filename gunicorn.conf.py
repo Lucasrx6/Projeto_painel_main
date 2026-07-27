@@ -20,8 +20,8 @@ worker_class = 'gthread'                                 # Threads por worker (n
 threads     = int(os.getenv('GUNICORN_THREADS', '8'))   # Requisições simultâneas
 # Reinicia o worker após N requisições para liberar fragmentação de memória.
 # Jitter evita que todos os workers reiniciem ao mesmo tempo.
-max_requests        = int(os.getenv('GUNICORN_MAX_REQUESTS', '1000'))
-max_requests_jitter = int(os.getenv('GUNICORN_MAX_REQUESTS_JITTER', '200'))
+max_requests        = int(os.getenv('GUNICORN_MAX_REQUESTS', '5000'))
+max_requests_jitter = int(os.getenv('GUNICORN_MAX_REQUESTS_JITTER', '1000'))
 
 # ── Rede ────────────────────────────────────────────────────────────────────
 bind        = os.getenv('GUNICORN_BIND', '0.0.0.0:5000')
