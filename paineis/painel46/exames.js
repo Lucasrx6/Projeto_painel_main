@@ -214,9 +214,9 @@
             var resultEx = [];
             for (var fi = 0; fi < filtrados.length; fi++) {
                 var ex2 = filtrados[fi];
-                if ((ex2.nm_pessoa_fisica              || '').toLowerCase().indexOf(termoEx) >= 0
-                 || (ex2.nr_atendimento                || '').toLowerCase().indexOf(termoEx) >= 0
-                 || (ex2.leito || ex2.leito_base       || '').toLowerCase().indexOf(termoEx) >= 0) {
+                if (String(ex2.nm_pessoa_fisica        || '').toLowerCase().indexOf(termoEx) >= 0
+                 || String(ex2.nr_atendimento          || '').toLowerCase().indexOf(termoEx) >= 0
+                 || String(ex2.leito || ex2.leito_base || '').toLowerCase().indexOf(termoEx) >= 0) {
                     resultEx.push(ex2);
                 }
             }
