@@ -209,6 +209,20 @@
             filtrados.push(ex);
         }
 
+        if (E.filtroBusca) {
+            var termoEx = E.filtroBusca.toLowerCase();
+            var resultEx = [];
+            for (var fi = 0; fi < filtrados.length; fi++) {
+                var ex2 = filtrados[fi];
+                if ((ex2.nm_pessoa_fisica              || '').toLowerCase().indexOf(termoEx) >= 0
+                 || (ex2.nr_atendimento                || '').toLowerCase().indexOf(termoEx) >= 0
+                 || (ex2.leito || ex2.leito_base       || '').toLowerCase().indexOf(termoEx) >= 0) {
+                    resultEx.push(ex2);
+                }
+            }
+            filtrados = resultEx;
+        }
+
         if (!filtrados.length) {
             if (vazio)    vazio.style.display    = '';
             if (conteudo) conteudo.style.display = 'none';

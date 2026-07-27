@@ -134,6 +134,25 @@
         var pendentes = E.fila.pendentes;
         var recusados = E.fila.recusados;
 
+        if (E.filtroBusca) {
+            var termoBusca = E.filtroBusca.toLowerCase();
+            var filtrarFila = function (lista) {
+                var result = [];
+                for (var bi = 0; bi < lista.length; bi++) {
+                    var itF = lista[bi];
+                    if ((itF.nm_paciente    || '').toLowerCase().indexOf(termoBusca) >= 0
+                     || (itF.leito_origem   || '').toLowerCase().indexOf(termoBusca) >= 0
+                     || (itF.nr_atendimento || '').toLowerCase().indexOf(termoBusca) >= 0) {
+                        result.push(itF);
+                    }
+                }
+                return result;
+            };
+            agendados = filtrarFila(agendados);
+            pendentes = filtrarFila(pendentes);
+            recusados = filtrarFila(recusados);
+        }
+
         var loading   = document.getElementById('fila-loading');
         var vazio     = document.getElementById('fila-vazia');
         var secAg     = document.getElementById('secao-agendados');

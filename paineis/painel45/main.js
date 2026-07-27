@@ -88,6 +88,25 @@
             }
         }
 
+        // ── Busca rápida ─────────────────────────────────────────────────────
+        var inputBusca = document.getElementById('input-busca');
+        var btnLimpar  = document.getElementById('btn-limpar-busca');
+        if (inputBusca) {
+            inputBusca.addEventListener('input', function () {
+                E.filtroBusca = this.value.trim();
+                if (btnLimpar) btnLimpar.style.display = E.filtroBusca ? '' : 'none';
+                window.P45.renderizar();
+            });
+        }
+        if (btnLimpar) {
+            btnLimpar.addEventListener('click', function () {
+                E.filtroBusca = '';
+                if (inputBusca) { inputBusca.value = ''; inputBusca.focus(); }
+                btnLimpar.style.display = 'none';
+                window.P45.renderizar();
+            });
+        }
+
         // ── Delegação de eventos para ciência / recusar (data-acao) ────────
         document.addEventListener('click', function (e) {
             var el = e.target;

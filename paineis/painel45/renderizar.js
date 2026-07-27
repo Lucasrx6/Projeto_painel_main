@@ -220,11 +220,26 @@
             filtrados.push(it);
         }
 
+        if (E.filtroBusca) {
+            var termo = E.filtroBusca.toLowerCase();
+            var resultado = [];
+            for (var bi = 0; bi < filtrados.length; bi++) {
+                var it2 = filtrados[bi];
+                if ((it2.nm_paciente    || '').toLowerCase().indexOf(termo) >= 0
+                 || (it2.leito_origem   || '').toLowerCase().indexOf(termo) >= 0
+                 || (it2.nr_atendimento || '').toLowerCase().indexOf(termo) >= 0) {
+                    resultado.push(it2);
+                }
+            }
+            filtrados = resultado;
+        }
+
         atualizarContadores(E.dados);
 
         if (!filtrados.length) {
-            mc.innerHTML = '<div class="painel-vazio"><i class="fas fa-calendar-check"></i>'
-                + '<p>Nenhum agendamento encontrado.</p></div>';
+            mc.innerHTML = '<div class="painel-vazio"><i class="fas fa-'
+                + (E.filtroBusca ? 'search' : 'calendar-check') + '"></i>'
+                + '<p>' + (E.filtroBusca ? 'Nenhum resultado para &ldquo;' + escHtml(E.filtroBusca) + '&rdquo;.' : 'Nenhum agendamento encontrado.') + '</p></div>';
             return;
         }
 

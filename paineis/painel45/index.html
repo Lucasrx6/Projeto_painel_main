@@ -43,6 +43,14 @@
                     <button class="pill ativo" data-pill="todos">Todos</button>
                 </div>
                 <div class="filtros-right">
+                    <div class="busca-rapida">
+                        <i class="fas fa-search busca-icone"></i>
+                        <input type="text" id="input-busca" class="input-busca"
+                               placeholder="Nome, leito ou atendimento..." autocomplete="off" spellcheck="false">
+                        <button class="btn-limpar-busca" id="btn-limpar-busca" title="Limpar" style="display:none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                     <div class="filtro-status-pills" id="filtro-status-pills">
                         <button class="pill-status ativo" data-status="todos">Todos</button>
                         <button class="pill-status pill-aguardando" data-status="pendente">

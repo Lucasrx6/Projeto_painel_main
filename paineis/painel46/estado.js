@@ -50,7 +50,8 @@ var PAINEL_VERSAO = '1.1.4';
             irmaosPresc:               null,
             irmaosSlotInfo:            null,
             // Flag: avulso aberto a partir do modal de agendamento
-            avulsoParaPresc:           false
+            avulsoParaPresc:           false,
+            filtroBusca:               ''
         },
 
         DOM: {}

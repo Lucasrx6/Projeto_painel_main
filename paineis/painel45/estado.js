@@ -18,6 +18,7 @@ var PAINEL_VERSAO = '1.1.4';
             setoresSelecionados: [],
             filtroStatus:        'todos',  // 'todos' | 'pendente' | 'ciente' | 'recusado'
             filtroData:          '',       // YYYY-MM-DD — definido em main.js → inicializar()
+            filtroBusca:         '',
             modalId:             null
         }
     };
