@@ -20,14 +20,11 @@
         window.P46.inicializarPillsAgenda();
 
         // ── Abas ──────────────────────────────────────────────────────────────
-        var buscaBar = document.getElementById('busca-global-bar');
         var abasBtns = document.querySelectorAll('.aba');
         for (var i = 0; i < abasBtns.length; i++) {
             (function (btn) {
                 btn.addEventListener('click', function () {
-                    var nomeAba = btn.getAttribute('data-aba');
-                    window.P46.mudarTab(nomeAba);
-                    if (buscaBar) buscaBar.style.display = (nomeAba === 'agenda') ? 'none' : '';
+                    window.P46.mudarTab(btn.getAttribute('data-aba'));
                 });
             })(abasBtns[i]);
         }
@@ -124,6 +121,7 @@
                 if (btnLimpar) btnLimpar.style.display = E.filtroBusca ? '' : 'none';
                 window.P46.renderizarFila();
                 window.P46.renderizarExamesRadio();
+                window.P46.renderizarAgenda();
             });
         }
         if (btnLimpar) {
@@ -133,6 +131,7 @@
                 btnLimpar.style.display = 'none';
                 window.P46.renderizarFila();
                 window.P46.renderizarExamesRadio();
+                window.P46.renderizarAgenda();
             });
         }
 

@@ -123,6 +123,19 @@
             if (modal === filtro) lista.push(E.slots[i]);
         }
 
+        if (E.filtroBusca) {
+            var termoAg = E.filtroBusca.toLowerCase();
+            var listaFiltrada = [];
+            for (var ai = 0; ai < lista.length; ai++) {
+                var sl = lista[ai];
+                if (String(sl.nm_paciente    || '').toLowerCase().indexOf(termoAg) >= 0
+                 || String(sl.nr_atendimento || '').toLowerCase().indexOf(termoAg) >= 0) {
+                    listaFiltrada.push(sl);
+                }
+            }
+            lista = listaFiltrada;
+        }
+
         if (!lista.length) {
             if (vazio) vazio.style.display = '';
             if (grade) grade.style.display = 'none';
