@@ -205,8 +205,11 @@
                 (d.hora_checagem ? ' · ' + escHtml(d.hora_checagem) : '') +
                 '</div>';
         }
+        var horaHtml = d.e_hoje === false
+            ? '<div class="pac-hora"><span class="dia-seg">amanhã</span>' + escHtml(d.hora_prevista || '--:--') + '</div>'
+            : '<div class="pac-hora">' + escHtml(d.hora_prevista || '--:--') + '</div>';
         return '<div class="pac-dose-linha ' + rot.cls + '">' +
-            '<div class="pac-hora">' + escHtml(d.hora_prevista || '--:--') + '</div>' +
+            horaHtml +
             '<div class="pac-med">' +
             '<div class="pac-med-nome">' + escHtml(d.ds_material || '—') + '</div>' +
             '<div class="pac-med-posol">' +
@@ -437,8 +440,11 @@
                 escHtml(fmtNome(d.nm_profissional_checagem)) +
                 (d.hora_checagem ? ' · ' + escHtml(d.hora_checagem) : '') + '</span>';
         }
+        var dHoraHtml = d.e_hoje === false
+            ? '<div class="d-hora"><span class="dia-seg">amanhã</span>' + escHtml(d.hora_prevista || '--:--') + '</div>'
+            : '<div class="d-hora">' + escHtml(d.hora_prevista || '--:--') + '</div>';
         return '<div class="dose ' + rot.cls + '">' +
-            '<div class="d-hora">' + escHtml(d.hora_prevista || '--:--') + '</div>' +
+            dHoraHtml +
             '<div class="d-corpo">' +
             '<div class="d-nome">' + escHtml(d.ds_material || '—') + '</div>' +
             '<div class="d-meta">' +

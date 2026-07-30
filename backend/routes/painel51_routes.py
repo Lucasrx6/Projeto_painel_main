@@ -361,15 +361,20 @@ def api_p51_paciente(nr_atendimento):
                     ds_intervalo, cd_intervalo, tipo_intervalo, situacao, severidade,
                     min_atraso, alta_vigilancia, classe_vigilancia,
                     pendente_farmacia, gera_alarme,
-                    dt_checagem IS NOT NULL AS checada,
+                    dt_checagem IS NOT NULL                    AS checada,
                     nm_profissional_checagem, ds_evento_beira_leito, evento_rotulo,
-                    TO_CHAR(dt_prevista,  'HH24:MI')  AS hora_prevista,
-                    TO_CHAR(dt_checagem,  'HH24:MI')  AS hora_checagem,
+                    TO_CHAR(dt_prevista,  'HH24:MI')           AS hora_prevista,
+                    TO_CHAR(dt_checagem,  'HH24:MI')           AS hora_checagem,
+                    TO_CHAR(dt_prevista,  'DD/MM')             AS data_prevista,
+                    dt_prevista::DATE = CURRENT_DATE           AS e_hoje,
                     cd_leito, nm_paciente, cd_setor, nm_setor
                 FROM vw_painel41_doses
                 WHERE nr_atendimento = %s
                   AND na_janela_operacional = TRUE
                 ORDER BY
+                    -- Não-administradas sempre antes das administradas
+                    CASE WHEN dt_checagem IS NULL THEN 0 ELSE 1 END,
+                    -- Dentro das não-administradas: urgência decrescente
                     CASE WHEN situacao IN ('CRITICA','ATRASADA','ABERTA') THEN 0
                          WHEN situacao IN ('PROXIMA','AGENDADA')           THEN 1
                          ELSE 2 END,
@@ -377,11 +382,14 @@ def api_p51_paciente(nr_atendimento):
             """, (nr_atendimento,))
             doses = [dict(r) for r in cursor.fetchall()]
 
-        # Agrupa em seções (igual ao drawer do mockup)
-        precisa_acao = [d for d in doses if d['situacao'] in ('CRITICA','ATRASADA','ABERTA')]
-        proximas     = [d for d in doses if d['situacao'] in ('PROXIMA','AGENDADA')]
-        resolvidas   = [d for d in doses if d['situacao'] not in
-                        ('CRITICA','ATRASADA','ABERTA','PROXIMA','AGENDADA')]
+        # Separador primário: checada (dt_checagem preenchido) vs. não-checada
+        _nao_adm = [d for d in doses if not d.get('checada')]
+        _adm     = [d for d in doses if     d.get('checada')]
+
+        # Dentro das não-administradas: urgência vs. agendadas/futuras
+        precisa_acao = [d for d in _nao_adm if d['situacao'] in ('CRITICA','ATRASADA','ABERTA')]
+        proximas     = [d for d in _nao_adm if d['situacao'] not in ('CRITICA','ATRASADA','ABERTA')]
+        resolvidas   = _adm
 
         info = {'cd_leito': None, 'nm_paciente': None, 'cd_setor': None, 'nm_setor': None}
         if doses:

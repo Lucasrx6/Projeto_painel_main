@@ -676,6 +676,18 @@ body {
 .pac-dose-linha.d-abr  { background: rgba(253,126,20,.04); }
 .pac-dose-linha.d-prx  { background: rgba(23,162,184,.03); }
 
+/* Indicador de dia seguinte (compartilhado: card e drawer) */
+.dia-seg {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--s-proxima);
+    line-height: 1.2;
+    font-family: inherit;
+}
+
 .pac-hora {
     font-family: monospace; font-weight: 800; font-size: 16px;
     font-variant-numeric: tabular-nums; color: var(--cor-texto-sec);
