@@ -12,7 +12,7 @@
             paciente:  '/api/paineis/painel51/paciente/'
         },
         INTERVALO_REFRESH:  60000,
-        PAC_INTERVALO:      30000,   // troca de dupla
+        PAC_INTERVALO:      45000,   // troca de dupla
         PAC_TICKER_MS:      2000,    // ms entre cada item avançar
         PAC_TICKER_ANIM_MS: 500,     // duração da animação de slide
         STORAGE_PREFIX:     'painel51_'
