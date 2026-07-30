@@ -24,10 +24,10 @@
         </div>
         <div class="hdr-dir">
             <button class="btn-h" id="btnSom" title="Alertas sonoros">
-                <i class="fa-solid fa-bell"></i> <span class="btn-label">Alertas</span>
+                <i class="fa-solid fa-bell"></i>
             </button>
             <button class="btn-h" id="btnTv" title="Modo TV">
-                <i class="fa-solid fa-tv"></i> <span class="btn-label">TV</span>
+                <i class="fa-solid fa-tv"></i>
             </button>
             <button class="btn-h" id="btn-refresh" title="Atualizar agora">
                 <i class="fa-solid fa-arrows-rotate"></i>
@@ -35,7 +35,7 @@
             <a class="btn-h" href="/dashboard" title="Voltar ao dashboard">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            <div class="relogio" id="relogio">--:--<small id="ultima-atualizacao">inicializando</small></div>
+            <div class="relogio" id="relogio">--:--<small>inicializando</small></div>
         </div>
     </div>
     <div class="setores" id="setores">
@@ -43,61 +43,17 @@
     </div>
 </header>
 
-<!-- ── KPIs (compactos) ───────────────────────────────────────────────── -->
+<!-- ── KPIs ───────────────────────────────────────────────────────────── -->
 <section class="kpis" id="kpis" aria-label="Indicadores"></section>
 
-<!-- ── MODOS + FILTRO ─────────────────────────────────────────────────── -->
-<div class="modos">
-    <div class="tabs" role="tablist">
-        <button class="tab" data-modo="mural" role="tab" aria-selected="false">
-            <i class="fa-solid fa-grip"></i> Mural
-        </button>
-        <button class="tab on" data-modo="tabela" role="tab" aria-selected="true">
-            <i class="fa-solid fa-table-list"></i> Tabela
-        </button>
-        <button class="tab" data-modo="pac" role="tab" aria-selected="false">
-            <i class="fa-solid fa-person-walking-arrow-right"></i> Paciente a paciente
-        </button>
-    </div>
-    <button class="foco" id="btnFoco" title="Mostrar apenas pendências">
-        <i class="fa-solid fa-filter"></i> Só pendências
-    </button>
-</div>
-
-<!-- ── MURAL DE LEITOS ────────────────────────────────────────────────── -->
-<section class="mural hide" id="mural" aria-live="polite">
-    <div class="vazio" style="grid-column:1/-1">
-        <i class="fa-solid fa-spinner fa-spin"></i>
-        <b>Carregando leitos…</b>
-    </div>
-</section>
-
-<!-- ── VISÃO TABELA ────────────────────────────────────────────────────── -->
-<section class="tb-wrap" id="tb-wrap" aria-live="polite">
-    <div class="vazio">
-        <i class="fa-solid fa-spinner fa-spin"></i>
-        <b>Carregando…</b>
-    </div>
-</section>
-
 <!-- ── PAGINADOR PACIENTE A PACIENTE ─────────────────────────────────── -->
-<section class="pac-wrap hide" id="pac-wrap">
-    <div class="pac-nav">
-        <button class="pac-btn" id="pac-prev" title="Paciente anterior">
-            <i class="fa-solid fa-chevron-left"></i>
-        </button>
-        <div class="pac-pos" id="pac-pos">— / —</div>
-        <button class="pac-btn" id="pac-next" title="Próximo paciente">
-            <i class="fa-solid fa-chevron-right"></i>
-        </button>
-        <div class="pac-prog" title="Avança automaticamente a cada 5s">
-            <div class="pac-prog-bar" id="pac-prog-bar"></div>
-        </div>
-    </div>
+<section class="pac-wrap" id="pac-wrap">
     <div class="pac-card" id="pac-card">
-        <div class="vazio">
-            <i class="fa-solid fa-spinner fa-spin"></i>
-            <b>Carregando…</b>
+        <div class="pac-card-item">
+            <div class="vazio">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <b>Carregando…</b>
+            </div>
         </div>
     </div>
 </section>

@@ -582,43 +582,6 @@ body {
 /* ── PAGINADOR PACIENTE A PACIENTE ──────────────────────────────────────── */
 .pac-wrap { padding: 14px 18px 28px; }
 
-.pac-nav {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--cor-card);
-    border-radius: var(--raio);
-    padding: 10px 14px;
-    box-shadow: var(--sombra);
-    margin-bottom: 12px;
-}
-.pac-btn {
-    background: var(--cor-fundo);
-    border: 1px solid var(--cor-borda);
-    border-radius: 6px;
-    width: 36px; height: 36px;
-    cursor: pointer;
-    font-size: 14px;
-    color: var(--cor-texto);
-    flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    transition: .15s;
-}
-.pac-btn:hover { background: var(--cor-primaria); color: #fff; border-color: var(--cor-primaria); }
-.pac-pos {
-    font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
-    color: var(--cor-texto-sec); white-space: nowrap; min-width: 52px; text-align: center;
-}
-.pac-prog {
-    flex: 1; height: 6px; background: var(--cor-borda);
-    border-radius: 3px; overflow: hidden;
-}
-.pac-prog-bar {
-    height: 100%; background: var(--cor-primaria);
-    width: 0%; border-radius: 3px;
-    transition: width .1s linear;
-}
-
 .pac-card {
     display: flex;
     gap: 12px;
@@ -632,27 +595,54 @@ body {
     border-radius: var(--raio);
     box-shadow: var(--sombra);
     overflow-y: auto;
-    max-height: calc(100vh - 310px);
+    max-height: calc(100vh - 240px);
     scrollbar-width: none;
 }
 .pac-card-item::-webkit-scrollbar { display: none; }
 
+/* Cabeçalho fixo dentro do scroll */
 .pac-pac-hdr {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 16px 20px;
+    padding: 14px 20px;
     border-bottom: 1px solid var(--cor-borda);
-    background: rgba(0,0,0,.02);
+    background: var(--cor-card);
+    position: sticky;
+    top: 0;
+    z-index: 5;
 }
 .pac-pac-hdr.sev5 { background: var(--s-critica-bg);  border-left: 6px solid var(--s-critica);  }
 .pac-pac-hdr.sev4 { background: var(--s-atrasada-bg); border-left: 6px solid var(--s-atrasada); }
 .pac-pac-hdr.sev3 { background: var(--s-aberta-bg);   border-left: 6px solid var(--s-aberta);   }
 .pac-pac-hdr.sev2 { background: var(--s-proxima-bg);  border-left: 6px solid var(--s-proxima);  }
 
-.pac-leito  { font-size: 2.2rem; font-weight: 800; letter-spacing: -1.5px; min-width: 80px; line-height: 1; }
-.pac-nome   { font-size: 1.15rem; font-weight: 700; }
-.pac-setor  { font-size: 12px; color: var(--cor-texto-sec); margin-top: 3px; }
+.pac-leito     { font-size: 2.2rem; font-weight: 800; letter-spacing: -1.5px; min-width: 80px; line-height: 1; flex-shrink: 0; }
+.pac-hdr-info  { flex: 1; min-width: 0; }
+.pac-nome      { font-size: 1.15rem; font-weight: 700; }
+.pac-setor     { font-size: 12px; color: var(--cor-texto-sec); margin-top: 2px; }
+
+/* Contadores de pendentes / checados no cabeçalho */
+.pac-meta-counts {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+.cnt-pend {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700;
+    background: var(--s-critica-bg); color: var(--s-critica);
+    padding: 2px 9px; border-radius: 20px;
+    border: 1px solid rgba(167,29,42,.2);
+}
+.cnt-ok {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700;
+    background: var(--s-ok-bg); color: #186c31;
+    padding: 2px 9px; border-radius: 20px;
+    border: 1px solid rgba(40,167,69,.2);
+}
 
 .pac-secao {
     font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
@@ -665,7 +655,7 @@ body {
 .pac-dose-linha {
     display: grid;
     grid-template-columns: 58px 1fr auto;
-    align-items: center;
+    align-items: start;
     gap: 10px;
     padding: 9px 20px;
     border-bottom: 1px solid #f4f5f6;
@@ -680,6 +670,7 @@ body {
 .pac-hora {
     font-family: monospace; font-weight: 800; font-size: 16px;
     font-variant-numeric: tabular-nums; color: var(--cor-texto-sec);
+    padding-top: 1px;
 }
 .pac-dose-linha.d-crit .pac-hora { color: var(--s-critica);  }
 .pac-dose-linha.d-atr  .pac-hora { color: var(--s-atrasada); }
@@ -689,7 +680,23 @@ body {
 .pac-med       { min-width: 0; }
 .pac-med-nome  { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pac-med-posol { font-size: 11px; color: var(--cor-texto-muted); margin-top: 1px; }
-.pac-tags      { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* Nome de quem checou */
+.pac-checker {
+    font-size: 10.5px;
+    color: #186c31;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+.pac-checker i { opacity: .8; }
+
+.pac-tags      { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; align-content: flex-start; }
+
+/* Checker no drawer */
+.tg-chk { background: var(--s-ok-bg); color: #186c31; border: 1px solid rgba(40,167,69,.25); }
 
 /* ── MODO TV ─────────────────────────────────────────────────────────────── */
 body.modo-tv { --font-size-base: 20px; }
