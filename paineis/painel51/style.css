@@ -631,8 +631,11 @@ body {
     background: var(--cor-card);
     border-radius: var(--raio);
     box-shadow: var(--sombra);
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: calc(100vh - 310px);
+    scrollbar-width: none;
 }
+.pac-card-item::-webkit-scrollbar { display: none; }
 
 .pac-pac-hdr {
     display: flex;

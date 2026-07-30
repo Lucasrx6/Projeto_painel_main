@@ -13,8 +13,11 @@
             paciente:  '/api/paineis/painel51/paciente/'
         },
         INTERVALO_REFRESH:    60000,
-        PAC_INTERVALO:        5000,
+        PAC_INTERVALO:        15000,
         PAC_TICK:             100,
+        PAC_SCROLL_PX:        2,      // px por tick de scroll (60ms)
+        PAC_SCROLL_TICK:      60,     // ms entre ticks de scroll
+        PAC_SCROLL_DELAY:     1500,   // ms aguardar antes de iniciar scroll
         STORAGE_PREFIX:       'painel51_',
         AUTO_SCROLL_INTERVAL: 5000
     };
@@ -34,11 +37,13 @@
         ultimaAtualizacao: null,
         scrollTimer: null,
         pac: {
-            idx:       0,
-            cache:     {},
-            timer:     null,
-            progTimer: null,
-            progPct:   0
+            idx:             0,
+            cache:           {},
+            timer:           null,
+            progTimer:       null,
+            progPct:         0,
+            scrollTimer:     null,
+            scrollDelayTimer:null
         }
     };
 
@@ -458,7 +463,7 @@
                 : (idx + 1) + '–' + (idxB + 1) + ' / ' + total;
         }
 
-        // Monta esqueleto com os slots vazios
+        // Monta esqueleto com os slots vazios e agenda scroll
         var h = '';
         for (var s = 0; s < mostrar; s++) {
             h += '<div class="pac-card-item" id="pac-slot-' + s + '">' +
@@ -467,6 +472,7 @@
                  '</div>';
         }
         if (DOM.pacCard) DOM.pacCard.innerHTML = h;
+        _agendarScrollCards();
 
         // Preenche cada slot independentemente via cache ou fetch
         for (var si = 0; si < mostrar; si++) {
@@ -519,8 +525,33 @@
     }
 
     function pararPaginador() {
-        if (Estado.pac.timer)     { clearInterval(Estado.pac.timer);     Estado.pac.timer     = null; }
-        if (Estado.pac.progTimer) { clearInterval(Estado.pac.progTimer); Estado.pac.progTimer = null; }
+        if (Estado.pac.timer)            { clearInterval(Estado.pac.timer);            Estado.pac.timer            = null; }
+        if (Estado.pac.progTimer)        { clearInterval(Estado.pac.progTimer);        Estado.pac.progTimer        = null; }
+        if (Estado.pac.scrollTimer)      { clearInterval(Estado.pac.scrollTimer);      Estado.pac.scrollTimer      = null; }
+        if (Estado.pac.scrollDelayTimer) { clearTimeout(Estado.pac.scrollDelayTimer);  Estado.pac.scrollDelayTimer = null; }
+    }
+
+    function _iniciarScrollCards() {
+        if (Estado.pac.scrollTimer) { clearInterval(Estado.pac.scrollTimer); Estado.pac.scrollTimer = null; }
+        Estado.pac.scrollTimer = setInterval(function() {
+            var slots = DOM.pacCard ? DOM.pacCard.querySelectorAll('.pac-card-item') : [];
+            for (var i = 0; i < slots.length; i++) {
+                var el  = slots[i];
+                var max = el.scrollHeight - el.clientHeight;
+                if (max > 0 && el.scrollTop < max) {
+                    el.scrollTop = Math.min(el.scrollTop + CONFIG.PAC_SCROLL_PX, max);
+                }
+            }
+        }, CONFIG.PAC_SCROLL_TICK);
+    }
+
+    function _agendarScrollCards() {
+        if (Estado.pac.scrollDelayTimer) { clearTimeout(Estado.pac.scrollDelayTimer); Estado.pac.scrollDelayTimer = null; }
+        if (Estado.pac.scrollTimer)      { clearInterval(Estado.pac.scrollTimer);     Estado.pac.scrollTimer      = null; }
+        Estado.pac.scrollDelayTimer = setTimeout(function() {
+            Estado.pac.scrollDelayTimer = null;
+            _iniciarScrollCards();
+        }, CONFIG.PAC_SCROLL_DELAY);
     }
 
     // =========================================================================
