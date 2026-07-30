@@ -49,7 +49,7 @@ def api_minhas_permissoes():
                     'painel38', 'painel39', 'painel40',
                     'painel41', 'painel42', 'painel43', 'painel44',
                     'painel45', 'painel46', 'painel47', 'painel48', 'painel49',
-                    'painel50'
+                    'painel50', 'painel51'
                 ],
                 'is_admin': True
             })
@@ -430,6 +430,8 @@ def api_listar_paineis():
             {'nome': 'painel49', 'titulo': 'Relatório de Salas Cirúrgicas', 'descricao': 'Relatório de tempo de uso e ociosidade das salas — CC e Hemodinâmica', 'ativo': True, 'categoria': 'cirurgia'},
             # --- Enfermagem ---
             {'nome': 'painel50', 'titulo': 'Enfermagem por Setor',          'descricao': 'Profissionais de enfermagem ativos por setor no plantão atual', 'ativo': True, 'categoria': 'clinico'},
+            # --- Farmácia / Medicamentos ---
+            {'nome': 'painel51', 'titulo': 'Checagem à Beira do Leito',    'descricao': 'Monitoramento em tempo real da administração de medicamentos por leito (ISMP)', 'ativo': True, 'categoria': 'farmacia'},
         ]
 
         return jsonify({'success': True, 'paineis': paineis}), 200

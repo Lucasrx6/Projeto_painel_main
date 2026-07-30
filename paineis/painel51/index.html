@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Checagem à Beira do Leito - Hospital Anchieta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel51/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+<header class="hdr">
+    <div class="hdr-top">
+        <div class="hdr-tit">
+            <i class="fa-solid fa-syringe"></i>
+            <div>
+                <h1>Checagem à Beira do Leito</h1>
+                <span>Hospital Anchieta Ceilândia · Painel 51</span>
+            </div>
+        </div>
+        <div class="hdr-dir">
+            <button class="btn-h" id="btnSom" title="Alertas sonoros">
+                <i class="fa-solid fa-bell"></i> <span class="btn-label">Alertas</span>
+            </button>
+            <button class="btn-h" id="btnTv" title="Modo TV">
+                <i class="fa-solid fa-tv"></i> <span class="btn-label">TV</span>
+            </button>
+            <button class="btn-h" id="btn-refresh" title="Atualizar agora">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+            <a class="btn-h" href="/dashboard" title="Voltar ao dashboard">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="relogio" id="relogio">--:--<small id="ultima-atualizacao">inicializando</small></div>
+        </div>
+    </div>
+    <div class="setores" id="setores">
+        <span class="set-loading">Carregando setores…</span>
+    </div>
+</header>
+
+<!-- ── RODADA ATUAL ───────────────────────────────────────────────────── -->
+<section class="rodada" id="rodada">
+    <div class="anel">
+        <svg width="96" height="96" aria-hidden="true">
+            <circle cx="48" cy="48" r="41" fill="none" stroke="#e9edf1" stroke-width="10"/>
+            <circle id="anel-arco" cx="48" cy="48" r="41" fill="none" stroke="#dc3545" stroke-width="10"
+                    stroke-linecap="round" stroke-dasharray="258" stroke-dashoffset="258"
+                    style="transition:stroke-dashoffset .7s ease"/>
+        </svg>
+        <div class="anel-txt">
+            <b id="anel-pct">—</b>
+            <span>concluída</span>
+        </div>
+    </div>
+    <div class="rod-info">
+        <div class="rod-eyebrow">Rodada em andamento</div>
+        <h2 id="rod-hora">—</h2>
+        <div class="rod-sub" id="rod-sub">Aguardando dados…</div>
+    </div>
+    <div class="rod-chips" id="rod-chips"></div>
+</section>
+
+<!-- ── KPIs ───────────────────────────────────────────────────────────── -->
+<section class="kpis" id="kpis" aria-label="Indicadores"></section>
+
+<!-- ── MODOS + FILTRO ─────────────────────────────────────────────────── -->
+<div class="modos">
+    <div class="tabs" role="tablist">
+        <button class="tab on" data-modo="mural" role="tab" aria-selected="true">
+            <i class="fa-solid fa-grip"></i> Mural
+        </button>
+        <button class="tab" data-modo="tl" role="tab" aria-selected="false">
+            <i class="fa-solid fa-chart-gantt"></i> Linha do tempo
+        </button>
+    </div>
+    <button class="foco" id="btnFoco" title="Mostrar apenas pendências">
+        <i class="fa-solid fa-filter"></i> Só pendências
+    </button>
+</div>
+
+<!-- ── MURAL DE LEITOS ────────────────────────────────────────────────── -->
+<section class="mural" id="mural" aria-live="polite">
+    <div class="vazio" style="grid-column:1/-1">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <b>Carregando leitos…</b>
+    </div>
+</section>
+
+<!-- ── LINHA DO TEMPO ─────────────────────────────────────────────────── -->
+<div class="tl-wrap hide" id="tl-wrap">
+    <div class="tl" id="tl"></div>
+</div>
+
+<!-- ── LEGENDA ────────────────────────────────────────────────────────── -->
+<div class="legenda" id="legenda">
+    <div class="lg"><i style="background:var(--s-critica)"></i> Crítica (&gt;1h após janela)</div>
+    <div class="lg"><i style="background:var(--s-atrasada)"></i> Atrasada</div>
+    <div class="lg"><i style="background:var(--s-aberta)"></i> Janela aberta</div>
+    <div class="lg"><i style="background:var(--s-proxima)"></i> Próxima 2h</div>
+    <div class="lg"><i style="background:var(--s-ok)"></i> Administrada</div>
+    <div class="lg"><i style="background:var(--s-just)"></i> Justificada</div>
+    <div class="lg"><i style="background:var(--s-agendada)"></i> Agendada</div>
+</div>
+
+<!-- ── DRAWER DO LEITO ────────────────────────────────────────────────── -->
+<div class="ovl" id="ovl" role="presentation"></div>
+<aside class="drw" id="drw" role="dialog" aria-modal="true" aria-label="Detalhes do leito">
+    <div class="drw-h">
+        <div>
+            <h3 id="drw-leito">—</h3>
+            <p id="drw-pac">—</p>
+        </div>
+        <button class="drw-x" id="drw-x" aria-label="Fechar">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+    <div class="drw-b" id="drw-b">
+        <div class="vazio">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <b>Carregando…</b>
+        </div>
+    </div>
+</aside>
+
+<!-- ── RODAPÉ ─────────────────────────────────────────────────────────── -->
+<footer class="sistema-footer">
+    <span id="sistema-versao-footer">Central de Informações V 1.1.4</span>
+</footer>
+
+<script src="/paineis/painel51/main.js"></script>
+<script src="/static/js/versao.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
