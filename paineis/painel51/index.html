@@ -43,29 +43,7 @@
     </div>
 </header>
 
-<!-- ── RODADA ATUAL ───────────────────────────────────────────────────── -->
-<section class="rodada" id="rodada">
-    <div class="anel">
-        <svg width="96" height="96" aria-hidden="true">
-            <circle cx="48" cy="48" r="41" fill="none" stroke="#e9edf1" stroke-width="10"/>
-            <circle id="anel-arco" cx="48" cy="48" r="41" fill="none" stroke="#dc3545" stroke-width="10"
-                    stroke-linecap="round" stroke-dasharray="258" stroke-dashoffset="258"
-                    style="transition:stroke-dashoffset .7s ease"/>
-        </svg>
-        <div class="anel-txt">
-            <b id="anel-pct">—</b>
-            <span>concluída</span>
-        </div>
-    </div>
-    <div class="rod-info">
-        <div class="rod-eyebrow">Rodada em andamento</div>
-        <h2 id="rod-hora">—</h2>
-        <div class="rod-sub" id="rod-sub">Aguardando dados…</div>
-    </div>
-    <div class="rod-chips" id="rod-chips"></div>
-</section>
-
-<!-- ── KPIs ───────────────────────────────────────────────────────────── -->
+<!-- ── KPIs (compactos) ───────────────────────────────────────────────── -->
 <section class="kpis" id="kpis" aria-label="Indicadores"></section>
 
 <!-- ── MODOS + FILTRO ─────────────────────────────────────────────────── -->
@@ -77,8 +55,8 @@
         <button class="tab" data-modo="tabela" role="tab" aria-selected="false">
             <i class="fa-solid fa-table-list"></i> Tabela
         </button>
-        <button class="tab" data-modo="tl" role="tab" aria-selected="false">
-            <i class="fa-solid fa-chart-gantt"></i> Linha do tempo
+        <button class="tab" data-modo="pac" role="tab" aria-selected="false">
+            <i class="fa-solid fa-person-walking-arrow-right"></i> Paciente a paciente
         </button>
     </div>
     <button class="foco" id="btnFoco" title="Mostrar apenas pendências">
@@ -102,14 +80,31 @@
     </div>
 </section>
 
-<!-- ── LINHA DO TEMPO ─────────────────────────────────────────────────── -->
-<div class="tl-wrap hide" id="tl-wrap">
-    <div class="tl" id="tl"></div>
-</div>
+<!-- ── PAGINADOR PACIENTE A PACIENTE ─────────────────────────────────── -->
+<section class="pac-wrap hide" id="pac-wrap">
+    <div class="pac-nav">
+        <button class="pac-btn" id="pac-prev" title="Paciente anterior">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div class="pac-pos" id="pac-pos">— / —</div>
+        <button class="pac-btn" id="pac-next" title="Próximo paciente">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <div class="pac-prog" title="Avança automaticamente a cada 5s">
+            <div class="pac-prog-bar" id="pac-prog-bar"></div>
+        </div>
+    </div>
+    <div class="pac-card" id="pac-card">
+        <div class="vazio">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <b>Carregando…</b>
+        </div>
+    </div>
+</section>
 
 <!-- ── LEGENDA ────────────────────────────────────────────────────────── -->
 <div class="legenda" id="legenda">
-    <div class="lg"><i style="background:var(--s-critica)"></i> Crítica (&gt;1h após janela)</div>
+    <div class="lg"><i style="background:var(--s-critica)"></i> Crítica</div>
     <div class="lg"><i style="background:var(--s-atrasada)"></i> Atrasada</div>
     <div class="lg"><i style="background:var(--s-aberta)"></i> Janela aberta</div>
     <div class="lg"><i style="background:var(--s-proxima)"></i> Próxima 2h</div>

@@ -178,29 +178,32 @@ body {
 .chip .barra { height: 3px; border-radius: 2px; background: #e6e9ed; margin-top: 5px; overflow: hidden; }
 .chip .barra i { display: block; height: 100%; background: var(--s-ok); }
 
-/* ── KPIs ────────────────────────────────────────────────────────────────── */
+/* ── KPIs (compactos) ───────────────────────────────────────────────────── */
 .kpis {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-    padding: 14px 18px 0;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    padding: 10px 18px 0;
 }
 .kpi {
     background: var(--cor-card);
-    border-radius: var(--raio);
-    padding: 13px 15px;
+    border-radius: var(--raio-sm);
+    padding: 8px 11px;
     box-shadow: var(--sombra);
-    border-left: 5px solid var(--cor-borda);
+    border-left: 4px solid var(--cor-borda);
     cursor: pointer;
     transition: .15s;
     position: relative;
     user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 .kpi:hover { box-shadow: var(--sombra-md); transform: translateY(-1px); }
 .kpi.on    { box-shadow: 0 0 0 2px var(--cor-primaria), var(--sombra-md); }
-.kpi b     { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
-.kpi span  { display: block; font-size: 11px; font-weight: 600; color: var(--cor-texto-sec); text-transform: uppercase; letter-spacing: .4px; margin-top: 4px; }
-.kpi i.ic  { position: absolute; top: 13px; right: 14px; font-size: 17px; opacity: .22; }
+.kpi b     { font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.kpi span  { display: block; font-size: 10px; font-weight: 600; color: var(--cor-texto-sec); text-transform: uppercase; letter-spacing: .3px; margin-top: 2px; }
+.kpi i.ic  { font-size: 20px; opacity: .18; flex-shrink: 0; }
 
 .kpi.k-crit { border-left-color: var(--s-critica);  } .kpi.k-crit b { color: var(--s-critica); }
 .kpi.k-atr  { border-left-color: var(--s-atrasada); } .kpi.k-atr  b { color: var(--s-atrasada); }
@@ -575,6 +578,107 @@ body {
 .tb-med-posol { font-size: 11px; color: var(--cor-texto-muted); margin-top: 1px; }
 
 .tb-tags-cell { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+
+/* ── PAGINADOR PACIENTE A PACIENTE ──────────────────────────────────────── */
+.pac-wrap { padding: 14px 18px 28px; }
+
+.pac-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--cor-card);
+    border-radius: var(--raio);
+    padding: 10px 14px;
+    box-shadow: var(--sombra);
+    margin-bottom: 12px;
+}
+.pac-btn {
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: 6px;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--cor-texto);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: .15s;
+}
+.pac-btn:hover { background: var(--cor-primaria); color: #fff; border-color: var(--cor-primaria); }
+.pac-pos {
+    font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--cor-texto-sec); white-space: nowrap; min-width: 52px; text-align: center;
+}
+.pac-prog {
+    flex: 1; height: 6px; background: var(--cor-borda);
+    border-radius: 3px; overflow: hidden;
+}
+.pac-prog-bar {
+    height: 100%; background: var(--cor-primaria);
+    width: 0%; border-radius: 3px;
+    transition: width .1s linear;
+}
+
+.pac-card {
+    background: var(--cor-card);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+}
+
+.pac-pac-hdr {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--cor-borda);
+    background: rgba(0,0,0,.02);
+}
+.pac-pac-hdr.sev5 { background: var(--s-critica-bg);  border-left: 6px solid var(--s-critica);  }
+.pac-pac-hdr.sev4 { background: var(--s-atrasada-bg); border-left: 6px solid var(--s-atrasada); }
+.pac-pac-hdr.sev3 { background: var(--s-aberta-bg);   border-left: 6px solid var(--s-aberta);   }
+.pac-pac-hdr.sev2 { background: var(--s-proxima-bg);  border-left: 6px solid var(--s-proxima);  }
+
+.pac-leito  { font-size: 2.2rem; font-weight: 800; letter-spacing: -1.5px; min-width: 80px; line-height: 1; }
+.pac-nome   { font-size: 1.15rem; font-weight: 700; }
+.pac-setor  { font-size: 12px; color: var(--cor-texto-sec); margin-top: 3px; }
+
+.pac-secao {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--cor-texto-muted); padding: 12px 20px 5px;
+    display: flex; align-items: center; gap: 8px;
+}
+.pac-secao::after { content: ""; flex: 1; height: 1px; background: var(--cor-borda); }
+.pac-secao:first-of-type { padding-top: 14px; }
+
+.pac-dose-linha {
+    display: grid;
+    grid-template-columns: 58px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    border-bottom: 1px solid #f4f5f6;
+    font-size: 13px;
+}
+.pac-dose-linha:last-child { border-bottom: none; }
+.pac-dose-linha.d-crit { background: rgba(167,29,42,.05); }
+.pac-dose-linha.d-atr  { background: rgba(220,53,69,.05); }
+.pac-dose-linha.d-abr  { background: rgba(253,126,20,.04); }
+.pac-dose-linha.d-prx  { background: rgba(23,162,184,.03); }
+
+.pac-hora {
+    font-family: monospace; font-weight: 800; font-size: 16px;
+    font-variant-numeric: tabular-nums; color: var(--cor-texto-sec);
+}
+.pac-dose-linha.d-crit .pac-hora { color: var(--s-critica);  }
+.pac-dose-linha.d-atr  .pac-hora { color: var(--s-atrasada); }
+.pac-dose-linha.d-abr  .pac-hora { color: var(--s-aberta);   }
+.pac-dose-linha.d-prx  .pac-hora { color: var(--s-proxima);  }
+
+.pac-med       { min-width: 0; }
+.pac-med-nome  { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pac-med-posol { font-size: 11px; color: var(--cor-texto-muted); margin-top: 1px; }
+.pac-tags      { display: flex; gap: 4px; flex-shrink: 0; }
 
 /* ── MODO TV ─────────────────────────────────────────────────────────────── */
 body.modo-tv { --font-size-base: 20px; }

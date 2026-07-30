@@ -9,13 +9,13 @@
             filtros:   '/api/paineis/painel51/filtros',
             dashboard: '/api/paineis/painel51/dashboard',
             leitos:    '/api/paineis/painel51/leitos',
-            rodadas:   '/api/paineis/painel51/rodadas',
-            timeline:  '/api/paineis/painel51/timeline',
             tabela:    '/api/paineis/painel51/tabela',
             paciente:  '/api/paineis/painel51/paciente/'
         },
-        INTERVALO_REFRESH: 60000,
-        STORAGE_PREFIX: 'painel51_',
+        INTERVALO_REFRESH:    60000,
+        PAC_INTERVALO:        5000,
+        PAC_TICK:             100,
+        STORAGE_PREFIX:       'painel51_',
         AUTO_SCROLL_INTERVAL: 5000
     };
 
@@ -25,7 +25,6 @@
     var Estado = {
         filtros:    { setor: [], kpi: null },
         leitos:     [],
-        timeline:   [],
         tabela:     [],
         modo:       'mural',
         foco:       false,
@@ -33,7 +32,14 @@
         alertaSom:  false,
         carregando: false,
         ultimaAtualizacao: null,
-        scrollTimer: null
+        scrollTimer: null,
+        pac: {
+            idx:       0,
+            cache:     {},
+            timer:     null,
+            progTimer: null,
+            progPct:   0
+        }
     };
 
     // =========================================================================
@@ -80,7 +86,7 @@
     }
 
     // =========================================================================
-    // CONSTRUÇÃO DE PARAMS (fonte única para todas as URLs)
+    // PARAMS (fonte única para todas as URLs filtráveis)
     // =========================================================================
 
     function construirParams() {
@@ -120,7 +126,7 @@
     }
 
     // =========================================================================
-    // RENDER: SETORES
+    // RENDER: PILLS DE SETOR
     // =========================================================================
 
     function renderizarSetores(setores) {
@@ -132,8 +138,8 @@
         var h = '';
         for (var i = 0; i < setores.length; i++) {
             var s = setores[i];
-            var ativo = Estado.filtros.setor.indexOf(s.cd_setor) >= 0;
-            var alerta = parseInt(s.qt_leitos_alerta) || 0;
+            var ativo   = Estado.filtros.setor.indexOf(s.cd_setor) >= 0;
+            var alerta  = parseInt(s.qt_leitos_alerta) || 0;
             h += '<button class="set' + (ativo ? ' on' : '') + (alerta === 0 ? ' zero' : '') +
                  '" data-cd="' + s.cd_setor + '" title="' + escHtml(s.nm_setor) + '">' +
                  escHtml(s.apelido || s.nm_setor) +
@@ -144,75 +150,14 @@
         for (var j = 0; j < btns.length; j++) {
             (function(btn) {
                 btn.addEventListener('click', function() {
-                    var cd = parseInt(btn.getAttribute('data-cd'));
+                    var cd  = parseInt(btn.getAttribute('data-cd'));
                     var idx = Estado.filtros.setor.indexOf(cd);
-                    if (idx >= 0) {
-                        Estado.filtros.setor.splice(idx, 1);
-                    } else {
-                        Estado.filtros.setor = [cd];
-                    }
+                    if (idx >= 0) { Estado.filtros.setor.splice(idx, 1); }
+                    else          { Estado.filtros.setor = [cd]; }
                     salvar('setor', Estado.filtros.setor);
                     carregarDados();
                 });
             })(btns[j]);
-        }
-    }
-
-    // =========================================================================
-    // RENDER: RODADA ATUAL
-    // =========================================================================
-
-    function renderizarRodada(data) {
-        var rodada = data.rodada_atual;
-        var rodadas = data.rodadas_dia || [];
-
-        if (!rodada) {
-            if (DOM.rodHora) DOM.rodHora.innerHTML = 'Sem rodada ativa';
-            if (DOM.rodSub)  DOM.rodSub.textContent = '';
-            if (DOM.anelPct) DOM.anelPct.textContent = '—';
-            return;
-        }
-
-        var pct = parseInt(rodada.pct_concluida) || 0;
-        var pend = parseInt(rodada.qt_pendentes) || 0;
-        var total = parseInt(rodada.qt_doses) || 0;
-
-        if (DOM.anelPct) DOM.anelPct.textContent = pct + '%';
-
-        var arco = document.getElementById('anel-arco');
-        if (arco) {
-            arco.style.strokeDashoffset = 258 - (258 * pct / 100);
-            arco.setAttribute('stroke',
-                pct < 50 ? '#dc3545' : (pct < 85 ? '#fd7e14' : '#28a745'));
-        }
-
-        if (DOM.rodHora) {
-            DOM.rodHora.innerHTML = escHtml(rodada.hora_rodada) +
-                ' · <em>' + pend + ' pendente' + (pend !== 1 ? 's' : '') + '</em>';
-        }
-        if (DOM.rodSub) {
-            DOM.rodSub.textContent = 'de ' + total + ' dose' + (total !== 1 ? 's' : '') +
-                ' prevista' + (total !== 1 ? 's' : '') +
-                ' em ' + (parseInt(rodada.qt_leitos) || 0) + ' leito' +
-                ((parseInt(rodada.qt_leitos) || 0) !== 1 ? 's' : '');
-        }
-
-        // Chips das rodadas do dia
-        if (DOM.rodChips) {
-            var h = '';
-            for (var i = 0; i < rodadas.length; i++) {
-                var r = rodadas[i];
-                var p2 = parseInt(r.pct_concluida) || 0;
-                var atual = r.hora_rodada === rodada.hora_rodada;
-                var barCor = p2 < 50 ? 'var(--s-atrasada)' :
-                             (p2 < 85 ? 'var(--s-aberta)' : 'var(--s-ok)');
-                h += '<div class="chip' + (atual ? ' agora' : '') + '">' +
-                     '<b>' + escHtml(r.hora_rodada) + '</b>' +
-                     '<span>' + p2 + '%</span>' +
-                     '<div class="barra"><i style="width:' + p2 + '%;background:' + barCor + '"></i></div>' +
-                     '</div>';
-            }
-            DOM.rodChips.innerHTML = h;
         }
     }
 
@@ -223,11 +168,11 @@
     function renderizarKpis(data) {
         if (!DOM.kpis) return;
         var defs = [
-            { k: 'crit', c: 'k-crit', n: data.qt_criticas   || 0, l: 'Críticas',        ic: 'fa-triangle-exclamation' },
-            { k: 'atr',  c: 'k-atr',  n: data.qt_atrasadas  || 0, l: 'Atrasadas',       ic: 'fa-clock'                },
-            { k: 'abr',  c: 'k-abr',  n: data.qt_abertas    || 0, l: 'Janela aberta',   ic: 'fa-hourglass-half'       },
-            { k: 'prx',  c: 'k-prx',  n: data.qt_proximas   || 0, l: 'Próximas 2h',     ic: 'fa-forward'              },
-            { k: 'frm',  c: 'k-frm',  n: data.qt_sem_dispensacao || 0, l: 'Sem dispensação', ic: 'fa-prescription-bottle-medical' }
+            { k: 'crit', c: 'k-crit', n: data.qt_criticas          || 0, l: 'Críticas',        ic: 'fa-triangle-exclamation'       },
+            { k: 'atr',  c: 'k-atr',  n: data.qt_atrasadas         || 0, l: 'Atrasadas',       ic: 'fa-clock'                      },
+            { k: 'abr',  c: 'k-abr',  n: data.qt_abertas           || 0, l: 'Janela aberta',   ic: 'fa-hourglass-half'             },
+            { k: 'prx',  c: 'k-prx',  n: data.qt_proximas          || 0, l: 'Próximas 2h',     ic: 'fa-forward'                    },
+            { k: 'frm',  c: 'k-frm',  n: data.qt_sem_dispensacao   || 0, l: 'Sem dispensação', ic: 'fa-prescription-bottle-medical' }
         ];
         var h = '';
         for (var i = 0; i < defs.length; i++) {
@@ -235,8 +180,7 @@
             h += '<div class="kpi ' + d.c + (Estado.filtros.kpi === d.k ? ' on' : '') +
                  '" data-k="' + d.k + '">' +
                  '<i class="ic fa-solid ' + d.ic + '"></i>' +
-                 '<b>' + d.n + '</b>' +
-                 '<span>' + d.l + '</span>' +
+                 '<div><b>' + d.n + '</b><span>' + d.l + '</span></div>' +
                  '</div>';
         }
         DOM.kpis.innerHTML = h;
@@ -256,7 +200,7 @@
     }
 
     // =========================================================================
-    // RENDER: CARD DE LEITO (mural)
+    // RENDER: MURAL DE LEITOS
     // =========================================================================
 
     var _SEV_CLS = ['sev0','sev1','sev2','sev3','sev4','sev5'];
@@ -264,11 +208,11 @@
     function leito_visivel(l) {
         if (Estado.foco && (parseInt(l.severidade_max) || 0) < 3) return false;
         var k = Estado.filtros.kpi;
-        if (k === 'crit' && !(parseInt(l.qt_criticas) > 0))          return false;
-        if (k === 'atr'  && !(parseInt(l.qt_atrasadas) > 0))         return false;
-        if (k === 'abr'  && !(parseInt(l.qt_abertas) > 0))           return false;
-        if (k === 'prx'  && !(parseInt(l.qt_proximas) > 0))          return false;
-        if (k === 'frm'  && !(parseInt(l.qt_sem_dispensacao) > 0))   return false;
+        if (k === 'crit' && !(parseInt(l.qt_criticas)           > 0)) return false;
+        if (k === 'atr'  && !(parseInt(l.qt_atrasadas)          > 0)) return false;
+        if (k === 'abr'  && !(parseInt(l.qt_abertas)            > 0)) return false;
+        if (k === 'prx'  && !(parseInt(l.qt_proximas)           > 0)) return false;
+        if (k === 'frm'  && !(parseInt(l.qt_sem_dispensacao)    > 0)) return false;
         return true;
     }
 
@@ -287,24 +231,22 @@
             if (!leito_visivel(l)) continue;
             mostrados++;
 
-            var sev  = parseInt(l.severidade_max) || 0;
-            var crit = parseInt(l.qt_criticas)    || 0;
-            var atr  = parseInt(l.qt_atrasadas)   || 0;
-            var abr  = parseInt(l.qt_abertas)     || 0;
-            var prx  = parseInt(l.qt_proximas)    || 0;
-            var ok   = parseInt(l.qt_administradas)|| 0;
-            var just = parseInt(l.qt_justificadas) || 0;
+            var sev  = parseInt(l.severidade_max)   || 0;
+            var crit = parseInt(l.qt_criticas)       || 0;
+            var atr  = parseInt(l.qt_atrasadas)      || 0;
+            var abr  = parseInt(l.qt_abertas)        || 0;
+            var prx  = parseInt(l.qt_proximas)       || 0;
+            var ok   = parseInt(l.qt_administradas)  || 0;
+            var just = parseInt(l.qt_justificadas)   || 0;
             var agd  = parseInt(l.qt_doses) - crit - atr - abr - prx - ok - just;
             if (agd < 0) agd = 0;
-            var disp = parseInt(l.qt_sem_dispensacao) || 0;
-            var stat = parseInt(l.qt_stat_pendente)   || 0;
-            var atraso = parseInt(l.maior_atraso_min) || 0;
-            var total  = parseInt(l.qt_doses)         || 1;
-
-            var pend = crit + atr + abr;
-            var big  = pend > 0 ? pend : ok;
-            var rot  = pend > 0 ? (crit > 0 ? 'atrasadas' : 'na janela') : 'em dia';
-
+            var disp   = parseInt(l.qt_sem_dispensacao) || 0;
+            var stat   = parseInt(l.qt_stat_pendente)   || 0;
+            var atraso = parseInt(l.maior_atraso_min)   || 0;
+            var total  = parseInt(l.qt_doses)           || 1;
+            var pend   = crit + atr + abr;
+            var big    = pend > 0 ? pend : ok;
+            var rot    = pend > 0 ? (crit > 0 ? 'atrasadas' : 'na janela') : 'em dia';
             var sevCls = _SEV_CLS[Math.min(sev, 5)];
 
             h += '<article class="leito ' + sevCls + '" data-i="' + i + '">' +
@@ -333,19 +275,15 @@
                     : (l.dt_proxima_dose
                         ? '<span class="lt-prox">próx. ' + escHtml(l.dt_proxima_dose.slice(11,16)) + '</span>'
                         : '')) +
-                 (stat > 0
-                    ? '<span class="lt-tag warn"><i class="fa-solid fa-bolt"></i> ' + stat + ' STAT</span>'
-                    : '') +
-                 '</div>' +
-                 '</article>';
+                 (stat > 0 ? '<span class="lt-tag warn"><i class="fa-solid fa-bolt"></i> ' + stat + ' STAT</span>' : '') +
+                 '</div></article>';
         }
 
         if (mostrados === 0) {
             h = '<div class="vazio" style="grid-column:1/-1">' +
                 '<i class="fa-solid fa-circle-check"></i>' +
                 '<b>Nenhuma pendência neste filtro</b>' +
-                '<p>Todas as doses do recorte estão administradas ou justificadas.</p>' +
-                '</div>';
+                '<p>Todas as doses estão administradas ou justificadas.</p></div>';
         }
         DOM.mural.innerHTML = h;
 
@@ -353,222 +291,229 @@
         for (var j = 0; j < cards.length; j++) {
             (function(card) {
                 card.addEventListener('click', function() {
-                    var idx = parseInt(card.getAttribute('data-i'));
-                    abrirDrawer(idx);
+                    abrirDrawer(parseInt(card.getAttribute('data-i')));
                 });
             })(cards[j]);
         }
     }
 
     // =========================================================================
-    // RENDER: LINHA DO TEMPO
-    // =========================================================================
-
-    var _SEV_TL_CLS = ['', 'c-just', 'c-prx', 'c-abr', 'c-atr', 'c-crit'];
-
-    function renderizarTimeline(dados, leitos) {
-        if (!DOM.tl) return;
-
-        // Agrupa por leito → hora → {pior_severidade, qt_doses}
-        var mapa = {};
-        for (var i = 0; i < dados.length; i++) {
-            var d = dados[i];
-            var leito = d.cd_leito;
-            var hora  = parseInt(d.hora) || 0;
-            if (!mapa[leito]) mapa[leito] = { pac: d.nm_paciente, horas: {} };
-            mapa[leito].horas[hora] = { sev: parseInt(d.pior_severidade) || 0, n: parseInt(d.qt_doses) || 0 };
-        }
-
-        var agora = new Date().getHours();
-        var h = '<div class="tl-row head"><div class="tl-lab">Leito</div><div class="tl-cells">';
-        for (var hr = 0; hr < 24; hr++) {
-            h += '<div class="tl-h' + (hr === agora ? ' now' : '') + '">' +
-                 (hr < 10 ? '0' : '') + hr + '</div>';
-        }
-        h += '</div></div>';
-
-        // Ordena leitos por gravidade máxima (igual ao mural)
-        var leitosOrdem = [];
-        for (var lk in mapa) {
-            if (mapa.hasOwnProperty(lk)) {
-                var maxSev = 0;
-                for (var hk in mapa[lk].horas) {
-                    if (mapa[lk].horas.hasOwnProperty(hk)) {
-                        if (mapa[lk].horas[hk].sev > maxSev) maxSev = mapa[lk].horas[hk].sev;
-                    }
-                }
-                leitosOrdem.push({ leito: lk, pac: mapa[lk].pac, horas: mapa[lk].horas, maxSev: maxSev });
-            }
-        }
-        leitosOrdem.sort(function(a, b) { return b.maxSev - a.maxSev; });
-
-        for (var li = 0; li < leitosOrdem.length; li++) {
-            var lobj = leitosOrdem[li];
-            h += '<div class="tl-row"><div class="tl-lab">' + escHtml(lobj.leito) +
-                 '<em>' + escHtml(fmtNome(lobj.pac).split(' ').slice(0,2).join(' ')) + '</em></div>' +
-                 '<div class="tl-cells">';
-            for (var hi = 0; hi < 24; hi++) {
-                var cell = lobj.horas[hi];
-                var cls  = cell ? (_SEV_TL_CLS[Math.min(cell.sev, 5)] || '') : '';
-                h += '<div class="cell ' + cls + (hi === agora ? ' now-col' : '') + '">' +
-                     (cell && cell.n > 0 ? cell.n : '') + '</div>';
-            }
-            h += '</div></div>';
-        }
-
-        DOM.tl.innerHTML = h;
-    }
-
-    // =========================================================================
-    // RENDER: TABELA DE PACIENTES COM DOSES PENDENTES
+    // RENDER: TABELA (paciente + doses pendentes expandidas)
     // =========================================================================
 
     function renderizarTabela(grupos) {
         if (!DOM.tbWrap) return;
         if (!grupos || !grupos.length) {
-            DOM.tbWrap.innerHTML = '<div class="vazio">' +
-                '<i class="fa-solid fa-circle-check"></i>' +
-                '<b>Nenhuma pendência</b>' +
-                '<p>Todas as doses estão administradas ou justificadas.</p></div>';
+            DOM.tbWrap.innerHTML = '<div class="vazio"><i class="fa-solid fa-circle-check"></i>' +
+                '<b>Nenhuma pendência</b><p>Todas as doses estão administradas ou justificadas.</p></div>';
             return;
         }
 
-        var k = Estado.filtros.kpi;
+        var k      = Estado.filtros.kpi;
         var mapaSit = { crit: 'CRITICA', atr: 'ATRASADA', abr: 'ABERTA', prx: 'PROXIMA' };
-
         var h = '';
         var mostrados = 0;
 
         for (var i = 0; i < grupos.length; i++) {
             var g = grupos[i];
-
-            // Filtra paciente por KPI ativo
             if (k && k !== 'frm') {
-                var sitFiltro = mapaSit[k];
-                var temSit = false;
+                var sitF = mapaSit[k];
+                var temS = false;
                 for (var xi = 0; xi < g.doses.length; xi++) {
-                    if (g.doses[xi].situacao === sitFiltro) { temSit = true; break; }
+                    if (g.doses[xi].situacao === sitF) { temS = true; break; }
                 }
-                if (!temSit) continue;
+                if (!temS) continue;
             }
             if (k === 'frm') {
-                var temFrm = false;
+                var temF = false;
                 for (var xf = 0; xf < g.doses.length; xf++) {
-                    if (g.doses[xf].pendente_farmacia) { temFrm = true; break; }
+                    if (g.doses[xf].pendente_farmacia) { temF = true; break; }
                 }
-                if (!temFrm) continue;
+                if (!temF) continue;
             }
 
             mostrados++;
-            var sev = parseInt(g.severidade_max) || 0;
+            var sev    = parseInt(g.severidade_max) || 0;
             var sevCls = _SEV_CLS[Math.min(sev, 5)];
-            var nDoses = g.doses.length;
+            var nD     = g.doses.length;
 
-            h += '<div class="tb-bloco ' + sevCls + '">';
-
-            // Cabeçalho do paciente
-            h += '<div class="tb-hdr">' +
+            h += '<div class="tb-bloco ' + sevCls + '">' +
+                 '<div class="tb-hdr">' +
                  '<div class="tb-leito-num">' + escHtml(g.cd_leito || '—') + '</div>' +
-                 '<div class="tb-pac-info">' +
-                 '<b>' + escHtml(fmtNome(g.nm_paciente)) + '</b>' +
-                 '<span>' + escHtml(g.nm_setor || '') + '</span>' +
-                 '</div>' +
-                 '<div class="tb-dose-count">' +
-                 nDoses + ' dose' + (nDoses !== 1 ? 's' : '') + ' pendente' + (nDoses !== 1 ? 's' : '') +
-                 '</div>' +
+                 '<div class="tb-pac-info"><b>' + escHtml(fmtNome(g.nm_paciente)) + '</b>' +
+                 '<span>' + escHtml(g.nm_setor || '') + '</span></div>' +
+                 '<div class="tb-dose-count">' + nD + ' dose' + (nD !== 1 ? 's' : '') +
+                 ' pendente' + (nD !== 1 ? 's' : '') + '</div>' +
                  '</div>';
 
-            // Linhas de dose
             for (var j = 0; j < g.doses.length; j++) {
-                var d = g.doses[j];
+                var d   = g.doses[j];
                 var rot = _DOSE_ROT[d.situacao] || { tg: '', label: d.situacao || '—', cls: '' };
-                var atraso = parseInt(d.min_atraso) || 0;
-
+                var atr = parseInt(d.min_atraso) || 0;
                 h += '<div class="tb-linha ' + rot.cls + '">' +
                      '<div class="tb-hora-cell">' + escHtml(d.hora_prevista || '--:--') + '</div>' +
-                     '<div class="tb-med-cell">' +
-                     '<div class="tb-med-nome">' + escHtml(d.ds_material || '—') + '</div>' +
+                     '<div class="tb-med-cell"><div class="tb-med-nome">' + escHtml(d.ds_material || '—') + '</div>' +
                      '<div class="tb-med-posol">' +
                      escHtml((d.qt_dose ? d.qt_dose + ' ' : '') + (d.ds_unidade_medida || '')) +
-                     (d.ds_intervalo ? ' · ' + escHtml(d.ds_intervalo) : '') +
-                     '</div>' +
-                     '</div>' +
+                     (d.ds_intervalo ? ' · ' + escHtml(d.ds_intervalo) : '') + '</div></div>' +
                      '<div class="tb-tags-cell">' +
-                     '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) +
-                     (atraso > 0 ? ' ' + fmtMin(atraso) : '') + '</span>' +
-                     (d.alta_vigilancia
-                         ? '<span class="tg tg-av" title="Alta vigilância"><i class="fa-solid fa-shield-halved"></i></span>'
-                         : '') +
-                     (d.pendente_farmacia
-                         ? '<span class="tg tg-frm" title="Sem dispensação"><i class="fa-solid fa-prescription-bottle-medical"></i></span>'
-                         : '') +
-                     '</div>' +
-                     '</div>';
+                     '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) + (atr > 0 ? ' ' + fmtMin(atr) : '') + '</span>' +
+                     (d.alta_vigilancia   ? '<span class="tg tg-av" title="Alta vigilância"><i class="fa-solid fa-shield-halved"></i></span>' : '') +
+                     (d.pendente_farmacia ? '<span class="tg tg-frm" title="Sem dispensação"><i class="fa-solid fa-prescription-bottle-medical"></i></span>' : '') +
+                     '</div></div>';
             }
-
-            h += '</div>'; // tb-bloco
+            h += '</div>';
         }
 
         if (mostrados === 0) {
-            h = '<div class="vazio">' +
-                '<i class="fa-solid fa-circle-check"></i>' +
-                '<b>Nenhuma pendência neste filtro</b>' +
-                '<p>Todas as doses do recorte estão resolvidas.</p></div>';
+            h = '<div class="vazio"><i class="fa-solid fa-circle-check"></i>' +
+                '<b>Nenhuma pendência neste filtro</b><p>Todas as doses do recorte estão resolvidas.</p></div>';
         }
-
         DOM.tbWrap.innerHTML = h;
     }
 
     // =========================================================================
-    // DRAWER DO LEITO
+    // PAGINADOR DE PACIENTES
     // =========================================================================
 
     var _DOSE_ROT = {
-        CRITICA:      { tg: 'tg-crit', label: 'Crítica',           cls: 'd-crit' },
-        ATRASADA:     { tg: 'tg-atr',  label: 'Atrasada',          cls: 'd-atr'  },
-        ABERTA:       { tg: 'tg-abr',  label: 'Administrar agora', cls: 'd-abr'  },
-        PROXIMA:      { tg: 'tg-prx',  label: 'Próxima',           cls: 'd-prx'  },
-        AGENDADA:     { tg: 'tg-ok',   label: 'Agendada',          cls: 'd-ok'   },
-        ADM_NO_PRAZO: { tg: 'tg-ok',   label: 'Administrada',      cls: 'd-ok'   },
-        ADM_ANTECIPADA:{ tg:'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
-        ADM_ATRASADA: { tg: 'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
-        JUSTIFICADA:  { tg: 'tg-just', label: 'Justificada',       cls: 'd-just' },
-        SEM_HORARIO:  { tg: 'tg-ok',   label: 'Sem horário fixo',  cls: 'd-ok'   }
+        CRITICA:       { tg: 'tg-crit', label: 'Crítica',           cls: 'd-crit' },
+        ATRASADA:      { tg: 'tg-atr',  label: 'Atrasada',          cls: 'd-atr'  },
+        ABERTA:        { tg: 'tg-abr',  label: 'Administrar agora', cls: 'd-abr'  },
+        PROXIMA:       { tg: 'tg-prx',  label: 'Próxima',           cls: 'd-prx'  },
+        AGENDADA:      { tg: 'tg-ok',   label: 'Agendada',          cls: 'd-ok'   },
+        ADM_NO_PRAZO:  { tg: 'tg-ok',   label: 'Administrada',      cls: 'd-ok'   },
+        ADM_ANTECIPADA:{ tg: 'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
+        ADM_ATRASADA:  { tg: 'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
+        JUSTIFICADA:   { tg: 'tg-just', label: 'Justificada',       cls: 'd-just' },
+        SEM_HORARIO:   { tg: 'tg-ok',   label: 'Sem horário fixo',  cls: 'd-ok'   }
     };
 
-    function doseHtml(d) {
-        var rot = _DOSE_ROT[d.situacao] || { tg: '', label: d.situacao || '—', cls: '' };
+    function _dosePacLinha(d) {
+        var rot    = _DOSE_ROT[d.situacao] || { tg: '', label: d.situacao || '—', cls: '' };
         var atraso = parseInt(d.min_atraso) || 0;
-        var h = '<div class="dose ' + rot.cls + '">' +
-                '<div class="d-hora">' + escHtml(d.hora_prevista || d.ds_horario || '--:--') + '</div>' +
-                '<div class="d-corpo">' +
-                '<div class="d-nome">' + escHtml(d.ds_material || '—') + '</div>' +
-                '<div class="d-meta">' +
-                escHtml((d.qt_dose ? d.qt_dose + ' ' : '') + (d.ds_unidade_medida || '')) +
-                (d.ds_intervalo ? ' · ' + escHtml(d.ds_intervalo) : '') +
-                '</div>' +
-                '<div class="d-tags">' +
-                '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) +
-                (atraso > 0 ? ' ' + fmtMin(atraso) : '') + '</span>' +
-                (d.alta_vigilancia
-                    ? '<span class="tg tg-av"><i class="fa-solid fa-shield-halved"></i> Alta vigilância</span>'
-                    : '') +
-                (d.pendente_farmacia
-                    ? '<span class="tg tg-frm"><i class="fa-solid fa-prescription-bottle-medical"></i> Sem dispensação</span>'
-                    : '') +
-                (d.evento_rotulo && d.situacao === 'JUSTIFICADA'
-                    ? '<span class="tg tg-just">' + escHtml(d.evento_rotulo) + '</span>'
-                    : '') +
-                '</div>' +
-                '</div>' +
-                '</div>';
-        return h;
+        return '<div class="pac-dose-linha ' + rot.cls + '">' +
+            '<div class="pac-hora">' + escHtml(d.hora_prevista || '--:--') + '</div>' +
+            '<div class="pac-med"><div class="pac-med-nome">' + escHtml(d.ds_material || '—') + '</div>' +
+            '<div class="pac-med-posol">' +
+            escHtml((d.qt_dose ? d.qt_dose + ' ' : '') + (d.ds_unidade_medida || '')) +
+            (d.ds_intervalo ? ' · ' + escHtml(d.ds_intervalo) : '') + '</div></div>' +
+            '<div class="pac-tags">' +
+            '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) + (atraso > 0 ? ' ' + fmtMin(atraso) : '') + '</span>' +
+            (d.alta_vigilancia   ? '<span class="tg tg-av"><i class="fa-solid fa-shield-halved"></i></span>' : '') +
+            (d.pendente_farmacia ? '<span class="tg tg-frm"><i class="fa-solid fa-prescription-bottle-medical"></i></span>' : '') +
+            '</div></div>';
+    }
+
+    function _renderPacCard(l, data) {
+        if (!DOM.pacCard) return;
+        var sev    = parseInt(l.severidade_max) || 0;
+        var sevCls = _SEV_CLS[Math.min(sev, 5)];
+
+        var pend = (data.precisa_acao || []).concat(data.proximas || []);
+        var res  = data.resolvidas || [];
+
+        var h = '<div class="pac-pac-hdr ' + sevCls + '">' +
+            '<div class="pac-leito">' + escHtml(l.cd_leito || '—') + '</div>' +
+            '<div><div class="pac-nome">' + escHtml(fmtNome(l.nm_paciente)) + '</div>' +
+            '<div class="pac-setor">' + escHtml(l.nm_setor || l.setor_apelido || '') + '</div></div>' +
+            '</div>';
+
+        if (pend.length) {
+            h += '<div class="pac-secao">Pendentes (' + pend.length + ')</div>';
+            for (var i = 0; i < pend.length; i++) h += _dosePacLinha(pend[i]);
+        }
+        if (res.length) {
+            h += '<div class="pac-secao">Já checados (' + res.length + ')</div>';
+            for (var j = 0; j < res.length; j++) h += _dosePacLinha(res[j]);
+        }
+        if (!pend.length && !res.length) {
+            h += '<div class="vazio"><i class="fa-solid fa-circle-check"></i><b>Sem doses na janela</b></div>';
+        }
+
+        DOM.pacCard.innerHTML = h;
+    }
+
+    function renderizarPaciente(idx) {
+        var lista = Estado.leitos;
+        if (!lista || !lista.length) {
+            if (DOM.pacCard) DOM.pacCard.innerHTML = '<div class="vazio"><i class="fa-solid fa-bed"></i><b>Sem pacientes</b></div>';
+            return;
+        }
+        idx = ((idx % lista.length) + lista.length) % lista.length;
+        Estado.pac.idx = idx;
+
+        var l  = lista[idx];
+        var nr = l.nr_atendimento;
+        if (DOM.pacPos) DOM.pacPos.textContent = (idx + 1) + ' / ' + lista.length;
+
+        var entry = Estado.pac.cache[nr];
+        if (entry && (Date.now() - entry.ts) < 120000) {
+            _renderPacCard(l, entry.data);
+            return;
+        }
+
+        if (DOM.pacCard) DOM.pacCard.innerHTML =
+            '<div class="vazio"><i class="fa-solid fa-spinner fa-spin"></i><b>Carregando…</b></div>';
+
+        fetch(CONFIG.ENDPOINTS.paciente + nr, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                Estado.pac.cache[nr] = { data: data, ts: Date.now() };
+                if (Estado.pac.idx === idx) _renderPacCard(l, data);
+            })
+            .catch(function(e) { console.error('[P51] pac:', e); });
+    }
+
+    function iniciarPaginador() {
+        pararPaginador();
+        Estado.pac.progPct = 0;
+        renderizarPaciente(Estado.pac.idx);
+
+        Estado.pac.progTimer = setInterval(function() {
+            Estado.pac.progPct += 100 / (CONFIG.PAC_INTERVALO / CONFIG.PAC_TICK);
+            if (Estado.pac.progPct > 100) Estado.pac.progPct = 100;
+            if (DOM.pacProgBar) DOM.pacProgBar.style.width = Estado.pac.progPct + '%';
+        }, CONFIG.PAC_TICK);
+
+        Estado.pac.timer = setInterval(function() {
+            Estado.pac.progPct = 0;
+            if (DOM.pacProgBar) DOM.pacProgBar.style.width = '0%';
+            renderizarPaciente(Estado.pac.idx + 1);
+        }, CONFIG.PAC_INTERVALO);
+    }
+
+    function pararPaginador() {
+        if (Estado.pac.timer)     { clearInterval(Estado.pac.timer);     Estado.pac.timer     = null; }
+        if (Estado.pac.progTimer) { clearInterval(Estado.pac.progTimer); Estado.pac.progTimer = null; }
+    }
+
+    // =========================================================================
+    // DRAWER DO LEITO (clique no card do mural)
+    // =========================================================================
+
+    function doseHtml(d) {
+        var rot    = _DOSE_ROT[d.situacao] || { tg: '', label: d.situacao || '—', cls: '' };
+        var atraso = parseInt(d.min_atraso) || 0;
+        return '<div class="dose ' + rot.cls + '">' +
+            '<div class="d-hora">' + escHtml(d.hora_prevista || d.ds_horario || '--:--') + '</div>' +
+            '<div class="d-corpo">' +
+            '<div class="d-nome">' + escHtml(d.ds_material || '—') + '</div>' +
+            '<div class="d-meta">' +
+            escHtml((d.qt_dose ? d.qt_dose + ' ' : '') + (d.ds_unidade_medida || '')) +
+            (d.ds_intervalo ? ' · ' + escHtml(d.ds_intervalo) : '') + '</div>' +
+            '<div class="d-tags">' +
+            '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) + (atraso > 0 ? ' ' + fmtMin(atraso) : '') + '</span>' +
+            (d.alta_vigilancia   ? '<span class="tg tg-av"><i class="fa-solid fa-shield-halved"></i> Alta vigilância</span>' : '') +
+            (d.pendente_farmacia ? '<span class="tg tg-frm"><i class="fa-solid fa-prescription-bottle-medical"></i> Sem dispensação</span>' : '') +
+            (d.evento_rotulo && d.situacao === 'JUSTIFICADA' ? '<span class="tg tg-just">' + escHtml(d.evento_rotulo) + '</span>' : '') +
+            '</div></div></div>';
     }
 
     function abrirDrawer(idx) {
         var l = Estado.leitos[idx];
         if (!l) return;
-
         if (DOM.drwLeito) DOM.drwLeito.textContent = l.cd_leito || '—';
         if (DOM.drwPac)   DOM.drwPac.textContent   = fmtNome(l.nm_paciente);
         if (DOM.drwB)     DOM.drwB.innerHTML = '<div class="vazio"><i class="fa-solid fa-spinner fa-spin"></i><b>Carregando…</b></div>';
@@ -579,32 +524,22 @@
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.success || !DOM.drwB) return;
-
-                // Atualiza cabeçalho do drawer com total de doses
                 if (DOM.drwPac) {
                     DOM.drwPac.textContent = fmtNome(l.nm_paciente) + ' · ' +
                         (data.qt_total || 0) + ' dose' + ((data.qt_total || 0) !== 1 ? 's' : '') + ' hoje';
                 }
-
                 var h = '';
-                var grupos = [
-                    { titulo: 'Precisa de ação', doses: data.precisa_acao || [] },
-                    { titulo: 'Nas próximas horas', doses: data.proximas || [] },
-                    { titulo: 'Já resolvidas', doses: data.resolvidas || [] }
+                var gs = [
+                    { titulo: 'Precisa de ação',   doses: data.precisa_acao || [] },
+                    { titulo: 'Nas próximas horas', doses: data.proximas    || [] },
+                    { titulo: 'Já resolvidas',      doses: data.resolvidas  || [] }
                 ];
-                for (var g = 0; g < grupos.length; g++) {
-                    var grp = grupos[g];
-                    if (!grp.doses.length) continue;
-                    h += '<div class="grupo">' + escHtml(grp.titulo) + ' (' + grp.doses.length + ')</div>';
-                    for (var di = 0; di < grp.doses.length; di++) {
-                        h += doseHtml(grp.doses[di]);
-                    }
+                for (var g = 0; g < gs.length; g++) {
+                    if (!gs[g].doses.length) continue;
+                    h += '<div class="grupo">' + escHtml(gs[g].titulo) + ' (' + gs[g].doses.length + ')</div>';
+                    for (var di = 0; di < gs[g].doses.length; di++) h += doseHtml(gs[g].doses[di]);
                 }
-                if (!h) {
-                    h = '<div class="vazio"><i class="fa-solid fa-circle-check"></i>' +
-                        '<b>Sem doses na janela operacional</b>' +
-                        '<p>Nenhuma dose prevista para as próximas horas.</p></div>';
-                }
+                if (!h) h = '<div class="vazio"><i class="fa-solid fa-circle-check"></i><b>Sem doses na janela</b></div>';
                 DOM.drwB.innerHTML = h;
             })
             .catch(function(e) {
@@ -625,11 +560,7 @@
     function carregarFiltros() {
         fetch(CONFIG.ENDPOINTS.filtros, { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.success) {
-                    renderizarSetores(data.setores || []);
-                }
-            })
+            .then(function(data) { if (data.success) renderizarSetores(data.setores || []); })
             .catch(function(e) { console.error('[P51] filtros:', e); });
     }
 
@@ -641,35 +572,27 @@
         Promise.all([
             fetch(CONFIG.ENDPOINTS.dashboard + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); }),
             fetch(CONFIG.ENDPOINTS.leitos    + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); }),
-            fetch(CONFIG.ENDPOINTS.timeline  + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); }),
             fetch(CONFIG.ENDPOINTS.tabela    + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); })
         ])
         .then(function(results) {
-            var dash = results[0];
-            var lts  = results[1];
-            var tl   = results[2];
-            var tb   = results[3];
+            var dash = results[0], lts = results[1], tb = results[2];
 
-            if (dash.success) {
-                renderizarRodada(dash.data || {});
-                renderizarKpis(dash.data || {});
-            }
+            if (dash.success) renderizarKpis(dash.data || {});
+
             if (lts.success) {
                 Estado.leitos = lts.data || [];
                 renderizarMural(Estado.leitos);
+                // Invalida cache do paginador para reflectir dados novos
+                Estado.pac.cache = {};
+                if (Estado.modo === 'pac') renderizarPaciente(Estado.pac.idx);
             }
-            if (tl.success) {
-                Estado.timeline = tl.data || [];
-                if (Estado.modo === 'tl') renderizarTimeline(Estado.timeline, Estado.leitos);
-            }
+
             if (tb.success) {
                 Estado.tabela = tb.data || [];
                 if (Estado.modo === 'tabela') renderizarTabela(Estado.tabela);
             }
 
             Estado.ultimaAtualizacao = new Date();
-
-            // Recarrega pills de setor com contagens ao vivo
             carregarFiltros();
         })
         .catch(function(e) { console.error('[P51] carregarDados:', e); })
@@ -691,16 +614,13 @@
     function iniciarAutoScroll() {
         pararAutoScroll();
         Estado.scrollTimer = setInterval(function() {
-            var el = DOM.mural;
+            var el  = DOM.mural;
             if (!el) return;
             var max = el.scrollHeight - window.innerHeight;
             if (max <= 0) { window.scrollTo(0, 0); return; }
             var atual = window.scrollY || document.documentElement.scrollTop;
-            if (atual >= max - 10) {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-                window.scrollBy({ top: 120, behavior: 'smooth' });
-            }
+            if (atual >= max - 10) { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+            else                   { window.scrollBy({ top: 120, behavior: 'smooth' }); }
         }, CONFIG.AUTO_SCROLL_INTERVAL);
     }
 
@@ -713,30 +633,29 @@
     // =========================================================================
 
     function inicializar() {
-        // Refs DOM
-        DOM.setores  = document.getElementById('setores');
-        DOM.rodHora  = document.getElementById('rod-hora');
-        DOM.rodSub   = document.getElementById('rod-sub');
-        DOM.anelPct  = document.getElementById('anel-pct');
-        DOM.rodChips = document.getElementById('rod-chips');
-        DOM.kpis     = document.getElementById('kpis');
-        DOM.mural    = document.getElementById('mural');
-        DOM.tbWrap   = document.getElementById('tb-wrap');
-        DOM.tl       = document.getElementById('tl');
-        DOM.tlWrap   = document.getElementById('tl-wrap');
-        DOM.ovl      = document.getElementById('ovl');
-        DOM.drw      = document.getElementById('drw');
-        DOM.drwLeito = document.getElementById('drw-leito');
-        DOM.drwPac   = document.getElementById('drw-pac');
-        DOM.drwB     = document.getElementById('drw-b');
-        DOM.drwX     = document.getElementById('drw-x');
-        DOM.btnFoco  = document.getElementById('btnFoco');
-        DOM.btnTv    = document.getElementById('btnTv');
-        DOM.btnSom   = document.getElementById('btnSom');
+        DOM.setores    = document.getElementById('setores');
+        DOM.kpis       = document.getElementById('kpis');
+        DOM.mural      = document.getElementById('mural');
+        DOM.tbWrap     = document.getElementById('tb-wrap');
+        DOM.pacWrap    = document.getElementById('pac-wrap');
+        DOM.pacCard    = document.getElementById('pac-card');
+        DOM.pacPos     = document.getElementById('pac-pos');
+        DOM.pacPrev    = document.getElementById('pac-prev');
+        DOM.pacNext    = document.getElementById('pac-next');
+        DOM.pacProgBar = document.getElementById('pac-prog-bar');
+        DOM.ovl        = document.getElementById('ovl');
+        DOM.drw        = document.getElementById('drw');
+        DOM.drwLeito   = document.getElementById('drw-leito');
+        DOM.drwPac     = document.getElementById('drw-pac');
+        DOM.drwB       = document.getElementById('drw-b');
+        DOM.drwX       = document.getElementById('drw-x');
+        DOM.btnFoco    = document.getElementById('btnFoco');
+        DOM.btnTv      = document.getElementById('btnTv');
+        DOM.btnSom     = document.getElementById('btnSom');
         DOM.btnRefresh = document.getElementById('btn-refresh');
-        DOM.relogio  = document.getElementById('relogio');
+        DOM.relogio    = document.getElementById('relogio');
 
-        // Restaura estado do localStorage (síncrono, antes do primeiro fetch)
+        // Restaura estado persistido
         Estado.filtros.setor = recuperar('setor', []);
         Estado.foco          = recuperar('foco', false);
         Estado.modoTV        = recuperar('modoTV', false);
@@ -748,44 +667,75 @@
             iniciarAutoScroll();
         }
 
-        // Relógio
+        // Relógio (1 tick/s)
         tickRelogio();
         setInterval(tickRelogio, 1000);
 
-        // Abas mural / linha do tempo
+        // Abas
         var tabs = document.querySelectorAll('.tab');
         for (var i = 0; i < tabs.length; i++) {
             (function(btn) {
                 btn.addEventListener('click', function() {
-                    for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('on');
+                    for (var j = 0; j < tabs.length; j++) {
+                        tabs[j].classList.remove('on');
+                        tabs[j].setAttribute('aria-selected', 'false');
+                    }
                     btn.classList.add('on');
+                    btn.setAttribute('aria-selected', 'true');
+
+                    var modoAnterior = Estado.modo;
                     Estado.modo = btn.getAttribute('data-modo');
-                    DOM.mural.classList.toggle('hide',  Estado.modo !== 'mural');
-                    DOM.tbWrap.classList.toggle('hide', Estado.modo !== 'tabela');
-                    DOM.tlWrap.classList.toggle('hide', Estado.modo !== 'tl');
-                    if (Estado.modo === 'tl')     renderizarTimeline(Estado.timeline, Estado.leitos);
+
+                    DOM.mural.classList.toggle('hide',   Estado.modo !== 'mural');
+                    DOM.tbWrap.classList.toggle('hide',  Estado.modo !== 'tabela');
+                    DOM.pacWrap.classList.toggle('hide', Estado.modo !== 'pac');
+
+                    if (Estado.modo === 'pac') {
+                        iniciarPaginador();
+                    } else if (modoAnterior === 'pac') {
+                        pararPaginador();
+                    }
+
                     if (Estado.modo === 'tabela') renderizarTabela(Estado.tabela);
                 });
             })(tabs[i]);
         }
 
-        // Só pendências
+        // Filtro "Só pendências"
         if (DOM.btnFoco) {
             DOM.btnFoco.addEventListener('click', function() {
                 Estado.foco = !Estado.foco;
                 DOM.btnFoco.classList.toggle('on', Estado.foco);
                 salvar('foco', Estado.foco);
                 renderizarMural(Estado.leitos);
-                if (Estado.modo === 'tl') renderizarTimeline(Estado.timeline, Estado.leitos);
+                if (Estado.modo === 'tabela') renderizarTabela(Estado.tabela);
+            });
+        }
+
+        // Paginador — botões prev/next
+        if (DOM.pacPrev) {
+            DOM.pacPrev.addEventListener('click', function() {
+                pararPaginador();
+                Estado.pac.progPct = 0;
+                if (DOM.pacProgBar) DOM.pacProgBar.style.width = '0%';
+                renderizarPaciente(Estado.pac.idx - 1);
+                iniciarPaginador();
+            });
+        }
+        if (DOM.pacNext) {
+            DOM.pacNext.addEventListener('click', function() {
+                pararPaginador();
+                Estado.pac.progPct = 0;
+                if (DOM.pacProgBar) DOM.pacProgBar.style.width = '0%';
+                renderizarPaciente(Estado.pac.idx + 1);
+                iniciarPaginador();
             });
         }
 
         // Modo TV
-        if (DOM.btnTv) {
-            DOM.btnTv.addEventListener('click', function() { toggleModoTV(); });
-        }
+        if (DOM.btnTv) DOM.btnTv.addEventListener('click', function() { toggleModoTV(); });
 
-        // Alertas sonoros (toggle visual apenas — implementação de áudio futura)
+        // Alertas sonoros (visual toggle — áudio implementável futuramente)
         if (DOM.btnSom) {
             DOM.btnSom.addEventListener('click', function() {
                 Estado.alertaSom = !Estado.alertaSom;
@@ -794,18 +744,14 @@
         }
 
         // Refresh manual
-        if (DOM.btnRefresh) {
-            DOM.btnRefresh.addEventListener('click', function() { carregarDados(); });
-        }
+        if (DOM.btnRefresh) DOM.btnRefresh.addEventListener('click', function() { carregarDados(); });
 
         // Drawer
-        if (DOM.drwX)  DOM.drwX.addEventListener('click', fecharDrawer);
-        if (DOM.ovl)   DOM.ovl.addEventListener('click',  fecharDrawer);
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') fecharDrawer();
-        });
+        if (DOM.drwX) DOM.drwX.addEventListener('click', fecharDrawer);
+        if (DOM.ovl)  DOM.ovl.addEventListener('click',  fecharDrawer);
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') fecharDrawer(); });
 
-        // Pausa refresh quando a aba está oculta (TV fica visível 24h)
+        // Polling (pausa quando a aba do browser está oculta)
         var _intervalo = null;
         function startPolling() {
             if (_intervalo) clearInterval(_intervalo);
@@ -814,7 +760,6 @@
             }, CONFIG.INTERVALO_REFRESH);
         }
 
-        // Carga inicial
         carregarFiltros();
         carregarDados();
         startPolling();
