@@ -11,12 +11,11 @@
             leitos:    '/api/paineis/painel51/leitos',
             paciente:  '/api/paineis/painel51/paciente/'
         },
-        INTERVALO_REFRESH:    60000,
-        PAC_INTERVALO:        30000,
-        PAC_SCROLL_PX:        2,
-        PAC_SCROLL_TICK:      60,
-        PAC_SCROLL_DELAY:     1500,
-        STORAGE_PREFIX:       'painel51_'
+        INTERVALO_REFRESH:  60000,
+        PAC_INTERVALO:      30000,   // troca de dupla
+        PAC_TICKER_MS:      2000,    // ms entre cada item avançar
+        PAC_TICKER_ANIM_MS: 500,     // duração da animação de slide
+        STORAGE_PREFIX:     'painel51_'
     };
 
     // =========================================================================
@@ -28,13 +27,11 @@
         carregando: false,
         ultimaAtualizacao: null,
         modoTV:     false,
-        scrollTimer: null,
         pac: {
-            idx:              0,
-            cache:            {},
-            timer:            null,
-            scrollTimer:      null,
-            scrollDelayTimer: null
+            idx:     0,
+            cache:   {},
+            timer:   null,
+            tickers: {}   // slotId → { allItems, nextIdx, animating, timer }
         }
     };
 
@@ -96,18 +93,16 @@
     // =========================================================================
 
     function tickRelogio() {
-        var d = new Date();
+        var d  = new Date();
         var hh = ('0' + d.getHours()).slice(-2);
         var mm = ('0' + d.getMinutes()).slice(-2);
-        if (DOM.relogio) {
-            var ago = '';
-            if (Estado.ultimaAtualizacao) {
-                var diff = Math.round((d - Estado.ultimaAtualizacao) / 1000);
-                ago = diff < 10 ? 'agora' : 'há ' + diff + 's';
-            }
-            DOM.relogio.innerHTML = hh + ':' + mm +
-                '<small>' + (ago || 'inicializando') + '</small>';
+        if (!DOM.relogio) return;
+        var ago = '';
+        if (Estado.ultimaAtualizacao) {
+            var diff = Math.round((d - Estado.ultimaAtualizacao) / 1000);
+            ago = diff < 10 ? 'agora' : 'há ' + diff + 's';
         }
+        DOM.relogio.innerHTML = hh + ':' + mm + '<small>' + (ago || 'inicializando') + '</small>';
     }
 
     // =========================================================================
@@ -122,13 +117,12 @@
         }
         var h = '';
         for (var i = 0; i < setores.length; i++) {
-            var s = setores[i];
+            var s      = setores[i];
             var ativo  = Estado.filtros.setor.indexOf(s.cd_setor) >= 0;
             var alerta = parseInt(s.qt_leitos_alerta) || 0;
             h += '<button class="set' + (ativo ? ' on' : '') + (alerta === 0 ? ' zero' : '') +
                  '" data-cd="' + s.cd_setor + '" title="' + escHtml(s.nm_setor) + '">' +
-                 escHtml(s.apelido || s.nm_setor) +
-                 ' <b>' + alerta + '</b></button>';
+                 escHtml(s.apelido || s.nm_setor) + ' <b>' + alerta + '</b></button>';
         }
         DOM.setores.innerHTML = h;
         var btns = DOM.setores.querySelectorAll('.set');
@@ -153,11 +147,11 @@
     function renderizarKpis(data) {
         if (!DOM.kpis) return;
         var defs = [
-            { k: 'crit', c: 'k-crit', n: data.qt_criticas         || 0, l: 'Críticas',        ic: 'fa-triangle-exclamation'       },
-            { k: 'atr',  c: 'k-atr',  n: data.qt_atrasadas        || 0, l: 'Atrasadas',       ic: 'fa-clock'                      },
-            { k: 'abr',  c: 'k-abr',  n: data.qt_abertas          || 0, l: 'Janela aberta',   ic: 'fa-hourglass-half'             },
-            { k: 'prx',  c: 'k-prx',  n: data.qt_proximas         || 0, l: 'Próximas 2h',     ic: 'fa-forward'                    },
-            { k: 'frm',  c: 'k-frm',  n: data.qt_sem_dispensacao  || 0, l: 'Sem dispensação', ic: 'fa-prescription-bottle-medical' }
+            { k: 'crit', c: 'k-crit', n: data.qt_criticas        || 0, l: 'Críticas',        ic: 'fa-triangle-exclamation'        },
+            { k: 'atr',  c: 'k-atr',  n: data.qt_atrasadas       || 0, l: 'Atrasadas',       ic: 'fa-clock'                       },
+            { k: 'abr',  c: 'k-abr',  n: data.qt_abertas         || 0, l: 'Janela aberta',   ic: 'fa-hourglass-half'              },
+            { k: 'prx',  c: 'k-prx',  n: data.qt_proximas        || 0, l: 'Próximas 2h',     ic: 'fa-forward'                     },
+            { k: 'frm',  c: 'k-frm',  n: data.qt_sem_dispensacao || 0, l: 'Sem dispensação', ic: 'fa-prescription-bottle-medical'  }
         ];
         var h = '';
         for (var i = 0; i < defs.length; i++) {
@@ -169,7 +163,6 @@
                  '</div>';
         }
         DOM.kpis.innerHTML = h;
-
         var ks = DOM.kpis.querySelectorAll('.kpi');
         for (var j = 0; j < ks.length; j++) {
             (function(el) {
@@ -183,7 +176,7 @@
     }
 
     // =========================================================================
-    // PAGINADOR — DUPLA DE PACIENTES
+    // DOSE LINE + CARD BUILDER
     // =========================================================================
 
     var _SEV_CLS = ['sev0','sev1','sev2','sev3','sev4','sev5'];
@@ -201,10 +194,6 @@
         SEM_HORARIO:    { tg: 'tg-ok',   label: 'Sem horário fixo',  cls: 'd-ok'   }
     };
 
-    /**
-     * Renderiza uma linha de dose.
-     * mostrarChecker=true: exibe quem administrou (campo nm_profissional_checagem).
-     */
     function _dosePacLinha(d, mostrarChecker) {
         var rot    = _DOSE_ROT[d.situacao] || { tg: '', label: d.situacao || '—', cls: '' };
         var atraso = parseInt(d.min_atraso) || 0;
@@ -223,8 +212,7 @@
             '<div class="pac-med-posol">' +
             escHtml((d.qt_dose ? d.qt_dose + ' ' : '') + (d.ds_unidade_medida || '')) +
             (d.ds_intervalo ? ' · ' + escHtml(d.ds_intervalo) : '') + '</div>' +
-            checker +
-            '</div>' +
+            checker + '</div>' +
             '<div class="pac-tags">' +
             '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) + (atraso > 0 ? ' ' + fmtMin(atraso) : '') + '</span>' +
             (d.alta_vigilancia   ? '<span class="tg tg-av"><i class="fa-solid fa-shield-halved"></i></span>' : '') +
@@ -233,14 +221,15 @@
     }
 
     /**
-     * Constrói o HTML interno de um .pac-card-item.
-     * Cabeçalho com leito, nome, setor e contadores (sticky via CSS).
+     * Constrói os dados de um card de paciente para o ticker.
+     * Retorna { html: string (header + ticker wrapper), allItems: Array<string> }
+     * onde allItems é a lista plana de HTML de cada linha (seções + doses).
      */
-    function _buildPacCardHtml(l, data) {
-        var sev    = parseInt(l.severidade_max) || 0;
-        var sevCls = _SEV_CLS[Math.min(sev, 5)];
-        var pend   = (data.precisa_acao || []).concat(data.proximas || []);
-        var res    = data.resolvidas || [];
+    function _buildPacCard(l, data) {
+        var sev  = parseInt(l.severidade_max) || 0;
+        var sevC = _SEV_CLS[Math.min(sev, 5)];
+        var pend = (data.precisa_acao || []).concat(data.proximas || []);
+        var res  = data.resolvidas || [];
 
         var cntPend = pend.length
             ? '<span class="cnt-pend"><i class="fa-solid fa-hourglass-half"></i> ' +
@@ -249,7 +238,8 @@
         var cntOk = '<span class="cnt-ok"><i class="fa-solid fa-circle-check"></i> ' +
             res.length + ' checado' + (res.length !== 1 ? 's' : '') + '</span>';
 
-        var h = '<div class="pac-pac-hdr ' + sevCls + '">' +
+        var headerHtml =
+            '<div class="pac-pac-hdr ' + sevC + '">' +
             '<div class="pac-leito">' + escHtml(l.cd_leito || '—') + '</div>' +
             '<div class="pac-hdr-info">' +
             '<div class="pac-nome">' + escHtml(fmtNome(l.nm_paciente)) + '</div>' +
@@ -257,48 +247,112 @@
             '<div class="pac-meta-counts">' + cntPend + cntOk + '</div>' +
             '</div></div>';
 
+        // Lista plana de itens do ticker (seções + doses)
+        var allItems = [];
         if (pend.length) {
-            h += '<div class="pac-secao">Pendentes (' + pend.length + ')</div>';
-            for (var i = 0; i < pend.length; i++) h += _dosePacLinha(pend[i], false);
+            allItems.push('<div class="pac-secao">Pendentes (' + pend.length + ')</div>');
+            for (var i = 0; i < pend.length; i++) allItems.push(_dosePacLinha(pend[i], false));
         }
         if (res.length) {
-            h += '<div class="pac-secao">Já checados (' + res.length + ')</div>';
-            for (var j = 0; j < res.length; j++) h += _dosePacLinha(res[j], true);
+            allItems.push('<div class="pac-secao">Já checados (' + res.length + ')</div>');
+            for (var j = 0; j < res.length; j++) allItems.push(_dosePacLinha(res[j], true));
         }
-        if (!pend.length && !res.length) {
-            h += '<div class="vazio"><i class="fa-solid fa-circle-check"></i><b>Sem doses na janela</b></div>';
-        }
-        return h;
+
+        var html = headerHtml +
+            '<div class="pac-ticker"><div class="pac-ticker-track"></div></div>';
+
+        return { html: html, allItems: allItems };
     }
 
-    // ── Scroll interno dos cards ──────────────────────────────────────────────
+    // =========================================================================
+    // TICKER — item a item, empurrando para cima em loop
+    // =========================================================================
 
-    function _iniciarScrollCards() {
-        if (Estado.pac.scrollTimer) { clearInterval(Estado.pac.scrollTimer); Estado.pac.scrollTimer = null; }
-        Estado.pac.scrollTimer = setInterval(function() {
-            var slots = DOM.pacCard ? DOM.pacCard.querySelectorAll('.pac-card-item') : [];
-            for (var i = 0; i < slots.length; i++) {
-                var el  = slots[i];
-                var max = el.scrollHeight - el.clientHeight;
-                if (max > 0 && el.scrollTop < max) {
-                    el.scrollTop = Math.min(el.scrollTop + CONFIG.PAC_SCROLL_PX, max);
-                }
-            }
-        }, CONFIG.PAC_SCROLL_TICK);
+    /**
+     * Inicia o ticker para um .pac-card-item.
+     * Renderiza TODOS os itens no track (o CSS faz overflow:hidden mostrar apenas os visíveis).
+     * A cada PAC_TICKER_MS:
+     *   1. Mede a altura do primeiro item
+     *   2. Adiciona o próximo item (loop) no final do track
+     *   3. Anima translateY(-firstHeight) → sobe a faixa
+     *   4. Após animação: remove o primeiro item, reseta transform
+     */
+    function _startTicker(slotEl, allItems) {
+        var slotId = slotEl.id;
+        _stopTicker(slotId);
+        if (!allItems || !allItems.length) return;
+
+        var track = slotEl.querySelector('.pac-ticker-track');
+        if (!track) return;
+
+        // Renderiza todos os itens de uma vez (a visão é clipada pelo overflow:hidden do .pac-ticker)
+        var h = '';
+        for (var i = 0; i < allItems.length; i++) h += allItems[i];
+        track.innerHTML = h;
+        track.style.transition = 'none';
+        track.style.transform  = 'translateY(0)';
+
+        // nextIdx: próximo item a adicionar no final para o loop
+        var state = {
+            allItems:  allItems,
+            nextIdx:   0,       // cicla em loop: 0 → N-1 → 0 → …
+            animating: false,
+            timer:     null
+        };
+
+        state.timer = setInterval(function() {
+            if (state.animating) return;
+
+            var firstItem = track.firstElementChild;
+            if (!firstItem) return;
+            var itemH = firstItem.offsetHeight;
+            if (!itemH) return;
+
+            state.animating = true;
+
+            // Adiciona próximo item no final (para loop contínuo)
+            var wrapper   = document.createElement('div');
+            wrapper.innerHTML = allItems[state.nextIdx];
+            var newNode   = wrapper.firstElementChild;
+            if (newNode) track.appendChild(newNode);
+            state.nextIdx = (state.nextIdx + 1) % allItems.length;
+
+            // Slide: sobe a faixa
+            track.style.transition = 'transform ' + CONFIG.PAC_TICKER_ANIM_MS + 'ms cubic-bezier(0.4,0,0.2,1)';
+            track.style.transform  = 'translateY(-' + itemH + 'px)';
+
+            setTimeout(function() {
+                // Remove o item que saiu pelo topo
+                if (track.firstChild) track.removeChild(track.firstChild);
+                // Reseta sem animação
+                track.style.transition = 'none';
+                track.style.transform  = 'translateY(0)';
+                state.animating = false;
+            }, CONFIG.PAC_TICKER_ANIM_MS + 20);
+
+        }, CONFIG.PAC_TICKER_MS);
+
+        Estado.pac.tickers[slotId] = state;
     }
 
-    function _agendarScrollCards() {
-        if (Estado.pac.scrollDelayTimer) { clearTimeout(Estado.pac.scrollDelayTimer);  Estado.pac.scrollDelayTimer = null; }
-        if (Estado.pac.scrollTimer)      { clearInterval(Estado.pac.scrollTimer);       Estado.pac.scrollTimer      = null; }
-        Estado.pac.scrollDelayTimer = setTimeout(function() {
-            Estado.pac.scrollDelayTimer = null;
-            _iniciarScrollCards();
-        }, CONFIG.PAC_SCROLL_DELAY);
+    function _stopTicker(slotId) {
+        var st = Estado.pac.tickers[slotId];
+        if (st && st.timer) { clearInterval(st.timer); st.timer = null; }
+        delete Estado.pac.tickers[slotId];
     }
 
-    // ── Renderização de uma dupla ─────────────────────────────────────────────
+    function _stopAllTickers() {
+        var keys = Object.keys(Estado.pac.tickers);
+        for (var k = 0; k < keys.length; k++) _stopTicker(keys[k]);
+    }
+
+    // =========================================================================
+    // PAGINADOR — dupla de pacientes (troca a cada PAC_INTERVALO)
+    // =========================================================================
 
     function renderizarPaciente(idx) {
+        _stopAllTickers();   // cancela tickers da dupla anterior
+
         var lista = Estado.leitos;
         if (!lista || !lista.length) {
             if (DOM.pacCard) DOM.pacCard.innerHTML =
@@ -314,6 +368,7 @@
         var mostrar = total === 1 ? 1 : 2;
         var idxB    = (idx + 1) % total;
 
+        // Esqueleto de slots
         var h = '';
         for (var s = 0; s < mostrar; s++) {
             h += '<div class="pac-card-item" id="pac-slot-' + s + '">' +
@@ -322,22 +377,24 @@
                  '</div>';
         }
         if (DOM.pacCard) DOM.pacCard.innerHTML = h;
-        _agendarScrollCards();
 
+        // Preenche cada slot — cache (120s) ou fetch
         for (var si = 0; si < mostrar; si++) {
             (function(slotNum, leitoIdx, baseIdx) {
                 var l  = lista[leitoIdx];
                 var nr = l.nr_atendimento;
 
-                function setSlot(html) {
+                function setSlot(result) {
                     if (Estado.pac.idx !== baseIdx) return;
                     var el = document.getElementById('pac-slot-' + slotNum);
-                    if (el) el.innerHTML = html;
+                    if (!el) return;
+                    el.innerHTML = result.html;
+                    _startTicker(el, result.allItems);
                 }
 
                 var entry = Estado.pac.cache[nr];
                 if (entry && (Date.now() - entry.ts) < 120000) {
-                    setSlot(_buildPacCardHtml(l, entry.data));
+                    setSlot(_buildPacCard(l, entry.data));
                     return;
                 }
 
@@ -346,9 +403,9 @@
                     .then(function(data) {
                         if (!data.success) return;
                         Estado.pac.cache[nr] = { data: data, ts: Date.now() };
-                        setSlot(_buildPacCardHtml(l, data));
+                        setSlot(_buildPacCard(l, data));
                     })
-                    .catch(function(e) { console.error('[P51] pac slot ' + slotNum + ':', e); });
+                    .catch(function(e) { console.error('[P51] slot ' + slotNum + ':', e); });
 
             })(si, si === 0 ? idx : idxB, idx);
         }
@@ -363,13 +420,12 @@
     }
 
     function pararPaginador() {
-        if (Estado.pac.timer)            { clearInterval(Estado.pac.timer);            Estado.pac.timer            = null; }
-        if (Estado.pac.scrollTimer)      { clearInterval(Estado.pac.scrollTimer);      Estado.pac.scrollTimer      = null; }
-        if (Estado.pac.scrollDelayTimer) { clearTimeout(Estado.pac.scrollDelayTimer);  Estado.pac.scrollDelayTimer = null; }
+        if (Estado.pac.timer) { clearInterval(Estado.pac.timer); Estado.pac.timer = null; }
+        _stopAllTickers();
     }
 
     // =========================================================================
-    // DRAWER DO LEITO (clique no KPI abre drawer — acessível via cards externos)
+    // DRAWER DO LEITO
     // =========================================================================
 
     function doseHtml(d, mostrarChecker) {
@@ -379,11 +435,10 @@
         if (mostrarChecker && d.nm_profissional_checagem) {
             checker = '<span class="tg tg-chk"><i class="fa-solid fa-user-check"></i> ' +
                 escHtml(fmtNome(d.nm_profissional_checagem)) +
-                (d.hora_checagem ? ' · ' + escHtml(d.hora_checagem) : '') +
-                '</span>';
+                (d.hora_checagem ? ' · ' + escHtml(d.hora_checagem) : '') + '</span>';
         }
         return '<div class="dose ' + rot.cls + '">' +
-            '<div class="d-hora">' + escHtml(d.hora_prevista || d.ds_horario || '--:--') + '</div>' +
+            '<div class="d-hora">' + escHtml(d.hora_prevista || '--:--') + '</div>' +
             '<div class="d-corpo">' +
             '<div class="d-nome">' + escHtml(d.ds_material || '—') + '</div>' +
             '<div class="d-meta">' +
@@ -393,27 +448,26 @@
             '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) + (atraso > 0 ? ' ' + fmtMin(atraso) : '') + '</span>' +
             (d.alta_vigilancia   ? '<span class="tg tg-av"><i class="fa-solid fa-shield-halved"></i> Alta vigilância</span>' : '') +
             (d.pendente_farmacia ? '<span class="tg tg-frm"><i class="fa-solid fa-prescription-bottle-medical"></i> Sem dispensação</span>' : '') +
-            (d.evento_rotulo && d.situacao === 'JUSTIFICADA' ? '<span class="tg tg-just">' + escHtml(d.evento_rotulo) + '</span>' : '') +
             checker +
             '</div></div></div>';
     }
 
-    function abrirDrawer(nr_atendimento, cd_leito, nm_paciente) {
-        if (DOM.drwLeito) DOM.drwLeito.textContent = cd_leito || '—';
-        if (DOM.drwPac)   DOM.drwPac.textContent   = fmtNome(nm_paciente);
+    function abrirDrawer(nr, cdLeito, nmPaciente) {
+        if (DOM.drwLeito) DOM.drwLeito.textContent = cdLeito || '—';
+        if (DOM.drwPac)   DOM.drwPac.textContent   = fmtNome(nmPaciente);
         if (DOM.drwB)     DOM.drwB.innerHTML = '<div class="vazio"><i class="fa-solid fa-spinner fa-spin"></i><b>Carregando…</b></div>';
         if (DOM.drw) DOM.drw.classList.add('on');
         if (DOM.ovl) DOM.ovl.classList.add('on');
 
-        fetch(CONFIG.ENDPOINTS.paciente + nr_atendimento, { credentials: 'same-origin' })
+        fetch(CONFIG.ENDPOINTS.paciente + nr, { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.success || !DOM.drwB) return;
                 if (DOM.drwPac) {
-                    DOM.drwPac.textContent = fmtNome(nm_paciente) + ' · ' +
+                    DOM.drwPac.textContent = fmtNome(nmPaciente) + ' · ' +
                         (data.qt_total || 0) + ' dose' + ((data.qt_total || 0) !== 1 ? 's' : '') + ' hoje';
                 }
-                var h = '';
+                var h  = '';
                 var gs = [
                     { titulo: 'Precisa de ação',    doses: data.precisa_acao || [], chk: false },
                     { titulo: 'Nas próximas horas', doses: data.proximas     || [], chk: false },
@@ -462,8 +516,8 @@
             var dash = results[0], lts = results[1];
             if (dash.success) renderizarKpis(dash.data || {});
             if (lts.success) {
-                Estado.leitos     = lts.data || [];
-                Estado.pac.cache  = {};
+                Estado.leitos    = lts.data || [];
+                Estado.pac.cache = {};
                 renderizarPaciente(Estado.pac.idx);
             }
             Estado.ultimaAtualizacao = new Date();
@@ -505,7 +559,6 @@
 
         Estado.filtros.setor = recuperar('setor', []);
         Estado.modoTV        = recuperar('modoTV', false);
-
         if (Estado.modoTV) {
             document.body.classList.add('modo-tv');
             if (DOM.btnTv) DOM.btnTv.classList.add('on');
@@ -515,41 +568,27 @@
         tickRelogio();
         setInterval(tickRelogio, 1000);
 
-        // Delegação de clique nos cards do paginador (abre drawer)
+        // Clique no card abre drawer
         if (DOM.pacCard) {
             DOM.pacCard.addEventListener('click', function(e) {
                 var item = e.target.closest('.pac-card-item');
                 if (!item) return;
-                var slotId = item.id;
-                if (!slotId) return;
-                var slotNum = parseInt(slotId.replace('pac-slot-', ''));
-                var total   = Estado.leitos.length;
-                if (!total) return;
-                var lIdx    = (Estado.pac.idx + slotNum) % total;
-                var l       = Estado.leitos[lIdx];
+                var sn    = parseInt((item.id || '').replace('pac-slot-', ''));
+                var total = Estado.leitos.length;
+                if (!total || isNaN(sn)) return;
+                var lIdx = (Estado.pac.idx + sn) % total;
+                var l    = Estado.leitos[lIdx];
                 if (l) abrirDrawer(l.nr_atendimento, l.cd_leito, l.nm_paciente);
             });
         }
 
-        // Modo TV
-        if (DOM.btnTv) DOM.btnTv.addEventListener('click', function() { toggleModoTV(); });
-
-        // Alertas sonoros
-        if (DOM.btnSom) {
-            DOM.btnSom.addEventListener('click', function() {
-                DOM.btnSom.classList.toggle('on');
-            });
-        }
-
-        // Refresh manual
+        if (DOM.btnTv)      DOM.btnTv.addEventListener('click', function() { toggleModoTV(); });
+        if (DOM.btnSom)     DOM.btnSom.addEventListener('click', function() { DOM.btnSom.classList.toggle('on'); });
         if (DOM.btnRefresh) DOM.btnRefresh.addEventListener('click', function() { carregarDados(); });
-
-        // Drawer
-        if (DOM.drwX) DOM.drwX.addEventListener('click', fecharDrawer);
-        if (DOM.ovl)  DOM.ovl.addEventListener('click',  fecharDrawer);
+        if (DOM.drwX)       DOM.drwX.addEventListener('click', fecharDrawer);
+        if (DOM.ovl)        DOM.ovl.addEventListener('click',  fecharDrawer);
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') fecharDrawer(); });
 
-        // Inicia paginador e polling
         iniciarPaginador();
         carregarDados();
 
