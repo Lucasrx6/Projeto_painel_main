@@ -26,7 +26,7 @@
         filtros:    { setor: [], kpi: null },
         leitos:     [],
         tabela:     [],
-        modo:       'mural',
+        modo:       'tabela',   // aba Tabela aberta por padrão
         foco:       false,
         modoTV:     false,
         alertaSom:  false,
@@ -86,7 +86,7 @@
     }
 
     // =========================================================================
-    // PARAMS (fonte única para todas as URLs filtráveis)
+    // PARAMS
     // =========================================================================
 
     function construirParams() {
@@ -138,8 +138,8 @@
         var h = '';
         for (var i = 0; i < setores.length; i++) {
             var s = setores[i];
-            var ativo   = Estado.filtros.setor.indexOf(s.cd_setor) >= 0;
-            var alerta  = parseInt(s.qt_leitos_alerta) || 0;
+            var ativo  = Estado.filtros.setor.indexOf(s.cd_setor) >= 0;
+            var alerta = parseInt(s.qt_leitos_alerta) || 0;
             h += '<button class="set' + (ativo ? ' on' : '') + (alerta === 0 ? ' zero' : '') +
                  '" data-cd="' + s.cd_setor + '" title="' + escHtml(s.nm_setor) + '">' +
                  escHtml(s.apelido || s.nm_setor) +
@@ -168,11 +168,11 @@
     function renderizarKpis(data) {
         if (!DOM.kpis) return;
         var defs = [
-            { k: 'crit', c: 'k-crit', n: data.qt_criticas          || 0, l: 'Críticas',        ic: 'fa-triangle-exclamation'       },
-            { k: 'atr',  c: 'k-atr',  n: data.qt_atrasadas         || 0, l: 'Atrasadas',       ic: 'fa-clock'                      },
-            { k: 'abr',  c: 'k-abr',  n: data.qt_abertas           || 0, l: 'Janela aberta',   ic: 'fa-hourglass-half'             },
-            { k: 'prx',  c: 'k-prx',  n: data.qt_proximas          || 0, l: 'Próximas 2h',     ic: 'fa-forward'                    },
-            { k: 'frm',  c: 'k-frm',  n: data.qt_sem_dispensacao   || 0, l: 'Sem dispensação', ic: 'fa-prescription-bottle-medical' }
+            { k: 'crit', c: 'k-crit', n: data.qt_criticas         || 0, l: 'Críticas',        ic: 'fa-triangle-exclamation'       },
+            { k: 'atr',  c: 'k-atr',  n: data.qt_atrasadas        || 0, l: 'Atrasadas',       ic: 'fa-clock'                      },
+            { k: 'abr',  c: 'k-abr',  n: data.qt_abertas          || 0, l: 'Janela aberta',   ic: 'fa-hourglass-half'             },
+            { k: 'prx',  c: 'k-prx',  n: data.qt_proximas         || 0, l: 'Próximas 2h',     ic: 'fa-forward'                    },
+            { k: 'frm',  c: 'k-frm',  n: data.qt_sem_dispensacao  || 0, l: 'Sem dispensação', ic: 'fa-prescription-bottle-medical' }
         ];
         var h = '';
         for (var i = 0; i < defs.length; i++) {
@@ -208,11 +208,11 @@
     function leito_visivel(l) {
         if (Estado.foco && (parseInt(l.severidade_max) || 0) < 3) return false;
         var k = Estado.filtros.kpi;
-        if (k === 'crit' && !(parseInt(l.qt_criticas)           > 0)) return false;
-        if (k === 'atr'  && !(parseInt(l.qt_atrasadas)          > 0)) return false;
-        if (k === 'abr'  && !(parseInt(l.qt_abertas)            > 0)) return false;
-        if (k === 'prx'  && !(parseInt(l.qt_proximas)           > 0)) return false;
-        if (k === 'frm'  && !(parseInt(l.qt_sem_dispensacao)    > 0)) return false;
+        if (k === 'crit' && !(parseInt(l.qt_criticas)          > 0)) return false;
+        if (k === 'atr'  && !(parseInt(l.qt_atrasadas)         > 0)) return false;
+        if (k === 'abr'  && !(parseInt(l.qt_abertas)           > 0)) return false;
+        if (k === 'prx'  && !(parseInt(l.qt_proximas)          > 0)) return false;
+        if (k === 'frm'  && !(parseInt(l.qt_sem_dispensacao)   > 0)) return false;
         return true;
     }
 
@@ -231,13 +231,13 @@
             if (!leito_visivel(l)) continue;
             mostrados++;
 
-            var sev  = parseInt(l.severidade_max)   || 0;
-            var crit = parseInt(l.qt_criticas)       || 0;
-            var atr  = parseInt(l.qt_atrasadas)      || 0;
-            var abr  = parseInt(l.qt_abertas)        || 0;
-            var prx  = parseInt(l.qt_proximas)       || 0;
-            var ok   = parseInt(l.qt_administradas)  || 0;
-            var just = parseInt(l.qt_justificadas)   || 0;
+            var sev  = parseInt(l.severidade_max)  || 0;
+            var crit = parseInt(l.qt_criticas)      || 0;
+            var atr  = parseInt(l.qt_atrasadas)     || 0;
+            var abr  = parseInt(l.qt_abertas)       || 0;
+            var prx  = parseInt(l.qt_proximas)      || 0;
+            var ok   = parseInt(l.qt_administradas) || 0;
+            var just = parseInt(l.qt_justificadas)  || 0;
             var agd  = parseInt(l.qt_doses) - crit - atr - abr - prx - ok - just;
             if (agd < 0) agd = 0;
             var disp   = parseInt(l.qt_sem_dispensacao) || 0;
@@ -298,7 +298,7 @@
     }
 
     // =========================================================================
-    // RENDER: TABELA (paciente + doses pendentes expandidas)
+    // RENDER: TABELA
     // =========================================================================
 
     function renderizarTabela(grupos) {
@@ -309,7 +309,7 @@
             return;
         }
 
-        var k      = Estado.filtros.kpi;
+        var k       = Estado.filtros.kpi;
         var mapaSit = { crit: 'CRITICA', atr: 'ATRASADA', abr: 'ABERTA', prx: 'PROXIMA' };
         var h = '';
         var mostrados = 0;
@@ -373,20 +373,20 @@
     }
 
     // =========================================================================
-    // PAGINADOR DE PACIENTES
+    // PAGINADOR — DUPLA DE PACIENTES
     // =========================================================================
 
     var _DOSE_ROT = {
-        CRITICA:       { tg: 'tg-crit', label: 'Crítica',           cls: 'd-crit' },
-        ATRASADA:      { tg: 'tg-atr',  label: 'Atrasada',          cls: 'd-atr'  },
-        ABERTA:        { tg: 'tg-abr',  label: 'Administrar agora', cls: 'd-abr'  },
-        PROXIMA:       { tg: 'tg-prx',  label: 'Próxima',           cls: 'd-prx'  },
-        AGENDADA:      { tg: 'tg-ok',   label: 'Agendada',          cls: 'd-ok'   },
-        ADM_NO_PRAZO:  { tg: 'tg-ok',   label: 'Administrada',      cls: 'd-ok'   },
-        ADM_ANTECIPADA:{ tg: 'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
-        ADM_ATRASADA:  { tg: 'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
-        JUSTIFICADA:   { tg: 'tg-just', label: 'Justificada',       cls: 'd-just' },
-        SEM_HORARIO:   { tg: 'tg-ok',   label: 'Sem horário fixo',  cls: 'd-ok'   }
+        CRITICA:        { tg: 'tg-crit', label: 'Crítica',           cls: 'd-crit' },
+        ATRASADA:       { tg: 'tg-atr',  label: 'Atrasada',          cls: 'd-atr'  },
+        ABERTA:         { tg: 'tg-abr',  label: 'Administrar agora', cls: 'd-abr'  },
+        PROXIMA:        { tg: 'tg-prx',  label: 'Próxima',           cls: 'd-prx'  },
+        AGENDADA:       { tg: 'tg-ok',   label: 'Agendada',          cls: 'd-ok'   },
+        ADM_NO_PRAZO:   { tg: 'tg-ok',   label: 'Administrada',      cls: 'd-ok'   },
+        ADM_ANTECIPADA: { tg: 'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
+        ADM_ATRASADA:   { tg: 'tg-fora', label: 'Fora da janela',    cls: 'd-fora' },
+        JUSTIFICADA:    { tg: 'tg-just', label: 'Justificada',       cls: 'd-just' },
+        SEM_HORARIO:    { tg: 'tg-ok',   label: 'Sem horário fixo',  cls: 'd-ok'   }
     };
 
     function _dosePacLinha(d) {
@@ -405,13 +405,11 @@
             '</div></div>';
     }
 
-    function _renderPacCard(l, data) {
-        if (!DOM.pacCard) return;
+    function _buildPacCardHtml(l, data) {
         var sev    = parseInt(l.severidade_max) || 0;
         var sevCls = _SEV_CLS[Math.min(sev, 5)];
-
-        var pend = (data.precisa_acao || []).concat(data.proximas || []);
-        var res  = data.resolvidas || [];
+        var pend   = (data.precisa_acao || []).concat(data.proximas || []);
+        var res    = data.resolvidas || [];
 
         var h = '<div class="pac-pac-hdr ' + sevCls + '">' +
             '<div class="pac-leito">' + escHtml(l.cd_leito || '—') + '</div>' +
@@ -430,40 +428,75 @@
         if (!pend.length && !res.length) {
             h += '<div class="vazio"><i class="fa-solid fa-circle-check"></i><b>Sem doses na janela</b></div>';
         }
-
-        DOM.pacCard.innerHTML = h;
+        return h;
     }
 
+    /**
+     * Renderiza UMA DUPLA de pacientes (2 cards lado a lado) no paginador.
+     * Avança de 2 em 2, voltando ao início em loop.
+     * Com 1 paciente na lista, exibe um único card.
+     */
     function renderizarPaciente(idx) {
         var lista = Estado.leitos;
         if (!lista || !lista.length) {
-            if (DOM.pacCard) DOM.pacCard.innerHTML = '<div class="vazio"><i class="fa-solid fa-bed"></i><b>Sem pacientes</b></div>';
+            if (DOM.pacCard) DOM.pacCard.innerHTML =
+                '<div class="pac-card-item"><div class="vazio">' +
+                '<i class="fa-solid fa-bed"></i><b>Sem pacientes</b></div></div>';
             return;
         }
-        idx = ((idx % lista.length) + lista.length) % lista.length;
+
+        var total   = lista.length;
+        idx         = ((idx % total) + total) % total;
         Estado.pac.idx = idx;
 
-        var l  = lista[idx];
-        var nr = l.nr_atendimento;
-        if (DOM.pacPos) DOM.pacPos.textContent = (idx + 1) + ' / ' + lista.length;
+        var mostrar = total === 1 ? 1 : 2;
+        var idxB    = (idx + 1) % total;
 
-        var entry = Estado.pac.cache[nr];
-        if (entry && (Date.now() - entry.ts) < 120000) {
-            _renderPacCard(l, entry.data);
-            return;
+        if (DOM.pacPos) {
+            DOM.pacPos.textContent = mostrar === 1
+                ? '1 / 1'
+                : (idx + 1) + '–' + (idxB + 1) + ' / ' + total;
         }
 
-        if (DOM.pacCard) DOM.pacCard.innerHTML =
-            '<div class="vazio"><i class="fa-solid fa-spinner fa-spin"></i><b>Carregando…</b></div>';
+        // Monta esqueleto com os slots vazios
+        var h = '';
+        for (var s = 0; s < mostrar; s++) {
+            h += '<div class="pac-card-item" id="pac-slot-' + s + '">' +
+                 '<div class="vazio"><i class="fa-solid fa-spinner fa-spin"></i>' +
+                 '<b>Carregando…</b></div>' +
+                 '</div>';
+        }
+        if (DOM.pacCard) DOM.pacCard.innerHTML = h;
 
-        fetch(CONFIG.ENDPOINTS.paciente + nr, { credentials: 'same-origin' })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (!data.success) return;
-                Estado.pac.cache[nr] = { data: data, ts: Date.now() };
-                if (Estado.pac.idx === idx) _renderPacCard(l, data);
-            })
-            .catch(function(e) { console.error('[P51] pac:', e); });
+        // Preenche cada slot independentemente via cache ou fetch
+        for (var si = 0; si < mostrar; si++) {
+            (function(slotNum, leitoIdx, baseIdx) {
+                var l  = lista[leitoIdx];
+                var nr = l.nr_atendimento;
+
+                function setSlot(html) {
+                    if (Estado.pac.idx !== baseIdx) return; // página mudou
+                    var el = document.getElementById('pac-slot-' + slotNum);
+                    if (el) el.innerHTML = html;
+                }
+
+                var entry = Estado.pac.cache[nr];
+                if (entry && (Date.now() - entry.ts) < 120000) {
+                    setSlot(_buildPacCardHtml(l, entry.data));
+                    return;
+                }
+
+                fetch(CONFIG.ENDPOINTS.paciente + nr, { credentials: 'same-origin' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (!data.success) return;
+                        Estado.pac.cache[nr] = { data: data, ts: Date.now() };
+                        setSlot(_buildPacCardHtml(l, data));
+                    })
+                    .catch(function(e) { console.error('[P51] pac slot ' + slotNum + ':', e); });
+
+            })(si, si === 0 ? idx : idxB, idx);
+        }
     }
 
     function iniciarPaginador() {
@@ -477,10 +510,11 @@
             if (DOM.pacProgBar) DOM.pacProgBar.style.width = Estado.pac.progPct + '%';
         }, CONFIG.PAC_TICK);
 
+        // Avança de 2 em 2 — loop via módulo em renderizarPaciente
         Estado.pac.timer = setInterval(function() {
             Estado.pac.progPct = 0;
             if (DOM.pacProgBar) DOM.pacProgBar.style.width = '0%';
-            renderizarPaciente(Estado.pac.idx + 1);
+            renderizarPaciente(Estado.pac.idx + 2);
         }, CONFIG.PAC_INTERVALO);
     }
 
@@ -490,7 +524,7 @@
     }
 
     // =========================================================================
-    // DRAWER DO LEITO (clique no card do mural)
+    // DRAWER DO LEITO
     // =========================================================================
 
     function doseHtml(d) {
@@ -517,8 +551,8 @@
         if (DOM.drwLeito) DOM.drwLeito.textContent = l.cd_leito || '—';
         if (DOM.drwPac)   DOM.drwPac.textContent   = fmtNome(l.nm_paciente);
         if (DOM.drwB)     DOM.drwB.innerHTML = '<div class="vazio"><i class="fa-solid fa-spinner fa-spin"></i><b>Carregando…</b></div>';
-        if (DOM.drw)      DOM.drw.classList.add('on');
-        if (DOM.ovl)      DOM.ovl.classList.add('on');
+        if (DOM.drw) DOM.drw.classList.add('on');
+        if (DOM.ovl) DOM.ovl.classList.add('on');
 
         fetch(CONFIG.ENDPOINTS.paciente + l.nr_atendimento, { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
@@ -530,9 +564,9 @@
                 }
                 var h = '';
                 var gs = [
-                    { titulo: 'Precisa de ação',   doses: data.precisa_acao || [] },
-                    { titulo: 'Nas próximas horas', doses: data.proximas    || [] },
-                    { titulo: 'Já resolvidas',      doses: data.resolvidas  || [] }
+                    { titulo: 'Precisa de ação',    doses: data.precisa_acao || [] },
+                    { titulo: 'Nas próximas horas', doses: data.proximas     || [] },
+                    { titulo: 'Já resolvidas',      doses: data.resolvidas   || [] }
                 ];
                 for (var g = 0; g < gs.length; g++) {
                     if (!gs[g].doses.length) continue;
@@ -582,7 +616,6 @@
             if (lts.success) {
                 Estado.leitos = lts.data || [];
                 renderizarMural(Estado.leitos);
-                // Invalida cache do paginador para reflectir dados novos
                 Estado.pac.cache = {};
                 if (Estado.modo === 'pac') renderizarPaciente(Estado.pac.idx);
             }
@@ -614,7 +647,7 @@
     function iniciarAutoScroll() {
         pararAutoScroll();
         Estado.scrollTimer = setInterval(function() {
-            var el  = DOM.mural;
+            var el  = DOM.tbWrap || DOM.mural;
             if (!el) return;
             var max = el.scrollHeight - window.innerHeight;
             if (max <= 0) { window.scrollTo(0, 0); return; }
@@ -655,7 +688,6 @@
         DOM.btnRefresh = document.getElementById('btn-refresh');
         DOM.relogio    = document.getElementById('relogio');
 
-        // Restaura estado persistido
         Estado.filtros.setor = recuperar('setor', []);
         Estado.foco          = recuperar('foco', false);
         Estado.modoTV        = recuperar('modoTV', false);
@@ -667,12 +699,23 @@
             iniciarAutoScroll();
         }
 
-        // Relógio (1 tick/s)
+        // Aplica visibilidade inicial das seções conforme Estado.modo
+        if (DOM.mural)   DOM.mural.classList.toggle('hide',   Estado.modo !== 'mural');
+        if (DOM.tbWrap)  DOM.tbWrap.classList.toggle('hide',  Estado.modo !== 'tabela');
+        if (DOM.pacWrap) DOM.pacWrap.classList.toggle('hide', Estado.modo !== 'pac');
+
+        // Relógio
         tickRelogio();
         setInterval(tickRelogio, 1000);
 
-        // Abas
+        // Abas — sincroniza estado visual com Estado.modo
         var tabs = document.querySelectorAll('.tab');
+        for (var i0 = 0; i0 < tabs.length; i0++) {
+            var m0 = tabs[i0].getAttribute('data-modo');
+            tabs[i0].classList.toggle('on', m0 === Estado.modo);
+            tabs[i0].setAttribute('aria-selected', m0 === Estado.modo ? 'true' : 'false');
+        }
+
         for (var i = 0; i < tabs.length; i++) {
             (function(btn) {
                 btn.addEventListener('click', function() {
@@ -686,9 +729,9 @@
                     var modoAnterior = Estado.modo;
                     Estado.modo = btn.getAttribute('data-modo');
 
-                    DOM.mural.classList.toggle('hide',   Estado.modo !== 'mural');
-                    DOM.tbWrap.classList.toggle('hide',  Estado.modo !== 'tabela');
-                    DOM.pacWrap.classList.toggle('hide', Estado.modo !== 'pac');
+                    if (DOM.mural)   DOM.mural.classList.toggle('hide',   Estado.modo !== 'mural');
+                    if (DOM.tbWrap)  DOM.tbWrap.classList.toggle('hide',  Estado.modo !== 'tabela');
+                    if (DOM.pacWrap) DOM.pacWrap.classList.toggle('hide', Estado.modo !== 'pac');
 
                     if (Estado.modo === 'pac') {
                         iniciarPaginador();
@@ -712,13 +755,13 @@
             });
         }
 
-        // Paginador — botões prev/next
+        // Paginador — prev/next avançam de 2 em 2
         if (DOM.pacPrev) {
             DOM.pacPrev.addEventListener('click', function() {
                 pararPaginador();
                 Estado.pac.progPct = 0;
                 if (DOM.pacProgBar) DOM.pacProgBar.style.width = '0%';
-                renderizarPaciente(Estado.pac.idx - 1);
+                renderizarPaciente(Estado.pac.idx - 2);
                 iniciarPaginador();
             });
         }
@@ -727,15 +770,13 @@
                 pararPaginador();
                 Estado.pac.progPct = 0;
                 if (DOM.pacProgBar) DOM.pacProgBar.style.width = '0%';
-                renderizarPaciente(Estado.pac.idx + 1);
+                renderizarPaciente(Estado.pac.idx + 2);
                 iniciarPaginador();
             });
         }
 
-        // Modo TV
         if (DOM.btnTv) DOM.btnTv.addEventListener('click', function() { toggleModoTV(); });
 
-        // Alertas sonoros (visual toggle — áudio implementável futuramente)
         if (DOM.btnSom) {
             DOM.btnSom.addEventListener('click', function() {
                 Estado.alertaSom = !Estado.alertaSom;
@@ -743,15 +784,12 @@
             });
         }
 
-        // Refresh manual
         if (DOM.btnRefresh) DOM.btnRefresh.addEventListener('click', function() { carregarDados(); });
 
-        // Drawer
         if (DOM.drwX) DOM.drwX.addEventListener('click', fecharDrawer);
         if (DOM.ovl)  DOM.ovl.addEventListener('click',  fecharDrawer);
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') fecharDrawer(); });
 
-        // Polling (pausa quando a aba do browser está oculta)
         var _intervalo = null;
         function startPolling() {
             if (_intervalo) clearInterval(_intervalo);

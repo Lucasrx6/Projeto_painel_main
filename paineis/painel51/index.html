@@ -49,10 +49,10 @@
 <!-- ── MODOS + FILTRO ─────────────────────────────────────────────────── -->
 <div class="modos">
     <div class="tabs" role="tablist">
-        <button class="tab on" data-modo="mural" role="tab" aria-selected="true">
+        <button class="tab" data-modo="mural" role="tab" aria-selected="false">
             <i class="fa-solid fa-grip"></i> Mural
         </button>
-        <button class="tab" data-modo="tabela" role="tab" aria-selected="false">
+        <button class="tab on" data-modo="tabela" role="tab" aria-selected="true">
             <i class="fa-solid fa-table-list"></i> Tabela
         </button>
         <button class="tab" data-modo="pac" role="tab" aria-selected="false">
@@ -65,7 +65,7 @@
 </div>
 
 <!-- ── MURAL DE LEITOS ────────────────────────────────────────────────── -->
-<section class="mural" id="mural" aria-live="polite">
+<section class="mural hide" id="mural" aria-live="polite">
     <div class="vazio" style="grid-column:1/-1">
         <i class="fa-solid fa-spinner fa-spin"></i>
         <b>Carregando leitos…</b>
@@ -73,7 +73,7 @@
 </section>
 
 <!-- ── VISÃO TABELA ────────────────────────────────────────────────────── -->
-<section class="tb-wrap hide" id="tb-wrap" aria-live="polite">
+<section class="tb-wrap" id="tb-wrap" aria-live="polite">
     <div class="vazio">
         <i class="fa-solid fa-spinner fa-spin"></i>
         <b>Carregando…</b>

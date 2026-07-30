@@ -620,6 +620,14 @@ body {
 }
 
 .pac-card {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.pac-card-item {
+    flex: 1;
+    min-width: 0;
     background: var(--cor-card);
     border-radius: var(--raio);
     box-shadow: var(--sombra);
