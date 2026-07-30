@@ -481,6 +481,101 @@ body {
 /* ── UTILITÁRIOS ─────────────────────────────────────────────────────────── */
 .hide { display: none !important; }
 
+/* ── VISÃO TABELA ────────────────────────────────────────────────────────── */
+.tb-wrap {
+    padding: 14px 18px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tb-bloco {
+    background: var(--cor-card);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    border-left: 7px solid var(--s-agendada);
+    overflow: hidden;
+}
+.tb-bloco.sev5 { border-left-color: var(--s-critica);  }
+.tb-bloco.sev4 { border-left-color: var(--s-atrasada); }
+.tb-bloco.sev3 { border-left-color: var(--s-aberta);   }
+.tb-bloco.sev2 { border-left-color: var(--s-proxima);  }
+
+.tb-hdr {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,.03);
+    border-bottom: 1px solid var(--cor-borda);
+}
+.tb-bloco.sev5 .tb-hdr { background: var(--s-critica-bg);  }
+.tb-bloco.sev4 .tb-hdr { background: var(--s-atrasada-bg); }
+.tb-bloco.sev3 .tb-hdr { background: var(--s-aberta-bg);   }
+.tb-bloco.sev2 .tb-hdr { background: var(--s-proxima-bg);  }
+
+.tb-leito-num {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    min-width: 58px;
+    line-height: 1.1;
+}
+.tb-pac-info { flex: 1; min-width: 0; }
+.tb-pac-info b {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tb-pac-info span { font-size: 11px; color: var(--cor-texto-sec); }
+
+.tb-dose-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cor-texto-muted);
+    white-space: nowrap;
+    background: rgba(0,0,0,.06);
+    padding: 3px 9px;
+    border-radius: 20px;
+}
+
+.tb-linha {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid #f4f5f6;
+    font-size: 13px;
+}
+.tb-linha:last-child { border-bottom: none; }
+.tb-linha.d-crit { background: rgba(167,29,42,.04); }
+.tb-linha.d-atr  { background: rgba(220,53,69,.04); }
+.tb-linha.d-abr  { background: rgba(253,126,20,.04); }
+.tb-linha.d-prx  { background: rgba(23,162,184,.03); }
+
+.tb-hora-cell {
+    font-family: monospace;
+    font-weight: 800;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    color: var(--cor-texto-sec);
+    line-height: 1;
+}
+.tb-linha.d-crit .tb-hora-cell { color: var(--s-critica);  }
+.tb-linha.d-atr  .tb-hora-cell { color: var(--s-atrasada); }
+.tb-linha.d-abr  .tb-hora-cell { color: var(--s-aberta);   }
+.tb-linha.d-prx  .tb-hora-cell { color: var(--s-proxima);  }
+
+.tb-med-cell  { min-width: 0; }
+.tb-med-nome  { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-med-posol { font-size: 11px; color: var(--cor-texto-muted); margin-top: 1px; }
+
+.tb-tags-cell { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+
 /* ── MODO TV ─────────────────────────────────────────────────────────────── */
 body.modo-tv { --font-size-base: 20px; }
 body.modo-tv .kpis    { display: none; }

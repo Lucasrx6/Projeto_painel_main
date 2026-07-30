@@ -401,6 +401,65 @@ def api_p51_paciente(nr_atendimento):
 
 
 # =============================================================================
+# GET /api/paineis/painel51/tabela
+# Visão tabular: pacientes com doses pendentes expandidas (sem clique)
+# =============================================================================
+
+@painel51_bp.route('/api/paineis/painel51/tabela')
+@login_required
+@panel_permission_required('painel51')
+@cache_route(ttl=30, key_prefix='p51:tabela', vary_by_user=False, vary_by_query=True)
+def api_p51_tabela():
+    d_conds, d_params, _, _ = _build_common_filters()
+    # Tabela mostra apenas doses que precisam de ação
+    tab_conds = list(d_conds) + ["situacao IN ('CRITICA','ATRASADA','ABERTA','PROXIMA')"]
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    cd_leito, nr_atendimento, nm_paciente, nm_setor,
+                    situacao, severidade, min_atraso,
+                    ds_material, qt_dose, ds_unidade_medida, ds_intervalo,
+                    alta_vigilancia, pendente_farmacia,
+                    TO_CHAR(dt_prevista, 'HH24:MI') AS hora_prevista
+                FROM vw_painel41_doses
+                {where}
+                ORDER BY severidade DESC, cd_leito, dt_prevista
+            """.format(where=_where(tab_conds)), d_params)
+            rows = [dict(r) for r in cursor.fetchall()]
+
+        # Agrupa por leito preservando ordem (paciente mais grave primeiro)
+        grupos = {}
+        ordem  = []
+        for r in rows:
+            key = r['cd_leito'] or str(r['nr_atendimento'])
+            if key not in grupos:
+                grupos[key] = {
+                    'cd_leito':       r['cd_leito'],
+                    'nr_atendimento': r['nr_atendimento'],
+                    'nm_paciente':    r['nm_paciente'],
+                    'nm_setor':       r['nm_setor'],
+                    'severidade_max': 0,
+                    'doses':          []
+                }
+                ordem.append(key)
+            sev = int(r.get('severidade') or 0)
+            if sev > grupos[key]['severidade_max']:
+                grupos[key]['severidade_max'] = sev
+            grupos[key]['doses'].append(r)
+
+        return jsonify({
+            'success':         True,
+            'total_pacientes': len(grupos),
+            'total_doses':     len(rows),
+            'data':            [grupos[k] for k in ordem]
+        })
+    except Exception as e:
+        current_app.logger.error('Erro tabela p51: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar tabela'}), 500
+
+
+# =============================================================================
 # GET /api/paineis/painel51/dados
 # Lista completa para auditoria e exportação (máx. 1 000 linhas)
 # =============================================================================

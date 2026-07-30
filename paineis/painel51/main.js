@@ -11,6 +11,7 @@
             leitos:    '/api/paineis/painel51/leitos',
             rodadas:   '/api/paineis/painel51/rodadas',
             timeline:  '/api/paineis/painel51/timeline',
+            tabela:    '/api/paineis/painel51/tabela',
             paciente:  '/api/paineis/painel51/paciente/'
         },
         INTERVALO_REFRESH: 60000,
@@ -25,6 +26,7 @@
         filtros:    { setor: [], kpi: null },
         leitos:     [],
         timeline:   [],
+        tabela:     [],
         modo:       'mural',
         foco:       false,
         modoTV:     false,
@@ -247,6 +249,7 @@
                     Estado.filtros.kpi = (Estado.filtros.kpi === k) ? null : k;
                     renderizarKpis(data);
                     renderizarMural(Estado.leitos);
+                    if (Estado.modo === 'tabela') renderizarTabela(Estado.tabela);
                 });
             })(ks[j]);
         }
@@ -417,6 +420,106 @@
     }
 
     // =========================================================================
+    // RENDER: TABELA DE PACIENTES COM DOSES PENDENTES
+    // =========================================================================
+
+    function renderizarTabela(grupos) {
+        if (!DOM.tbWrap) return;
+        if (!grupos || !grupos.length) {
+            DOM.tbWrap.innerHTML = '<div class="vazio">' +
+                '<i class="fa-solid fa-circle-check"></i>' +
+                '<b>Nenhuma pendência</b>' +
+                '<p>Todas as doses estão administradas ou justificadas.</p></div>';
+            return;
+        }
+
+        var k = Estado.filtros.kpi;
+        var mapaSit = { crit: 'CRITICA', atr: 'ATRASADA', abr: 'ABERTA', prx: 'PROXIMA' };
+
+        var h = '';
+        var mostrados = 0;
+
+        for (var i = 0; i < grupos.length; i++) {
+            var g = grupos[i];
+
+            // Filtra paciente por KPI ativo
+            if (k && k !== 'frm') {
+                var sitFiltro = mapaSit[k];
+                var temSit = false;
+                for (var xi = 0; xi < g.doses.length; xi++) {
+                    if (g.doses[xi].situacao === sitFiltro) { temSit = true; break; }
+                }
+                if (!temSit) continue;
+            }
+            if (k === 'frm') {
+                var temFrm = false;
+                for (var xf = 0; xf < g.doses.length; xf++) {
+                    if (g.doses[xf].pendente_farmacia) { temFrm = true; break; }
+                }
+                if (!temFrm) continue;
+            }
+
+            mostrados++;
+            var sev = parseInt(g.severidade_max) || 0;
+            var sevCls = _SEV_CLS[Math.min(sev, 5)];
+            var nDoses = g.doses.length;
+
+            h += '<div class="tb-bloco ' + sevCls + '">';
+
+            // Cabeçalho do paciente
+            h += '<div class="tb-hdr">' +
+                 '<div class="tb-leito-num">' + escHtml(g.cd_leito || '—') + '</div>' +
+                 '<div class="tb-pac-info">' +
+                 '<b>' + escHtml(fmtNome(g.nm_paciente)) + '</b>' +
+                 '<span>' + escHtml(g.nm_setor || '') + '</span>' +
+                 '</div>' +
+                 '<div class="tb-dose-count">' +
+                 nDoses + ' dose' + (nDoses !== 1 ? 's' : '') + ' pendente' + (nDoses !== 1 ? 's' : '') +
+                 '</div>' +
+                 '</div>';
+
+            // Linhas de dose
+            for (var j = 0; j < g.doses.length; j++) {
+                var d = g.doses[j];
+                var rot = _DOSE_ROT[d.situacao] || { tg: '', label: d.situacao || '—', cls: '' };
+                var atraso = parseInt(d.min_atraso) || 0;
+
+                h += '<div class="tb-linha ' + rot.cls + '">' +
+                     '<div class="tb-hora-cell">' + escHtml(d.hora_prevista || '--:--') + '</div>' +
+                     '<div class="tb-med-cell">' +
+                     '<div class="tb-med-nome">' + escHtml(d.ds_material || '—') + '</div>' +
+                     '<div class="tb-med-posol">' +
+                     escHtml((d.qt_dose ? d.qt_dose + ' ' : '') + (d.ds_unidade_medida || '')) +
+                     (d.ds_intervalo ? ' · ' + escHtml(d.ds_intervalo) : '') +
+                     '</div>' +
+                     '</div>' +
+                     '<div class="tb-tags-cell">' +
+                     '<span class="tg ' + rot.tg + '">' + escHtml(rot.label) +
+                     (atraso > 0 ? ' ' + fmtMin(atraso) : '') + '</span>' +
+                     (d.alta_vigilancia
+                         ? '<span class="tg tg-av" title="Alta vigilância"><i class="fa-solid fa-shield-halved"></i></span>'
+                         : '') +
+                     (d.pendente_farmacia
+                         ? '<span class="tg tg-frm" title="Sem dispensação"><i class="fa-solid fa-prescription-bottle-medical"></i></span>'
+                         : '') +
+                     '</div>' +
+                     '</div>';
+            }
+
+            h += '</div>'; // tb-bloco
+        }
+
+        if (mostrados === 0) {
+            h = '<div class="vazio">' +
+                '<i class="fa-solid fa-circle-check"></i>' +
+                '<b>Nenhuma pendência neste filtro</b>' +
+                '<p>Todas as doses do recorte estão resolvidas.</p></div>';
+        }
+
+        DOM.tbWrap.innerHTML = h;
+    }
+
+    // =========================================================================
     // DRAWER DO LEITO
     // =========================================================================
 
@@ -538,12 +641,14 @@
         Promise.all([
             fetch(CONFIG.ENDPOINTS.dashboard + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); }),
             fetch(CONFIG.ENDPOINTS.leitos    + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); }),
-            fetch(CONFIG.ENDPOINTS.timeline  + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); })
+            fetch(CONFIG.ENDPOINTS.timeline  + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); }),
+            fetch(CONFIG.ENDPOINTS.tabela    + params, { credentials: 'same-origin' }).then(function(r) { return r.json(); })
         ])
         .then(function(results) {
             var dash = results[0];
             var lts  = results[1];
             var tl   = results[2];
+            var tb   = results[3];
 
             if (dash.success) {
                 renderizarRodada(dash.data || {});
@@ -556,6 +661,10 @@
             if (tl.success) {
                 Estado.timeline = tl.data || [];
                 if (Estado.modo === 'tl') renderizarTimeline(Estado.timeline, Estado.leitos);
+            }
+            if (tb.success) {
+                Estado.tabela = tb.data || [];
+                if (Estado.modo === 'tabela') renderizarTabela(Estado.tabela);
             }
 
             Estado.ultimaAtualizacao = new Date();
@@ -612,6 +721,7 @@
         DOM.rodChips = document.getElementById('rod-chips');
         DOM.kpis     = document.getElementById('kpis');
         DOM.mural    = document.getElementById('mural');
+        DOM.tbWrap   = document.getElementById('tb-wrap');
         DOM.tl       = document.getElementById('tl');
         DOM.tlWrap   = document.getElementById('tl-wrap');
         DOM.ovl      = document.getElementById('ovl');
@@ -650,9 +760,11 @@
                     for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('on');
                     btn.classList.add('on');
                     Estado.modo = btn.getAttribute('data-modo');
-                    DOM.mural.classList.toggle('hide', Estado.modo !== 'mural');
+                    DOM.mural.classList.toggle('hide',  Estado.modo !== 'mural');
+                    DOM.tbWrap.classList.toggle('hide', Estado.modo !== 'tabela');
                     DOM.tlWrap.classList.toggle('hide', Estado.modo !== 'tl');
-                    if (Estado.modo === 'tl') renderizarTimeline(Estado.timeline, Estado.leitos);
+                    if (Estado.modo === 'tl')     renderizarTimeline(Estado.timeline, Estado.leitos);
+                    if (Estado.modo === 'tabela') renderizarTabela(Estado.tabela);
                 });
             })(tabs[i]);
         }

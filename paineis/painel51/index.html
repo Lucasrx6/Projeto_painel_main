@@ -74,6 +74,9 @@
         <button class="tab on" data-modo="mural" role="tab" aria-selected="true">
             <i class="fa-solid fa-grip"></i> Mural
         </button>
+        <button class="tab" data-modo="tabela" role="tab" aria-selected="false">
+            <i class="fa-solid fa-table-list"></i> Tabela
+        </button>
         <button class="tab" data-modo="tl" role="tab" aria-selected="false">
             <i class="fa-solid fa-chart-gantt"></i> Linha do tempo
         </button>
@@ -88,6 +91,14 @@
     <div class="vazio" style="grid-column:1/-1">
         <i class="fa-solid fa-spinner fa-spin"></i>
         <b>Carregando leitos…</b>
+    </div>
+</section>
+
+<!-- ── VISÃO TABELA ────────────────────────────────────────────────────── -->
+<section class="tb-wrap hide" id="tb-wrap" aria-live="polite">
+    <div class="vazio">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <b>Carregando…</b>
     </div>
 </section>
 
