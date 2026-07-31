@@ -3,10 +3,10 @@ Painel 51 — Checagem de Medicamentos à Beira do Leito
 Endpoints: /api/paineis/painel51/*
 Banco de dados: tabelas/views com prefixo painel41_ (nomenclatura interna de desenvolvimento).
 """
-from flask import Blueprint, jsonify, request, send_from_directory, current_app
+from flask import Blueprint, jsonify, make_response, request, send_from_directory, current_app
 from backend.database import get_db_cursor
 from backend.middleware.decorators import login_required, panel_permission_required
-from backend.cache import cache_route
+from backend.cache import cache_route, cache_get, cache_set
 
 painel51_bp = Blueprint('painel51', __name__)
 
@@ -353,6 +353,16 @@ def api_p51_timeline():
 @login_required
 @panel_permission_required('painel51')
 def api_p51_paciente(nr_atendimento):
+    # Cache manual: @cache_route não inclui o path na chave, então todos os
+    # pacientes compartilhariam a mesma entrada. TTL=20s: abaixo do ciclo ETL
+    # (5 min) e suficiente para reduzir 95%+ das queries repetidas por TV.
+    _cache_key = 'p51:pac:{}'.format(nr_atendimento)
+    _cached = cache_get(_cache_key)
+    if _cached is not None:
+        resp = make_response(jsonify(_cached))
+        resp.headers['X-Cache'] = 'HIT'
+        return resp
+
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
@@ -395,14 +405,16 @@ def api_p51_paciente(nr_atendimento):
         if doses:
             info = {k: doses[0].get(k) for k in info}
 
-        return jsonify({
+        result = {
             'success': True,
             'info': info,
             'qt_total': len(doses),
             'precisa_acao': precisa_acao,
             'proximas': proximas,
             'resolvidas': resolvidas
-        })
+        }
+        cache_set(_cache_key, result, ttl=20)
+        return jsonify(result)
     except Exception as e:
         current_app.logger.error('Erro paciente p51 nr=%s: %s', nr_atendimento, e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar doses do paciente'}), 500
