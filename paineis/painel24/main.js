@@ -476,16 +476,10 @@ var PAINEL_VERSAO = '1.0.16';
         var scrollEstaAtivo = Estado.autoScrollAtivo;
         if (scrollEstaAtivo) pararAutoScroll();
 
-        return Promise.all([
-            fetchComRetry(construirUrl()),
-            fetchComRetry(construirUrlDashboard())
-        ])
-        .then(function(r) {
-            var dadosResp = r[0];
-            var dashResp = r[1];
+        return fetchComRetry(construirUrl())
+        .then(function(dadosResp) {
             if (!dadosResp.success) { mostrarErro('Erro ao carregar dados'); return; }
             Estado.dados = dadosResp.data || [];
-            atualizarKPIs(dashResp.success ? dashResp.data : null);
             renderizarRecomendacoes();
             renderizarTabela();
             atualizarContadores();
@@ -546,7 +540,7 @@ var PAINEL_VERSAO = '1.0.16';
             if (va === null || va === undefined) va = '';
             if (vb === null || vb === undefined) vb = '';
             if (campo === 'consumo_dia' || campo === 'saldo_disponivel' || campo === 'dias_estoque' ||
-                campo === 'qt_ressuprimento_3d' || campo === 'saldo_origem' || campo === 'dias_estoque_origem' ||
+                campo === 'qt_ressuprimento_2d' || campo === 'saldo_origem' || campo === 'dias_estoque_origem' ||
                 campo === 'codigo_material' || campo === 'ordem_classificacao') {
                 va = parseFloat(va) || 0;
                 vb = parseFloat(vb) || 0;
@@ -584,7 +578,7 @@ var PAINEL_VERSAO = '1.0.16';
         { campo: 'consumo_dia',         titulo: 'Consumo/Dia',  classe: 'col-consumo' },
         { campo: 'saldo_disponivel',    titulo: 'Saldo',        classe: 'col-saldo' },
         { campo: 'dias_estoque',        titulo: 'Dias Est.',    classe: 'col-dias' },
-        { campo: 'qt_ressuprimento_3d', titulo: 'Repor p/ 3d',  classe: 'col-reposicao' },
+        { campo: 'qt_ressuprimento_2d', titulo: 'Repor p/ 2d',  classe: 'col-reposicao' },
         { campo: 'local_origem_sugerido', titulo: 'Origem Sugerida', classe: 'col-origem' },
         { campo: 'saldo_origem',        titulo: 'Saldo Orig.',  classe: 'col-saldo-origem' }
     ];
@@ -662,7 +656,7 @@ var PAINEL_VERSAO = '1.0.16';
             else classeDias = 'dias-ok';
         }
 
-        var reposicao = parseFloat(reg.qt_ressuprimento_3d) || 0;
+        var reposicao = parseFloat(reg.qt_ressuprimento_2d) || 0;
         var reposicaoTexto = reposicao > 0 ? formatarNumero(Math.ceil(reposicao)) : '-';
         var classeRepo = reposicao > 0 ? 'reposicao-valor' : '';
 
@@ -788,7 +782,7 @@ var PAINEL_VERSAO = '1.0.16';
         var html = '';
         for (var i = 0; i < recs.length; i++) {
             var r = recs[i];
-            var reposicao = Math.ceil(parseFloat(r.qt_ressuprimento_3d) || 0);
+            var reposicao = Math.ceil(parseFloat(r.qt_ressuprimento_2d) || 0);
             var badgeClasse = getBadgeClasseRec(r.classificacao);
 
             html += '<div class="rec-card">' +
@@ -887,7 +881,7 @@ var PAINEL_VERSAO = '1.0.16';
         if (Estado.recTotal <= 1) return;
         Estado.recIntervalo = setInterval(function() {
             navegarRec(Estado.recPaginaAtual + 1);
-        }, 5000);
+        }, 60000);
     }
 
     function pararRecCarousel() {
@@ -1134,7 +1128,7 @@ var PAINEL_VERSAO = '1.0.16';
         { campo: 'consumo_dia',           titulo: 'Consumo/Dia',         sel: true },
         { campo: 'saldo_disponivel',      titulo: 'Saldo Disponivel',    sel: true },
         { campo: 'dias_estoque',          titulo: 'Dias Estoque',        sel: true },
-        { campo: 'qt_ressuprimento_3d',   titulo: 'Repor p/ 3 Dias',    sel: true },
+        { campo: 'qt_ressuprimento_2d',   titulo: 'Repor p/ 2 Dias',    sel: true },
         { campo: 'local_origem_sugerido', titulo: 'Origem Sugerida',     sel: true },
         { campo: 'saldo_origem',          titulo: 'Saldo Origem',        sel: true },
         { campo: 'dias_estoque_origem',   titulo: 'Dias Est. Origem',    sel: false },
@@ -1199,7 +1193,7 @@ var PAINEL_VERSAO = '1.0.16';
                 var cp = colsSel[c].campo;
                 var val = reg[cp];
                 if (cp === 'consumo_dia' || cp === 'saldo_disponivel' || cp === 'dias_estoque' ||
-                    cp === 'qt_ressuprimento_3d' || cp === 'saldo_origem' || cp === 'dias_estoque_origem') {
+                    cp === 'qt_ressuprimento_2d' || cp === 'saldo_origem' || cp === 'dias_estoque_origem') {
                     row.push(val !== null && val !== undefined ? parseFloat(val) : '');
                 } else {
                     row.push(val !== null && val !== undefined ? String(val) : '');

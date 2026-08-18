@@ -335,6 +335,15 @@ body {
 
 .card-tempo, .card-resp { display: flex; align-items: center; gap: 4px; }
 
+.card-aceite {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #17A2B8;
+    margin-bottom: 6px;
+}
+
 .card-acoes {
     display: flex;
     gap: 6px;

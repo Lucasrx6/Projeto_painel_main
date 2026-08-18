@@ -167,34 +167,17 @@
             </div>
         </div>
 
-        <section class="dashboard-resumo" aria-label="Resumo de Estoque">
-            <div class="resumo-grid">
-                <article class="resumo-card card-total-itens">
-                    <div class="card-icon"><i class="fas fa-boxes-stacked" aria-hidden="true"></i></div>
-                    <div class="card-content"><span class="card-value" id="kpi-total-itens">-</span><span class="card-label">Total Itens</span></div>
-                </article>
-                <article class="resumo-card card-abaixo-3d">
-                    <div class="card-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></div>
-                    <div class="card-content"><span class="card-value" id="kpi-abaixo-3d">-</span><span class="card-label">Abaixo 3 Dias</span></div>
-                </article>
-                <article class="resumo-card card-saldo-negativo">
-                    <div class="card-icon"><i class="fas fa-arrow-trend-down" aria-hidden="true"></i></div>
-                    <div class="card-content"><span class="card-value" id="kpi-saldo-negativo">-</span><span class="card-label">Saldo Negativo</span></div>
-                </article>
-                <article class="resumo-card card-sem-origem">
-                    <div class="card-icon"><i class="fas fa-ban" aria-hidden="true"></i></div>
-                    <div class="card-content"><span class="card-value" id="kpi-sem-origem">-</span><span class="card-label">S/ Origem Critico</span></div>
-                </article>
-                <article class="resumo-card card-com-origem">
-                    <div class="card-icon"><i class="fas fa-right-left" aria-hidden="true"></i></div>
-                    <div class="card-content"><span class="card-value" id="kpi-com-origem">-</span><span class="card-label">Com Origem</span></div>
-                </article>
-                <article class="resumo-card card-locais-criticos">
-                    <div class="card-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
-                    <div class="card-content"><span class="card-value" id="kpi-locais-criticos">-</span><span class="card-label">Locais Criticos</span></div>
-                </article>
+        <div class="paginacao-indicator" id="paginacao-indicator" style="display: none;">
+            <span class="paginacao-texto" id="paginacao-texto">Pagina 1 de 1</span>
+            <div class="paginacao-dots" id="paginacao-dots"></div>
+        </div>
+
+        <main class="painel-main" id="painel-main" role="main">
+            <div class="loading-container" id="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Carregando dados de estoque...</p>
             </div>
-        </section>
+        </main>
 
         <!-- Recomendacoes de Ressuprimento -->
         <section class="recomendacoes-section" id="recomendacoes-section" aria-label="Recomendacoes de Ressuprimento">
@@ -221,18 +204,6 @@
             </div>
             <div class="recomendacoes-dots" id="recomendacoes-dots"></div>
         </section>
-
-        <div class="paginacao-indicator" id="paginacao-indicator" style="display: none;">
-            <span class="paginacao-texto" id="paginacao-texto">Pagina 1 de 1</span>
-            <div class="paginacao-dots" id="paginacao-dots"></div>
-        </div>
-
-        <main class="painel-main" id="painel-main" role="main">
-            <div class="loading-container" id="loading-container">
-                <div class="loading-spinner"></div>
-                <p>Carregando dados de estoque...</p>
-            </div>
-        </main>
     </div>
 
     <!-- Modal Exportar -->

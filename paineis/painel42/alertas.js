@@ -31,7 +31,16 @@
 
     function alertarTituloEmPreparo() {
         if (_tituloTimer) clearTimeout(_tituloTimer);
-        document.title = 'EM PREPARO - Tela Nutricao';
+        document.title = '● EM PREPARO - Tela Nutricao';
+        _tituloTimer = setTimeout(function () {
+            document.title = _tituloOriginal;
+            _tituloTimer = null;
+        }, 15000);
+    }
+
+    function alertarTituloEmEntrega() {
+        if (_tituloTimer) clearTimeout(_tituloTimer);
+        document.title = '● EM ENTREGA - Tela Nutricao';
         _tituloTimer = setTimeout(function () {
             document.title = _tituloOriginal;
             _tituloTimer = null;
@@ -102,12 +111,13 @@
         }
     });
 
-    window.P42.tocarAlerta           = tocarAlerta;
-    window.P42.piscarTela            = piscarTela;
-    window.P42.alertarTitulo         = alertarTitulo;
-    window.P42.alertarTituloEmPreparo = alertarTituloEmPreparo;
-    window.P42.notificarNavegador    = notificarNavegador;
-    window.P42.atualizarIconeNotif   = atualizarIconeNotif;
-    window.P42.pedirPermissaoNotif   = pedirPermissaoNotif;
+    window.P42.tocarAlerta             = tocarAlerta;
+    window.P42.piscarTela              = piscarTela;
+    window.P42.alertarTitulo           = alertarTitulo;
+    window.P42.alertarTituloEmPreparo  = alertarTituloEmPreparo;
+    window.P42.alertarTituloEmEntrega  = alertarTituloEmEntrega;
+    window.P42.notificarNavegador      = notificarNavegador;
+    window.P42.atualizarIconeNotif     = atualizarIconeNotif;
+    window.P42.pedirPermissaoNotif     = pedirPermissaoNotif;
 
 })();

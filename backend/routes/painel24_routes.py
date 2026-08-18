@@ -288,7 +288,11 @@ def api_painel24_dados():
                     dias_estoque,
                     classificacao,
                     ordem_classificacao,
-                    qt_ressuprimento_3d,
+                    CASE
+                        WHEN consumo_dia > 0 AND dias_estoque < 2
+                        THEN ROUND((consumo_dia * 2 - GREATEST(saldo_disponivel, 0))::numeric, 2)
+                        ELSE 0
+                    END AS qt_ressuprimento_2d,
                     cd_local_origem,
                     local_origem_sugerido,
                     saldo_origem,

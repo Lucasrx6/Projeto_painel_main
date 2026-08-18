@@ -106,6 +106,9 @@
                 '</span>' +
                 (s.responsavel_nome ? '<span class="card-resp"><i class="fa-solid fa-user"></i> ' + escHtml(s.responsavel_nome) + '</span>' : '') +
             '</div>' +
+            (s.dt_aceite
+                ? '<div class="card-aceite"><i class="fa-solid fa-circle-check"></i> Aceito: <strong>' + escHtml(s.dt_aceite) + '</strong></div>'
+                : '') +
             '<div class="card-acoes">' + acoes + '</div>' +
             extras +
         '</div>';
