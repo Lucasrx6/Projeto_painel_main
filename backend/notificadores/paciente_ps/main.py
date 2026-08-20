@@ -145,9 +145,8 @@ def start_in_background():
         logger.info('[notificador_paciente_ps] Auto-start desativado (NOTIF_PACIENTE_PS_AUTO=false)')
         return
 
-    flask_debug = (os.environ.get('FLASK_ENV') == 'development' or
-                   os.environ.get('FLASK_DEBUG', '0') in ('1', 'true', 'True'))
-    if flask_debug and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+    if os.environ.get('FLASK_DEBUG', '0') in ('1', 'true', 'True') \
+            and 'WERKZEUG_RUN_MAIN' not in os.environ:
         return
 
     _background_started = True
