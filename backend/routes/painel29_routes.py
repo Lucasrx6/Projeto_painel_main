@@ -380,13 +380,31 @@ def filtros():
             """)
             setores = [r['nome'] for r in cursor.fetchall()]
 
-            # Duplas
+            # Duplas — apenas ativas e com registro no período selecionado
+            dias = request.args.get('dias', None)
+            dt_inicio = request.args.get('dt_inicio', None)
+            dt_fim = request.args.get('dt_fim', None)
+
+            dupla_conds = ['d.ativo = true']
+            dupla_params = []
+
+            if dt_inicio:
+                dupla_conds.append('r.data_ronda >= %s')
+                dupla_params.append(dt_inicio)
+            if dt_fim:
+                dupla_conds.append('r.data_ronda <= %s')
+                dupla_params.append(dt_fim)
+            if dias and not dt_inicio and not dt_fim:
+                dupla_conds.append("r.data_ronda >= CURRENT_DATE - %s * INTERVAL '1 day'")
+                dupla_params.append(int(dias))
+
             cursor.execute("""
                 SELECT DISTINCT d.id, d.nome_visitante_1 || ' e ' || d.nome_visitante_2 AS nome
                 FROM sentir_agir_duplas d
                 JOIN sentir_agir_rondas r ON r.dupla_id = d.id
+                WHERE """ + ' AND '.join(dupla_conds) + """
                 ORDER BY nome
-            """)
+            """, dupla_params)
             duplas = cursor.fetchall()
 
             # Avaliações

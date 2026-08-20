@@ -174,6 +174,7 @@ var PAINEL_VERSAO = '1.0.19';
                 }
                 if (id === 'filtro-dias' && this.value !== 'custom') {
                     document.getElementById('filtro-datas').style.display = 'none';
+                    carregarFiltrosOpcoes();
                 }
                 carregarTudo();
             });
@@ -182,8 +183,8 @@ var PAINEL_VERSAO = '1.0.19';
         // Datas customizadas
         var dtInicio = document.getElementById('filtro-dt-inicio');
         var dtFim = document.getElementById('filtro-dt-fim');
-        if (dtInicio) dtInicio.addEventListener('change', function () { carregarTudo(); });
-        if (dtFim) dtFim.addEventListener('change', function () { carregarTudo(); });
+        if (dtInicio) dtInicio.addEventListener('change', function () { carregarFiltrosOpcoes(); carregarTudo(); });
+        if (dtFim) dtFim.addEventListener('change', function () { carregarFiltrosOpcoes(); carregarTudo(); });
 
         // Busca com debounce
         var inputBusca = document.getElementById('filtro-busca');
@@ -209,6 +210,7 @@ var PAINEL_VERSAO = '1.0.19';
             document.getElementById('filtro-dt-inicio').value = '';
             document.getElementById('filtro-dt-fim').value = '';
             document.getElementById('filtro-datas').style.display = 'none';
+            carregarFiltrosOpcoes();
             carregarTudo();
         });
     }
@@ -252,15 +254,32 @@ var PAINEL_VERSAO = '1.0.19';
         return base + (params.length > 0 ? '?' + params.join('&') : '');
     }
 
+    function construirParamsDatas() {
+        var params = [];
+        var dias = document.getElementById('filtro-dias').value;
+        if (dias === 'custom') {
+            var dtI = document.getElementById('filtro-dt-inicio').value;
+            var dtF = document.getElementById('filtro-dt-fim').value;
+            if (dtI) params.push('dt_inicio=' + encodeURIComponent(dtI));
+            if (dtF) params.push('dt_fim=' + encodeURIComponent(dtF));
+        } else if (dias) {
+            params.push('dias=' + encodeURIComponent(dias));
+        }
+        return params;
+    }
+
     function carregarFiltrosOpcoes() {
-        fetch(CONFIG.apiFiltros)
+        var params = construirParamsDatas();
+        var url = CONFIG.apiFiltros + (params.length > 0 ? '?' + params.join('&') : '');
+        fetch(url)
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data.success) return;
                 var d = data.data;
 
+                // Setores: carregados apenas uma vez (nao dependem do periodo)
                 var selSetor = document.getElementById('filtro-setor');
-                if (selSetor && d.setores) {
+                if (selSetor && d.setores && selSetor.options.length <= 1) {
                     d.setores.forEach(function (s) {
                         var opt = document.createElement('option');
                         opt.value = s;
@@ -269,14 +288,18 @@ var PAINEL_VERSAO = '1.0.19';
                     });
                 }
 
+                // Duplas: reconstruidas a cada chamada para refletir o periodo atual
                 var selDupla = document.getElementById('filtro-dupla');
                 if (selDupla && d.duplas) {
+                    var valorAtual = selDupla.value;
+                    while (selDupla.options.length > 1) { selDupla.remove(1); }
                     d.duplas.forEach(function (dup) {
                         var opt = document.createElement('option');
                         opt.value = dup.id;
                         opt.textContent = dup.nome;
                         selDupla.appendChild(opt);
                     });
+                    selDupla.value = valorAtual;
                 }
             })
             .catch(function (err) { console.warn('Erro ao carregar filtros:', err); });
