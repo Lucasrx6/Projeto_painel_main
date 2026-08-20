@@ -238,7 +238,10 @@ body { font-family: var(--fonte-principal); font-size: 0.875rem; line-height: 1.
 .timeline-info { flex: 1; min-width: 0; }
 .timeline-titulo { font-size: 0.82rem; font-weight: 600; color: var(--cor-texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .timeline-detalhe { font-size: 0.72rem; color: var(--cor-texto-muted); margin-top: 2px; }
-.timeline-data { font-size: 0.68rem; color: var(--cor-texto-muted); white-space: nowrap; flex-shrink: 0; }
+.timeline-col-direita { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.timeline-data { font-size: 0.68rem; color: var(--cor-texto-muted); white-space: nowrap; }
+.btn-reenviar { display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--cor-alerta-light); color: var(--cor-alerta-dark); border: 1px solid var(--cor-alerta); border-radius: var(--raio-sm); font-size: 0.64rem; font-weight: 600; cursor: pointer; transition: var(--transicao-rapida); white-space: nowrap; }
+.btn-reenviar:hover { background: var(--cor-alerta); color: #000; transform: translateY(-1px); }
 
 /* =========================================================
    11. MODAL

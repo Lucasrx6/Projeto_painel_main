@@ -2,6 +2,8 @@
 Painel 26 - Central de Notificacoes
 Endpoints para configuracao de destinatarios, tipos e historico
 """
+import re
+import json
 from flask import Blueprint, jsonify, send_from_directory, request, session, current_app
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
@@ -432,3 +434,118 @@ def api_painel26_especialidades():
     except Exception as e:
         current_app.logger.error('Erro especialidades painel26: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+
+
+# =========================================================
+# REENVIAR — reenvia email de um log com falha
+# =========================================================
+
+@painel26_bp.route('/api/paineis/painel26/historico/<int:log_id>/reenviar', methods=['POST'])
+@login_required
+@panel_permission_required('painel26')
+def api_painel26_reenviar(log_id):
+    """Reenvia o email de uma notificacao com falha ou sem destinatarios."""
+    try:
+        # 1. Busca o registro no log
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, tipo_evento, chave_evento, nr_atendimento, nm_setor, status
+                FROM notificacoes_log
+                WHERE id = %s
+            """, (log_id,))
+            registro = cursor.fetchone()
+
+        if not registro:
+            return jsonify({'success': False, 'error': 'Registro nao encontrado'}), 404
+
+        if registro['tipo_evento'] != 'parecer_email':
+            return jsonify({'success': False, 'error': 'Reenvio disponivel apenas para pareceres email'}), 400
+
+        # 2. Extrai nr_parecer da chave_evento (formato: parecer_email_{nr_parecer}_{YYYYMMDD})
+        m = re.match(r'^parecer_email_(\d+)_', registro['chave_evento'] or '')
+        if not m:
+            return jsonify({'success': False, 'error': 'Formato de chave de evento invalido'}), 400
+
+        nr_parecer = int(m.group(1))
+        especialidade = registro['nm_setor']
+
+        # 3. Verifica se o parecer ainda esta ativo
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT nr_parecer, nr_atendimento, especialidade_destino,
+                       horas_pendente, ds_tipo_atendimento, status_parecer
+                FROM pareceres_pendentes
+                WHERE nr_parecer = %s
+            """, (nr_parecer,))
+            parecer = cursor.fetchone()
+
+        if not parecer:
+            return jsonify({'success': False, 'error': 'Parecer #{} nao esta mais ativo no sistema'.format(nr_parecer)}), 404
+
+        # 4. Busca destinatarios email ativos para a especialidade
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT DISTINCT ON (email) nome, email, especialidade
+                FROM notificacoes_destinatarios
+                WHERE tipo_evento = 'parecer_pendente'
+                  AND canal = 'email'
+                  AND ativo = true
+                  AND (especialidade IS NULL OR especialidade = %s)
+                ORDER BY email,
+                         (especialidade = %s) DESC NULLS LAST,
+                         (especialidade IS NULL) ASC
+            """, (especialidade, especialidade))
+            destinatarios = [dict(r) for r in cursor.fetchall()]
+
+        if not destinatarios:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhum destinatario email configurado para: {}'.format(especialidade or 'esta especialidade')
+            }), 400
+
+        # 5. Envia email usando o modulo do notificador
+        from backend.notificadores.pareceres.email import montar_email_html, enviar_email
+
+        titulo = 'Parecer Pendente - {} (reenvio manual)'.format(especialidade or 'Sem especialidade')
+        corpo_html = montar_email_html(dict(parecer))
+        sucesso_email, resposta = enviar_email(destinatarios, titulo, corpo_html)
+
+        # 6. Atualiza o registro de log
+        emails_str = ', '.join([d['email'] for d in destinatarios])
+        dados_extra_novo = json.dumps({
+            'destinatarios_email': emails_str,
+            'especialidade': especialidade or 'geral',
+            'reenvio_manual': True,
+            'reenvio_por': session.get('usuario', 'sistema')
+        })
+
+        with get_db_cursor(use_dict_cursor=False) as cursor:
+            cursor.execute("""
+                UPDATE notificacoes_log
+                SET status = %s,
+                    dt_ultima_notificacao = CASE WHEN %s THEN NOW() ELSE dt_ultima_notificacao END,
+                    dt_primeira_notificacao = COALESCE(dt_primeira_notificacao, CASE WHEN %s THEN NOW() ELSE NULL END),
+                    qt_notificacoes = qt_notificacoes + %s,
+                    dados_extra = %s::jsonb,
+                    resposta_ntfy = %s
+                WHERE id = %s
+            """, (
+                'notificado' if sucesso_email else 'erro',
+                sucesso_email, sucesso_email,
+                1 if sucesso_email else 0,
+                dados_extra_novo,
+                resposta,
+                log_id
+            ))
+
+        current_app.logger.info('[painel26] Reenvio #%s por %s: %s -> %s',
+                                log_id, session.get('usuario'), 'ok' if sucesso_email else 'falhou', emails_str)
+
+        if sucesso_email:
+            return jsonify({'success': True, 'mensagem': 'Email reenviado com sucesso para: {}'.format(emails_str)})
+        else:
+            return jsonify({'success': False, 'error': 'Falha no reenvio: {}'.format(resposta)}), 500
+
+    except Exception as e:
+        current_app.logger.error('Erro reenviar painel26 #%s: %s', log_id, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro interno ao processar reenvio'}), 500

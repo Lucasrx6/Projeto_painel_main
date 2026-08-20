@@ -591,10 +591,33 @@ var PAINEL_VERSAO = '1.0.32';
             }
 
             html += '</div>';
+            html += '<div class="timeline-col-direita">';
             html += '<div class="timeline-data">' + escapeHtml(h.dt_envio_fmt) + '</div>';
+            if (!h.sucesso && h.canal === 'email' && h.id) {
+                html += '<button class="btn-reenviar" onclick="window.P26.reenviarHistorico(' + h.id + ')" title="Reenviar email">';
+                html += '<i class="fas fa-redo"></i> Reenviar</button>';
+            }
+            html += '</div>';
             html += '</div>';
         }
         DOM.timelineHistorico.innerHTML = html;
+    }
+
+    function reenviarHistorico(logId) {
+        if (!confirm('Reenviar este email agora?')) return;
+        fetchJSON(CONFIG.urlBase + '/historico/' + logId + '/reenviar', { method: 'POST' })
+            .then(function(resp) {
+                if (resp.success) {
+                    alert('Enviado com sucesso!\n' + (resp.mensagem || ''));
+                    carregarHistorico();
+                    carregarDashboard();
+                } else {
+                    alert('Nao foi possivel reenviar:\n' + (resp.error || 'Erro desconhecido'));
+                }
+            })
+            .catch(function() {
+                alert('Erro de conexao ao tentar reenviar.');
+            });
     }
 
     // =========================================================
@@ -796,7 +819,7 @@ var PAINEL_VERSAO = '1.0.32';
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') fecharModal(); });
     }
 
-    window.P26 = { editarGrupo: editarGrupo, toggleGrupo: toggleGrupo, excluirGrupo: excluirGrupo };
+    window.P26 = { editarGrupo: editarGrupo, toggleGrupo: toggleGrupo, excluirGrupo: excluirGrupo, reenviarHistorico: reenviarHistorico };
 
     // =========================================================
     // INIT
