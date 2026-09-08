@@ -25,6 +25,7 @@
         filtros: {
             setor:        [],
             status_prazo: [],
+            categoria:    '',
             busca:        ''
         },
         pacientes:       [],
@@ -78,6 +79,7 @@
         // Restaura filtros ANTES de qualquer fetch
         Estado.filtros.setor        = recuperar('filtro_setor', []);
         Estado.filtros.status_prazo = recuperar('filtro_status_prazo', []);
+        Estado.filtros.categoria    = recuperar('filtro_categoria', '');
         Estado.filtros.busca        = recuperar('filtro_busca', '');
 
         if (DOM.inputBusca) {
@@ -87,6 +89,7 @@
         configurarBotoes();
         configurarToggleMultiSelects();
         configurarBusca();
+        configurarAbas();
 
         carregarFiltrosDinamicos(function () {
             vincularCheckboxesMultiSelect();
@@ -154,6 +157,42 @@
                     pararAutoScroll();
                 }
             });
+        }
+    }
+
+    // =========================================================
+    // ABAS DE CATEGORIA
+    // =========================================================
+
+    function configurarAbas() {
+        var abas = document.querySelectorAll('.aba-btn');
+        var i;
+        for (i = 0; i < abas.length; i++) {
+            (function (btn) {
+                var cat = btn.getAttribute('data-cat');
+                if (cat === Estado.filtros.categoria) {
+                    btn.classList.add('ativa');
+                }
+                btn.addEventListener('click', function () {
+                    Estado.filtros.categoria = cat;
+                    salvar('filtro_categoria', cat);
+                    var todos = document.querySelectorAll('.aba-btn');
+                    var j;
+                    for (j = 0; j < todos.length; j++) {
+                        todos[j].classList.remove('ativa');
+                    }
+                    btn.classList.add('ativa');
+                    carregarDados();
+                });
+            })(abas[i]);
+        }
+        // Garantir que pelo menos "Todas" esteja ativa se nada restaurado
+        var algumAtivo = false;
+        for (i = 0; i < abas.length; i++) {
+            if (abas[i].classList.contains('ativa')) { algumAtivo = true; break; }
+        }
+        if (!algumAtivo && abas.length > 0) {
+            abas[0].classList.add('ativa');
         }
     }
 
@@ -283,6 +322,9 @@
         }
         if (Estado.filtros.status_prazo && Estado.filtros.status_prazo.length > 0) {
             parts.push('status_prazo=' + encodeURIComponent(Estado.filtros.status_prazo.join(',')));
+        }
+        if (Estado.filtros.categoria) {
+            parts.push('categoria=' + encodeURIComponent(Estado.filtros.categoria));
         }
         if (Estado.filtros.busca) {
             parts.push('busca=' + encodeURIComponent(Estado.filtros.busca));
@@ -518,10 +560,20 @@
     function limparFiltros() {
         Estado.filtros.setor        = [];
         Estado.filtros.status_prazo = [];
+        Estado.filtros.categoria    = '';
         Estado.filtros.busca        = '';
         salvar('filtro_setor', []);
         salvar('filtro_status_prazo', []);
+        salvar('filtro_categoria', '');
         salvar('filtro_busca', '');
+
+        // Atualiza abas: ativa "Todas"
+        var abas = document.querySelectorAll('.aba-btn');
+        var i;
+        for (i = 0; i < abas.length; i++) {
+            abas[i].classList.remove('ativa');
+        }
+        if (abas.length > 0) abas[0].classList.add('ativa');
 
         if (DOM.inputBusca) DOM.inputBusca.value = '';
 
@@ -643,7 +695,7 @@
     // =========================================================
 
     var _HEADERS_EXPORT = [
-        'Setor', 'Leito', 'Nr Atendimento', 'Paciente', 'Idade/Sexo', 'Dias Internado',
+        'Categoria', 'Setor', 'Leito', 'Nr Atendimento', 'Paciente', 'Idade/Sexo', 'Dias Internado',
         'Medico', 'Convenio', 'Status', 'Meta', 'Prazo', 'Dt Prazo', 'Avaliador', 'Dt Avaliacao'
     ];
 
@@ -653,6 +705,7 @@
         if (p.ie_sexo) idadeSexo += (idadeSexo ? ' ' : '') + p.ie_sexo;
 
         return [
+            p.ds_categoria           || '',
             p.ds_setor               || '',
             p.cd_unidade_basica      || '',
             p.nr_atendimento         || '',
@@ -677,7 +730,9 @@
             return;
         }
 
-        var nomeArq = 'plano_terapeutico_' + new Date().toISOString().slice(0, 10);
+        var cat = Estado.filtros.categoria || 'Todas';
+        var nomeArq = 'plano_terapeutico_' + cat + '_' + new Date().toISOString().slice(0, 10);
+        var nomePlanilha = cat.length > 31 ? cat.substring(0, 31) : cat;
 
         if (window.XLSX) {
             var dados = [_HEADERS_EXPORT];
@@ -687,7 +742,7 @@
             }
             var wb = XLSX.utils.book_new();
             var ws = XLSX.utils.aoa_to_sheet(dados);
-            XLSX.utils.book_append_sheet(wb, ws, 'Plano Terapeutico');
+            XLSX.utils.book_append_sheet(wb, ws, nomePlanilha);
             XLSX.writeFile(wb, nomeArq + '.xlsx');
         } else {
             _exportarCSV(nomeArq);

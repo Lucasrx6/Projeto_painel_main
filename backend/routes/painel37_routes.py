@@ -12,6 +12,10 @@ from backend.cache import cache_route
 painel37_bp = Blueprint('painel37', __name__)
 
 _VALID_STATUS = frozenset(['SEM_AVALIACAO', 'SEM_PRAZO', 'VENCIDO', 'PROXIMO', 'NO_PRAZO'])
+_VALID_CATEGORIAS = frozenset([
+    'Médico', 'Enfermagem', 'Farmácia', 'Nutrição',
+    'Fonoaudiologia', 'Fisioterapia', 'Psicologia'
+])
 
 
 # =========================================================
@@ -38,6 +42,11 @@ def _build_common_filters(args):
             placeholders = ','.join(['%s'] * len(codigos))
             conditions.append('ie_status_prazo IN ({})'.format(placeholders))
             params.extend(codigos)
+
+    categoria = args.get('categoria', '').strip()
+    if categoria and categoria in _VALID_CATEGORIAS:
+        conditions.append('ds_categoria = %s')
+        params.append(categoria)
 
     busca = args.get('busca', '').strip()
     if busca:
@@ -183,6 +192,7 @@ def api_painel37_dados():
                     nm_medico,
                     ds_convenio,
                     ds_clinica,
+                    ds_categoria,
                     ie_status_prazo,
                     ds_meta,
                     dt_prazo,
