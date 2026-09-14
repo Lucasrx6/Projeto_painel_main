@@ -627,27 +627,6 @@ def api_painel10_pacientes_alta():
 # ENDPOINT: SENHAS AGUARDANDO RECEPCAO
 # =============================================================================
 
-_TABELA_NSENHA_CANDIDATAS = (
-    'painel_nsenha',
-    'painel_ps_nsenha',
-    'painel17_nsenha',
-    'ps_nsenha',
-    'nsenha',
-)
-
-
-def _descobrir_tabela_nsenha(cursor):
-    """Retorna o nome da primeira tabela de senhas PS que existir no banco."""
-    cursor.execute("""
-        SELECT table_name FROM information_schema.tables
-        WHERE table_schema = 'public'
-          AND table_name = ANY(%s)
-        LIMIT 1
-    """, (list(_TABELA_NSENHA_CANDIDATAS),))
-    row = cursor.fetchone()
-    return row['table_name'] if row else None
-
-
 @painel10_bp.route('/api/paineis/painel10/senhas-aguardando', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
@@ -655,34 +634,21 @@ def _descobrir_tabela_nsenha(cursor):
 def api_painel10_senhas_aguardando():
     """
     Senhas/tokens aguardando atendimento na recepcao.
-    Registros com nr_atendimento IS NULL sao tokens ainda nao vinculados a paciente.
+    Linhas de painel_ps_analise onde nr_atendimento IS NULL sao tokens
+    ainda nao vinculados a paciente (aguardando chamada na recepcao).
     """
     try:
         with get_db_cursor() as cursor:
-            tabela = _descobrir_tabela_nsenha(cursor)
-            if not tabela:
-                logger.warning(
-                    'Tabela de senhas PS nao encontrada. Candidatas: %s',
-                    _TABELA_NSENHA_CANDIDATAS
-                )
-                return jsonify({
-                    'success': True,
-                    'data': [],
-                    'total': 0,
-                    'aviso': 'tabela_nao_encontrada',
-                    'timestamp': datetime.now().isoformat()
-                })
-
             cursor.execute("""
                 SELECT
-                    COALESCE(NULLIF(ds_senha_qmatic, ''), ds_senha_gerenciamento) AS ds_senha,
+                    COALESCE(NULLIF(ds_senha_qmatic, ''), NULLIF(ds_senha_gerenciamento, '')) AS ds_senha,
                     hr_espera,
                     ds_fila,
                     ie_status_pa
-                FROM {tabela}
+                FROM painel_ps_analise
                 WHERE nr_atendimento IS NULL
                 ORDER BY hr_espera DESC
-            """.format(tabela=tabela))
+            """)
             rows = cursor.fetchall()
             dados = [dict(r) for r in rows]
 
@@ -690,7 +656,6 @@ def api_painel10_senhas_aguardando():
             'success': True,
             'data': dados,
             'total': len(dados),
-            'tabela_usada': tabela,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
