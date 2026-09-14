@@ -179,6 +179,10 @@ function carregarTudo() {
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
+                    // Preserva aviso de tabela nao encontrada para senhas
+                    if (ep.chave === 'senhas' && data.aviso) {
+                        resultados['senhasAviso'] = data.aviso;
+                    }
                     resultados[ep.chave] = data.data || data;
                 }
             })
@@ -223,16 +227,22 @@ function finalizarCarregamento(dados, erros) {
 
 function renderizarConteudo(dados) {
     renderizarRecepcao(dados.recepcao);
-    renderizarSenhasAguardando(dados.senhas);
+    renderizarSenhasAguardando(dados.senhas, dados.senhasAviso);
     renderizarClinicasConsolidado(dados.clinicas);
     renderizarMedicosConsultorios(dados.medicosConsult);
 }
 
 // ----- SENHAS AGUARDANDO RECEPCAO -----
-function renderizarSenhasAguardando(dados) {
+function renderizarSenhasAguardando(dados, aviso) {
     var tbody = document.getElementById('tbody-senhas-aguardando');
     var contador = document.getElementById('contador-senhas');
     if (!tbody) return;
+
+    if (aviso === 'tabela_nao_encontrada') {
+        tbody.innerHTML = '<tr><td colspan="4" class="texto-centro"><div class="mensagem-vazia"><i class="fas fa-database" style="font-size:1.8rem;color:var(--cor-texto-muted);margin-bottom:6px;display:block;"></i><p>Tabela de senhas não encontrada no banco de dados</p></div></td></tr>';
+        if (contador) contador.textContent = '–';
+        return;
+    }
 
     var lista = (dados && Array.isArray(dados)) ? dados : [];
 
