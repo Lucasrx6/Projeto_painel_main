@@ -1278,3 +1278,14 @@ body {
         page-break-inside: avoid;
     }
 }
+
+/* =========================================================
+   Senhas Aguardando Recepção
+   ========================================================= */
+
+.senha-codigo {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--cor-primaria);
+}

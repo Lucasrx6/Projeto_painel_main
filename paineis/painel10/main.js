@@ -16,13 +16,11 @@ var BASE_URL = window.location.origin;
 
 var CONFIG = {
     api: {
-        dashboard: BASE_URL + '/api/paineis/painel10/dashboard',
         clinicasConsolidado: BASE_URL + '/api/paineis/painel10/clinicas-consolidado',
         pacientesClinica: BASE_URL + '/api/paineis/painel10/pacientes-clinica',
         pacientesAlta: BASE_URL + '/api/paineis/painel10/pacientes-alta',
-        atendimentosHora: BASE_URL + '/api/paineis/painel10/atendimentos-hora',
-        desempenhoMedico: BASE_URL + '/api/paineis/painel10/desempenho-medico',
         desempenhoRecepcao: BASE_URL + '/api/paineis/painel10/desempenho-recepcao',
+        senhasAguardando: BASE_URL + '/api/paineis/painel10/senhas-aguardando',
         medicosConsultorios: BASE_URL + '/api/paineis/painel18/medicos'
     },
     intervaloRefresh: 60000,
@@ -74,12 +72,6 @@ function cachearElementos() {
     DOM.painelMain = document.getElementById('painel-main');
     DOM.statusIndicator = document.getElementById('status-indicator');
     DOM.ultimaAtualizacao = document.getElementById('ultima-atualizacao');
-    DOM.totalDia = document.getElementById('total-dia');
-    DOM.totalRealizados = document.getElementById('total-realizados');
-    DOM.totalAguardando = document.getElementById('total-aguardando');
-    DOM.totalAlta = document.getElementById('total-alta');
-    DOM.tempoMedioEspera = document.getElementById('tempo-medio-espera');
-    DOM.tempoMedioPermanencia = document.getElementById('tempo-medio-permanencia');
 }
 
 if (document.readyState === 'loading') {
@@ -172,11 +164,9 @@ function carregarTudo() {
     console.log('[Painel10] Carregando dados...');
 
     var endpoints = [
-        { url: CONFIG.api.dashboard, chave: 'dashboard' },
         { url: CONFIG.api.clinicasConsolidado, chave: 'clinicas' },
-        { url: CONFIG.api.atendimentosHora, chave: 'porHora' },
-        { url: CONFIG.api.desempenhoMedico, chave: 'medicos' },
         { url: CONFIG.api.desempenhoRecepcao, chave: 'recepcao' },
+        { url: CONFIG.api.senhasAguardando, chave: 'senhas' },
         { url: CONFIG.api.medicosConsultorios, chave: 'medicosConsult' }
     ];
 
@@ -219,11 +209,6 @@ function finalizarCarregamento(dados, erros) {
 
     errosConsecutivos = 0;
 
-    // Atualizar cards do dashboard
-    if (dados.dashboard) {
-        atualizarDashboard(dados.dashboard);
-    }
-
     // Renderizar conteudo principal
     renderizarConteudo(dados);
     atualizarTimestamp();
@@ -233,48 +218,57 @@ function finalizarCarregamento(dados, erros) {
 }
 
 // =============================================================================
-// DASHBOARD (CARDS RESUMO)
-// =============================================================================
-
-function atualizarDashboard(d) {
-    if (!d) return;
-
-    // Animacao sutil
-    var cards = document.querySelectorAll('.resumo-card');
-    for (var i = 0; i < cards.length; i++) {
-        cards[i].classList.add('atualizando');
-    }
-    setTimeout(function() {
-        for (var j = 0; j < cards.length; j++) {
-            cards[j].classList.remove('atualizando');
-        }
-    }, 300);
-
-    atualizarEl(DOM.totalDia, formatarNumero(d.total_atendimentos_dia));
-    atualizarEl(DOM.totalRealizados, formatarNumero(d.atendimentos_realizados));
-    atualizarEl(DOM.totalAguardando, formatarNumero(d.aguardando_atendimento));
-    atualizarEl(DOM.totalAlta, formatarNumero(d.pacientes_alta));
-    atualizarEl(DOM.tempoMedioEspera, formatarTempo(d.tempo_medio_espera_consulta_min));
-    atualizarEl(DOM.tempoMedioPermanencia, formatarTempo(d.tempo_medio_permanencia_min));
-
-    // Cor dinamica no card de espera
-    if (DOM.tempoMedioEspera) {
-        var tempo = d.tempo_medio_espera_consulta_min || 0;
-        var parent = DOM.tempoMedioEspera.parentElement.parentElement;
-        parent.className = 'resumo-card card-tempo-espera ' + getClasseTempo(tempo, 'espera');
-    }
-}
-
-// =============================================================================
 // RENDERIZACAO DO CONTEUDO PRINCIPAL
 // =============================================================================
 
 function renderizarConteudo(dados) {
     renderizarRecepcao(dados.recepcao);
+    renderizarSenhasAguardando(dados.senhas);
     renderizarClinicasConsolidado(dados.clinicas);
     renderizarMedicosConsultorios(dados.medicosConsult);
-    renderizarGrafico(dados.porHora);
-    renderizarMedicos(dados.medicos);
+}
+
+// ----- SENHAS AGUARDANDO RECEPCAO -----
+function renderizarSenhasAguardando(dados) {
+    var tbody = document.getElementById('tbody-senhas-aguardando');
+    var contador = document.getElementById('contador-senhas');
+    if (!tbody) return;
+
+    var lista = (dados && Array.isArray(dados)) ? dados : [];
+
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="texto-centro"><div class="mensagem-vazia"><i class="fas fa-check-circle" style="font-size:1.8rem;color:var(--cor-texto-muted);margin-bottom:6px;display:block;"></i><p>Nenhuma senha aguardando</p></div></td></tr>';
+        if (contador) contador.textContent = '0 senha(s)';
+        return;
+    }
+
+    if (contador) contador.textContent = lista.length + ' senha' + (lista.length !== 1 ? 's' : '') + ' aguardando';
+
+    var html = '';
+    for (var i = 0; i < lista.length; i++) {
+        var row = lista[i];
+        var senha = row.ds_senha || '-';
+        var fila = row.ds_fila || '-';
+        var espera = row.hr_espera || '-';
+
+        // Classifica urgência pelo tempo de espera (HH:MM)
+        var cls = 'tempo-bom';
+        if (espera !== '-') {
+            var partes = espera.split(':');
+            if (partes.length >= 2) {
+                var totalMin = parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
+                cls = getClasseTempo(totalMin, 'espera');
+            }
+        }
+
+        html += '<tr>';
+        html += '  <td class="texto-centro texto-muted">' + (i + 1) + '</td>';
+        html += '  <td class="texto-centro"><strong class="senha-codigo">' + escapeHtml(senha) + '</strong></td>';
+        html += '  <td>' + escapeHtml(fila) + '</td>';
+        html += '  <td class="texto-centro"><span class="badge badge-tempo ' + cls + '">' + escapeHtml(espera) + '</span></td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
 }
 
 // ----- RECEPCAO -----
@@ -552,81 +546,6 @@ function renderizarMedicosConsultorios(dados) {
     }
 
     grid.innerHTML = html;
-}
-
-// ----- GRAFICO POR HORA -----
-function renderizarGrafico(dados) {
-    var container = document.getElementById('grafico-barras-container');
-    var contador = document.getElementById('grafico-total-dia');
-    if (!container) return;
-
-    if (!dados || dados.length === 0) {
-        container.innerHTML = '<div class="mensagem-vazia" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"><i class="fas fa-inbox" style="font-size:2rem;color:var(--cor-texto-muted);margin-bottom:8px;"></i><p>Nenhum dado disponível</p></div>';
-        if (contador) contador.textContent = '0 total';
-        return;
-    }
-
-    var maxValor = 1;
-    var totalDia = 0;
-    for (var i = 0; i < dados.length; i++) {
-        var t = dados[i].total_atendimentos || 0;
-        if (t > maxValor) maxValor = t;
-        totalDia += t;
-    }
-
-    var horaAtual = new Date().getHours();
-    var barras = '';
-
-    for (var j = 0; j < dados.length; j++) {
-        var row = dados[j];
-        var hora = row.hora;
-        var total = row.total_atendimentos || 0;
-        var altura = total > 0 ? Math.max((total / maxValor) * 100, 4) : 0;
-        var isAtual = parseInt(hora) === horaAtual;
-
-        barras += '' +
-            '<div class="grafico-barra' + (isAtual ? ' barra-atual' : '') + '">' +
-            '  <div class="barra-container">' +
-            '    <span class="barra-valor">' + total + '</span>' +
-            '    <div class="barra-preenchimento" style="height: ' + altura + '%"></div>' +
-            '  </div>' +
-            '  <span class="barra-label">' + hora + 'h</span>' +
-            '</div>';
-    }
-
-    container.innerHTML = barras;
-    if (contador) contador.textContent = totalDia + ' total';
-}
-
-// ----- DESEMPENHO MEDICOS -----
-function renderizarMedicos(dados) {
-    var tbody = document.getElementById('tbody-medicos');
-    var contador = document.getElementById('contador-medicos');
-    if (!tbody) return;
-
-    if (!dados || dados.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="texto-centro"><div class="mensagem-vazia"><i class="fas fa-inbox" style="font-size:2rem;color:var(--cor-texto-muted);margin-bottom:8px;display:block;"></i><p>Nenhum médico com atendimento registrado hoje</p></div></td></tr>';
-        if (contador) contador.textContent = '0 médico(s)';
-        return;
-    }
-
-    if (contador) contador.textContent = dados.length + ' médico(s)';
-
-    var linhas = '';
-    for (var i = 0; i < dados.length; i++) {
-        var row = dados[i];
-        var tempo = row.tempo_medio_atendimento_min || 0;
-
-        linhas += '' +
-            '<tr>' +
-            '  <td class="texto-centro texto-muted">' + escapeHtml(row.cd_medico_resp) + '</td>' +
-            '  <td><span class="medico-nome">' + escapeHtml(row.nm_guerra) + '</span></td>' +
-            '  <td class="texto-centro">' + formatarNumero(row.total_atendimentos) + '</td>' +
-            '  <td class="texto-centro"><span class="badge badge-tempo ' + getClasseTempo(tempo, 'atendimento') + '">' + tempo + ' min</span></td>' +
-            '  <td class="texto-centro"><span class="badge badge-sucesso">' + formatarNumero(row.pacientes_finalizados) + '</span></td>' +
-            '</tr>';
-    }
-    tbody.innerHTML = linhas;
 }
 
 // ----- MENSAGEM DE ERRO -----

@@ -624,6 +624,45 @@ def api_painel10_pacientes_alta():
         })
 
 # =============================================================================
+# ENDPOINT: SENHAS AGUARDANDO RECEPCAO
+# =============================================================================
+
+@painel10_bp.route('/api/paineis/painel10/senhas-aguardando', methods=['GET'])
+@login_required
+@panel_permission_required('painel10')
+@cache_route(ttl=30, key_prefix='painel10:senhas-aguardando', vary_by_user=False)
+def api_painel10_senhas_aguardando():
+    """
+    Senhas/tokens aguardando atendimento na recepcao.
+    Registros com nr_atendimento IS NULL sao tokens ainda nao vinculados a paciente.
+    """
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    COALESCE(NULLIF(ds_senha_qmatic, ''), ds_senha_gerenciamento) AS ds_senha,
+                    hr_espera,
+                    ds_fila,
+                    ie_status_pa
+                FROM painel_nsenha
+                WHERE nr_atendimento IS NULL
+                ORDER BY hr_espera DESC
+            """)
+            rows = cursor.fetchall()
+            dados = [dict(r) for r in rows]
+
+        return jsonify({
+            'success': True,
+            'data': dados,
+            'total': len(dados),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error('Erro ao buscar senhas aguardando: %s', str(e), exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar dados'}), 500
+
+
+# =============================================================================
 # ENDPOINT: DIAGNOSTICO DA TABELA painel_ps_analise (admin)
 # =============================================================================
 
