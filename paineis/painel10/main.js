@@ -19,7 +19,6 @@ var CONFIG = {
         clinicasConsolidado: BASE_URL + '/api/paineis/painel10/clinicas-consolidado',
         pacientesClinica: BASE_URL + '/api/paineis/painel10/pacientes-clinica',
         pacientesAlta: BASE_URL + '/api/paineis/painel10/pacientes-alta',
-        desempenhoRecepcao: BASE_URL + '/api/paineis/painel10/desempenho-recepcao',
         senhasAguardando: BASE_URL + '/api/paineis/painel10/senhas-aguardando',
         medicosConsultorios: BASE_URL + '/api/paineis/painel18/medicos'
     },
@@ -132,24 +131,6 @@ function configurarBotoes() {
         }
     });
 
-    // Navegação de Abas
-    var tabBtns = document.querySelectorAll('.tab-nav-btn');
-    tabBtns.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-nav-btn').forEach(function(b) { b.classList.remove('active'); });
-            document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
-            
-            this.classList.add('active');
-            var tabId = this.getAttribute('data-tab');
-            var panel = document.getElementById('tab-' + tabId);
-            if (panel) panel.classList.add('active');
-
-            if (autoScrollAtivo) {
-                pararAutoScroll();
-                iniciarAutoScroll();
-            }
-        });
-    });
 }
 
 // =============================================================================
@@ -165,7 +146,6 @@ function carregarTudo() {
 
     var endpoints = [
         { url: CONFIG.api.clinicasConsolidado, chave: 'clinicas' },
-        { url: CONFIG.api.desempenhoRecepcao, chave: 'recepcao' },
         { url: CONFIG.api.senhasAguardando, chave: 'senhas' },
         { url: CONFIG.api.medicosConsultorios, chave: 'medicosConsult' }
     ];
@@ -198,7 +178,7 @@ function carregarTudo() {
 function finalizarCarregamento(dados, erros) {
     carregando = false;
 
-    if (erros >= 5) {
+    if (erros >= 3) {
         errosConsecutivos++;
         atualizarStatus('offline');
         if (errosConsecutivos >= 3) {
@@ -222,10 +202,9 @@ function finalizarCarregamento(dados, erros) {
 // =============================================================================
 
 function renderizarConteudo(dados) {
-    renderizarRecepcao(dados.recepcao);
-    renderizarSenhasAguardando(dados.senhas);
     renderizarClinicasConsolidado(dados.clinicas);
     renderizarMedicosConsultorios(dados.medicosConsult);
+    renderizarSenhasAguardando(dados.senhas);
 }
 
 // ----- SENHAS AGUARDANDO RECEPCAO -----
@@ -269,19 +248,6 @@ function renderizarSenhasAguardando(dados) {
         html += '</tr>';
     }
     tbody.innerHTML = html;
-}
-
-// ----- RECEPCAO -----
-function renderizarRecepcao(dados) {
-    if (!dados) dados = {};
-
-    var totalRecebidos = dados.total_recebidos || 0;
-    var tempoMedio = dados.tempo_medio_recepcao_min || 0;
-    var aguardando = dados.aguardando_recepcao || 0;
-
-    atualizarEl(document.getElementById('recep-total-recebidos'), formatarNumero(totalRecebidos));
-    atualizarEl(document.getElementById('recep-tempo-medio'), formatarTempo(tempoMedio) + ' min');
-    atualizarEl(document.getElementById('recep-aguardando'), formatarNumero(aguardando));
 }
 
 // ----- CLINICAS CONSOLIDADO (Espera por Clínica) -----
@@ -561,10 +527,7 @@ function mostrarErro(mensagem) {
 function iniciarAutoScroll() {
     pararAutoScroll();
 
-    var activeTab = document.querySelector('.tab-panel.active');
-    if (!activeTab) return;
-
-    var container = activeTab.querySelector('.content-scroll');
+    var container = document.getElementById('scroll-principal');
     if (!container) return;
 
     var emPausa = false;

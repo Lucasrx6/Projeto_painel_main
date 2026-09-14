@@ -50,126 +50,77 @@
             </div>
         </header>
 
-        <!-- NAVEGAÇÃO POR ABAS -->
-        <div class="tabs-nav">
-            <button class="tab-nav-btn active" data-tab="espera-clinicas">
-                <i class="fas fa-clock"></i> <span>Espera & Clínicas</span>
-            </button>
-            <button class="tab-nav-btn" data-tab="equipe-recepcao">
-                <i class="fas fa-user-md"></i> <span>Equipe & Recepção</span>
-            </button>
-        </div>
+        <!-- Conteudo unico (sem abas) -->
+        <div class="painel-main content-scroll" id="scroll-principal">
 
-        <div class="tab-panels">
-            <!-- ABA 1: Espera & Clínicas -->
-            <div class="tab-panel active" id="tab-espera-clinicas">
-                <div class="painel-main content-scroll" id="scroll-espera-clinicas">
-                    <!-- Espera por Clínica (tabela unificada) -->
-                    <section class="secao-analise">
-                        <header class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-clock"></i><h2>Espera por Clínica</h2></div>
-                            <span class="secao-contador secao-contador-alerta" id="contador-clinicas">0 clínica(s)</span>
-                        </header>
-                        <div class="secao-content">
-                            <p class="tabela-hint"><i class="fas fa-hand-pointer"></i> Clique em uma clínica para ver os pacientes aguardando</p>
-                            <div class="tabela-container">
-                                <table class="tabela-dados tabela-clinicas">
-                                    <thead><tr>
-                                        <th>Clínica</th>
-                                        <th class="texto-centro">Aguardando</th>
-                                        <th class="texto-centro">Total</th>
-                                        <th class="texto-centro">Realizados</th>
-                                        <th class="texto-centro">Médico(s)</th>
-                                        <th class="texto-centro">Espera Paciente</th>
-                                        <th class="texto-centro">Ag. Alta</th>
-                                    </tr></thead>
-                                    <tbody id="tbody-clinicas-consolidado">
-                                        <tr><td colspan="7" class="texto-centro">Carregando...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Médicos nos Consultórios -->
-                    <section class="secao-analise">
-                        <header class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-laptop-medical"></i><h2>Médicos nos Consultórios</h2></div>
-                            <span class="secao-contador" id="contador-medicos-consultorio">0 médico(s)</span>
-                        </header>
-                        <div class="secao-content">
-                            <div class="guiches-grid" id="medicos-consultorio-grid">
-                                <div class="loading-container"><div class="loading-spinner"></div><p>Carregando médicos...</p></div>
-                            </div>
-                        </div>
-                    </section>
+            <!-- Espera por Clínica -->
+            <section class="secao-analise">
+                <header class="secao-header">
+                    <div class="secao-titulo"><i class="fas fa-clock"></i><h2>Espera por Clínica</h2></div>
+                    <span class="secao-contador secao-contador-alerta" id="contador-clinicas">0 clínica(s)</span>
+                </header>
+                <div class="secao-content">
+                    <p class="tabela-hint"><i class="fas fa-hand-pointer"></i> Clique em uma clínica para ver os pacientes aguardando</p>
+                    <div class="tabela-container">
+                        <table class="tabela-dados tabela-clinicas">
+                            <thead><tr>
+                                <th>Clínica</th>
+                                <th class="texto-centro">Aguardando</th>
+                                <th class="texto-centro">Total</th>
+                                <th class="texto-centro">Realizados</th>
+                                <th class="texto-centro">Médico(s)</th>
+                                <th class="texto-centro">Espera Paciente</th>
+                                <th class="texto-centro">Ag. Alta</th>
+                            </tr></thead>
+                            <tbody id="tbody-clinicas-consolidado">
+                                <tr><td colspan="7" class="texto-centro">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- ABA 3: Equipe & Recepção -->
-            <div class="tab-panel" id="tab-equipe-recepcao">
-                <div class="painel-main content-scroll" id="scroll-equipe-recepcao">
-                    <!-- Recepção -->
-                    <section class="secao-analise">
-                        <header class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-desktop"></i><h2>Desempenho da Recepção</h2></div>
-                        </header>
-                        <div class="secao-content">
-                            <div class="metricas-grid metricas-3">
-                                <div class="metrica-card">
-                                    <div class="metrica-icone icone-azul"><i class="fas fa-users"></i></div>
-                                    <div class="metrica-info">
-                                        <span class="metrica-valor" id="recep-total-recebidos">-</span>
-                                        <span class="metrica-label">Total Recebidos</span>
-                                    </div>
-                                </div>
-                                <div class="metrica-card">
-                                    <div class="metrica-icone icone-roxo"><i class="fas fa-stopwatch"></i></div>
-                                    <div class="metrica-info">
-                                        <span class="metrica-valor" id="recep-tempo-medio">- <small>min</small></span>
-                                        <span class="metrica-label">Tempo Médio</span>
-                                    </div>
-                                </div>
-                                <div class="metrica-card">
-                                    <div class="metrica-icone icone-laranja"><i class="fas fa-user-clock"></i></div>
-                                    <div class="metrica-info">
-                                        <span class="metrica-valor" id="recep-aguardando">-</span>
-                                        <span class="metrica-label">Aguardando</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Senhas Aguardando Recepção -->
-                    <section class="secao-analise">
-                        <header class="secao-header">
-                            <div class="secao-titulo"><i class="fas fa-ticket-alt"></i><h2>Senhas Aguardando Recepção</h2></div>
-                            <span class="secao-contador secao-contador-alerta" id="contador-senhas">0 senha(s)</span>
-                        </header>
-                        <div class="secao-content">
-                            <div class="tabela-container">
-                                <table class="tabela-dados">
-                                    <thead><tr>
-                                        <th class="texto-centro" style="width:40px">#</th>
-                                        <th class="texto-centro">Senha</th>
-                                        <th>Fila</th>
-                                        <th class="texto-centro">Aguardando</th>
-                                    </tr></thead>
-                                    <tbody id="tbody-senhas-aguardando">
-                                        <tr><td colspan="4" class="texto-centro">Carregando...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </section>
+            <!-- Médicos nos Consultórios -->
+            <section class="secao-analise">
+                <header class="secao-header">
+                    <div class="secao-titulo"><i class="fas fa-laptop-medical"></i><h2>Médicos nos Consultórios</h2></div>
+                    <span class="secao-contador" id="contador-medicos-consultorio">0 médico(s)</span>
+                </header>
+                <div class="secao-content">
+                    <div class="guiches-grid" id="medicos-consultorio-grid">
+                        <div class="loading-container"><div class="loading-spinner"></div><p>Carregando médicos...</p></div>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <!-- Senhas Aguardando Recepção -->
+            <section class="secao-analise">
+                <header class="secao-header">
+                    <div class="secao-titulo"><i class="fas fa-ticket-alt"></i><h2>Senhas Aguardando Recepção</h2></div>
+                    <span class="secao-contador secao-contador-alerta" id="contador-senhas">0 senha(s)</span>
+                </header>
+                <div class="secao-content">
+                    <div class="tabela-container">
+                        <table class="tabela-dados">
+                            <thead><tr>
+                                <th class="texto-centro" style="width:40px">#</th>
+                                <th class="texto-centro">Senha</th>
+                                <th>Fila</th>
+                                <th class="texto-centro">Aguardando</th>
+                            </tr></thead>
+                            <tbody id="tbody-senhas-aguardando">
+                                <tr><td colspan="4" class="texto-centro">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
         </div>
 
     </div>
 
     <script src="/paineis/painel10/main.js"></script>
-<script src="/static/js/auto-auth.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
 </body>
 </html>
