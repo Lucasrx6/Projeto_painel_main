@@ -53,6 +53,28 @@
         <!-- Conteudo unico (sem abas) -->
         <div class="painel-main content-scroll" id="scroll-principal">
 
+            <!-- Senhas Aguardando Recepção -->
+            <section class="secao-analise">
+                <header class="secao-header">
+                    <div class="secao-titulo"><i class="fas fa-ticket-alt"></i><h2>Senhas Aguardando Recepção</h2></div>
+                    <span class="secao-contador secao-contador-alerta" id="contador-senhas">carregando...</span>
+                </header>
+                <div class="secao-content">
+                    <div class="senhas-mini-dashboard">
+                        <div class="senha-kpi" id="kpi-card-total">
+                            <div class="senha-kpi-icone"><i class="fas fa-ticket-alt"></i></div>
+                            <div class="senha-kpi-valor" id="kpi-senhas-total">-</div>
+                            <div class="senha-kpi-label">senhas aguardando</div>
+                        </div>
+                        <div class="senha-kpi" id="kpi-card-tempo">
+                            <div class="senha-kpi-icone"><i class="fas fa-hourglass-half"></i></div>
+                            <div class="senha-kpi-valor" id="kpi-senhas-max-tempo">-</div>
+                            <div class="senha-kpi-label">maior espera</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Espera por Clínica -->
             <section class="secao-analise">
                 <header class="secao-header">
@@ -89,29 +111,6 @@
                 <div class="secao-content">
                     <div class="guiches-grid" id="medicos-consultorio-grid">
                         <div class="loading-container"><div class="loading-spinner"></div><p>Carregando médicos...</p></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Senhas Aguardando Recepção -->
-            <section class="secao-analise">
-                <header class="secao-header">
-                    <div class="secao-titulo"><i class="fas fa-ticket-alt"></i><h2>Senhas Aguardando Recepção</h2></div>
-                    <span class="secao-contador secao-contador-alerta" id="contador-senhas">0 senha(s)</span>
-                </header>
-                <div class="secao-content">
-                    <div class="tabela-container">
-                        <table class="tabela-dados">
-                            <thead><tr>
-                                <th class="texto-centro" style="width:40px">#</th>
-                                <th class="texto-centro">Senha</th>
-                                <th>Fila</th>
-                                <th class="texto-centro">Aguardando</th>
-                            </tr></thead>
-                            <tbody id="tbody-senhas-aguardando">
-                                <tr><td colspan="4" class="texto-centro">Carregando...</td></tr>
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </section>

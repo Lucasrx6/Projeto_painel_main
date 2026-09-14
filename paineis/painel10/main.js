@@ -207,47 +207,43 @@ function renderizarConteudo(dados) {
     renderizarSenhasAguardando(dados.senhas);
 }
 
-// ----- SENHAS AGUARDANDO RECEPCAO -----
+// ----- SENHAS AGUARDANDO RECEPCAO (mini-dashboard) -----
 function renderizarSenhasAguardando(dados) {
-    var tbody = document.getElementById('tbody-senhas-aguardando');
-    var contador = document.getElementById('contador-senhas');
-    if (!tbody) return;
+    var contador   = document.getElementById('contador-senhas');
+    var kpiTotal   = document.getElementById('kpi-senhas-total');
+    var kpiTempo   = document.getElementById('kpi-senhas-max-tempo');
+    var cardTotal  = document.getElementById('kpi-card-total');
+    var cardTempo  = document.getElementById('kpi-card-tempo');
 
-    var lista = (dados && Array.isArray(dados)) ? dados : [];
+    if (!dados) return;
 
-    if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="texto-centro"><div class="mensagem-vazia"><i class="fas fa-check-circle" style="font-size:1.8rem;color:var(--cor-texto-muted);margin-bottom:6px;display:block;"></i><p>Nenhuma senha aguardando</p></div></td></tr>';
-        if (contador) contador.textContent = '0 senha(s)';
-        return;
+    var total    = dados.total || 0;
+    var maxTempo = dados.max_tempo_emissao || null;
+
+    // Contador do header
+    if (contador) contador.textContent = total + ' senha' + (total !== 1 ? 's' : '') + ' aguardando';
+
+    // Valor do card de contagem
+    if (kpiTotal) kpiTotal.textContent = total;
+
+    // Cor do card de contagem
+    if (cardTotal) {
+        var clsTotal = total === 0 ? 'senha-kpi senha-kpi-bom' : (total <= 3 ? 'senha-kpi senha-kpi-medio' : 'senha-kpi senha-kpi-critico');
+        cardTotal.className = clsTotal;
     }
 
-    if (contador) contador.textContent = lista.length + ' senha' + (lista.length !== 1 ? 's' : '') + ' aguardando';
+    // Valor e cor do card de tempo
+    if (kpiTempo) kpiTempo.textContent = maxTempo || '--:--';
 
-    var html = '';
-    for (var i = 0; i < lista.length; i++) {
-        var row = lista[i];
-        var senha = row.ds_senha || '-';
-        var fila = row.ds_fila || '-';
-        var espera = row.hr_espera || '-';
-
-        // Classifica urgência pelo tempo de espera (HH:MM)
-        var cls = 'tempo-bom';
-        if (espera !== '-') {
-            var partes = espera.split(':');
-            if (partes.length >= 2) {
-                var totalMin = parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
-                cls = getClasseTempo(totalMin, 'espera');
-            }
+    if (cardTempo) {
+        var clsTempo = 'senha-kpi';
+        if (maxTempo) {
+            var partes = maxTempo.split(':');
+            var minutos = parseInt(partes[0], 10) * 60 + (partes[1] ? parseInt(partes[1], 10) : 0);
+            clsTempo += (minutos < 15) ? ' senha-kpi-bom' : (minutos < 30 ? ' senha-kpi-medio' : ' senha-kpi-critico');
         }
-
-        html += '<tr>';
-        html += '  <td class="texto-centro texto-muted">' + (i + 1) + '</td>';
-        html += '  <td class="texto-centro"><strong class="senha-codigo">' + escapeHtml(senha) + '</strong></td>';
-        html += '  <td>' + escapeHtml(fila) + '</td>';
-        html += '  <td class="texto-centro"><span class="badge badge-tempo ' + cls + '">' + escapeHtml(espera) + '</span></td>';
-        html += '</tr>';
+        cardTempo.className = clsTempo;
     }
-    tbody.innerHTML = html;
 }
 
 // ----- CLINICAS CONSOLIDADO (Espera por Clínica) -----

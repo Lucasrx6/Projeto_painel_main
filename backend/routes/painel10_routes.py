@@ -627,35 +627,58 @@ def api_painel10_pacientes_alta():
 # ENDPOINT: SENHAS AGUARDANDO RECEPCAO
 # =============================================================================
 
+def _tempo_emissao_secs(val):
+    """Converte qt_tempo_emissao (timedelta ou string HH:MM:SS) para segundos totais."""
+    if val is None:
+        return -1
+    try:
+        if hasattr(val, 'total_seconds'):
+            return val.total_seconds()
+        parts = str(val).strip().split(':')
+        h = int(parts[0]) if parts[0].strip() else 0
+        m = int(parts[1]) if len(parts) > 1 and parts[1].strip() else 0
+        return h * 3600 + m * 60
+    except Exception:
+        return -1
+
+
+def _fmt_hm(secs):
+    """Formata segundos totais como HH:MM."""
+    secs = int(secs)
+    return '{:02d}:{:02d}'.format(secs // 3600, (secs % 3600) // 60)
+
+
 @painel10_bp.route('/api/paineis/painel10/senhas-aguardando', methods=['GET'])
 @login_required
 @panel_permission_required('painel10')
 @cache_route(ttl=30, key_prefix='painel10:senhas-aguardando', vary_by_user=False)
 def api_painel10_senhas_aguardando():
     """
-    Senhas/tokens aguardando atendimento na recepcao.
-    Linhas de painel_ps_analise onde nr_atendimento IS NULL sao tokens
-    ainda nao vinculados a paciente (aguardando chamada na recepcao).
+    Resumo das senhas/tokens aguardando na recepcao.
+    Retorna total e maior qt_tempo_emissao entre as linhas com nr_atendimento IS NULL.
     """
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT
-                    COALESCE(NULLIF(ds_senha_qmatic, ''), NULLIF(ds_senha_gerenciamento, '')) AS ds_senha,
-                    hr_espera,
-                    ds_fila,
-                    ie_status_pa
+                SELECT qt_tempo_emissao
                 FROM painel_ps_analise
                 WHERE nr_atendimento IS NULL
-                ORDER BY hr_espera DESC
             """)
             rows = cursor.fetchall()
-            dados = [dict(r) for r in rows]
+
+        total = len(rows)
+        max_secs = -1
+        for r in rows:
+            s = _tempo_emissao_secs(r.get('qt_tempo_emissao'))
+            if s > max_secs:
+                max_secs = s
+
+        max_tempo = _fmt_hm(max_secs) if max_secs >= 0 else None
 
         return jsonify({
             'success': True,
-            'data': dados,
-            'total': len(dados),
+            'total': total,
+            'max_tempo_emissao': max_tempo,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
