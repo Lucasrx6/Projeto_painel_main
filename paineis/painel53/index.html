@@ -41,6 +41,12 @@
                             <option value="">Selecione o motorista...</option>
                         </select>
                     </div>
+                    <div class="motorista-select-wrap" style="margin-top:12px;">
+                        <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;"><i class="fas fa-truck"></i> Veiculo utilizado</label>
+                        <select id="select-veiculo">
+                            <option value="">Nenhum / Nao se aplica</option>
+                        </select>
+                    </div>
                     <button class="btn-entrar" id="btn-entrar">
                         <i class="fas fa-sign-in-alt"></i> Entrar
                     </button>
@@ -114,6 +120,12 @@
                 <button class="btn-fechar-modal" id="btn-fechar-entregar"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
+                <!-- Foto da carga para validacao do destinatario -->
+                <div id="entregar-foto-wrap" style="display:none;margin-bottom:12px;">
+                    <div class="foto-validacao-label"><i class="fas fa-camera"></i> Foto da Carga</div>
+                    <img class="foto-validacao-img" id="entregar-foto-img" alt="Foto da carga">
+                    <div style="font-size:12px;color:#888;margin-top:4px;">Confirme que o material corresponde a esta foto antes de registrar a entrega.</div>
+                </div>
                 <div class="form-group">
                     <label>Nome do Destinatario *</label>
                     <input type="text" id="entregar-destinatario" placeholder="Quem recebeu o material..." maxlength="200" autocomplete="off">
@@ -140,6 +152,12 @@
                 <button class="btn-fechar-modal" id="btn-fechar-assinatura"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
+                <!-- Foto da carga para validacao do destinatario -->
+                <div id="assin-foto-wrap" style="display:none;margin-bottom:12px;">
+                    <div class="foto-validacao-label"><i class="fas fa-camera"></i> Foto da Carga</div>
+                    <img class="foto-validacao-img" id="assin-foto-img" alt="Foto da carga">
+                    <div style="font-size:12px;color:#888;margin-top:4px;">Confirme que o material corresponde a esta foto antes de coletar a assinatura.</div>
+                </div>
                 <div class="form-group">
                     <label>Nome do Destinatario *</label>
                     <input type="text" id="assin-destinatario" placeholder="Nome de quem recebeu..." maxlength="200" autocomplete="off">

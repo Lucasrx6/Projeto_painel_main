@@ -315,6 +315,30 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     padding: 2px 7px; border-radius: 10px; letter-spacing: 0.5px;
 }
 
+/* ── FOTO ──────────────────────────────────────── */
+.foto-capture-wrap { display: flex; flex-direction: column; gap: 10px; }
+.btn-tirar-foto {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px; border: 2px dashed var(--cor-primaria);
+    background: var(--cor-primaria-light); color: var(--cor-primaria);
+    border-radius: var(--radius); cursor: pointer; font-size: 15px; font-weight: 600;
+    transition: background 0.2s;
+}
+.btn-tirar-foto:hover { background: #f1b0b7; }
+.foto-preview { position: relative; border-radius: var(--radius); overflow: hidden; background: #000; }
+.foto-preview img { width: 100%; max-height: 280px; object-fit: contain; display: block; }
+.btn-remover-foto {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(220,53,69,0.9); color: white; border: none;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+}
+.item-nr-id {
+    display: block; width: 100%; padding: 8px 10px; margin-top: 6px;
+    border: 1px solid var(--borda); border-radius: 8px; font-size: 13px;
+    background: #f8f9fa; color: var(--texto);
+}
+.item-nr-id:focus { outline: none; border-color: var(--cor-primaria); background: white; }
+
 /* ── LOADING ───────────────────────────────────── */
 .loading { display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 12px; color: var(--texto-sec); }
 .loading-spinner {

@@ -10,9 +10,13 @@
     var Estado = {
         motoristas: [],
         motoristaSelecionado: null,
+        veiculos: [],
+        veiculoId: null,
+        veiculoPlaca: '',
         chamadoAtivo: null,
         fila: [],
         chamadoAcaoId: null,
+        fotoCargaAtual: null,
         timerFila: null,
         signaturePad: null,
         requerAssinatura: false
@@ -59,6 +63,30 @@
         if (m) m.style.display = 'flex';
     }
 
+    /* ── CARREGAR VEICULOS ───────────────────────── */
+    function carregarVeiculos() {
+        fetch(CONFIG.api + '/veiculos', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                Estado.veiculos = data.veiculos || [];
+                var sel = document.getElementById('select-veiculo');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">Nenhum / Nao se aplica</option>';
+                for (var i = 0; i < Estado.veiculos.length; i++) {
+                    var v = Estado.veiculos[i];
+                    var opt = document.createElement('option');
+                    opt.value = v.id;
+                    var label = v.tipo.charAt(0).toUpperCase() + v.tipo.slice(1);
+                    if (v.placa) label += ' - ' + v.placa;
+                    if (v.descricao) label += ' (' + v.descricao + ')';
+                    opt.textContent = label;
+                    sel.appendChild(opt);
+                }
+            })
+            .catch(function (e) { console.error('Erro veiculos:', e); });
+    }
+
     /* ── CARREGAR MOTORISTAS ──────────────────────── */
     function carregarMotoristas() {
         fetch(CONFIG.api + '/motoristas', { credentials: 'same-origin' })
@@ -93,6 +121,20 @@
         }
         if (!encontrado) { toast('Motorista nao encontrado.', 'error'); return; }
         Estado.motoristaSelecionado = encontrado;
+
+        var selVei = document.getElementById('select-veiculo');
+        if (selVei && selVei.value) {
+            Estado.veiculoId = parseInt(selVei.value, 10);
+            var vEnc = null;
+            for (var vi = 0; vi < Estado.veiculos.length; vi++) {
+                if (Estado.veiculos[vi].id === Estado.veiculoId) { vEnc = Estado.veiculos[vi]; break; }
+            }
+            Estado.veiculoPlaca = vEnc ? (vEnc.placa || '') : '';
+        } else {
+            Estado.veiculoId = null;
+            Estado.veiculoPlaca = '';
+        }
+
         document.getElementById('motorista-nome-display').textContent = encontrado.nome;
         document.getElementById('motorista-turno-display').textContent = 'Matricula: ' + (encontrado.matricula || 'N/A') + ' | Turno: ' + (encontrado.turno || 'todos');
         mostrarTela('tela-motorista');
@@ -255,7 +297,23 @@
             .catch(function (e) { console.error(e); toast('Erro de conexao.', 'error'); });
     }
 
+    function _mostrarFotoModal(wrapId, imgId) {
+        var wrap = document.getElementById(wrapId);
+        var img  = document.getElementById(imgId);
+        if (!wrap) return;
+        var foto = Estado.fotoCargaAtual;
+        if (foto && foto.indexOf('data:image/') === 0) {
+            if (img) img.src = foto;
+            wrap.style.display = '';
+        } else {
+            wrap.style.display = 'none';
+        }
+    }
+
     function abrirEntrega() {
+        var c = Estado.chamadoAtivo;
+        Estado.fotoCargaAtual = (c && c.foto_carga) ? c.foto_carga : null;
+
         if (Estado.requerAssinatura) {
             document.getElementById('assin-destinatario').value = '';
             document.getElementById('assin-pin').value = '';
@@ -264,11 +322,13 @@
             document.getElementById('pin-status').className = 'pin-status';
             if (Estado.signaturePad) Estado.signaturePad.clear();
             abrirModal('modal-assinatura');
+            _mostrarFotoModal('assin-foto-wrap', 'assin-foto-img');
             inicializarSignaturePad();
         } else {
             document.getElementById('entregar-destinatario').value = '';
             document.getElementById('entregar-obs').value = '';
             abrirModal('modal-entregar');
+            _mostrarFotoModal('entregar-foto-wrap', 'entregar-foto-img');
         }
     }
 
@@ -295,7 +355,13 @@
             method: 'PUT',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ motorista_id: Estado.motoristaSelecionado.id, nm_destinatario: dest, observacao_entrega: obs })
+            body: JSON.stringify({
+                motorista_id: Estado.motoristaSelecionado.id,
+                nm_destinatario: dest,
+                observacao_entrega: obs,
+                veiculo_id: Estado.veiculoId,
+                veiculo_placa: Estado.veiculoPlaca || null
+            })
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -340,7 +406,9 @@
                 pin:            pin,
                 nm_destinatario: dest,
                 assinatura_img: imgData,
-                observacao_entrega: obs
+                observacao_entrega: obs,
+                veiculo_id: Estado.veiculoId,
+                veiculo_placa: Estado.veiculoPlaca || null
             })
         })
             .then(function (r) { return r.json(); })
@@ -461,16 +529,22 @@
 
     function sair() {
         Estado.motoristaSelecionado = null;
+        Estado.veiculoId = null;
+        Estado.veiculoPlaca = '';
         Estado.chamadoAtivo = null;
         Estado.fila = [];
+        Estado.fotoCargaAtual = null;
         if (Estado.timerFila) { clearInterval(Estado.timerFila); Estado.timerFila = null; }
         mostrarTela('tela-selecao');
         document.getElementById('select-motorista').value = '';
+        var selVei = document.getElementById('select-veiculo');
+        if (selVei) selVei.value = '';
     }
 
     /* ── INICIALIZAR ──────────────────────────────── */
     function inicializar() {
         carregarMotoristas();
+        carregarVeiculos();
 
         var btnEntrar = document.getElementById('btn-entrar');
         if (btnEntrar) btnEntrar.addEventListener('click', entrar);

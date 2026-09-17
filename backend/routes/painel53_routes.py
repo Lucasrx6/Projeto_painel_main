@@ -35,6 +35,32 @@ def painel53():
 
 
 # =========================================================
+# LISTAR VEÍCULOS ATIVOS
+# =========================================================
+
+@painel53_bp.route('/api/paineis/painel53/veiculos', methods=['GET'])
+@login_required
+@panel_permission_required('painel53')
+def api_painel53_veiculos():
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, tipo, placa, descricao, km_max_dia
+                FROM transporte_material_veiculos
+                WHERE ativo = TRUE
+                ORDER BY tipo, placa
+            """)
+            veiculos = [dict(r) for r in cursor.fetchall()]
+            for v in veiculos:
+                if v.get('km_max_dia') is not None:
+                    v['km_max_dia'] = float(v['km_max_dia'])
+        return jsonify({'success': True, 'veiculos': veiculos})
+    except Exception as e:
+        current_app.logger.error('Erro veiculos painel53: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar veiculos'}), 500
+
+
+# =========================================================
 # LISTAR MOTORISTAS ATIVOS
 # =========================================================
 
@@ -72,9 +98,10 @@ def api_painel53_fila():
                 SELECT
                     s.id, s.nr_protocolo,
                     s.tipo_carga_nome, tc.icone AS tipo_carga_icone, tc.cor AS tipo_carga_cor,
-                    tc.requer_assinatura, tc.requer_lista_itens,
+                    tc.requer_assinatura, tc.requer_lista_itens, tc.requer_foto,
                     s.descricao, s.setor_origem_nome, s.destino_nome, s.destino_complemento,
                     s.prioridade, s.status, s.solicitante_nome, s.observacao,
+                    s.foto_carga,
                     s.criado_em,
                     ROUND(EXTRACT(EPOCH FROM (NOW() - s.criado_em)) / 60, 1) AS minutos_espera
                 FROM transporte_material_solicitacoes s
@@ -97,9 +124,10 @@ def api_painel53_fila():
                     SELECT
                         s.id, s.nr_protocolo,
                         s.tipo_carga_nome, tc.icone AS tipo_carga_icone, tc.cor AS tipo_carga_cor,
-                        tc.requer_assinatura, tc.requer_lista_itens,
+                        tc.requer_assinatura, tc.requer_lista_itens, tc.requer_foto,
                         s.descricao, s.setor_origem_nome, s.destino_nome, s.destino_complemento,
                         s.prioridade, s.status, s.solicitante_nome, s.observacao,
+                        s.foto_carga,
                         s.criado_em, s.dt_aceite, s.dt_inicio_transporte,
                         ROUND(EXTRACT(EPOCH FROM (NOW() - s.criado_em)) / 60, 1) AS minutos_espera
                     FROM transporte_material_solicitacoes s
@@ -138,7 +166,7 @@ def api_painel53_itens(chamado_id):
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT descricao, quantidade, unidade, observacao
+                SELECT descricao, quantidade, unidade, observacao, nr_identificador
                 FROM transporte_material_itens
                 WHERE solicitacao_id = %s
                 ORDER BY ordem
@@ -266,6 +294,8 @@ def api_painel53_entregar(chamado_id):
     motorista_id    = dados.get('motorista_id')
     nm_destinatario = (dados.get('nm_destinatario') or '').strip()
     obs_entrega     = (dados.get('observacao_entrega') or '').strip()
+    veiculo_id      = dados.get('veiculo_id') or None
+    veiculo_placa   = (dados.get('veiculo_placa') or '').strip() or None
 
     if not motorista_id:
         return jsonify({'success': False, 'error': 'Informe o motorista_id'}), 400
@@ -290,9 +320,12 @@ def api_painel53_entregar(chamado_id):
                     dt_entrega = NOW(),
                     nm_destinatario = %s,
                     observacao_entrega = %s,
+                    veiculo_id = %s,
+                    veiculo_placa = %s,
                     atualizado_em = NOW()
                 WHERE id = %s
-            """, (nm_destinatario or None, obs_entrega or None, chamado_id))
+            """, (nm_destinatario or None, obs_entrega or None,
+                  veiculo_id, veiculo_placa, chamado_id))
 
         cache_delete_pattern('painel54:*')
         return jsonify({'success': True, 'message': 'Entrega registrada com sucesso'})
@@ -314,6 +347,8 @@ def api_painel53_entregar_com_assinatura(chamado_id):
     nm_destinatario = (dados.get('nm_destinatario') or '').strip()
     assinatura_img  = (dados.get('assinatura_img') or '').strip()
     obs_entrega     = (dados.get('observacao_entrega') or '').strip()
+    veiculo_id      = dados.get('veiculo_id') or None
+    veiculo_placa   = (dados.get('veiculo_placa') or '').strip() or None
 
     if not motorista_pin:
         return jsonify({'success': False, 'error': 'PIN do motorista obrigatorio'}), 400
@@ -412,9 +447,12 @@ def api_painel53_entregar_com_assinatura(chamado_id):
                     assinatura_id = %s,
                     nm_destinatario = %s,
                     observacao_entrega = %s,
+                    veiculo_id = %s,
+                    veiculo_placa = %s,
                     atualizado_em = NOW()
                 WHERE id = %s
-            """, (assinatura_id, nm_destinatario, obs_entrega or None, chamado_id))
+            """, (assinatura_id, nm_destinatario, obs_entrega or None,
+                  veiculo_id, veiculo_placa, chamado_id))
 
         cache_delete_pattern('painel54:*')
         current_app.logger.info(

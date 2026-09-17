@@ -78,6 +78,8 @@
                         <input type="hidden" id="tipo-carga-nome">
                         <input type="hidden" id="tipo-requer-lista" value="false">
                         <input type="hidden" id="tipo-requer-assinatura" value="false">
+                        <input type="hidden" id="tipo-requer-foto" value="false">
+                        <input type="hidden" id="tipo-foto-obrigatoria" value="false">
                     </div>
 
                     <!-- Descricao -->
@@ -89,6 +91,26 @@
                             </label>
                             <textarea id="input-descricao" placeholder="Descreva brevemente o que sera transportado..." rows="2" maxlength="300"></textarea>
                             <span class="char-count"><span id="count-desc">0</span>/300</span>
+                        </div>
+                    </div>
+
+                    <!-- Foto do Material (aparece quando tipo exige foto) -->
+                    <div class="form-section" id="secao-foto" style="display:none;">
+                        <label class="section-label" id="label-foto">
+                            <i class="fas fa-camera"></i> Foto do Material
+                            <small id="label-foto-obs">(obrigatoria)</small>
+                        </label>
+                        <div class="foto-capture-wrap">
+                            <input type="file" id="input-foto" accept="image/*" capture="environment" style="display:none;">
+                            <div class="foto-preview" id="foto-preview" style="display:none;">
+                                <img id="foto-img" alt="Foto do material">
+                                <button type="button" class="btn-remover-foto" id="btn-remover-foto">
+                                    <i class="fas fa-times"></i> Remover
+                                </button>
+                            </div>
+                            <button type="button" class="btn-tirar-foto" id="btn-tirar-foto">
+                                <i class="fas fa-camera"></i> Tirar Foto
+                            </button>
                         </div>
                     </div>
 

@@ -13,6 +13,9 @@
         tipoCargaNome: '',
         tipoRequerLista: false,
         tipoRequerAssinatura: false,
+        tipoRequerFoto: false,
+        tipoFotoObrigatoria: false,
+        fotoBase64: null,
         origens: [],
         destinos: [],
         itens: [],
@@ -76,7 +79,9 @@
             html += '<div class="tipo-card" data-id="' + escHtml(String(t.id)) +
                 '" data-nome="' + escHtml(t.nome) +
                 '" data-lista="' + (t.requer_lista_itens ? '1' : '0') +
-                '" data-assinatura="' + (t.requer_assinatura ? '1' : '0') + '">' +
+                '" data-assinatura="' + (t.requer_assinatura ? '1' : '0') +
+                '" data-foto="' + (t.requer_foto ? '1' : '0') +
+                '" data-foto-obrig="' + (t.foto_obrigatoria ? '1' : '0') + '">' +
                 '<i class="fas ' + escHtml(t.icone) + '" style="color:' + escHtml(t.cor) + '"></i>' +
                 '<span>' + escHtml(t.nome) + '</span></div>';
         }
@@ -98,15 +103,26 @@
         Estado.tipoCargaNome = card.getAttribute('data-nome');
         Estado.tipoRequerLista = card.getAttribute('data-lista') === '1';
         Estado.tipoRequerAssinatura = card.getAttribute('data-assinatura') === '1';
+        Estado.tipoRequerFoto = card.getAttribute('data-foto') === '1';
+        Estado.tipoFotoObrigatoria = card.getAttribute('data-foto-obrig') === '1';
 
         document.getElementById('tipo-carga-id').value = Estado.tipoCargaId;
         document.getElementById('tipo-carga-nome').value = Estado.tipoCargaNome;
         document.getElementById('tipo-requer-lista').value = Estado.tipoRequerLista ? 'true' : 'false';
         document.getElementById('tipo-requer-assinatura').value = Estado.tipoRequerAssinatura ? 'true' : 'false';
+        document.getElementById('tipo-requer-foto').value = Estado.tipoRequerFoto ? 'true' : 'false';
+        document.getElementById('tipo-foto-obrigatoria').value = Estado.tipoFotoObrigatoria ? 'true' : 'false';
 
         var secaoManifesto = document.getElementById('secao-manifesto');
         if (secaoManifesto) {
             secaoManifesto.style.display = Estado.tipoRequerLista ? '' : 'none';
+        }
+
+        var secaoFoto = document.getElementById('secao-foto');
+        if (secaoFoto) {
+            secaoFoto.style.display = Estado.tipoRequerFoto ? '' : 'none';
+            var obsEl = document.getElementById('label-foto-obs');
+            if (obsEl) obsEl.textContent = Estado.tipoFotoObrigatoria ? '(obrigatoria)' : '(opcional)';
         }
 
         carregarDestinos(Estado.tipoCargaId);
@@ -163,10 +179,61 @@
             });
     }
 
+    /* ── FOTO ────────────────────────── */
+    function comprimirImagem(file, callback) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var img = new Image();
+            img.onload = function () {
+                var maxW = 800, maxH = 600;
+                var w = img.width, h = img.height;
+                if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+                if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+                var canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                callback(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function inicializarFoto() {
+        var inputFoto  = document.getElementById('input-foto');
+        var btnTirar   = document.getElementById('btn-tirar-foto');
+        var btnRemover = document.getElementById('btn-remover-foto');
+        if (btnTirar)   btnTirar.addEventListener('click', function () { if (inputFoto) inputFoto.click(); });
+        if (btnRemover) btnRemover.addEventListener('click', removerFoto);
+        if (inputFoto)  inputFoto.addEventListener('change', function () {
+            if (!this.files || !this.files[0]) return;
+            comprimirImagem(this.files[0], function (base64) {
+                Estado.fotoBase64 = base64;
+                var prev = document.getElementById('foto-preview');
+                var img  = document.getElementById('foto-img');
+                if (img)  img.src = base64;
+                if (prev) prev.style.display = '';
+                var btn = document.getElementById('btn-tirar-foto');
+                if (btn) btn.style.display = 'none';
+            });
+        });
+    }
+
+    function removerFoto() {
+        Estado.fotoBase64 = null;
+        var inputFoto = document.getElementById('input-foto');
+        if (inputFoto) inputFoto.value = '';
+        var prev = document.getElementById('foto-preview');
+        if (prev) prev.style.display = 'none';
+        var btn = document.getElementById('btn-tirar-foto');
+        if (btn) btn.style.display = '';
+    }
+
     /* ── MANIFESTO ────────────────────── */
     function adicionarItem() {
         var idx = Estado.itens.length;
-        Estado.itens.push({ descricao: '', quantidade: 1, unidade: 'unidade', observacao: '' });
+        Estado.itens.push({ descricao: '', quantidade: 1, unidade: 'unidade', observacao: '', nr_identificador: '' });
         renderizarItens();
     }
 
@@ -205,6 +272,7 @@
                 '<div class="form-group item-unidade">' +
                 '<input type="text" class="item-unidade-input" data-idx="' + i + '" placeholder="Unid." maxlength="50" value="' + escHtml(it.unidade) + '">' +
                 '</div></div>' +
+                '<input type="text" class="item-nr-id" data-idx="' + i + '" placeholder="Nr Protocolo / Identificador (opcional)" maxlength="100" value="' + escHtml(it.nr_identificador || '') + '">' +
                 '<input type="text" class="item-obs" data-idx="' + i + '" placeholder="Obs. do item (opcional)" maxlength="300" value="' + escHtml(it.observacao) + '">' +
                 '</div>';
         }
@@ -217,7 +285,7 @@
             });
         }
 
-        var inputs = lista.querySelectorAll('.item-descricao, .item-quantidade, .item-unidade-input, .item-obs');
+        var inputs = lista.querySelectorAll('.item-descricao, .item-quantidade, .item-unidade-input, .item-nr-id, .item-obs');
         for (var k = 0; k < inputs.length; k++) {
             inputs[k].addEventListener('change', sincronizarItens);
             inputs[k].addEventListener('input', sincronizarItens);
@@ -232,11 +300,13 @@
             var descInput = itens[i].querySelector('.item-descricao');
             var qtdInput  = itens[i].querySelector('.item-quantidade');
             var unInput   = itens[i].querySelector('.item-unidade-input');
+            var nrIdInput = itens[i].querySelector('.item-nr-id');
             var obsInput  = itens[i].querySelector('.item-obs');
-            if (descInput) Estado.itens[idx].descricao  = descInput.value;
-            if (qtdInput)  Estado.itens[idx].quantidade = parseFloat(qtdInput.value) || 1;
-            if (unInput)   Estado.itens[idx].unidade    = unInput.value || 'unidade';
-            if (obsInput)  Estado.itens[idx].observacao = obsInput.value;
+            if (descInput) Estado.itens[idx].descricao       = descInput.value;
+            if (qtdInput)  Estado.itens[idx].quantidade      = parseFloat(qtdInput.value) || 1;
+            if (unInput)   Estado.itens[idx].unidade         = unInput.value || 'unidade';
+            if (nrIdInput) Estado.itens[idx].nr_identificador = nrIdInput.value;
+            if (obsInput)  Estado.itens[idx].observacao      = obsInput.value;
         }
     }
 
@@ -253,6 +323,11 @@
         var destino = (document.getElementById('select-destino').value || '').trim();
         if (!origem) { toast('Selecione o setor de origem.', 'warning'); return; }
         if (!destino) { toast('Selecione o destino.', 'warning'); return; }
+
+        if (Estado.tipoRequerFoto && Estado.tipoFotoObrigatoria && !Estado.fotoBase64) {
+            toast('A foto do material e obrigatoria para este tipo de carga.', 'warning');
+            return;
+        }
 
         if (Estado.tipoRequerLista) {
             sincronizarItens();
@@ -278,7 +353,8 @@
             destino_complemento: document.getElementById('input-complemento').value,
             observacao:         document.getElementById('input-obs').value,
             prioridade:         prioridade,
-            itens:              Estado.tipoRequerLista ? Estado.itens : []
+            itens:              Estado.tipoRequerLista ? Estado.itens : [],
+            foto_carga:         Estado.fotoBase64 || null
         };
 
         var btn = document.getElementById('btn-enviar');
@@ -322,11 +398,16 @@
         Estado.tipoCargaNome = '';
         Estado.tipoRequerLista = false;
         Estado.tipoRequerAssinatura = false;
+        Estado.tipoRequerFoto = false;
+        Estado.tipoFotoObrigatoria = false;
         Estado.itens = [];
         var cards = document.querySelectorAll('.tipo-card');
         for (var i = 0; i < cards.length; i++) { cards[i].classList.remove('selecionado'); }
         var sec = document.getElementById('secao-manifesto');
         if (sec) sec.style.display = 'none';
+        var secFoto = document.getElementById('secao-foto');
+        if (secFoto) secFoto.style.display = 'none';
+        removerFoto();
         renderizarItens();
         var sel = document.getElementById('select-destino');
         if (sel) { sel.disabled = true; sel.innerHTML = '<option value="">Selecione o tipo de carga primeiro...</option>'; }
@@ -474,6 +555,8 @@
         if (DOM.btnVoltarAcomp) DOM.btnVoltarAcomp.addEventListener('click', function () { mostrarTela('tela-principal'); });
         if (DOM.btnRefreshAcomp) DOM.btnRefreshAcomp.addEventListener('click', carregarMeusChamados);
         if (DOM.btnAddItem) DOM.btnAddItem.addEventListener('click', adicionarItem);
+
+        inicializarFoto();
 
         var formChamado = document.getElementById('form-chamado');
         if (formChamado) formChamado.addEventListener('submit', enviarFormulario);

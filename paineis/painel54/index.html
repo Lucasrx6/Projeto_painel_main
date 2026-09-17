@@ -210,6 +210,17 @@
                         </div>
                     </div>
 
+                    <!-- Veiculos -->
+                    <div class="config-secao">
+                        <div class="config-secao-titulo">
+                            <h3><i class="fas fa-truck" style="color:#1C5C9B;"></i> Veiculos</h3>
+                            <button class="btn-add-config" data-tipo="veiculo"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div class="config-lista" id="lista-veiculos">
+                            <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -310,6 +321,12 @@
                 <label class="check-label">
                     <input type="checkbox" id="tipo-requer-assinatura"> Requer assinatura na entrega
                 </label>
+                <label class="check-label">
+                    <input type="checkbox" id="tipo-requer-foto"> Habilitar foto do material
+                </label>
+                <label class="check-label" id="tipo-foto-obrigatoria-wrap" style="margin-left:20px;">
+                    <input type="checkbox" id="tipo-foto-obrigatoria"> Foto obrigatoria
+                </label>
                 <label class="check-label" id="tipo-ativo-wrap">
                     <input type="checkbox" id="tipo-ativo" checked> Ativo
                 </label>
@@ -337,6 +354,7 @@
                         <option value="">Geral (todos os tipos)</option>
                     </select>
                 </div>
+                <div class="form-group"><label>Km de Distancia (opcional)</label><input type="number" id="destino-km" step="0.1" min="0" placeholder="Ex: 2.5"></div>
                 <div class="form-group"><label>Ordem</label><input type="number" id="destino-ordem" value="0" min="0"></div>
                 <label class="check-label" id="destino-ativo-wrap">
                     <input type="checkbox" id="destino-ativo" checked> Ativo
@@ -359,6 +377,7 @@
             <div class="modal-body">
                 <input type="hidden" id="origem-edit-id">
                 <div class="form-group"><label>Nome *</label><input type="text" id="origem-nome" maxlength="200"></div>
+                <div class="form-group"><label>Km de Distancia (opcional)</label><input type="number" id="origem-km" step="0.1" min="0" placeholder="Ex: 1.8"></div>
                 <div class="form-group"><label>Ordem</label><input type="number" id="origem-ordem" value="0" min="0"></div>
                 <label class="check-label" id="origem-ativo-wrap">
                     <input type="checkbox" id="origem-ativo" checked> Ativo
@@ -367,6 +386,39 @@
             <div class="modal-footer">
                 <button class="btn-fechar" data-fecha="modal-origem">Cancelar</button>
                 <button class="btn-salvar" id="btn-salvar-origem"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Config Veiculo -->
+    <div class="modal-overlay" id="modal-veiculo" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-veiculo-titulo">Veiculo</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-veiculo"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="veiculo-edit-id">
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <select id="veiculo-tipo">
+                        <option value="moto">Moto</option>
+                        <option value="carro" selected>Carro</option>
+                        <option value="van">Van</option>
+                        <option value="caminhao">Caminhao</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Placa</label><input type="text" id="veiculo-placa" maxlength="15" placeholder="Ex: ABC-1234" style="text-transform:uppercase;"></div>
+                <div class="form-group"><label>Descricao</label><input type="text" id="veiculo-descricao" maxlength="200" placeholder="Ex: Kombi branca, Fiorino..."></div>
+                <div class="form-group"><label>Km Maximo por Dia</label><input type="number" id="veiculo-km-max" step="0.1" min="0" placeholder="Ex: 150"></div>
+                <label class="check-label" id="veiculo-ativo-wrap">
+                    <input type="checkbox" id="veiculo-ativo" checked> Ativo
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-fechar" data-fecha="modal-veiculo">Cancelar</button>
+                <button class="btn-salvar" id="btn-salvar-veiculo"><i class="fas fa-save"></i> Salvar</button>
             </div>
         </div>
     </div>

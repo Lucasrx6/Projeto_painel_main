@@ -381,6 +381,7 @@
         carregarCfgTipos();
         carregarCfgDestinos();
         carregarCfgOrigens();
+        carregarCfgVeiculos();
     }
 
     function carregarCfgMotoristas() {
@@ -432,7 +433,8 @@
                         '<div class="config-item-nome"><i class="fas ' + escHtml(t.icone || 'fa-box') + '" style="color:' + escHtml(t.cor || '#666') + ';margin-right:6px;"></i>' + escHtml(t.nome) + '</div>' +
                         '<div class="config-item-det">' +
                         (t.requer_lista_itens ? '<span style="color:#6f42c1;font-size:11px;"><i class="fas fa-list"></i> Lista </span>' : '') +
-                        (t.requer_assinatura ? '<span style="color:#dc3545;font-size:11px;"><i class="fas fa-signature"></i> Assinatura</span>' : '') +
+                        (t.requer_assinatura ? '<span style="color:#dc3545;font-size:11px;"><i class="fas fa-signature"></i> Assinatura </span>' : '') +
+                        (t.requer_foto ? '<span style="color:#fd7e14;font-size:11px;"><i class="fas fa-camera"></i> Foto' + (t.foto_obrigatoria ? '(obrig.)' : '') + '</span>' : '') +
                         '</div></div>' +
                         '<div class="config-item-acoes">' +
                         '<button class="btn-edit-config" data-tipo="tipo-carga" data-id="' + t.id + '"><i class="fas fa-pen"></i> Editar</button>' +
@@ -462,7 +464,8 @@
                     html += '<div class="config-item">' +
                         '<div class="config-item-info">' +
                         '<div class="config-item-nome">' + escHtml(d.nome) + '</div>' +
-                        '<div class="config-item-det">' + (d.tipo_nome ? 'Tipo: ' + escHtml(d.tipo_nome) : 'Geral') + '</div>' +
+                        '<div class="config-item-det">' + (d.tipo_nome ? 'Tipo: ' + escHtml(d.tipo_nome) : 'Geral') +
+                        (d.km_distancia != null ? ' | <i class="fas fa-road"></i> ' + escHtml(String(d.km_distancia)) + ' km' : '') + '</div>' +
                         '</div>' +
                         '<div class="config-item-acoes">' +
                         '<button class="btn-edit-config" data-tipo="destino" data-id="' + d.id + '"><i class="fas fa-pen"></i> Editar</button>' +
@@ -492,6 +495,7 @@
                     html += '<div class="config-item">' +
                         '<div class="config-item-info">' +
                         '<div class="config-item-nome">' + escHtml(o.nome) + '</div>' +
+                        (o.km_distancia != null ? '<div class="config-item-det"><i class="fas fa-road"></i> ' + escHtml(String(o.km_distancia)) + ' km</div>' : '') +
                         '</div>' +
                         '<div class="config-item-acoes">' +
                         '<button class="btn-edit-config" data-tipo="origem" data-id="' + o.id + '"><i class="fas fa-pen"></i> Editar</button>' +
@@ -501,6 +505,39 @@
                 }
                 lista.innerHTML = html;
                 ativarBotoesConfig(lista, data.origens);
+            })
+            .catch(function (e) { console.error(e); });
+    }
+
+    function carregarCfgVeiculos() {
+        fetch(CONFIG.api + '/config/veiculos', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var lista = document.getElementById('lista-veiculos');
+                if (!lista) return;
+                if (!data.success || !data.veiculos || !data.veiculos.length) {
+                    lista.innerHTML = '<p style="color:#aaa;padding:16px;font-size:13px;">Nenhum veiculo cadastrado.</p>';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < data.veiculos.length; i++) {
+                    var v = data.veiculos[i];
+                    var label = v.tipo.charAt(0).toUpperCase() + v.tipo.slice(1);
+                    if (v.placa) label += ' - ' + v.placa;
+                    html += '<div class="config-item">' +
+                        '<div class="config-item-info">' +
+                        '<div class="config-item-nome"><i class="fas fa-truck" style="color:#1C5C9B;margin-right:6px;"></i>' + escHtml(label) + '</div>' +
+                        '<div class="config-item-det">' + escHtml(v.descricao || '') +
+                        (v.km_max_dia != null ? ' | Km/dia: ' + escHtml(String(v.km_max_dia)) : '') + '</div>' +
+                        '</div>' +
+                        '<div class="config-item-acoes">' +
+                        '<button class="btn-edit-config" data-tipo="veiculo" data-id="' + v.id + '"><i class="fas fa-pen"></i> Editar</button>' +
+                        '<button class="toggle-ativo ' + (v.ativo ? 'ativo' : 'inativo') + '" data-tipo="veiculo" data-id="' + v.id + '" data-ativo="' + (v.ativo ? '1' : '0') + '">' +
+                        (v.ativo ? 'ON' : 'OFF') + '</button>' +
+                        '</div></div>';
+                }
+                lista.innerHTML = html;
+                ativarBotoesConfig(lista, data.veiculos);
             })
             .catch(function (e) { console.error(e); });
     }
@@ -527,7 +564,14 @@
         }
     }
 
-    var _CONFIG_URL = { 'motorista': 'motoristas', 'tipo-carga': 'tipos-carga', 'destino': 'destinos', 'origem': 'origens' };
+    var _CONFIG_URL = { 'motorista': 'motoristas', 'tipo-carga': 'tipos-carga', 'destino': 'destinos', 'origem': 'origens', 'veiculo': 'veiculos' };
+    var _CONFIG_RELOAD = {
+        'motorista': function () { carregarCfgMotoristas(); },
+        'tipo-carga': function () { carregarCfgTipos(); },
+        'destino': function () { carregarCfgDestinos(); },
+        'origem': function () { carregarCfgOrigens(); },
+        'veiculo': function () { carregarCfgVeiculos(); }
+    };
 
     function toggleAtivo(tipo, id, novoAtivo) {
         fetch(CONFIG.api + '/config/' + _CONFIG_URL[tipo] + '/' + id, {
@@ -538,10 +582,7 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data.success) {
-                    if (tipo === 'motorista')  carregarCfgMotoristas();
-                    else if (tipo === 'tipo-carga') carregarCfgTipos();
-                    else if (tipo === 'destino')    carregarCfgDestinos();
-                    else if (tipo === 'origem')     carregarCfgOrigens();
+                    if (_CONFIG_RELOAD[tipo]) _CONFIG_RELOAD[tipo]();
                 } else {
                     toast(data.error || 'Erro ao atualizar.', 'error');
                 }
@@ -569,6 +610,8 @@
             document.getElementById('tipo-ordem').value             = reg ? (reg.ordem || 0) : 0;
             document.getElementById('tipo-requer-lista').checked    = reg ? !!reg.requer_lista_itens : false;
             document.getElementById('tipo-requer-assinatura').checked = reg ? !!reg.requer_assinatura : false;
+            document.getElementById('tipo-requer-foto').checked      = reg ? !!reg.requer_foto : false;
+            document.getElementById('tipo-foto-obrigatoria').checked  = reg ? !!reg.foto_obrigatoria : false;
             var taWrap = document.getElementById('tipo-ativo-wrap');
             if (taWrap) taWrap.style.display = reg ? '' : 'none';
             document.getElementById('tipo-ativo').checked = reg ? !!reg.ativo : true;
@@ -577,6 +620,7 @@
             document.getElementById('modal-destino-titulo').textContent = reg ? 'Editar Destino' : 'Novo Destino';
             document.getElementById('destino-edit-id').value = reg ? reg.id : '';
             document.getElementById('destino-nome').value    = reg ? (reg.nome || '') : '';
+            document.getElementById('destino-km').value      = reg ? (reg.km_distancia != null ? reg.km_distancia : '') : '';
             document.getElementById('destino-ordem').value   = reg ? (reg.ordem || 0) : 0;
             var daWrap = document.getElementById('destino-ativo-wrap');
             if (daWrap) daWrap.style.display = reg ? '' : 'none';
@@ -597,11 +641,23 @@
             document.getElementById('modal-origem-titulo').textContent = reg ? 'Editar Origem' : 'Nova Origem';
             document.getElementById('origem-edit-id').value = reg ? reg.id : '';
             document.getElementById('origem-nome').value    = reg ? (reg.nome || '') : '';
+            document.getElementById('origem-km').value      = reg ? (reg.km_distancia != null ? reg.km_distancia : '') : '';
             document.getElementById('origem-ordem').value   = reg ? (reg.ordem || 0) : 0;
             var oaWrap = document.getElementById('origem-ativo-wrap');
             if (oaWrap) oaWrap.style.display = reg ? '' : 'none';
             document.getElementById('origem-ativo').checked = reg ? !!reg.ativo : true;
             abrirModal('modal-origem');
+        } else if (tipo === 'veiculo') {
+            document.getElementById('modal-veiculo-titulo').textContent = reg ? 'Editar Veiculo' : 'Novo Veiculo';
+            document.getElementById('veiculo-edit-id').value   = reg ? reg.id : '';
+            document.getElementById('veiculo-tipo').value      = reg ? (reg.tipo || 'carro') : 'carro';
+            document.getElementById('veiculo-placa').value     = reg ? (reg.placa || '') : '';
+            document.getElementById('veiculo-descricao').value = reg ? (reg.descricao || '') : '';
+            document.getElementById('veiculo-km-max').value    = reg ? (reg.km_max_dia != null ? reg.km_max_dia : '') : '';
+            var vaWrap = document.getElementById('veiculo-ativo-wrap');
+            if (vaWrap) vaWrap.style.display = reg ? '' : 'none';
+            document.getElementById('veiculo-ativo').checked = reg ? !!reg.ativo : true;
+            abrirModal('modal-veiculo');
         }
     }
 
@@ -630,6 +686,8 @@
             ordem: parseInt(document.getElementById('tipo-ordem').value, 10) || 0,
             requer_lista_itens: document.getElementById('tipo-requer-lista').checked,
             requer_assinatura:  document.getElementById('tipo-requer-assinatura').checked,
+            requer_foto:        document.getElementById('tipo-requer-foto').checked,
+            foto_obrigatoria:   document.getElementById('tipo-foto-obrigatoria').checked,
             ativo: document.getElementById('tipo-ativo').checked
         };
         var url    = CONFIG.api + '/config/tipos-carga' + (id ? '/' + id : '');
@@ -642,8 +700,10 @@
         var nome = (document.getElementById('destino-nome').value || '').trim();
         if (!nome) { toast('Nome e obrigatorio.', 'warning'); return; }
         var tipoCargaId = document.getElementById('destino-tipo-carga-id').value;
+        var kmDest = document.getElementById('destino-km').value;
         var payload = {
             nome: nome, tipo_carga_id: tipoCargaId ? parseInt(tipoCargaId, 10) : null,
+            km_distancia: kmDest !== '' ? parseFloat(kmDest) : null,
             ordem: parseInt(document.getElementById('destino-ordem').value, 10) || 0,
             ativo: document.getElementById('destino-ativo').checked
         };
@@ -656,14 +716,33 @@
         var id   = document.getElementById('origem-edit-id').value;
         var nome = (document.getElementById('origem-nome').value || '').trim();
         if (!nome) { toast('Nome e obrigatorio.', 'warning'); return; }
+        var kmOrig = document.getElementById('origem-km').value;
         var payload = {
             nome: nome,
+            km_distancia: kmOrig !== '' ? parseFloat(kmOrig) : null,
             ordem: parseInt(document.getElementById('origem-ordem').value, 10) || 0,
             ativo: document.getElementById('origem-ativo').checked
         };
         var url    = CONFIG.api + '/config/origens' + (id ? '/' + id : '');
         var method = id ? 'PUT' : 'POST';
         postConfig(url, method, payload, 'modal-origem', carregarCfgOrigens);
+    }
+
+    function salvarVeiculo() {
+        var id   = document.getElementById('veiculo-edit-id').value;
+        var tipo = document.getElementById('veiculo-tipo').value;
+        var placa = (document.getElementById('veiculo-placa').value || '').trim().toUpperCase() || null;
+        var km = document.getElementById('veiculo-km-max').value;
+        var payload = {
+            tipo: tipo,
+            placa: placa,
+            descricao: (document.getElementById('veiculo-descricao').value || '').trim() || null,
+            km_max_dia: km !== '' ? parseFloat(km) : null,
+            ativo: document.getElementById('veiculo-ativo').checked
+        };
+        var url    = CONFIG.api + '/config/veiculos' + (id ? '/' + id : '');
+        var method = id ? 'PUT' : 'POST';
+        postConfig(url, method, payload, 'modal-veiculo', carregarCfgVeiculos);
     }
 
     function postConfig(url, method, payload, modalId, cbSucesso) {
@@ -753,6 +832,7 @@
         document.getElementById('btn-salvar-tipo').addEventListener('click', salvarTipo);
         document.getElementById('btn-salvar-destino').addEventListener('click', salvarDestino);
         document.getElementById('btn-salvar-origem').addEventListener('click', salvarOrigem);
+        document.getElementById('btn-salvar-veiculo').addEventListener('click', salvarVeiculo);
 
         /* fechar modal clicando fora */
         var modais = document.querySelectorAll('.modal-overlay');

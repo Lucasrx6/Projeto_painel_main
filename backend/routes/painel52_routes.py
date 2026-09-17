@@ -33,7 +33,8 @@ def api_painel52_tipos_carga():
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT id, nome, icone, cor, requer_lista_itens, requer_assinatura
+                SELECT id, nome, icone, cor, requer_lista_itens, requer_assinatura,
+                       requer_foto, foto_obrigatoria
                 FROM transporte_material_tipos_carga
                 WHERE ativo = TRUE
                 ORDER BY ordem, nome
@@ -121,6 +122,10 @@ def api_painel52_solicitar():
     observacao           = (dados.get('observacao') or '').strip()
     prioridade           = dados.get('prioridade', 'normal')
     itens                = dados.get('itens') or []
+    foto_carga           = (dados.get('foto_carga') or '').strip() or None
+
+    if foto_carga and not foto_carga.startswith('data:image/'):
+        foto_carga = None
 
     if not tipo_carga_id or not setor_origem_nome or not destino_nome:
         return jsonify({'success': False,
@@ -142,14 +147,14 @@ def api_painel52_solicitar():
                     nr_protocolo, tipo_carga_id, tipo_carga_nome,
                     descricao, setor_origem_nome, destino_nome, destino_complemento,
                     observacao, prioridade, status,
-                    solicitante_id, solicitante_nome, criado_em
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'aguardando', %s, %s, NOW())
+                    solicitante_id, solicitante_nome, foto_carga, criado_em
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'aguardando', %s, %s, %s, NOW())
                 RETURNING id
             """, (
                 nr_protocolo, tipo_carga_id, tipo_carga_nome or None,
                 descricao or None, setor_origem_nome, destino_nome, destino_complemento or None,
                 observacao or None, prioridade,
-                usuario_id, solicitante_nome
+                usuario_id, solicitante_nome, foto_carga
             ))
             solicitacao_id = cursor.fetchone()['id']
 
@@ -165,11 +170,12 @@ def api_painel52_solicitar():
                     qtd = 1
                 unidade = (item.get('unidade') or 'unidade').strip()
                 obs_item = (item.get('observacao') or '').strip()
+                nr_id = (item.get('nr_identificador') or '').strip() or None
                 cursor.execute("""
                     INSERT INTO transporte_material_itens
-                        (solicitacao_id, descricao, quantidade, unidade, observacao, ordem)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (solicitacao_id, desc_item, qtd, unidade, obs_item or None, idx))
+                        (solicitacao_id, descricao, quantidade, unidade, observacao, nr_identificador, ordem)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (solicitacao_id, desc_item, qtd, unidade, obs_item or None, nr_id, idx))
 
         cache_delete_pattern('painel54:*')
         current_app.logger.info(

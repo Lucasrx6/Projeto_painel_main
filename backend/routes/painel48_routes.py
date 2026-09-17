@@ -239,6 +239,47 @@ def api_p48_assinar():
         return jsonify({'success': False, 'error': 'Erro ao registrar assinatura'}), 500
 
 
+# ── Fila de transportes aguardando assinatura (transporte_material) ──
+
+@painel48_bp.route('/api/paineis/painel48/fila-transporte')
+@login_required
+def api_p48_fila_transporte():
+    """Retorna solicitações de transporte em 'em_transporte' com requer_assinatura=TRUE."""
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    s.id,
+                    s.nr_protocolo,
+                    s.tipo_carga_nome,
+                    s.setor_origem_nome,
+                    s.destino_nome,
+                    s.destino_complemento,
+                    s.prioridade,
+                    s.motorista_nome,
+                    TO_CHAR(s.dt_inicio_transporte, 'HH24:MI') AS dt_inicio_transporte,
+                    GREATEST(
+                        EXTRACT(EPOCH FROM (NOW() - s.dt_inicio_transporte))::int / 60,
+                        0
+                    ) AS minutos,
+                    CASE WHEN ad.id IS NOT NULL THEN TRUE ELSE FALSE END AS ja_assinado
+                FROM transporte_material_solicitacoes s
+                JOIN transporte_material_tipos_carga tc ON tc.id = s.tipo_carga_id
+                LEFT JOIN assinaturas_digitais ad
+                    ON ad.ref_id = s.id AND ad.contexto = 'transporte_material'
+                WHERE s.status = 'em_transporte'
+                  AND tc.requer_assinatura = TRUE
+                ORDER BY
+                    CASE s.prioridade WHEN 'urgente' THEN 0 ELSE 1 END,
+                    s.dt_inicio_transporte ASC
+            """)
+            fila = [_serial(dict(r)) for r in cursor.fetchall()]
+        return jsonify({'success': True, 'fila': fila})
+    except Exception as e:
+        current_app.logger.error('Erro fila-transporte p48: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar fila'}), 500
+
+
 # ── Fila de entregas aguardando assinatura (entrega_refeicao) ──
 
 @painel48_bp.route('/api/paineis/painel48/fila-entrega')

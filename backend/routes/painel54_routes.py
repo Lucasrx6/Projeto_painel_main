@@ -19,9 +19,11 @@ painel54_bp = Blueprint('painel54', __name__)
 
 # Whitelists para UPDATEs dinâmicos — nunca iterar sobre request diretamente
 _CAMPOS_MOTORISTA  = ('nome', 'matricula', 'turno')
-_CAMPOS_TIPO_CARGA = ('nome', 'icone', 'cor', 'ordem', 'requer_lista_itens', 'requer_assinatura')
-_CAMPOS_DESTINO    = ('nome', 'tipo_carga_id', 'ordem')
-_CAMPOS_ORIGEM     = ('nome', 'ordem')
+_CAMPOS_TIPO_CARGA = ('nome', 'icone', 'cor', 'ordem', 'requer_lista_itens', 'requer_assinatura',
+                      'requer_foto', 'foto_obrigatoria')
+_CAMPOS_DESTINO    = ('nome', 'tipo_carga_id', 'ordem', 'km_distancia')
+_CAMPOS_ORIGEM     = ('nome', 'ordem', 'km_distancia')
+_CAMPOS_VEICULO    = ('tipo', 'placa', 'descricao', 'km_max_dia')
 
 # Cores Excel
 _X_HAC      = '9B1C24'
@@ -700,7 +702,8 @@ def api_painel54_cfg_tipo_listar():
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT id, nome, icone, cor, requer_lista_itens, requer_assinatura, ativo, ordem
+                SELECT id, nome, icone, cor, requer_lista_itens, requer_assinatura,
+                       requer_foto, foto_obrigatoria, ativo, ordem
                 FROM transporte_material_tipos_carga ORDER BY ordem, nome
             """)
             return jsonify({'success': True, 'tipos': [dict(r) for r in cursor.fetchall()]})
@@ -721,14 +724,17 @@ def api_painel54_cfg_tipo_criar():
         with get_db_cursor() as cursor:
             cursor.execute("""
                 INSERT INTO transporte_material_tipos_carga
-                    (nome, icone, cor, requer_lista_itens, requer_assinatura, ativo, ordem)
-                VALUES (%s, %s, %s, %s, %s, TRUE, %s) RETURNING id
+                    (nome, icone, cor, requer_lista_itens, requer_assinatura,
+                     requer_foto, foto_obrigatoria, ativo, ordem)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, %s) RETURNING id
             """, (
                 nome,
                 dados.get('icone', 'fa-box'),
                 dados.get('cor', '#6c757d'),
                 bool(dados.get('requer_lista_itens', False)),
                 bool(dados.get('requer_assinatura', False)),
+                bool(dados.get('requer_foto', False)),
+                bool(dados.get('foto_obrigatoria', False)),
                 dados.get('ordem', 0)
             ))
             return jsonify({'success': True, 'id': cursor.fetchone()['id']}), 201
@@ -761,14 +767,16 @@ def api_painel54_cfg_dest_listar():
         with get_db_cursor() as cursor:
             if tipo_id:
                 cursor.execute("""
-                    SELECT d.id, d.nome, d.tipo_carga_id, t.nome AS tipo_nome, d.ativo, d.ordem
+                    SELECT d.id, d.nome, d.tipo_carga_id, t.nome AS tipo_nome,
+                           d.ativo, d.ordem, d.km_distancia
                     FROM transporte_material_destinos d
                     LEFT JOIN transporte_material_tipos_carga t ON t.id = d.tipo_carga_id
                     WHERE d.tipo_carga_id = %s ORDER BY d.ordem, d.nome
                 """, (tipo_id,))
             else:
                 cursor.execute("""
-                    SELECT d.id, d.nome, d.tipo_carga_id, t.nome AS tipo_nome, d.ativo, d.ordem
+                    SELECT d.id, d.nome, d.tipo_carga_id, t.nome AS tipo_nome,
+                           d.ativo, d.ordem, d.km_distancia
                     FROM transporte_material_destinos d
                     LEFT JOIN transporte_material_tipos_carga t ON t.id = d.tipo_carga_id
                     ORDER BY COALESCE(t.ordem, 999), d.ordem, d.nome
@@ -789,10 +797,15 @@ def api_painel54_cfg_dest_criar():
         return jsonify({'success': False, 'error': 'Nome e obrigatorio'}), 400
     try:
         with get_db_cursor() as cursor:
+            km = dados.get('km_distancia')
+            try:
+                km = float(km) if km not in (None, '') else None
+            except (ValueError, TypeError):
+                km = None
             cursor.execute("""
-                INSERT INTO transporte_material_destinos (nome, tipo_carga_id, ativo, ordem)
-                VALUES (%s, %s, TRUE, %s) RETURNING id
-            """, (nome, dados.get('tipo_carga_id') or None, dados.get('ordem', 0)))
+                INSERT INTO transporte_material_destinos (nome, tipo_carga_id, ativo, ordem, km_distancia)
+                VALUES (%s, %s, TRUE, %s, %s) RETURNING id
+            """, (nome, dados.get('tipo_carga_id') or None, dados.get('ordem', 0), km))
             return jsonify({'success': True, 'id': cursor.fetchone()['id']}), 201
     except Exception as e:
         current_app.logger.error('Erro criar destino painel54: %s', e, exc_info=True)
@@ -821,7 +834,8 @@ def api_painel54_cfg_orig_listar():
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT id, nome, ativo, ordem FROM transporte_material_origens ORDER BY ordem, nome
+                SELECT id, nome, ativo, ordem, km_distancia
+                FROM transporte_material_origens ORDER BY ordem, nome
             """)
             return jsonify({'success': True, 'origens': [dict(r) for r in cursor.fetchall()]})
     except Exception as e:
@@ -839,10 +853,15 @@ def api_painel54_cfg_orig_criar():
         return jsonify({'success': False, 'error': 'Nome e obrigatorio'}), 400
     try:
         with get_db_cursor() as cursor:
+            km = dados.get('km_distancia')
+            try:
+                km = float(km) if km not in (None, '') else None
+            except (ValueError, TypeError):
+                km = None
             cursor.execute("""
-                INSERT INTO transporte_material_origens (nome, ativo, ordem)
-                VALUES (%s, TRUE, %s) RETURNING id
-            """, (nome, dados.get('ordem', 0)))
+                INSERT INTO transporte_material_origens (nome, ativo, ordem, km_distancia)
+                VALUES (%s, TRUE, %s, %s) RETURNING id
+            """, (nome, dados.get('ordem', 0), km))
             return jsonify({'success': True, 'id': cursor.fetchone()['id']}), 201
     except Exception as e:
         current_app.logger.error('Erro criar origem painel54: %s', e, exc_info=True)
@@ -857,4 +876,70 @@ def api_painel54_cfg_orig_atualizar(origem_id):
         'transporte_material_origens', _CAMPOS_ORIGEM,
         request.get_json() or {}, origem_id,
         'Origem atualizada', 'atualizar origem painel54'
+    )
+
+
+# =========================================================
+# CONFIG: VEÍCULOS
+# =========================================================
+
+@painel54_bp.route('/api/paineis/painel54/config/veiculos')
+@login_required
+@panel_permission_required('painel54')
+def api_painel54_cfg_vei_listar():
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, tipo, placa, descricao, km_max_dia, ativo,
+                       TO_CHAR(criado_em, 'DD/MM/YYYY') AS criado_em
+                FROM transporte_material_veiculos ORDER BY tipo, placa
+            """)
+            veiculos = []
+            for row in cursor.fetchall():
+                v = dict(row)
+                if v.get('km_max_dia') is not None:
+                    v['km_max_dia'] = float(v['km_max_dia'])
+                veiculos.append(v)
+        return jsonify({'success': True, 'veiculos': veiculos})
+    except Exception as e:
+        current_app.logger.error('Erro listar veiculos painel54: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar veiculos'}), 500
+
+
+@painel54_bp.route('/api/paineis/painel54/config/veiculos', methods=['POST'])
+@login_required
+@panel_permission_required('painel54')
+def api_painel54_cfg_vei_criar():
+    dados = request.get_json() or {}
+    tipo  = (dados.get('tipo') or 'carro').strip()
+    if tipo not in ('moto', 'carro', 'van', 'caminhao', 'outro'):
+        tipo = 'carro'
+    placa = (dados.get('placa') or '').strip().upper() or None
+    km    = dados.get('km_max_dia')
+    try:
+        km = float(km) if km not in (None, '') else None
+    except (ValueError, TypeError):
+        km = None
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO transporte_material_veiculos
+                    (tipo, placa, descricao, km_max_dia, ativo, criado_em)
+                VALUES (%s, %s, %s, %s, TRUE, NOW()) RETURNING id
+            """, (tipo, placa, (dados.get('descricao') or '').strip() or None, km))
+            return jsonify({'success': True, 'id': cursor.fetchone()['id'],
+                            'message': 'Veiculo cadastrado'}), 201
+    except Exception as e:
+        current_app.logger.error('Erro criar veiculo painel54: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao cadastrar veiculo'}), 500
+
+
+@painel54_bp.route('/api/paineis/painel54/config/veiculos/<int:veiculo_id>', methods=['PUT'])
+@login_required
+@panel_permission_required('painel54')
+def api_painel54_cfg_vei_atualizar(veiculo_id):
+    return _cfg_atualizar(
+        'transporte_material_veiculos', _CAMPOS_VEICULO,
+        request.get_json() or {}, veiculo_id,
+        'Veiculo atualizado', 'atualizar veiculo painel54'
     )
