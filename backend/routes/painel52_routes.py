@@ -137,8 +137,8 @@ def api_painel52_solicitar():
     try:
         with get_db_cursor() as cursor:
             # Gerar protocolo
-            cursor.execute("SELECT gerar_protocolo_transporte()")
-            nr_protocolo = cursor.fetchone()[0]
+            cursor.execute("SELECT gerar_protocolo_transporte() AS proto")
+            nr_protocolo = cursor.fetchone()['proto']
 
             solicitante_nome = session.get('nome_completo') or session.get('usuario', 'Desconhecido')
 
