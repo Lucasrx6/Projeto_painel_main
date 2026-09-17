@@ -180,11 +180,25 @@
                     <div class="assinatura-hint" style="margin-bottom:8px;">
                         Assine abaixo confirmando que esta recebendo o(s) material(is) listados
                     </div>
-                    <div class="assinatura-wrap">
+                    <!-- Desktop: canvas inline -->
+                    <div class="assinatura-wrap" id="assin-wrap-motorista">
                         <canvas id="canvas-motorista"></canvas>
                         <div class="assinatura-acoes">
                             <button type="button" class="btn-limpar-assinatura" id="btn-limpar-motorista">
                                 <i class="fas fa-eraser"></i> Limpar
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Mobile: botao + preview -->
+                    <div id="assin-mobile-motorista" style="display:none;">
+                        <button type="button" class="btn-coletar-assin" id="btn-abrir-fs-motorista">
+                            <i class="fas fa-signature"></i> Toque para Assinar
+                        </button>
+                        <div class="assin-capturada-preview" id="preview-assin-motorista" style="display:none;">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Assinatura coletada</span>
+                            <button type="button" class="btn-reassinar" id="btn-reassinar-motorista">
+                                <i class="fas fa-redo"></i> Refazer
                             </button>
                         </div>
                     </div>
@@ -303,7 +317,8 @@
                 </div>
                 <div>
                     <div class="assinatura-label"><i class="fas fa-pen-nib"></i> Assinatura do Destinatario *</div>
-                    <div class="assinatura-wrap">
+                    <!-- Desktop: canvas inline -->
+                    <div class="assinatura-wrap" id="assin-wrap-destinatario">
                         <canvas id="canvas-assinatura"></canvas>
                         <div class="assinatura-acoes">
                             <button type="button" class="btn-limpar-assinatura" id="btn-limpar-canvas">
@@ -311,7 +326,20 @@
                             </button>
                         </div>
                     </div>
-                    <div class="assinatura-hint">Solicite que o destinatario assine no campo acima</div>
+                    <!-- Mobile: botao + preview -->
+                    <div id="assin-mobile-destinatario" style="display:none;">
+                        <button type="button" class="btn-coletar-assin" id="btn-abrir-fs-destinatario">
+                            <i class="fas fa-signature"></i> Toque para Assinar
+                        </button>
+                        <div class="assin-capturada-preview" id="preview-assin-destinatario" style="display:none;">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Assinatura coletada</span>
+                            <button type="button" class="btn-reassinar" id="btn-reassinar-destinatario">
+                                <i class="fas fa-redo"></i> Refazer
+                            </button>
+                        </div>
+                    </div>
+                    <div class="assinatura-hint" id="assin-hint-destinatario">Solicite que o destinatario assine no campo acima</div>
                 </div>
                 <div class="form-group">
                     <label>Observacao (opcional)</label>
@@ -371,6 +399,22 @@
     </div>
 
     <div class="toast-container" id="toast-container"></div>
+
+    <!-- Overlay de assinatura fullscreen (mobile) -->
+    <div id="overlay-assin-fs" style="display:none;">
+        <div class="oas-header">
+            <div class="oas-titulo"><i class="fas fa-pen-nib"></i> Assine no campo abaixo</div>
+            <button type="button" id="oas-btn-limpar"><i class="fas fa-eraser"></i> Limpar</button>
+        </div>
+        <div class="oas-body">
+            <canvas id="oas-canvas"></canvas>
+        </div>
+        <div class="oas-dica">Use o dedo ou caneta para assinar</div>
+        <div class="oas-footer">
+            <button type="button" id="oas-btn-cancelar"><i class="fas fa-times"></i> Cancelar</button>
+            <button type="button" id="oas-btn-confirmar"><i class="fas fa-check-circle"></i> Confirmar Assinatura</button>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <script src="/paineis/painel53/main.js"></script>

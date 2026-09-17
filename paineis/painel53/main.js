@@ -22,15 +22,24 @@
         fotoInicioCapturada: null,
         requerFotoInicio: false,
         requerAssinaturaMotorista: false,
-        // pads
+        // pads inline
         signaturePadMotorista: null,
         signaturePadDestinatario: null,
+        // overlay fullscreen (mobile)
+        signaturePadFS: null,
+        assinaturaFSMotorista: null,
+        assinaturaFSDestinatario: null,
+        fsCallback: null,
         timerFila: null
     };
 
     var DOM = {};
 
     // ── helpers ──────────────────────────────────────────
+
+    function ehTouchDevice() {
+        return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    }
 
     function escHtml(s) {
         if (s == null) return '';
@@ -534,6 +543,7 @@
 
         // Resetar foto e assinatura
         Estado.fotoInicioCapturada = null;
+        Estado.assinaturaFSMotorista = null;
         var prevFoto = document.getElementById('viagem-foto-preview');
         var btnFoto  = document.getElementById('viagem-btn-tirar-foto');
         if (prevFoto) prevFoto.style.display = 'none';
@@ -541,7 +551,14 @@
         if (Estado.signaturePadMotorista) Estado.signaturePadMotorista.clear();
 
         abrirModal('modal-iniciar-viagem');
-        inicializarPadMotorista();
+
+        // Configurar UI de assinatura do motorista (mobile vs desktop)
+        configurarUiAssinatura('motorista', 'assin-wrap-motorista', 'assin-mobile-motorista');
+        atualizarPreviewAssin('preview-assin-motorista', false);
+
+        if (!ehTouchDevice()) {
+            inicializarPadMotorista();
+        }
 
         // Carregar itens de cada chamado com lista
         if (chamadosComItens.length > 0) {
@@ -662,6 +679,91 @@
         return recusados;
     }
 
+    // ── ASSINATURA FULLSCREEN (mobile) ───────────────────────
+
+    function inicializarPadFS() {
+        var canvas = document.getElementById('oas-canvas');
+        if (!canvas || !window.SignaturePad) return;
+        if (Estado.signaturePadFS) {
+            Estado.signaturePadFS.clear();
+            // Re-ajustar tamanho pois pode ter mudado
+            var ratio = window.devicePixelRatio || 1;
+            canvas.width  = canvas.offsetWidth  * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext('2d').scale(ratio, ratio);
+            Estado.signaturePadFS.clear();
+            return;
+        }
+        Estado.signaturePadFS = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255,255,255)',
+            penColor: 'rgb(0,0,0)',
+            minWidth: 1.5,
+            maxWidth: 3.5
+        });
+        var ratio = window.devicePixelRatio || 1;
+        canvas.width  = canvas.offsetWidth  * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext('2d').scale(ratio, ratio);
+        Estado.signaturePadFS.clear();
+    }
+
+    function abrirAssinaturaFS(callback) {
+        Estado.fsCallback = callback;
+        var overlay = document.getElementById('overlay-assin-fs');
+        if (!overlay) return;
+        overlay.style.display = 'flex';
+        // Aguardar layout para ajustar canvas
+        setTimeout(function () { inicializarPadFS(); }, 50);
+    }
+
+    function fecharAssinaturaFS() {
+        var overlay = document.getElementById('overlay-assin-fs');
+        if (overlay) overlay.style.display = 'none';
+        Estado.fsCallback = null;
+    }
+
+    function confirmarAssinaturaFS() {
+        if (!Estado.signaturePadFS || Estado.signaturePadFS.isEmpty()) {
+            toast('Por favor, assine no campo antes de confirmar.', 'warning');
+            return;
+        }
+        var dataURL = Estado.signaturePadFS.toDataURL('image/png');
+        fecharAssinaturaFS();
+        if (typeof Estado.fsCallback === 'function') {
+            Estado.fsCallback(dataURL);
+        }
+    }
+
+    // Configura UI mobile/desktop de assinatura dentro de um modal
+    function configurarUiAssinatura(tipoKey, wrapId, mobileWrapId) {
+        var wrapEl   = document.getElementById(wrapId);
+        var mobileEl = document.getElementById(mobileWrapId);
+        if (!wrapEl || !mobileEl) return;
+        if (ehTouchDevice()) {
+            wrapEl.style.display   = 'none';
+            mobileEl.style.display = '';
+        } else {
+            wrapEl.style.display   = '';
+            mobileEl.style.display = 'none';
+        }
+    }
+
+    // Atualiza o preview mobile após captura
+    function atualizarPreviewAssin(previewId, capturado) {
+        var btn     = document.getElementById(previewId.replace('preview-assin-', 'btn-abrir-fs-'));
+        var preview = document.getElementById(previewId);
+        if (!btn || !preview) return;
+        if (capturado) {
+            btn.style.display     = 'none';
+            preview.style.display = '';
+        } else {
+            btn.style.display     = '';
+            preview.style.display = 'none';
+        }
+    }
+
+    // ── /ASSINATURA FULLSCREEN ────────────────────────────
+
     function inicializarPadMotorista() {
         var canvas = document.getElementById('canvas-motorista');
         if (!canvas || !window.SignaturePad) return;
@@ -700,10 +802,17 @@
         // Validar assinatura do motorista (apenas se exigido pelo tipo de carga)
         var assinaturaMotorista = null;
         if (Estado.requerAssinaturaMotorista) {
-            if (!Estado.signaturePadMotorista || Estado.signaturePadMotorista.isEmpty()) {
-                toast('Assinatura do motorista e obrigatoria para este tipo de carga.', 'warning'); return;
+            if (ehTouchDevice()) {
+                if (!Estado.assinaturaFSMotorista) {
+                    toast('Assinatura do motorista e obrigatoria para este tipo de carga.', 'warning'); return;
+                }
+                assinaturaMotorista = Estado.assinaturaFSMotorista;
+            } else {
+                if (!Estado.signaturePadMotorista || Estado.signaturePadMotorista.isEmpty()) {
+                    toast('Assinatura do motorista e obrigatoria para este tipo de carga.', 'warning'); return;
+                }
+                assinaturaMotorista = Estado.signaturePadMotorista.toDataURL('image/png');
             }
-            assinaturaMotorista = Estado.signaturePadMotorista.toDataURL('image/png');
         }
 
         // Verificar chamados agendados com início antecipado (> 60 min antes)
@@ -883,9 +992,19 @@
         if (obsW)  obsW.style.display = 'none';
         if (obsT)  obsT.value  = '';
         if (pinSt) pinSt.textContent = '';
+        Estado.assinaturaFSDestinatario = null;
         if (Estado.signaturePadDestinatario) Estado.signaturePadDestinatario.clear();
         abrirModal('modal-assinatura');
-        inicializarPadDestinatario();
+
+        // Configurar UI de assinatura do destinatário (mobile vs desktop)
+        configurarUiAssinatura('destinatario', 'assin-wrap-destinatario', 'assin-mobile-destinatario');
+        atualizarPreviewAssin('preview-assin-destinatario', false);
+        var hintEl = document.getElementById('assin-hint-destinatario');
+        if (hintEl) hintEl.style.display = ehTouchDevice() ? 'none' : '';
+
+        if (!ehTouchDevice()) {
+            inicializarPadDestinatario();
+        }
     }
 
     function inicializarPadDestinatario() {
@@ -923,11 +1042,19 @@
 
         if (!dest) { toast('Informe o nome do destinatario.', 'warning'); return; }
         if (!pin)  { toast('Informe o PIN do motorista.', 'warning'); return; }
-        if (!Estado.signaturePadDestinatario || Estado.signaturePadDestinatario.isEmpty()) {
-            toast('Assinatura do destinatario e obrigatoria.', 'warning'); return;
-        }
 
-        var assinaturaImg = Estado.signaturePadDestinatario.toDataURL('image/png');
+        var assinaturaImg;
+        if (ehTouchDevice()) {
+            if (!Estado.assinaturaFSDestinatario) {
+                toast('Assinatura do destinatario e obrigatoria.', 'warning'); return;
+            }
+            assinaturaImg = Estado.assinaturaFSDestinatario;
+        } else {
+            if (!Estado.signaturePadDestinatario || Estado.signaturePadDestinatario.isEmpty()) {
+                toast('Assinatura do destinatario e obrigatoria.', 'warning'); return;
+            }
+            assinaturaImg = Estado.signaturePadDestinatario.toDataURL('image/png');
+        }
 
         setLoading(btn, true);
         fetch(CONFIG.api + '/chamados/' + Estado.chamadoAcaoId + '/entregar-com-assinatura', {
@@ -1115,6 +1242,52 @@
         if (chkAssinParcial) chkAssinParcial.addEventListener('change', function () {
             var w = document.getElementById('assin-parcial-obs-wrap');
             if (w) w.style.display = this.checked ? '' : 'none';
+        });
+
+        // Overlay fullscreen assinatura (mobile)
+        var oasBtnLimpar    = document.getElementById('oas-btn-limpar');
+        var oasBtnCancelar  = document.getElementById('oas-btn-cancelar');
+        var oasBtnConfirmar = document.getElementById('oas-btn-confirmar');
+        if (oasBtnLimpar)    oasBtnLimpar.addEventListener('click', function () {
+            if (Estado.signaturePadFS) Estado.signaturePadFS.clear();
+        });
+        if (oasBtnCancelar)  oasBtnCancelar.addEventListener('click',  fecharAssinaturaFS);
+        if (oasBtnConfirmar) oasBtnConfirmar.addEventListener('click', confirmarAssinaturaFS);
+
+        // Botao mobile: assinar motorista
+        var btnAbrirFSMot = document.getElementById('btn-abrir-fs-motorista');
+        if (btnAbrirFSMot) btnAbrirFSMot.addEventListener('click', function () {
+            abrirAssinaturaFS(function (dataURL) {
+                Estado.assinaturaFSMotorista = dataURL;
+                atualizarPreviewAssin('preview-assin-motorista', true);
+            });
+        });
+        var btnReassinarMot = document.getElementById('btn-reassinar-motorista');
+        if (btnReassinarMot) btnReassinarMot.addEventListener('click', function () {
+            Estado.assinaturaFSMotorista = null;
+            atualizarPreviewAssin('preview-assin-motorista', false);
+            abrirAssinaturaFS(function (dataURL) {
+                Estado.assinaturaFSMotorista = dataURL;
+                atualizarPreviewAssin('preview-assin-motorista', true);
+            });
+        });
+
+        // Botao mobile: assinar destinatario
+        var btnAbrirFSDest = document.getElementById('btn-abrir-fs-destinatario');
+        if (btnAbrirFSDest) btnAbrirFSDest.addEventListener('click', function () {
+            abrirAssinaturaFS(function (dataURL) {
+                Estado.assinaturaFSDestinatario = dataURL;
+                atualizarPreviewAssin('preview-assin-destinatario', true);
+            });
+        });
+        var btnReassinarDest = document.getElementById('btn-reassinar-destinatario');
+        if (btnReassinarDest) btnReassinarDest.addEventListener('click', function () {
+            Estado.assinaturaFSDestinatario = null;
+            atualizarPreviewAssin('preview-assin-destinatario', false);
+            abrirAssinaturaFS(function (dataURL) {
+                Estado.assinaturaFSDestinatario = dataURL;
+                atualizarPreviewAssin('preview-assin-destinatario', true);
+            });
         });
 
         // Modal itens

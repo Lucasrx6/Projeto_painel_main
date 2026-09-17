@@ -515,3 +515,158 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     border-radius: 10px;
     white-space: nowrap;
 }
+
+/* ── ASSINATURA FULLSCREEN (mobile) ──────────────────────── */
+#overlay-assin-fs {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: white;
+    display: flex;
+    flex-direction: column;
+}
+.oas-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--borda);
+    flex-shrink: 0;
+}
+.oas-titulo {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--texto);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#oas-btn-limpar {
+    background: none;
+    border: 1.5px solid var(--borda);
+    color: var(--texto-sec);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#oas-btn-limpar:active { background: #f0f0f0; }
+.oas-body {
+    flex: 1;
+    position: relative;
+    background: #fafafa;
+    border-bottom: 1px dashed var(--borda);
+}
+#oas-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: crosshair;
+    display: block;
+}
+.oas-dica {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--texto-sec);
+    text-align: center;
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--borda);
+}
+.oas-footer {
+    flex-shrink: 0;
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--borda);
+}
+#oas-btn-cancelar {
+    flex: 1;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--borda);
+    background: #f8f9fa;
+    color: var(--texto-sec);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+#oas-btn-confirmar {
+    flex: 2;
+    padding: 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--cor-primaria);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+#oas-btn-confirmar:active { opacity: 0.85; }
+
+/* ── MOBILE SIGNATURE BUTTON ─────────────────────────────── */
+.btn-coletar-assin {
+    width: 100%;
+    padding: 18px 16px;
+    border-radius: 10px;
+    border: 2px dashed var(--cor-primaria);
+    background: rgba(220,53,69,0.04);
+    color: var(--cor-primaria);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.tema-azul .btn-coletar-assin {
+    border-color: #0d6efd;
+    background: rgba(13,110,253,0.04);
+    color: #0d6efd;
+}
+.btn-coletar-assin:active { opacity: 0.8; }
+
+.assin-capturada-preview {
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: #d4edda;
+    border: 1px solid #b8dac4;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #155724;
+    font-size: 13px;
+    font-weight: 600;
+}
+.assin-capturada-preview span { flex: 1; }
+.btn-reassinar {
+    background: none;
+    border: 1.5px solid #155724;
+    color: #155724;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
