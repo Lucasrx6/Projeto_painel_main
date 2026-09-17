@@ -330,6 +330,91 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 }
 
 /* ── RESPONSIVE ────────────────────────────────── */
+/* ── FILA COM CHECKBOX ─────────────────────────────── */
+.fila-card { cursor: default; }
+.fila-card-check-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 0; }
+.fila-card-check-label input[type="checkbox"] {
+    width: 20px; height: 20px; min-width: 20px; margin-top: 4px;
+    accent-color: var(--cor-primaria); cursor: pointer;
+}
+.fila-card-body { flex: 1; }
+.fila-card-selecionado { background: var(--cor-primaria-light) !important; border-color: var(--cor-primaria) !important; }
+
+/* ── BARRA DE SELECAO (iniciar viagem) ─────────────── */
+.barra-selecao {
+    position: sticky; bottom: 0; left: 0; right: 0; z-index: 90;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 12px 16px;
+    background: #343a40; color: #fff; border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
+}
+.barra-selecao-info { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.btn-iniciar-viagem {
+    display: flex; align-items: center; gap: 8px; padding: 10px 20px;
+    background: var(--cor-entregue); color: #fff; border: none;
+    border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+}
+.btn-iniciar-viagem:hover { background: #218838; }
+
+/* ── MODAL VIAGEM ────────────────────────────────────── */
+.modal-viagem { max-width: 500px; }
+.viagem-resumo { background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+.viagem-resumo-titulo { font-size: 13px; font-weight: 600; color: var(--texto-sec); margin-bottom: 8px; }
+.viagem-resumo-lista { margin: 0; padding-left: 16px; font-size: 13px; color: var(--texto); }
+.viagem-resumo-lista li { margin-bottom: 4px; }
+.viagem-passo-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 600; color: var(--texto); margin-bottom: 12px;
+}
+.viagem-passo-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--cor-primaria); color: #fff; font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+}
+.badge-obrig {
+    font-size: 11px; font-weight: 600; color: var(--cor-primaria);
+    background: var(--cor-primaria-light); padding: 2px 6px; border-radius: 4px;
+}
+
+/* ── ENTREGA PARCIAL ─────────────────────────────────── */
+.parcial-wrap { margin: 12px 0; padding: 10px 12px; background: #fff8e7; border-radius: 8px; border: 1px solid #ffc107; }
+.parcial-check-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 14px; }
+.parcial-check-label input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; margin-top: 2px; accent-color: #e67e00; }
+.parcial-wrap textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 8px; font-size: 13px; resize: vertical; }
+
+/* ── CHAMADOS ATIVOS (multi) ─────────────────────────── */
+.chamado-ativo-card + .chamado-ativo-card { margin-top: 10px; }
+.chamado-ativo-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+
+/* ── BADGE ENTREGA PARCIAL (histórico) ───────────────── */
+.badge-parcial {
+    font-size: 11px; font-weight: 600; color: #e67e00;
+    background: #fff8e7; border: 1px solid #ffc107;
+    padding: 2px 6px; border-radius: 4px; margin-left: 6px;
+}
+
+/* ── FOTO VALIDACAO ──────────────────────────────────── */
+.foto-validacao-label { font-size: 13px; font-weight: 600; color: var(--texto-sec); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.foto-validacao-img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; background: #000; border: 2px solid var(--borda); }
+
+/* ── FOTO CAPTURE (viagem) ───────────────────────────── */
+.foto-capture-wrap { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.btn-tirar-foto {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px; border: 2px dashed var(--cor-primaria);
+    background: var(--cor-primaria-light); color: var(--cor-primaria);
+    border-radius: var(--radius); cursor: pointer; font-size: 15px; font-weight: 600;
+}
+.foto-preview { position: relative; border-radius: var(--radius); overflow: hidden; background: #000; }
+.foto-preview img { width: 100%; max-height: 200px; object-fit: contain; display: block; }
+.btn-remover-foto {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(220,53,69,0.9); color: white; border: none;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+
 @media (max-width: 480px) {
     .cac-acoes { flex-direction: column; }
     .btn-acao  { min-width: auto; }

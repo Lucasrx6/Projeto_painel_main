@@ -434,7 +434,9 @@
                         '<div class="config-item-det">' +
                         (t.requer_lista_itens ? '<span style="color:#6f42c1;font-size:11px;"><i class="fas fa-list"></i> Lista </span>' : '') +
                         (t.requer_assinatura ? '<span style="color:#dc3545;font-size:11px;"><i class="fas fa-signature"></i> Assinatura </span>' : '') +
-                        (t.requer_foto ? '<span style="color:#fd7e14;font-size:11px;"><i class="fas fa-camera"></i> Foto' + (t.foto_obrigatoria ? '(obrig.)' : '') + '</span>' : '') +
+                        (t.requer_foto ? '<span style="color:#fd7e14;font-size:11px;margin-right:4px;"><i class="fas fa-camera"></i> Foto' + (t.foto_obrigatoria ? '(obrig.)' : '') + '</span>' : '') +
+                        (t.requer_foto_inicio ? '<span style="color:#e67e00;font-size:11px;margin-right:4px;"><i class="fas fa-camera"></i> Foto inicio</span>' : '') +
+                        (t.requer_assinatura_motorista ? '<span style="color:var(--cor-primaria);font-size:11px;margin-right:4px;"><i class="fas fa-signature"></i> Assin.Motor.</span>' : '') +
                         '</div></div>' +
                         '<div class="config-item-acoes">' +
                         '<button class="btn-edit-config" data-tipo="tipo-carga" data-id="' + t.id + '"><i class="fas fa-pen"></i> Editar</button>' +
@@ -610,8 +612,10 @@
             document.getElementById('tipo-ordem').value             = reg ? (reg.ordem || 0) : 0;
             document.getElementById('tipo-requer-lista').checked    = reg ? !!reg.requer_lista_itens : false;
             document.getElementById('tipo-requer-assinatura').checked = reg ? !!reg.requer_assinatura : false;
-            document.getElementById('tipo-requer-foto').checked      = reg ? !!reg.requer_foto : false;
-            document.getElementById('tipo-foto-obrigatoria').checked  = reg ? !!reg.foto_obrigatoria : false;
+            document.getElementById('tipo-requer-foto').checked             = reg ? !!reg.requer_foto : false;
+            document.getElementById('tipo-foto-obrigatoria').checked          = reg ? !!reg.foto_obrigatoria : false;
+            document.getElementById('tipo-requer-foto-inicio').checked        = reg ? !!reg.requer_foto_inicio : false;
+            document.getElementById('tipo-requer-assin-motorista').checked    = reg ? !!reg.requer_assinatura_motorista : false;
             var taWrap = document.getElementById('tipo-ativo-wrap');
             if (taWrap) taWrap.style.display = reg ? '' : 'none';
             document.getElementById('tipo-ativo').checked = reg ? !!reg.ativo : true;
@@ -686,8 +690,10 @@
             ordem: parseInt(document.getElementById('tipo-ordem').value, 10) || 0,
             requer_lista_itens: document.getElementById('tipo-requer-lista').checked,
             requer_assinatura:  document.getElementById('tipo-requer-assinatura').checked,
-            requer_foto:        document.getElementById('tipo-requer-foto').checked,
-            foto_obrigatoria:   document.getElementById('tipo-foto-obrigatoria').checked,
+            requer_foto:                  document.getElementById('tipo-requer-foto').checked,
+            foto_obrigatoria:             document.getElementById('tipo-foto-obrigatoria').checked,
+            requer_foto_inicio:           document.getElementById('tipo-requer-foto-inicio').checked,
+            requer_assinatura_motorista:  document.getElementById('tipo-requer-assin-motorista').checked,
             ativo: document.getElementById('tipo-ativo').checked
         };
         var url    = CONFIG.api + '/config/tipos-carga' + (id ? '/' + id : '');

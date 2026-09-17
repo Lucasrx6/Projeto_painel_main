@@ -84,7 +84,7 @@ def api_painel53_motoristas():
 
 
 # =========================================================
-# FILA DE CHAMADOS
+# FILA DE CHAMADOS + CHAMADOS ATIVOS DO MOTORISTA
 # =========================================================
 
 @painel53_bp.route('/api/paineis/painel53/fila', methods=['GET'])
@@ -99,6 +99,7 @@ def api_painel53_fila():
                     s.id, s.nr_protocolo,
                     s.tipo_carga_nome, tc.icone AS tipo_carga_icone, tc.cor AS tipo_carga_cor,
                     tc.requer_assinatura, tc.requer_lista_itens, tc.requer_foto,
+                    tc.requer_assinatura_motorista, tc.requer_foto_inicio,
                     s.descricao, s.setor_origem_nome, s.destino_nome, s.destino_complemento,
                     s.prioridade, s.status, s.solicitante_nome, s.observacao,
                     s.foto_carga,
@@ -118,13 +119,15 @@ def api_painel53_fila():
                     c['minutos_espera'] = float(c['minutos_espera'])
                 fila.append(c)
 
-            chamado_ativo = None
+            chamados_ativos = []
+            chamado_ativo   = None   # compat com versão anterior
             if motorista_id:
                 cursor.execute("""
                     SELECT
-                        s.id, s.nr_protocolo,
+                        s.id, s.nr_protocolo, s.viagem_id,
                         s.tipo_carga_nome, tc.icone AS tipo_carga_icone, tc.cor AS tipo_carga_cor,
                         tc.requer_assinatura, tc.requer_lista_itens, tc.requer_foto,
+                        tc.requer_assinatura_motorista, tc.requer_foto_inicio,
                         s.descricao, s.setor_origem_nome, s.destino_nome, s.destino_complemento,
                         s.prioridade, s.status, s.solicitante_nome, s.observacao,
                         s.foto_carga,
@@ -132,20 +135,21 @@ def api_painel53_fila():
                         ROUND(EXTRACT(EPOCH FROM (NOW() - s.criado_em)) / 60, 1) AS minutos_espera
                     FROM transporte_material_solicitacoes s
                     JOIN transporte_material_tipos_carga tc ON tc.id = s.tipo_carga_id
-                    WHERE s.motorista_id = %s AND s.status IN ('aceito', 'em_transporte')
-                    ORDER BY s.dt_aceite DESC
-                    LIMIT 1
+                    WHERE s.motorista_id = %s AND s.status = 'em_transporte'
+                    ORDER BY s.dt_inicio_transporte ASC
                 """, (motorista_id,))
-                row = cursor.fetchone()
-                if row:
+                for row in cursor.fetchall():
                     c = _serial_dt(dict(row))
                     if c.get('minutos_espera') is not None:
                         c['minutos_espera'] = float(c['minutos_espera'])
-                    chamado_ativo = c
+                    chamados_ativos.append(c)
+                if chamados_ativos:
+                    chamado_ativo = chamados_ativos[0]
 
         return jsonify({
             'success': True,
             'fila': fila,
+            'chamados_ativos': chamados_ativos,
             'chamado_ativo': chamado_ativo,
             'total_fila': len(fila),
             'timestamp': datetime.now().isoformat()
@@ -182,104 +186,105 @@ def api_painel53_itens(chamado_id):
 
 
 # =========================================================
-# ACEITAR CHAMADO
+# INICIAR VIAGEM (multi-chamado, com assinatura do motorista)
 # =========================================================
 
-@painel53_bp.route('/api/paineis/painel53/chamados/<int:chamado_id>/aceitar', methods=['PUT'])
+@painel53_bp.route('/api/paineis/painel53/viagem/iniciar', methods=['POST'])
 @login_required
 @panel_permission_required('painel53')
-def api_painel53_aceitar(chamado_id):
-    dados = request.get_json() or {}
-    motorista_id = dados.get('motorista_id')
+def api_painel53_viagem_iniciar():
+    dados               = request.get_json() or {}
+    motorista_id        = dados.get('motorista_id')
+    veiculo_id          = dados.get('veiculo_id') or None
+    veiculo_placa       = (dados.get('veiculo_placa') or '').strip() or None
+    chamado_ids         = dados.get('chamado_ids') or []
+    assinatura_motorista = (dados.get('assinatura_motorista') or '').strip() or None
+    foto_inicio         = (dados.get('foto_inicio') or '').strip() or None
+
     if not motorista_id:
         return jsonify({'success': False, 'error': 'Informe o motorista_id'}), 400
+    if not chamado_ids or not isinstance(chamado_ids, list):
+        return jsonify({'success': False, 'error': 'Selecione pelo menos um chamado'}), 400
+
+    if assinatura_motorista and not assinatura_motorista.startswith('data:image/png;base64,'):
+        assinatura_motorista = None
+    if foto_inicio and not foto_inicio.startswith('data:image/'):
+        foto_inicio = None
+
+    try:
+        chamado_ids_int = [int(c) for c in chamado_ids]
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'error': 'IDs de chamados invalidos'}), 400
 
     try:
         with get_db_cursor() as cursor:
-            cursor.execute("""
-                SELECT id FROM transporte_material_solicitacoes
-                WHERE motorista_id = %s AND status IN ('aceito', 'em_transporte')
-                LIMIT 1
-            """, (motorista_id,))
-            if cursor.fetchone():
-                return jsonify({
-                    'success': False,
-                    'error': 'Voce ja possui um chamado em andamento. Conclua-o antes de aceitar outro.'
-                }), 400
-
             cursor.execute(
-                "SELECT nome FROM transporte_material_motoristas WHERE id = %s AND ativo = TRUE",
+                "SELECT id, nome FROM transporte_material_motoristas WHERE id = %s AND ativo = TRUE",
                 (motorista_id,)
             )
             motorista = cursor.fetchone()
             if not motorista:
                 return jsonify({'success': False, 'error': 'Motorista nao encontrado'}), 404
+            motorista_nome = motorista['nome']
 
+            # Verificar que todos os chamados ainda estão aguardando
             cursor.execute("""
-                UPDATE transporte_material_solicitacoes
-                SET status = 'aceito',
-                    motorista_id = %s,
-                    motorista_nome = %s,
-                    dt_aceite = NOW(),
-                    atualizado_em = NOW()
-                WHERE id = %s AND status = 'aguardando'
+                SELECT id, status, nr_protocolo FROM transporte_material_solicitacoes
+                WHERE id = ANY(%s)
+            """, (chamado_ids_int,))
+            encontrados = cursor.fetchall()
+            if len(encontrados) != len(chamado_ids_int):
+                return jsonify({'success': False,
+                                'error': 'Um ou mais chamados nao foram encontrados'}), 404
+            for c in encontrados:
+                if c['status'] != 'aguardando':
+                    return jsonify({'success': False,
+                                    'error': 'Chamado ' + str(c['nr_protocolo']) +
+                                             ' nao esta mais disponivel (status: ' + str(c['status']) + ')'}), 409
+
+            # Criar a viagem
+            cursor.execute("""
+                INSERT INTO transporte_material_viagens
+                    (motorista_id, motorista_nome, veiculo_id, veiculo_placa,
+                     status, foto_inicio, assinatura_motorista, dt_assinatura, criado_em, dt_inicio)
+                VALUES (%s, %s, %s, %s, 'em_andamento', %s, %s, NOW(), NOW(), NOW())
                 RETURNING id
-            """, (motorista_id, motorista['nome'], chamado_id))
+            """, (motorista_id, motorista_nome, veiculo_id, veiculo_placa,
+                  foto_inicio, assinatura_motorista))
+            viagem_id = cursor.fetchone()['id']
 
-            if not cursor.fetchone():
-                return jsonify({
-                    'success': False,
-                    'error': 'Chamado nao disponivel (ja aceito por outro motorista)'
-                }), 409
-
-        cache_delete_pattern('painel54:*')
-        return jsonify({'success': True, 'message': 'Chamado aceito com sucesso'})
-    except Exception as e:
-        current_app.logger.error('Erro aceitar painel53: %s', e, exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao aceitar chamado'}), 500
-
-
-# =========================================================
-# INICIAR TRANSPORTE
-# =========================================================
-
-@painel53_bp.route('/api/paineis/painel53/chamados/<int:chamado_id>/iniciar', methods=['PUT'])
-@login_required
-@panel_permission_required('painel53')
-def api_painel53_iniciar(chamado_id):
-    dados = request.get_json() or {}
-    motorista_id = dados.get('motorista_id')
-    if not motorista_id:
-        return jsonify({'success': False, 'error': 'Informe o motorista_id'}), 400
-    try:
-        with get_db_cursor() as cursor:
-            cursor.execute(
-                "SELECT motorista_id, status FROM transporte_material_solicitacoes WHERE id = %s",
-                (chamado_id,)
-            )
-            chamado = cursor.fetchone()
-            if not chamado:
-                return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
-            if str(chamado['motorista_id']) != str(motorista_id):
-                return jsonify({'success': False, 'error': 'Sem permissao para este chamado'}), 403
-
+            # Atualizar todos os chamados selecionados
             cursor.execute("""
                 UPDATE transporte_material_solicitacoes
-                SET status = 'em_transporte',
+                SET status               = 'em_transporte',
+                    motorista_id         = %s,
+                    motorista_nome       = %s,
+                    veiculo_id           = %s,
+                    veiculo_placa        = %s,
+                    viagem_id            = %s,
+                    dt_aceite            = NOW(),
                     dt_inicio_transporte = NOW(),
-                    atualizado_em = NOW()
-                WHERE id = %s AND motorista_id = %s AND status = 'aceito'
+                    atualizado_em        = NOW()
+                WHERE id = ANY(%s) AND status = 'aguardando'
                 RETURNING id
-            """, (chamado_id, motorista_id))
-
-            if not cursor.fetchone():
-                return jsonify({'success': False, 'error': 'Chamado nao pode ser iniciado no status atual'}), 400
+            """, (motorista_id, motorista_nome, veiculo_id, veiculo_placa,
+                  viagem_id, chamado_ids_int))
+            atualizados = len(cursor.fetchall())
 
         cache_delete_pattern('painel54:*')
-        return jsonify({'success': True, 'message': 'Transporte iniciado'})
+        current_app.logger.info(
+            'Viagem iniciada: viagem=%s motorista=%s chamados=%s',
+            viagem_id, motorista_nome, chamado_ids_int
+        )
+        return jsonify({
+            'success': True,
+            'viagem_id': viagem_id,
+            'chamados_iniciados': atualizados,
+            'message': 'Viagem iniciada com ' + str(atualizados) + ' chamado(s)'
+        })
     except Exception as e:
-        current_app.logger.error('Erro iniciar painel53: %s', e, exc_info=True)
-        return jsonify({'success': False, 'error': 'Erro ao iniciar transporte'}), 500
+        current_app.logger.error('Erro viagem-iniciar painel53: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao iniciar viagem'}), 500
 
 
 # =========================================================
@@ -290,12 +295,14 @@ def api_painel53_iniciar(chamado_id):
 @login_required
 @panel_permission_required('painel53')
 def api_painel53_entregar(chamado_id):
-    dados = request.get_json() or {}
+    dados           = request.get_json() or {}
     motorista_id    = dados.get('motorista_id')
     nm_destinatario = (dados.get('nm_destinatario') or '').strip()
     obs_entrega     = (dados.get('observacao_entrega') or '').strip()
     veiculo_id      = dados.get('veiculo_id') or None
     veiculo_placa   = (dados.get('veiculo_placa') or '').strip() or None
+    entrega_parcial = bool(dados.get('entrega_parcial', False))
+    obs_parcial     = (dados.get('obs_entrega_parcial') or '').strip()
 
     if not motorista_id:
         return jsonify({'success': False, 'error': 'Informe o motorista_id'}), 400
@@ -303,7 +310,7 @@ def api_painel53_entregar(chamado_id):
     try:
         with get_db_cursor() as cursor:
             cursor.execute(
-                "SELECT motorista_id, status FROM transporte_material_solicitacoes WHERE id = %s",
+                "SELECT motorista_id, status, viagem_id FROM transporte_material_solicitacoes WHERE id = %s",
                 (chamado_id,)
             )
             chamado = cursor.fetchone()
@@ -316,16 +323,23 @@ def api_painel53_entregar(chamado_id):
 
             cursor.execute("""
                 UPDATE transporte_material_solicitacoes
-                SET status = 'entregue',
-                    dt_entrega = NOW(),
-                    nm_destinatario = %s,
+                SET status             = 'entregue',
+                    dt_entrega         = NOW(),
+                    nm_destinatario    = %s,
                     observacao_entrega = %s,
-                    veiculo_id = %s,
-                    veiculo_placa = %s,
-                    atualizado_em = NOW()
+                    veiculo_id         = COALESCE(%s, veiculo_id),
+                    veiculo_placa      = COALESCE(%s, veiculo_placa),
+                    entrega_parcial    = %s,
+                    obs_entrega_parcial = %s,
+                    atualizado_em      = NOW()
                 WHERE id = %s
             """, (nm_destinatario or None, obs_entrega or None,
-                  veiculo_id, veiculo_placa, chamado_id))
+                  veiculo_id, veiculo_placa,
+                  entrega_parcial, obs_parcial or None, chamado_id))
+
+            # Verificar se todos os chamados da viagem foram entregues
+            if chamado.get('viagem_id'):
+                _verificar_concluir_viagem(cursor, chamado['viagem_id'])
 
         cache_delete_pattern('painel54:*')
         return jsonify({'success': True, 'message': 'Entrega registrada com sucesso'})
@@ -349,6 +363,8 @@ def api_painel53_entregar_com_assinatura(chamado_id):
     obs_entrega     = (dados.get('observacao_entrega') or '').strip()
     veiculo_id      = dados.get('veiculo_id') or None
     veiculo_placa   = (dados.get('veiculo_placa') or '').strip() or None
+    entrega_parcial = bool(dados.get('entrega_parcial', False))
+    obs_parcial     = (dados.get('obs_entrega_parcial') or '').strip()
 
     if not motorista_pin:
         return jsonify({'success': False, 'error': 'PIN do motorista obrigatorio'}), 400
@@ -359,7 +375,6 @@ def api_painel53_entregar_com_assinatura(chamado_id):
 
     try:
         with get_db_cursor() as cursor:
-            # Validar PIN (matrícula do motorista)
             cursor.execute("""
                 SELECT id, nome, matricula FROM transporte_material_motoristas
                 WHERE matricula = %s AND ativo = TRUE LIMIT 1
@@ -368,10 +383,10 @@ def api_painel53_entregar_com_assinatura(chamado_id):
             if not motorista:
                 return jsonify({'success': False, 'error': 'PIN invalido ou motorista inativo'}), 403
 
-            # Verificar chamado
             cursor.execute("""
                 SELECT s.id, s.status, s.nr_protocolo, s.tipo_carga_nome,
-                       s.setor_origem_nome, s.destino_nome, tc.requer_assinatura
+                       s.setor_origem_nome, s.destino_nome, s.viagem_id,
+                       tc.requer_assinatura
                 FROM transporte_material_solicitacoes s
                 JOIN transporte_material_tipos_carga tc ON tc.id = s.tipo_carga_id
                 WHERE s.id = %s
@@ -385,7 +400,6 @@ def api_painel53_entregar_com_assinatura(chamado_id):
                 return jsonify({'success': False,
                                 'error': 'Este tipo de carga exige assinatura do destinatario'}), 400
 
-            # Buscar itens para conteudo_json
             cursor.execute("""
                 SELECT descricao, quantidade, unidade
                 FROM transporte_material_itens
@@ -406,10 +420,11 @@ def api_painel53_entregar_com_assinatura(chamado_id):
             'itens':           itens_list,
             'motorista':       motorista['nome'],
             'nm_destinatario': nm_destinatario,
+            'entrega_parcial': entrega_parcial,
             'dt_entrega':      datetime.now().isoformat()
         }
-        conteudo_json  = _json.dumps(conteudo, ensure_ascii=False)
-        hash_conteudo  = hashlib.sha256(conteudo_json.encode('utf-8')).hexdigest()
+        conteudo_json = _json.dumps(conteudo, ensure_ascii=False)
+        hash_conteudo = hashlib.sha256(conteudo_json.encode('utf-8')).hexdigest()
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         ua = request.headers.get('User-Agent', '')
 
@@ -442,28 +457,53 @@ def api_painel53_entregar_com_assinatura(chamado_id):
 
             cursor.execute("""
                 UPDATE transporte_material_solicitacoes
-                SET status = 'entregue',
-                    dt_entrega = NOW(),
-                    assinatura_id = %s,
-                    nm_destinatario = %s,
-                    observacao_entrega = %s,
-                    veiculo_id = %s,
-                    veiculo_placa = %s,
-                    atualizado_em = NOW()
+                SET status              = 'entregue',
+                    dt_entrega          = NOW(),
+                    assinatura_id       = %s,
+                    nm_destinatario     = %s,
+                    observacao_entrega  = %s,
+                    veiculo_id          = COALESCE(%s, veiculo_id),
+                    veiculo_placa       = COALESCE(%s, veiculo_placa),
+                    entrega_parcial     = %s,
+                    obs_entrega_parcial = %s,
+                    atualizado_em       = NOW()
                 WHERE id = %s
             """, (assinatura_id, nm_destinatario, obs_entrega or None,
-                  veiculo_id, veiculo_placa, chamado_id))
+                  veiculo_id, veiculo_placa,
+                  entrega_parcial, obs_parcial or None, chamado_id))
+
+            # Verificar se todos os chamados da viagem foram entregues
+            if chamado.get('viagem_id'):
+                with get_db_cursor() as cur2:
+                    _verificar_concluir_viagem(cur2, chamado['viagem_id'])
 
         cache_delete_pattern('painel54:*')
         current_app.logger.info(
-            'Entrega c/ assinatura: chamado=%s protocolo=%s assinatura=%s motorista=%s',
-            chamado_id, chamado['nr_protocolo'], assinatura_id, motorista['nome']
+            'Entrega c/ assinatura: chamado=%s protocolo=%s assinatura=%s motorista=%s parcial=%s',
+            chamado_id, chamado['nr_protocolo'], assinatura_id, motorista['nome'], entrega_parcial
         )
         return jsonify({'success': True, 'message': 'Entrega registrada com assinatura'})
 
     except Exception as e:
         current_app.logger.error('Erro entregar-com-assinatura painel53: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao registrar entrega'}), 500
+
+
+def _verificar_concluir_viagem(cursor, viagem_id):
+    """Marca a viagem como concluída se todos os seus chamados foram entregues."""
+    cursor.execute("""
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN status = 'entregue' THEN 1 ELSE 0 END) AS entregues
+        FROM transporte_material_solicitacoes
+        WHERE viagem_id = %s AND status != 'cancelado'
+    """, (viagem_id,))
+    row = cursor.fetchone()
+    if row and row['total'] > 0 and row['total'] == row['entregues']:
+        cursor.execute("""
+            UPDATE transporte_material_viagens
+            SET status = 'concluida', dt_conclusao = NOW()
+            WHERE id = %s AND status = 'em_andamento'
+        """, (viagem_id,))
 
 
 # =========================================================
@@ -514,13 +554,13 @@ def api_painel53_cancelar(chamado_id):
     try:
         with get_db_cursor() as cursor:
             cursor.execute(
-                "SELECT status, motorista_id FROM transporte_material_solicitacoes WHERE id = %s",
+                "SELECT status, motorista_id, viagem_id FROM transporte_material_solicitacoes WHERE id = %s",
                 (chamado_id,)
             )
             chamado = cursor.fetchone()
             if not chamado:
                 return jsonify({'success': False, 'error': 'Chamado nao encontrado'}), 404
-            if chamado['status'] not in ('aguardando', 'aceito', 'em_transporte'):
+            if chamado['status'] not in ('aguardando', 'em_transporte'):
                 return jsonify({'success': False,
                                 'error': 'Chamado nao pode ser cancelado no status: ' + chamado['status']}), 400
             if chamado['motorista_id'] is not None and str(chamado['motorista_id']) != str(motorista_id):
@@ -560,7 +600,7 @@ def api_painel53_historico_hoje():
                 SELECT
                     id, nr_protocolo, tipo_carga_nome,
                     setor_origem_nome, destino_nome, prioridade, status,
-                    nm_destinatario,
+                    nm_destinatario, entrega_parcial,
                     criado_em, dt_aceite, dt_inicio_transporte, dt_entrega,
                     CASE
                         WHEN dt_entrega IS NOT NULL AND dt_inicio_transporte IS NOT NULL

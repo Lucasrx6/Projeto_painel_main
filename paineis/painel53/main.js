@@ -13,16 +13,23 @@
         veiculos: [],
         veiculoId: null,
         veiculoPlaca: '',
-        chamadoAtivo: null,
+        chamadosAtivos: [],      // todos em_transporte do motorista
         fila: [],
-        chamadoAcaoId: null,
-        fotoCargaAtual: null,
-        timerFila: null,
-        signaturePad: null,
-        requerAssinatura: false
+        selecionados: [],        // IDs marcados na fila para nova viagem
+        chamadoAcaoId: null,     // ID do chamado sendo entregue/cancelado
+        fotoCargaAtual: null,    // foto da carga (painel52) para mostrar na entrega
+        // viagem
+        fotoInicioCapturada: null,
+        requerFotoInicio: false,
+        // pads
+        signaturePadMotorista: null,
+        signaturePadDestinatario: null,
+        timerFila: null
     };
 
     var DOM = {};
+
+    // ── helpers ──────────────────────────────────────────
 
     function escHtml(s) {
         if (s == null) return '';
@@ -48,22 +55,54 @@
         var telas = ['tela-selecao', 'tela-motorista'];
         for (var i = 0; i < telas.length; i++) {
             var el = document.getElementById(telas[i]);
-            if (el) el.style.display = telas[i] === id ? '' : 'none';
+            if (el) el.style.display = (telas[i] === id) ? '' : 'none';
         }
-        window.scrollTo(0, 0);
     }
 
     function fecharModal(id) {
-        var m = document.getElementById(id);
-        if (m) m.style.display = 'none';
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
     }
 
     function abrirModal(id) {
-        var m = document.getElementById(id);
-        if (m) m.style.display = 'flex';
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
     }
 
-    /* ── CARREGAR VEICULOS ───────────────────────── */
+    function setLoading(btn, loading) {
+        if (!btn) return;
+        btn.disabled = loading;
+        if (loading) {
+            btn._textoOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aguarde...';
+        } else if (btn._textoOriginal) {
+            btn.innerHTML = btn._textoOriginal;
+        }
+    }
+
+    // ── compressão de imagem (Canvas API) ────────────────
+
+    function comprimirImagem(file, callback) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var img = new Image();
+            img.onload = function () {
+                var maxW = 800, maxH = 600;
+                var w = img.width, h = img.height;
+                if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+                if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+                var canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                callback(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ── carregar veículos e motoristas ───────────────────
+
     function carregarVeiculos() {
         fetch(CONFIG.api + '/veiculos', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
@@ -75,19 +114,17 @@
                 sel.innerHTML = '<option value="">Nenhum / Nao se aplica</option>';
                 for (var i = 0; i < Estado.veiculos.length; i++) {
                     var v = Estado.veiculos[i];
+                    var label = escHtml(v.tipo.toUpperCase()) + ' - ' + escHtml(v.placa || '');
+                    if (v.descricao) label += ' (' + escHtml(v.descricao) + ')';
                     var opt = document.createElement('option');
                     opt.value = v.id;
-                    var label = v.tipo.charAt(0).toUpperCase() + v.tipo.slice(1);
-                    if (v.placa) label += ' - ' + v.placa;
-                    if (v.descricao) label += ' (' + v.descricao + ')';
                     opt.textContent = label;
                     sel.appendChild(opt);
                 }
             })
-            .catch(function (e) { console.error('Erro veiculos:', e); });
+            .catch(function () {});
     }
 
-    /* ── CARREGAR MOTORISTAS ──────────────────────── */
     function carregarMotoristas() {
         fetch(CONFIG.api + '/motoristas', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
@@ -101,117 +138,172 @@
                     var m = Estado.motoristas[i];
                     var opt = document.createElement('option');
                     opt.value = m.id;
-                    opt.textContent = m.nome + (m.turno && m.turno !== 'todos' ? ' (' + m.turno + ')' : '');
+                    opt.textContent = m.nome + (m.matricula ? ' (' + m.matricula + ')' : '');
                     sel.appendChild(opt);
                 }
             })
-            .catch(function (e) { console.error('Erro motoristas:', e); });
+            .catch(function () {});
     }
+
+    // ── entrar / sair ────────────────────────────────────
 
     function entrar() {
-        var sel = document.getElementById('select-motorista');
-        if (!sel || !sel.value) {
-            toast('Selecione seu nome.', 'warning');
-            return;
-        }
-        var id = parseInt(sel.value, 10);
-        var encontrado = null;
-        for (var i = 0; i < Estado.motoristas.length; i++) {
-            if (Estado.motoristas[i].id === id) { encontrado = Estado.motoristas[i]; break; }
-        }
-        if (!encontrado) { toast('Motorista nao encontrado.', 'error'); return; }
-        Estado.motoristaSelecionado = encontrado;
-
+        var selMot = document.getElementById('select-motorista');
         var selVei = document.getElementById('select-veiculo');
-        if (selVei && selVei.value) {
-            Estado.veiculoId = parseInt(selVei.value, 10);
-            var vEnc = null;
-            for (var vi = 0; vi < Estado.veiculos.length; vi++) {
-                if (Estado.veiculos[vi].id === Estado.veiculoId) { vEnc = Estado.veiculos[vi]; break; }
+        var motId  = selMot ? selMot.value : '';
+        if (!motId) { toast('Selecione um motorista.', 'warning'); return; }
+
+        var motorista = null;
+        for (var i = 0; i < Estado.motoristas.length; i++) {
+            if (String(Estado.motoristas[i].id) === String(motId)) {
+                motorista = Estado.motoristas[i]; break;
             }
-            Estado.veiculoPlaca = vEnc ? (vEnc.placa || '') : '';
-        } else {
-            Estado.veiculoId = null;
-            Estado.veiculoPlaca = '';
+        }
+        if (!motorista) { toast('Motorista nao encontrado.', 'error'); return; }
+
+        Estado.motoristaSelecionado = motorista;
+
+        var veiId = selVei ? selVei.value : '';
+        Estado.veiculoId = veiId ? parseInt(veiId, 10) : null;
+        Estado.veiculoPlaca = '';
+        if (veiId) {
+            for (var j = 0; j < Estado.veiculos.length; j++) {
+                if (String(Estado.veiculos[j].id) === String(veiId)) {
+                    Estado.veiculoPlaca = Estado.veiculos[j].placa || '';
+                    break;
+                }
+            }
         }
 
-        document.getElementById('motorista-nome-display').textContent = encontrado.nome;
-        document.getElementById('motorista-turno-display').textContent = 'Matricula: ' + (encontrado.matricula || 'N/A') + ' | Turno: ' + (encontrado.turno || 'todos');
+        var nomeEl  = document.getElementById('motorista-nome-display');
+        var turnoEl = document.getElementById('motorista-turno-display');
+        if (nomeEl)  nomeEl.textContent  = motorista.nome;
+        if (turnoEl) turnoEl.textContent = motorista.turno ? 'Turno: ' + motorista.turno : '';
+
         mostrarTela('tela-motorista');
+        Estado.selecionados = [];
         carregarFila();
-        carregarHistorico();
-        iniciarTimer();
+        Estado.timerFila = setInterval(carregarFila, CONFIG.refreshInterval);
     }
 
-    /* ── FILA ─────────────────────────────────────── */
+    function sair() {
+        if (Estado.timerFila) { clearInterval(Estado.timerFila); Estado.timerFila = null; }
+        Estado.motoristaSelecionado = null;
+        Estado.veiculoId = null;
+        Estado.veiculoPlaca = '';
+        Estado.chamadosAtivos = [];
+        Estado.fila = [];
+        Estado.selecionados = [];
+        Estado.fotoCargaAtual = null;
+        Estado.fotoInicioCapturada = null;
+        mostrarTela('tela-selecao');
+        var selMot = document.getElementById('select-motorista');
+        var selVei = document.getElementById('select-veiculo');
+        if (selMot) selMot.value = '';
+        if (selVei) selVei.value = '';
+    }
+
+    // ── carregar fila ────────────────────────────────────
+
     function carregarFila() {
-        if (!Estado.motoristaSelecionado) return;
-        fetch(CONFIG.api + '/fila?motorista_id=' + Estado.motoristaSelecionado.id, { credentials: 'same-origin' })
+        var motId = Estado.motoristaSelecionado ? Estado.motoristaSelecionado.id : '';
+        var url   = CONFIG.api + '/fila' + (motId ? '?motorista_id=' + motId : '');
+        fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                if (!data.success) return;
-                Estado.chamadoAtivo = data.chamado_ativo || null;
-                Estado.fila = data.fila || [];
+                if (!data.success) { toast('Erro ao atualizar fila.', 'error'); return; }
+                Estado.fila          = data.fila          || [];
+                Estado.chamadosAtivos = data.chamados_ativos || [];
+                renderizarAtivos();
                 renderizarFila();
-                renderizarAtivo();
+                carregarHistorico();
             })
-            .catch(function (e) { console.error('Erro fila:', e); });
+            .catch(function () { toast('Erro de conexao.', 'error'); });
     }
 
-    function renderizarAtivo() {
-        var area = document.getElementById('area-ativo');
-        var card = document.getElementById('chamado-ativo-card');
-        if (!area || !card) return;
-        if (!Estado.chamadoAtivo) {
+    // ── renderizar chamados ativos ────────────────────────
+
+    function renderizarAtivos() {
+        var area  = document.getElementById('area-ativos');
+        var lista = document.getElementById('chamados-ativos-lista');
+        if (!area || !lista) return;
+
+        if (!Estado.chamadosAtivos || Estado.chamadosAtivos.length === 0) {
             area.style.display = 'none';
             return;
         }
         area.style.display = '';
-        var c = Estado.chamadoAtivo;
-        var statusLabel = c.status === 'aceito' ? 'Aceito — pronto para iniciar' : 'Em Transporte';
-        card.innerHTML = '<div class="cac-header">' +
-            '<div><div class="cac-protocolo"><i class="fas fa-barcode"></i> ' + escHtml(c.nr_protocolo) + '</div>' +
-            '<div class="cac-tipo">' + escHtml(c.tipo_carga_nome || '') + '</div></div>' +
-            (c.prioridade === 'urgente' ? '<div class="cac-prioridade"><span class="badge-urgente"><i class="fas fa-bolt"></i> URGENTE</span></div>' : '') +
-            '</div>' +
-            '<div class="cac-rota"><i class="fas fa-map-marker-alt"></i>' +
-            escHtml(c.setor_origem_nome) + ' <i class="fas fa-long-arrow-alt-right"></i> ' + escHtml(c.destino_nome) +
-            (c.destino_complemento ? ' <small>(' + escHtml(c.destino_complemento) + ')</small>' : '') +
-            '</div>' +
-            (c.descricao ? '<div class="cac-descricao"><i class="fas fa-align-left"></i> ' + escHtml(c.descricao) + '</div>' : '') +
-            '<div style="padding:4px 16px 6px;font-size:12px;color:#888;"><i class="fas fa-info-circle"></i> Solicitante: ' + escHtml(c.solicitante_nome || '') + '</div>' +
-            '<div class="cac-acoes">' +
-            (c.requer_lista_itens || c.tem_itens ? '<button class="btn-acao btn-acao-itens" data-id="' + c.id + '"><i class="fas fa-list-ul"></i> Ver Itens</button>' : '') +
-            (c.status === 'aceito' ? '<button class="btn-acao btn-acao-iniciar" data-id="' + c.id + '"><i class="fas fa-truck"></i> Iniciar Transporte</button>' : '') +
-            (c.status === 'em_transporte' ? '<button class="btn-acao btn-acao-entregar" data-id="' + c.id + '" data-assinatura="' + (c.requer_assinatura ? '1' : '0') + '"><i class="fas fa-box-open"></i> Registrar Entrega</button>' : '') +
-            '<button class="btn-acao btn-acao-cancelar" data-id="' + c.id + '"><i class="fas fa-times"></i> Cancelar</button>' +
-            '</div>';
+        var html = '';
+        for (var i = 0; i < Estado.chamadosAtivos.length; i++) {
+            var c = Estado.chamadosAtivos[i];
+            var corBorda = c.tipo_carga_cor ? 'border-left:4px solid ' + escHtml(c.tipo_carga_cor) + ';' : '';
+            var badgePrio = c.prioridade === 'urgente'
+                ? '<span class="badge-urgente"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>' : '';
+            html += '<div class="chamado-ativo-card" data-id="' + escHtml(String(c.id)) + '" style="' + corBorda + '">' +
+                '<div class="chamado-ativo-header">' +
+                    '<span class="chamado-protocolo"><i class="fas fa-hashtag"></i> ' + escHtml(c.nr_protocolo) + '</span>' +
+                    badgePrio +
+                '</div>' +
+                '<div class="chamado-tipo-nome">' +
+                    (c.tipo_carga_icone ? '<i class="fas ' + escHtml(c.tipo_carga_icone) + '"></i> ' : '') +
+                    escHtml(c.tipo_carga_nome) +
+                '</div>' +
+                '<div class="chamado-rota">' +
+                    '<i class="fas fa-map-marker-alt"></i> ' + escHtml(c.setor_origem_nome) +
+                    ' <i class="fas fa-arrow-right"></i> ' + escHtml(c.destino_nome) +
+                    (c.destino_complemento ? ' — ' + escHtml(c.destino_complemento) : '') +
+                '</div>' +
+                '<div class="chamado-ativo-acoes">';
 
-        var btnItens = card.querySelectorAll('.btn-acao-itens');
-        for (var i = 0; i < btnItens.length; i++) {
-            btnItens[i].addEventListener('click', function (e) { abrirItens(parseInt(e.currentTarget.getAttribute('data-id'), 10)); });
+            if (c.requer_lista_itens) {
+                html += '<button class="btn-acao btn-itens" data-id="' + c.id + '">' +
+                    '<i class="fas fa-list-ul"></i> Itens</button>';
+            }
+            if (c.requer_assinatura) {
+                html += '<button class="btn-acao btn-entregar-assin" data-id="' + c.id +
+                    '" data-foto="' + escHtml(c.foto_carga || '') + '">' +
+                    '<i class="fas fa-signature"></i> Entregar</button>';
+            } else {
+                html += '<button class="btn-acao btn-entregar" data-id="' + c.id +
+                    '" data-foto="' + escHtml(c.foto_carga || '') + '">' +
+                    '<i class="fas fa-box-open"></i> Entregar</button>';
+            }
+            html += '<button class="btn-acao btn-cancelar-chamado" data-id="' + c.id + '">' +
+                '<i class="fas fa-times"></i> Cancelar</button>';
+            html += '</div></div>';
         }
-        var btnIniciar = card.querySelectorAll('.btn-acao-iniciar');
-        for (var j = 0; j < btnIniciar.length; j++) {
-            btnIniciar[j].addEventListener('click', function (e) { iniciarTransporte(parseInt(e.currentTarget.getAttribute('data-id'), 10)); });
-        }
-        var btnEntregar = card.querySelectorAll('.btn-acao-entregar');
-        for (var k = 0; k < btnEntregar.length; k++) {
-            btnEntregar[k].addEventListener('click', function (e) {
-                Estado.chamadoAcaoId = parseInt(e.currentTarget.getAttribute('data-id'), 10);
-                Estado.requerAssinatura = e.currentTarget.getAttribute('data-assinatura') === '1';
-                abrirEntrega();
+        lista.innerHTML = html;
+
+        // Eventos
+        var btnsItens = lista.querySelectorAll('.btn-itens');
+        for (var j = 0; j < btnsItens.length; j++) {
+            btnsItens[j].addEventListener('click', function () {
+                verItens(parseInt(this.getAttribute('data-id'), 10));
             });
         }
-        var btnCancelar = card.querySelectorAll('.btn-acao-cancelar');
-        for (var l = 0; l < btnCancelar.length; l++) {
-            btnCancelar[l].addEventListener('click', function (e) {
-                Estado.chamadoAcaoId = parseInt(e.currentTarget.getAttribute('data-id'), 10);
-                document.getElementById('cancelar-motivo').value = '';
-                abrirModal('modal-cancelar');
+        var btnsEntr = lista.querySelectorAll('.btn-entregar');
+        for (var k = 0; k < btnsEntr.length; k++) {
+            btnsEntr[k].addEventListener('click', function () {
+                abrirEntrega(parseInt(this.getAttribute('data-id'), 10),
+                             this.getAttribute('data-foto') || null);
+            });
+        }
+        var btnsEntrAssin = lista.querySelectorAll('.btn-entregar-assin');
+        for (var l = 0; l < btnsEntrAssin.length; l++) {
+            btnsEntrAssin[l].addEventListener('click', function () {
+                abrirEntregaAssinatura(parseInt(this.getAttribute('data-id'), 10),
+                                       this.getAttribute('data-foto') || null);
+            });
+        }
+        var btnsCancelActivo = lista.querySelectorAll('.btn-cancelar-chamado');
+        for (var m = 0; m < btnsCancelActivo.length; m++) {
+            btnsCancelActivo[m].addEventListener('click', function () {
+                abrirCancelar(parseInt(this.getAttribute('data-id'), 10));
             });
         }
     }
+
+    // ── renderizar fila ───────────────────────────────────
 
     function renderizarFila() {
         var lista = document.getElementById('fila-lista');
@@ -221,240 +313,456 @@
 
         if (total) total.textContent = Estado.fila.length + ' chamado(s)';
 
-        if (!Estado.fila.length) {
+        if (Estado.fila.length === 0) {
             lista.innerHTML = '';
             if (vazia) vazia.style.display = '';
+            atualizarBarraSelecao();
             return;
         }
         if (vazia) vazia.style.display = 'none';
 
-        lista.innerHTML = '';
+        var html = '';
         for (var i = 0; i < Estado.fila.length; i++) {
-            lista.appendChild(criarCardFila(Estado.fila[i]));
+            var c = Estado.fila[i];
+            var selecionado = Estado.selecionados.indexOf(c.id) !== -1;
+            var corBorda = c.tipo_carga_cor ? 'border-left:4px solid ' + escHtml(c.tipo_carga_cor) + ';' : '';
+            var badgePrio = c.prioridade === 'urgente'
+                ? '<span class="badge-urgente"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>' : '';
+            var mins = c.minutos_espera != null ? (' | <i class="fas fa-clock"></i> ' + escHtml(String(c.minutos_espera)) + ' min') : '';
+
+            html += '<div class="fila-card' + (selecionado ? ' fila-card-selecionado' : '') +
+                '" data-id="' + escHtml(String(c.id)) + '" style="' + corBorda + '">' +
+                '<label class="fila-card-check-label">' +
+                    '<input type="checkbox" class="fila-checkbox" data-id="' + escHtml(String(c.id)) + '"' +
+                        (selecionado ? ' checked' : '') + '>' +
+                    '<div class="fila-card-body">' +
+                        '<div class="fila-card-header">' +
+                            '<span class="chamado-protocolo"><i class="fas fa-hashtag"></i> ' + escHtml(c.nr_protocolo) + '</span>' +
+                            badgePrio +
+                        '</div>' +
+                        '<div class="chamado-tipo-nome">' +
+                            (c.tipo_carga_icone ? '<i class="fas ' + escHtml(c.tipo_carga_icone) + '"></i> ' : '') +
+                            escHtml(c.tipo_carga_nome) +
+                        '</div>' +
+                        '<div class="chamado-rota">' +
+                            '<i class="fas fa-map-marker-alt"></i> ' + escHtml(c.setor_origem_nome) +
+                            ' <i class="fas fa-arrow-right"></i> ' + escHtml(c.destino_nome) +
+                            (c.destino_complemento ? ' — ' + escHtml(c.destino_complemento) : '') +
+                        '</div>' +
+                        '<div class="chamado-meta" style="font-size:12px;color:#888;">' +
+                            '<i class="fas fa-user"></i> ' + escHtml(c.solicitante_nome) + mins +
+                        '</div>' +
+                    '</div>' +
+                '</label>' +
+                '</div>';
         }
-    }
+        lista.innerHTML = html;
 
-    function criarCardFila(c) {
-        var div = document.createElement('div');
-        div.className = 'fila-card' + (c.prioridade === 'urgente' ? ' urgente' : '');
-        var mins = c.minutos_espera != null ? Math.round(parseFloat(c.minutos_espera)) : 0;
-        var tempoClass = mins > 20 ? ' alerta' : '';
-        var tempoTxt = mins >= 60 ?
-            Math.floor(mins / 60) + 'h ' + (mins % 60) + 'min' :
-            mins + ' min';
-
-        div.innerHTML = '<div class="fila-card-header">' +
-            '<span class="fc-protocolo"><i class="fas fa-barcode"></i> ' + escHtml(c.nr_protocolo) + '</span>' +
-            '<span class="fc-tempo' + tempoClass + '"><i class="fas fa-clock"></i> ' + escHtml(tempoTxt) + '</span>' +
-            '</div>' +
-            '<div class="fila-card-body">' +
-            '<div class="fc-tipo">' + (c.tipo_carga_icone ? '<i class="fas ' + escHtml(c.tipo_carga_icone) + '"></i> ' : '') + escHtml(c.tipo_carga_nome || '') +
-            (c.prioridade === 'urgente' ? ' <span class="badge-urgente"><i class="fas fa-bolt"></i> URGENTE</span>' : '') + '</div>' +
-            '<div class="fc-rota"><i class="fas fa-map-signs"></i>' + escHtml(c.setor_origem_nome) + ' → ' + escHtml(c.destino_nome) + '</div>' +
-            '</div>' +
-            '<div class="fila-card-footer">' +
-            '<span style="font-size:12px;color:#aaa;"><i class="fas fa-user"></i> ' + escHtml(c.solicitante_nome || '') + '</span>' +
-            (!Estado.chamadoAtivo ? '<button class="btn-aceitar" data-id="' + c.id + '"><i class="fas fa-hand-pointer"></i> Aceitar</button>' : '') +
-            '</div>';
-
-        var btnAceitar = div.querySelector('.btn-aceitar');
-        if (btnAceitar) {
-            btnAceitar.addEventListener('click', function (e) {
-                aceitarChamado(parseInt(e.currentTarget.getAttribute('data-id'), 10));
+        // Eventos nos checkboxes
+        var checks = lista.querySelectorAll('.fila-checkbox');
+        for (var j = 0; j < checks.length; j++) {
+            checks[j].addEventListener('change', function () {
+                var id = parseInt(this.getAttribute('data-id'), 10);
+                var idx = Estado.selecionados.indexOf(id);
+                if (this.checked) {
+                    if (idx === -1) Estado.selecionados.push(id);
+                } else {
+                    if (idx !== -1) Estado.selecionados.splice(idx, 1);
+                }
+                var card = this.closest ? this.closest('.fila-card') : null;
+                if (!card) {
+                    card = this.parentNode;
+                    while (card && !card.classList.contains('fila-card')) card = card.parentNode;
+                }
+                if (card) {
+                    if (this.checked) card.classList.add('fila-card-selecionado');
+                    else card.classList.remove('fila-card-selecionado');
+                }
+                atualizarBarraSelecao();
             });
         }
-        return div;
+        atualizarBarraSelecao();
     }
 
-    /* ── ACOES ────────────────────────────────────── */
-    function aceitarChamado(id) {
-        fetch(CONFIG.api + '/chamados/' + id + '/aceitar', {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ motorista_id: Estado.motoristaSelecionado.id })
-        })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.success) { toast('Chamado aceito!', 'success'); carregarFila(); carregarHistorico(); }
-                else { toast(data.error || 'Erro ao aceitar chamado.', 'error'); }
-            })
-            .catch(function (e) { console.error(e); toast('Erro de conexao.', 'error'); });
+    function atualizarBarraSelecao() {
+        var barra = document.getElementById('barra-selecao');
+        var count = document.getElementById('barra-selecao-count');
+        if (!barra) return;
+        var n = Estado.selecionados.length;
+        // Só mostra a barra se não há chamados ativos OU se está no modo fila
+        if (n > 0 && Estado.chamadosAtivos.length === 0) {
+            barra.style.display = 'flex';
+            if (count) count.textContent = n + ' selecionado(s)';
+        } else {
+            barra.style.display = 'none';
+        }
     }
 
-    function iniciarTransporte(id) {
-        fetch(CONFIG.api + '/chamados/' + id + '/iniciar', {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ motorista_id: Estado.motoristaSelecionado.id })
-        })
+    // ── histórico ────────────────────────────────────────
+
+    function carregarHistorico() {
+        var motId = Estado.motoristaSelecionado ? Estado.motoristaSelecionado.id : '';
+        if (!motId) return;
+        fetch(CONFIG.api + '/historico-hoje?motorista_id=' + motId, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                if (data.success) { toast('Transporte iniciado!', 'success'); carregarFila(); }
-                else { toast(data.error || 'Erro ao iniciar transporte.', 'error'); }
+                if (!data.success) return;
+                var lista = document.getElementById('historico-lista');
+                if (!lista) return;
+                if (!data.chamados || data.chamados.length === 0) {
+                    lista.innerHTML = '<div class="historico-vazio">Nenhum registro hoje</div>';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < data.chamados.length; i++) {
+                    var c = data.chamados[i];
+                    var statusCls = c.status === 'entregue' ? 'status-entregue' :
+                                    c.status === 'cancelado' ? 'status-cancelado' : 'status-andamento';
+                    var parcialBadge = c.entrega_parcial
+                        ? '<span class="badge-parcial"><i class="fas fa-exclamation-triangle"></i> Parcial</span>' : '';
+                    html += '<div class="historico-item">' +
+                        '<div class="historico-item-header">' +
+                            '<span class="historico-protocolo">' + escHtml(c.nr_protocolo) + '</span>' +
+                            '<span class="historico-status ' + statusCls + '">' + escHtml(c.status) + '</span>' +
+                            parcialBadge +
+                        '</div>' +
+                        '<div class="historico-rota">' +
+                            escHtml(c.setor_origem_nome) + ' → ' + escHtml(c.destino_nome) +
+                        '</div>' +
+                        (c.nm_destinatario ? '<div class="historico-dest"><i class="fas fa-user-check"></i> ' + escHtml(c.nm_destinatario) + '</div>' : '') +
+                        '</div>';
+                }
+                lista.innerHTML = html;
             })
-            .catch(function (e) { console.error(e); toast('Erro de conexao.', 'error'); });
+            .catch(function () {});
+    }
+
+    // ── Iniciar Viagem ────────────────────────────────────
+
+    function abrirIniciarViagem() {
+        if (Estado.selecionados.length === 0) {
+            toast('Selecione pelo menos um chamado.', 'warning'); return;
+        }
+
+        // Verificar se algum tipo requer foto_inicio
+        Estado.requerFotoInicio = false;
+        for (var i = 0; i < Estado.fila.length; i++) {
+            var c = Estado.fila[i];
+            if (Estado.selecionados.indexOf(c.id) !== -1 && c.requer_foto_inicio) {
+                Estado.requerFotoInicio = true; break;
+            }
+        }
+
+        // Atualizar numero do passo da assinatura
+        var passoAssin = document.getElementById('viagem-passo-assin-num');
+        var fotoSecao  = document.getElementById('viagem-foto-secao');
+        if (Estado.requerFotoInicio) {
+            if (fotoSecao)  fotoSecao.style.display  = '';
+            if (passoAssin) passoAssin.textContent = '2';
+        } else {
+            if (fotoSecao)  fotoSecao.style.display  = 'none';
+            if (passoAssin) passoAssin.textContent = '1';
+        }
+
+        // Montar resumo dos chamados selecionados
+        var resumoEl = document.getElementById('viagem-resumo');
+        if (resumoEl) {
+            var html = '<div class="viagem-resumo-titulo"><i class="fas fa-clipboard-list"></i> Chamados selecionados (' +
+                Estado.selecionados.length + ')</div><ul class="viagem-resumo-lista">';
+            for (var j = 0; j < Estado.fila.length; j++) {
+                var cf = Estado.fila[j];
+                if (Estado.selecionados.indexOf(cf.id) !== -1) {
+                    html += '<li><i class="fas fa-hashtag"></i> ' + escHtml(cf.nr_protocolo) +
+                        ' — ' + escHtml(cf.tipo_carga_nome) +
+                        ' → ' + escHtml(cf.destino_nome) + '</li>';
+                }
+            }
+            html += '</ul>';
+            resumoEl.innerHTML = html;
+        }
+
+        // Resetar foto e assinatura do motorista
+        Estado.fotoInicioCapturada = null;
+        var prevFoto = document.getElementById('viagem-foto-preview');
+        var btnFoto  = document.getElementById('viagem-btn-tirar-foto');
+        if (prevFoto) prevFoto.style.display = 'none';
+        if (btnFoto)  btnFoto.style.display  = '';
+
+        if (Estado.signaturePadMotorista) {
+            Estado.signaturePadMotorista.clear();
+        }
+
+        abrirModal('modal-iniciar-viagem');
+        inicializarPadMotorista();
+    }
+
+    function inicializarPadMotorista() {
+        var canvas = document.getElementById('canvas-motorista');
+        if (!canvas || !window.SignaturePad) return;
+        if (Estado.signaturePadMotorista) {
+            Estado.signaturePadMotorista.clear();
+            return;
+        }
+        Estado.signaturePadMotorista = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255,255,255)',
+            penColor: 'rgb(0,0,0)',
+            minWidth: 1.5,
+            maxWidth: 3
+        });
+        function ajustarCanvas() {
+            var ratio = window.devicePixelRatio || 1;
+            canvas.width  = canvas.offsetWidth  * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext('2d').scale(ratio, ratio);
+            Estado.signaturePadMotorista.clear();
+        }
+        ajustarCanvas();
+    }
+
+    function confirmarIniciarViagem() {
+        var btn = document.getElementById('btn-confirmar-viagem');
+
+        // Validar foto se obrigatório
+        if (Estado.requerFotoInicio && !Estado.fotoInicioCapturada) {
+            toast('Foto do material e obrigatoria para iniciar a viagem.', 'warning'); return;
+        }
+
+        // Validar assinatura do motorista (sempre obrigatória)
+        if (!Estado.signaturePadMotorista || Estado.signaturePadMotorista.isEmpty()) {
+            toast('Assinatura do motorista e obrigatoria.', 'warning'); return;
+        }
+
+        var assinaturaMotorista = Estado.signaturePadMotorista.toDataURL('image/png');
+
+        var payload = {
+            motorista_id:        Estado.motoristaSelecionado.id,
+            veiculo_id:          Estado.veiculoId,
+            veiculo_placa:       Estado.veiculoPlaca || null,
+            chamado_ids:         Estado.selecionados,
+            assinatura_motorista: assinaturaMotorista,
+            foto_inicio:         Estado.fotoInicioCapturada || null
+        };
+
+        setLoading(btn, true);
+        fetch(CONFIG.api + '/viagem/iniciar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            setLoading(btn, false);
+            if (data.success) {
+                toast(data.message || 'Viagem iniciada!', 'success');
+                Estado.selecionados = [];
+                fecharModal('modal-iniciar-viagem');
+                carregarFila();
+            } else {
+                toast(data.error || 'Erro ao iniciar viagem.', 'error');
+            }
+        })
+        .catch(function () { setLoading(btn, false); toast('Erro de conexao.', 'error'); });
+    }
+
+    // ── Foto início de viagem ─────────────────────────────
+
+    function inicializarFotoViagem() {
+        var inputFoto  = document.getElementById('viagem-input-foto');
+        var btnTirar   = document.getElementById('viagem-btn-tirar-foto');
+        var btnRemover = document.getElementById('viagem-btn-remover-foto');
+        if (!inputFoto || !btnTirar) return;
+
+        btnTirar.addEventListener('click', function () { inputFoto.click(); });
+        inputFoto.addEventListener('change', function () {
+            var file = inputFoto.files && inputFoto.files[0];
+            if (!file) return;
+            comprimirImagem(file, function (base64) {
+                Estado.fotoInicioCapturada = base64;
+                var preview = document.getElementById('viagem-foto-preview');
+                var img     = document.getElementById('viagem-foto-img');
+                if (img)     img.src            = base64;
+                if (preview) preview.style.display = '';
+                btnTirar.style.display = 'none';
+            });
+        });
+        if (btnRemover) {
+            btnRemover.addEventListener('click', function () {
+                Estado.fotoInicioCapturada = null;
+                var preview = document.getElementById('viagem-foto-preview');
+                var img     = document.getElementById('viagem-foto-img');
+                if (img)     img.src            = '';
+                if (preview) preview.style.display = 'none';
+                btnTirar.style.display = '';
+            });
+        }
+    }
+
+    // ── Entregar ─────────────────────────────────────────
+
+    function abrirEntrega(chamadoId, fotoBase64) {
+        Estado.chamadoAcaoId = chamadoId;
+        Estado.fotoCargaAtual = fotoBase64 || null;
+        _mostrarFotoModal('entregar-foto-wrap', 'entregar-foto-img');
+        var dest = document.getElementById('entregar-destinatario');
+        var obs  = document.getElementById('entregar-obs');
+        var chk  = document.getElementById('entregar-parcial');
+        var obsW = document.getElementById('entregar-parcial-obs-wrap');
+        var obsT = document.getElementById('entregar-parcial-obs');
+        if (dest) dest.value = '';
+        if (obs)  obs.value  = '';
+        if (chk)  { chk.checked = false; }
+        if (obsW) obsW.style.display = 'none';
+        if (obsT) obsT.value = '';
+        abrirModal('modal-entregar');
+    }
+
+    function confirmarEntrega() {
+        var btn  = document.getElementById('btn-confirmar-entrega');
+        var dest = (document.getElementById('entregar-destinatario').value || '').trim();
+        var obs  = (document.getElementById('entregar-obs').value || '').trim();
+        var parcial = document.getElementById('entregar-parcial').checked;
+        var obsParcial = (document.getElementById('entregar-parcial-obs').value || '').trim();
+        if (!dest) { toast('Informe o nome do destinatario.', 'warning'); return; }
+
+        setLoading(btn, true);
+        fetch(CONFIG.api + '/chamados/' + Estado.chamadoAcaoId + '/entregar', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                motorista_id:       Estado.motoristaSelecionado.id,
+                nm_destinatario:    dest,
+                observacao_entrega: obs,
+                veiculo_id:         Estado.veiculoId,
+                veiculo_placa:      Estado.veiculoPlaca || null,
+                entrega_parcial:    parcial,
+                obs_entrega_parcial: obsParcial || null
+            })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            setLoading(btn, false);
+            if (data.success) {
+                toast('Entrega registrada!', 'success');
+                fecharModal('modal-entregar');
+                carregarFila();
+            } else {
+                toast(data.error || 'Erro ao registrar entrega.', 'error');
+            }
+        })
+        .catch(function () { setLoading(btn, false); toast('Erro de conexao.', 'error'); });
+    }
+
+    // ── Entregar com Assinatura ───────────────────────────
+
+    function abrirEntregaAssinatura(chamadoId, fotoBase64) {
+        Estado.chamadoAcaoId = chamadoId;
+        Estado.fotoCargaAtual = fotoBase64 || null;
+        _mostrarFotoModal('assin-foto-wrap', 'assin-foto-img');
+        var dest = document.getElementById('assin-destinatario');
+        var pin  = document.getElementById('assin-pin');
+        var obs  = document.getElementById('assin-obs');
+        var chk  = document.getElementById('assin-parcial');
+        var obsW = document.getElementById('assin-parcial-obs-wrap');
+        var obsT = document.getElementById('assin-parcial-obs');
+        var pinSt = document.getElementById('pin-status');
+        if (dest)  dest.value  = '';
+        if (pin)   pin.value   = '';
+        if (obs)   obs.value   = '';
+        if (chk)   chk.checked = false;
+        if (obsW)  obsW.style.display = 'none';
+        if (obsT)  obsT.value  = '';
+        if (pinSt) pinSt.textContent = '';
+        if (Estado.signaturePadDestinatario) Estado.signaturePadDestinatario.clear();
+        abrirModal('modal-assinatura');
+        inicializarPadDestinatario();
+    }
+
+    function inicializarPadDestinatario() {
+        var canvas = document.getElementById('canvas-assinatura');
+        if (!canvas || !window.SignaturePad) return;
+        if (Estado.signaturePadDestinatario) {
+            Estado.signaturePadDestinatario.clear();
+            return;
+        }
+        Estado.signaturePadDestinatario = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255,255,255)',
+            penColor: 'rgb(0,0,0)',
+            minWidth: 1.5,
+            maxWidth: 3
+        });
+        function ajustar() {
+            var ratio = window.devicePixelRatio || 1;
+            canvas.width  = canvas.offsetWidth  * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext('2d').scale(ratio, ratio);
+            Estado.signaturePadDestinatario.clear();
+        }
+        ajustar();
+    }
+
+    function confirmarEntregaAssinatura() {
+        var btn  = document.getElementById('btn-confirmar-assinatura');
+        var dest = (document.getElementById('assin-destinatario').value || '').trim();
+        var pin  = (document.getElementById('assin-pin').value || '').trim();
+        var obs  = (document.getElementById('assin-obs').value || '').trim();
+        var parcial = document.getElementById('assin-parcial').checked;
+        var obsParcial = (document.getElementById('assin-parcial-obs').value || '').trim();
+
+        if (!dest) { toast('Informe o nome do destinatario.', 'warning'); return; }
+        if (!pin)  { toast('Informe o PIN do motorista.', 'warning'); return; }
+        if (!Estado.signaturePadDestinatario || Estado.signaturePadDestinatario.isEmpty()) {
+            toast('Assinatura do destinatario e obrigatoria.', 'warning'); return;
+        }
+
+        var assinaturaImg = Estado.signaturePadDestinatario.toDataURL('image/png');
+
+        setLoading(btn, true);
+        fetch(CONFIG.api + '/chamados/' + Estado.chamadoAcaoId + '/entregar-com-assinatura', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                motorista_pin:      pin,
+                nm_destinatario:    dest,
+                assinatura_img:     assinaturaImg,
+                observacao_entrega: obs,
+                veiculo_id:         Estado.veiculoId,
+                veiculo_placa:      Estado.veiculoPlaca || null,
+                entrega_parcial:    parcial,
+                obs_entrega_parcial: obsParcial || null
+            })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            setLoading(btn, false);
+            if (data.success) {
+                toast('Entrega com assinatura registrada!', 'success');
+                fecharModal('modal-assinatura');
+                carregarFila();
+            } else {
+                toast(data.error || 'Erro ao registrar entrega.', 'error');
+            }
+        })
+        .catch(function () { setLoading(btn, false); toast('Erro de conexao.', 'error'); });
     }
 
     function _mostrarFotoModal(wrapId, imgId) {
         var wrap = document.getElementById(wrapId);
         var img  = document.getElementById(imgId);
         if (!wrap) return;
-        var foto = Estado.fotoCargaAtual;
-        if (foto && foto.indexOf('data:image/') === 0) {
-            if (img) img.src = foto;
+        if (Estado.fotoCargaAtual && Estado.fotoCargaAtual.startsWith('data:image/')) {
+            if (img) img.src = Estado.fotoCargaAtual;
             wrap.style.display = '';
         } else {
             wrap.style.display = 'none';
         }
     }
 
-    function abrirEntrega() {
-        var c = Estado.chamadoAtivo;
-        Estado.fotoCargaAtual = (c && c.foto_carga) ? c.foto_carga : null;
+    // ── Ver Itens ─────────────────────────────────────────
 
-        if (Estado.requerAssinatura) {
-            document.getElementById('assin-destinatario').value = '';
-            document.getElementById('assin-pin').value = '';
-            document.getElementById('assin-obs').value = '';
-            document.getElementById('pin-status').textContent = '';
-            document.getElementById('pin-status').className = 'pin-status';
-            if (Estado.signaturePad) Estado.signaturePad.clear();
-            abrirModal('modal-assinatura');
-            _mostrarFotoModal('assin-foto-wrap', 'assin-foto-img');
-            inicializarSignaturePad();
-        } else {
-            document.getElementById('entregar-destinatario').value = '';
-            document.getElementById('entregar-obs').value = '';
-            abrirModal('modal-entregar');
-            _mostrarFotoModal('entregar-foto-wrap', 'entregar-foto-img');
-        }
-    }
-
-    function inicializarSignaturePad() {
-        var canvas = document.getElementById('canvas-assinatura');
-        if (!canvas) return;
-        var wrapper = canvas.parentNode;
-        canvas.width  = wrapper.offsetWidth  || 460;
-        canvas.height = 160;
-        if (typeof SignaturePad !== 'undefined') {
-            if (Estado.signaturePad) Estado.signaturePad.clear();
-            else Estado.signaturePad = new SignaturePad(canvas, { minWidth: 1.5, maxWidth: 3, penColor: '#1a1a2e' });
-        }
-    }
-
-    function confirmarEntrega() {
-        var dest = (document.getElementById('entregar-destinatario').value || '').trim();
-        if (!dest) { toast('Informe o nome do destinatario.', 'warning'); return; }
-        var obs = document.getElementById('entregar-obs').value;
-        var btn = document.getElementById('btn-confirmar-entrega');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
-        fetch(CONFIG.api + '/chamados/' + Estado.chamadoAcaoId + '/entregar', {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                motorista_id: Estado.motoristaSelecionado.id,
-                nm_destinatario: dest,
-                observacao_entrega: obs,
-                veiculo_id: Estado.veiculoId,
-                veiculo_placa: Estado.veiculoPlaca || null
-            })
-        })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check"></i> Confirmar Entrega';
-                fecharModal('modal-entregar');
-                if (data.success) { toast('Entrega registrada!', 'success'); carregarFila(); carregarHistorico(); }
-                else { toast(data.error || 'Erro ao registrar entrega.', 'error'); }
-            })
-            .catch(function (e) {
-                console.error(e);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check"></i> Confirmar Entrega';
-                toast('Erro de conexao.', 'error');
-            });
-    }
-
-    function confirmarEntregaAssinatura() {
-        var dest = (document.getElementById('assin-destinatario').value || '').trim();
-        var pin  = (document.getElementById('assin-pin').value || '').trim();
-        var obs  = document.getElementById('assin-obs').value;
-
-        if (!dest) { toast('Informe o nome do destinatario.', 'warning'); return; }
-        if (!pin)  { toast('Informe o PIN do motorista.', 'warning');     return; }
-
-        if (!Estado.signaturePad || Estado.signaturePad.isEmpty()) {
-            toast('Colha a assinatura do destinatario.', 'warning');
-            return;
-        }
-
-        var imgData = Estado.signaturePad.toDataURL('image/png');
-        var btn = document.getElementById('btn-confirmar-assinatura');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
-
-        fetch(CONFIG.api + '/chamados/' + Estado.chamadoAcaoId + '/entregar-com-assinatura', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                motorista_id:   Estado.motoristaSelecionado.id,
-                pin:            pin,
-                nm_destinatario: dest,
-                assinatura_img: imgData,
-                observacao_entrega: obs,
-                veiculo_id: Estado.veiculoId,
-                veiculo_placa: Estado.veiculoPlaca || null
-            })
-        })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-circle"></i> Confirmar com Assinatura';
-                if (data.success) {
-                    fecharModal('modal-assinatura');
-                    toast('Entrega com assinatura registrada!', 'success');
-                    carregarFila();
-                    carregarHistorico();
-                } else {
-                    toast(data.error || 'Erro ao registrar.', 'error');
-                }
-            })
-            .catch(function (e) {
-                console.error(e);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-circle"></i> Confirmar com Assinatura';
-                toast('Erro de conexao.', 'error');
-            });
-    }
-
-    function confirmarCancelamento() {
-        var motivo = (document.getElementById('cancelar-motivo').value || '').trim();
-        if (motivo.length < 10) { toast('O motivo deve ter pelo menos 10 caracteres.', 'warning'); return; }
-        var btn = document.getElementById('btn-confirmar-cancelar');
-        btn.disabled = true;
-        fetch(CONFIG.api + '/chamados/' + Estado.chamadoAcaoId + '/cancelar', {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ motorista_id: Estado.motoristaSelecionado.id, motivo: motivo })
-        })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                btn.disabled = false;
-                fecharModal('modal-cancelar');
-                if (data.success) { toast('Chamado cancelado.', 'success'); carregarFila(); carregarHistorico(); }
-                else { toast(data.error || 'Erro ao cancelar.', 'error'); }
-            })
-            .catch(function (e) { console.error(e); btn.disabled = false; toast('Erro de conexao.', 'error'); });
-    }
-
-    /* ── VER ITENS ────────────────────────────────── */
-    function abrirItens(chamadoId) {
+    function verItens(chamadoId) {
         var lista = document.getElementById('itens-lista');
         if (lista) lista.innerHTML = '<div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>';
         abrirModal('modal-itens');
@@ -462,156 +770,158 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!lista) return;
-                if (!data.success || !data.itens || !data.itens.length) {
-                    lista.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;">Nenhum item no manifesto.</p>';
-                    return;
+                if (!data.success || !data.itens || data.itens.length === 0) {
+                    lista.innerHTML = '<div class="historico-vazio">Nenhum item cadastrado.</div>'; return;
                 }
                 var html = '';
                 for (var i = 0; i < data.itens.length; i++) {
                     var it = data.itens[i];
-                    html += '<div class="item-row">' +
-                        '<span class="item-num-badge">' + (i + 1) + '</span>' +
-                        '<span class="item-desc">' + escHtml(it.descricao) + '</span>' +
-                        '<span class="item-qtd">' + escHtml(String(it.quantidade)) + ' ' + escHtml(it.unidade || '') + '</span>' +
+                    html += '<div class="item-manifesto">' +
+                        '<div class="item-manifesto-desc">' + escHtml(it.descricao) + '</div>' +
+                        '<div class="item-manifesto-det">' +
+                            escHtml(String(it.quantidade)) + ' ' + escHtml(it.unidade) +
+                            (it.nr_identificador ? ' | <i class="fas fa-hashtag"></i> ' + escHtml(it.nr_identificador) : '') +
+                            (it.observacao ? ' — ' + escHtml(it.observacao) : '') +
+                        '</div>' +
                         '</div>';
-                    if (it.observacao) {
-                        html += '<div style="padding:0 8px 4px 46px;font-size:12px;color:#888;">' + escHtml(it.observacao) + '</div>';
-                    }
                 }
                 lista.innerHTML = html;
             })
-            .catch(function (e) {
-                console.error(e);
-                if (lista) lista.innerHTML = '<p style="color:#dc3545;text-align:center;">Erro ao carregar itens.</p>';
+            .catch(function () {
+                if (lista) lista.innerHTML = '<div class="historico-vazio">Erro ao carregar.</div>';
             });
     }
 
-    /* ── HISTORICO ────────────────────────────────── */
-    function carregarHistorico() {
-        if (!Estado.motoristaSelecionado) return;
-        fetch(CONFIG.api + '/historico-hoje?motorista_id=' + Estado.motoristaSelecionado.id, { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                var lista = document.getElementById('historico-lista');
-                if (!lista) return;
-                if (!data.success || !data.historico || !data.historico.length) {
-                    lista.innerHTML = '<p style="color:#aaa;font-size:13px;padding:8px;">Nenhuma entrega realizada hoje.</p>';
-                    return;
-                }
-                var html = '';
-                for (var i = 0; i < data.historico.length; i++) {
-                    var c = data.historico[i];
-                    var cancelado = c.status === 'cancelado';
-                    html += '<div class="historico-card' + (cancelado ? ' cancelado' : '') + '">' +
-                        '<i class="fas ' + (cancelado ? 'fa-times-circle hc-icon' : 'fa-box-open hc-icon') + '"></i>' +
-                        '<div class="hc-info">' +
-                        '<div class="hc-protocolo"><i class="fas fa-barcode"></i> ' + escHtml(c.nr_protocolo) + '</div>' +
-                        '<div class="hc-rota">' + escHtml(c.setor_origem_nome) + ' → ' + escHtml(c.destino_nome) + '</div>' +
-                        '<div class="hc-tempo">' + (cancelado ? 'Cancelado' : 'Entregue') + ' · ' +
-                        (c.t_total_min != null ? Math.round(parseFloat(c.t_total_min)) + ' min' : '--') + '</div>' +
-                        '</div></div>';
-                }
-                lista.innerHTML = html;
+    // ── Cancelar chamado ──────────────────────────────────
+
+    function abrirCancelar(chamadoId) {
+        Estado.chamadoAcaoId = chamadoId;
+        var motivo = document.getElementById('cancelar-motivo');
+        if (motivo) motivo.value = '';
+        abrirModal('modal-cancelar');
+    }
+
+    function confirmarCancelar() {
+        var btn    = document.getElementById('btn-confirmar-cancelar');
+        var motivo = (document.getElementById('cancelar-motivo').value || '').trim();
+        if (motivo.length < 10) { toast('Motivo deve ter pelo menos 10 caracteres.', 'warning'); return; }
+
+        setLoading(btn, true);
+        fetch(CONFIG.api + '/chamados/' + Estado.chamadoAcaoId + '/cancelar', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                motorista_id: Estado.motoristaSelecionado.id,
+                motivo: motivo
             })
-            .catch(function (e) { console.error(e); });
-    }
-
-    /* ── TIMER DE REFRESH ─────────────────────────── */
-    function iniciarTimer() {
-        if (Estado.timerFila) clearInterval(Estado.timerFila);
-        Estado.timerFila = setInterval(function () {
-            if (Estado.motoristaSelecionado) {
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            setLoading(btn, false);
+            if (data.success) {
+                toast('Chamado cancelado.', 'success');
+                fecharModal('modal-cancelar');
                 carregarFila();
-                carregarHistorico();
+            } else {
+                toast(data.error || 'Erro ao cancelar.', 'error');
             }
-        }, CONFIG.refreshInterval);
+        })
+        .catch(function () { setLoading(btn, false); toast('Erro de conexao.', 'error'); });
     }
 
-    function sair() {
-        Estado.motoristaSelecionado = null;
-        Estado.veiculoId = null;
-        Estado.veiculoPlaca = '';
-        Estado.chamadoAtivo = null;
-        Estado.fila = [];
-        Estado.fotoCargaAtual = null;
-        if (Estado.timerFila) { clearInterval(Estado.timerFila); Estado.timerFila = null; }
-        mostrarTela('tela-selecao');
-        document.getElementById('select-motorista').value = '';
-        var selVei = document.getElementById('select-veiculo');
-        if (selVei) selVei.value = '';
-    }
+    // ── inicializar ───────────────────────────────────────
 
-    /* ── INICIALIZAR ──────────────────────────────── */
     function inicializar() {
         carregarMotoristas();
         carregarVeiculos();
+        inicializarFotoViagem();
 
-        var btnEntrar = document.getElementById('btn-entrar');
+        // Botoes header/selecao
+        var btnEntrar  = document.getElementById('btn-entrar');
+        var btnVoltar  = document.getElementById('btn-voltar');
+        var btnSair    = document.getElementById('btn-sair-motorista');
         if (btnEntrar) btnEntrar.addEventListener('click', entrar);
+        if (btnVoltar) btnVoltar.addEventListener('click', function () { window.history.back(); });
+        if (btnSair)   btnSair.addEventListener('click', sair);
 
-        var selMot = document.getElementById('select-motorista');
-        if (selMot) selMot.addEventListener('change', function () { if (this.value) entrar(); });
+        // Iniciar viagem
+        var btnIniciarViagem = document.getElementById('btn-iniciar-viagem');
+        if (btnIniciarViagem) btnIniciarViagem.addEventListener('click', abrirIniciarViagem);
 
-        var btnSair = document.getElementById('btn-sair-motorista');
-        if (btnSair) btnSair.addEventListener('click', sair);
+        // Fechar modal iniciar viagem
+        var btnFI  = document.getElementById('btn-fechar-iniciar');
+        var btnFI2 = document.getElementById('btn-fechar-iniciar2');
+        if (btnFI)  btnFI.addEventListener('click',  function () { fecharModal('modal-iniciar-viagem'); });
+        if (btnFI2) btnFI2.addEventListener('click', function () { fecharModal('modal-iniciar-viagem'); });
 
-        document.getElementById('btn-voltar').addEventListener('click', function () { history.back(); });
-
-        /* modal entregar */
-        document.getElementById('btn-fechar-entregar').addEventListener('click', function () { fecharModal('modal-entregar'); });
-        document.getElementById('btn-fechar-entregar2').addEventListener('click', function () { fecharModal('modal-entregar'); });
-        document.getElementById('btn-confirmar-entrega').addEventListener('click', confirmarEntrega);
-
-        /* modal assinatura */
-        document.getElementById('btn-fechar-assinatura').addEventListener('click', function () { fecharModal('modal-assinatura'); });
-        document.getElementById('btn-fechar-assinatura2').addEventListener('click', function () { fecharModal('modal-assinatura'); });
-        document.getElementById('btn-confirmar-assinatura').addEventListener('click', confirmarEntregaAssinatura);
-        document.getElementById('btn-limpar-canvas').addEventListener('click', function () {
-            if (Estado.signaturePad) Estado.signaturePad.clear();
+        // Limpar assinatura motorista
+        var btnLimMot = document.getElementById('btn-limpar-motorista');
+        if (btnLimMot) btnLimMot.addEventListener('click', function () {
+            if (Estado.signaturePadMotorista) Estado.signaturePadMotorista.clear();
         });
 
-        /* validar pin (quando sai do campo) */
-        var pinInput = document.getElementById('assin-pin');
-        if (pinInput) {
-            pinInput.addEventListener('blur', function () {
-                var pin = this.value.trim();
-                var status = document.getElementById('pin-status');
-                if (!pin) { status.textContent = ''; return; }
-                fetch(CONFIG.api + '/validar-pin', {
-                    method: 'POST', credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ motorista_id: Estado.motoristaSelecionado ? Estado.motoristaSelecionado.id : null, pin: pin })
-                })
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (data.valido) {
-                            status.textContent = '✓ PIN válido';
-                            status.className = 'pin-status valido';
-                        } else {
-                            status.textContent = '✗ PIN inválido';
-                            status.className = 'pin-status invalido';
-                        }
-                    })
-                    .catch(function () {});
-            });
-        }
+        // Confirmar viagem
+        var btnConfViagem = document.getElementById('btn-confirmar-viagem');
+        if (btnConfViagem) btnConfViagem.addEventListener('click', confirmarIniciarViagem);
 
-        /* modal itens */
-        document.getElementById('btn-fechar-itens').addEventListener('click', function () { fecharModal('modal-itens'); });
-        document.getElementById('btn-fechar-itens2').addEventListener('click', function () { fecharModal('modal-itens'); });
+        // Modal entrega simples
+        var btnFE  = document.getElementById('btn-fechar-entregar');
+        var btnFE2 = document.getElementById('btn-fechar-entregar2');
+        var btnCE  = document.getElementById('btn-confirmar-entrega');
+        if (btnFE)  btnFE.addEventListener('click',  function () { fecharModal('modal-entregar'); });
+        if (btnFE2) btnFE2.addEventListener('click', function () { fecharModal('modal-entregar'); });
+        if (btnCE)  btnCE.addEventListener('click',  confirmarEntrega);
 
-        /* modal cancelar */
-        document.getElementById('btn-fechar-cancelar').addEventListener('click', function () { fecharModal('modal-cancelar'); });
-        document.getElementById('btn-fechar-cancelar2').addEventListener('click', function () { fecharModal('modal-cancelar'); });
-        document.getElementById('btn-confirmar-cancelar').addEventListener('click', confirmarCancelamento);
+        // Toggle obs parcial — modal entrega
+        var chkParcial = document.getElementById('entregar-parcial');
+        if (chkParcial) chkParcial.addEventListener('change', function () {
+            var w = document.getElementById('entregar-parcial-obs-wrap');
+            if (w) w.style.display = this.checked ? '' : 'none';
+        });
 
-        /* clicar fora do modal fecha */
-        var modais = document.querySelectorAll('.modal-overlay');
-        for (var i = 0; i < modais.length; i++) {
-            modais[i].addEventListener('click', function (e) {
-                if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
-            });
-        }
+        // Modal assinatura destinatario
+        var btnFA  = document.getElementById('btn-fechar-assinatura');
+        var btnFA2 = document.getElementById('btn-fechar-assinatura2');
+        var btnCA  = document.getElementById('btn-confirmar-assinatura');
+        var btnLA  = document.getElementById('btn-limpar-canvas');
+        if (btnFA)  btnFA.addEventListener('click',  function () { fecharModal('modal-assinatura'); });
+        if (btnFA2) btnFA2.addEventListener('click', function () { fecharModal('modal-assinatura'); });
+        if (btnCA)  btnCA.addEventListener('click',  confirmarEntregaAssinatura);
+        if (btnLA)  btnLA.addEventListener('click',  function () {
+            if (Estado.signaturePadDestinatario) Estado.signaturePadDestinatario.clear();
+        });
+
+        // Toggle obs parcial — modal assinatura
+        var chkAssinParcial = document.getElementById('assin-parcial');
+        if (chkAssinParcial) chkAssinParcial.addEventListener('change', function () {
+            var w = document.getElementById('assin-parcial-obs-wrap');
+            if (w) w.style.display = this.checked ? '' : 'none';
+        });
+
+        // Modal itens
+        var btnFItens  = document.getElementById('btn-fechar-itens');
+        var btnFItens2 = document.getElementById('btn-fechar-itens2');
+        if (btnFItens)  btnFItens.addEventListener('click',  function () { fecharModal('modal-itens'); });
+        if (btnFItens2) btnFItens2.addEventListener('click', function () { fecharModal('modal-itens'); });
+
+        // Modal cancelar
+        var btnFC  = document.getElementById('btn-fechar-cancelar');
+        var btnFC2 = document.getElementById('btn-fechar-cancelar2');
+        var btnCC  = document.getElementById('btn-confirmar-cancelar');
+        if (btnFC)  btnFC.addEventListener('click',  function () { fecharModal('modal-cancelar'); });
+        if (btnFC2) btnFC2.addEventListener('click', function () { fecharModal('modal-cancelar'); });
+        if (btnCC)  btnCC.addEventListener('click',  confirmarCancelar);
+
+        // Fechar modais clicando no overlay
+        document.addEventListener('click', function (e) {
+            var modais = ['modal-entregar', 'modal-assinatura', 'modal-itens',
+                          'modal-cancelar', 'modal-iniciar-viagem'];
+            for (var i = 0; i < modais.length; i++) {
+                var el = document.getElementById(modais[i]);
+                if (el && e.target === el) fecharModal(modais[i]);
+            }
+        });
     }
 
     window.addEventListener('DOMContentLoaded', inicializar);

@@ -58,7 +58,7 @@
 
                 <div class="motorista-info-bar" id="motorista-info-bar">
                     <div class="motorista-avatar"><i class="fas fa-id-card"></i></div>
-                    <div>
+                    <div style="flex:1;">
                         <div class="motorista-nome" id="motorista-nome-display">--</div>
                         <div class="motorista-turno" id="motorista-turno-display">--</div>
                     </div>
@@ -67,13 +67,13 @@
                     </button>
                 </div>
 
-                <!-- Chamado Ativo -->
-                <div id="area-ativo" style="display:none;">
+                <!-- Chamados Ativos -->
+                <div id="area-ativos" style="display:none;">
                     <div class="chamado-ativo-wrap">
                         <div class="chamado-ativo-label">
-                            <i class="fas fa-bolt"></i> CHAMADO ATIVO
+                            <i class="fas fa-bolt"></i> CHAMADOS EM TRANSPORTE
                         </div>
-                        <div class="chamado-ativo-card" id="chamado-ativo-card">
+                        <div id="chamados-ativos-lista">
                             <!-- Preenchido via JS -->
                         </div>
                     </div>
@@ -90,6 +90,17 @@
                 <div class="fila-vazia" id="fila-vazia" style="display:none;">
                     <i class="fas fa-check-circle" style="color:#28a745;"></i>
                     <p>Nenhum chamado aguardando</p>
+                </div>
+
+                <!-- Barra de acao multi-selecao -->
+                <div class="barra-selecao" id="barra-selecao" style="display:none;">
+                    <div class="barra-selecao-info">
+                        <i class="fas fa-check-square"></i>
+                        <span id="barra-selecao-count">0 selecionado(s)</span>
+                    </div>
+                    <button class="btn-iniciar-viagem" id="btn-iniciar-viagem">
+                        <i class="fas fa-play-circle"></i> Iniciar Viagem
+                    </button>
                 </div>
 
                 <!-- Historico do Dia -->
@@ -112,7 +123,74 @@
 
     </div><!-- /.painel-container -->
 
-    <!-- Modal: Confirmar Entrega (sem assinatura) -->
+    <!-- =====================================================
+         MODAL: Iniciar Viagem (foto + assinatura motorista)
+    ====================================================== -->
+    <div class="modal-overlay" id="modal-iniciar-viagem" style="display:none;">
+        <div class="modal-box modal-viagem">
+            <div class="modal-header">
+                <h3><i class="fas fa-play-circle" style="color:#28a745;margin-right:8px;"></i> Iniciar Viagem</h3>
+                <button class="btn-fechar-modal" id="btn-fechar-iniciar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Resumo dos chamados selecionados -->
+                <div class="viagem-resumo" id="viagem-resumo">
+                    <!-- Preenchido via JS -->
+                </div>
+
+                <!-- Passo 1: Foto no inicio (condicional por tipo) -->
+                <div id="viagem-foto-secao" style="display:none;">
+                    <div class="viagem-passo-label">
+                        <span class="viagem-passo-num">1</span>
+                        <span><i class="fas fa-camera"></i> Foto do Material <small class="badge-obrig">Obrigatorio</small></span>
+                    </div>
+                    <div class="foto-capture-wrap">
+                        <input type="file" id="viagem-input-foto" accept="image/*" capture="environment" style="display:none;">
+                        <div class="foto-preview" id="viagem-foto-preview" style="display:none;">
+                            <img id="viagem-foto-img" alt="Foto inicio transporte">
+                            <button type="button" class="btn-remover-foto" id="viagem-btn-remover-foto">
+                                <i class="fas fa-times"></i> Remover
+                            </button>
+                        </div>
+                        <button type="button" class="btn-tirar-foto" id="viagem-btn-tirar-foto">
+                            <i class="fas fa-camera"></i> Tirar Foto do Material
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Passo 2 (ou 1 se sem foto): Assinatura do Motorista -->
+                <div id="viagem-assinatura-secao">
+                    <div class="viagem-passo-label">
+                        <span class="viagem-passo-num" id="viagem-passo-assin-num">1</span>
+                        <span><i class="fas fa-signature"></i> Assinatura do Motorista</span>
+                    </div>
+                    <div class="assinatura-hint" style="margin-bottom:8px;">
+                        Assine abaixo confirmando que esta recebendo o(s) material(is) listados
+                    </div>
+                    <div class="assinatura-wrap">
+                        <canvas id="canvas-motorista"></canvas>
+                        <div class="assinatura-acoes">
+                            <button type="button" class="btn-limpar-assinatura" id="btn-limpar-motorista">
+                                <i class="fas fa-eraser"></i> Limpar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-secundario" id="btn-fechar-iniciar2">Cancelar</button>
+                <button class="btn-modal-principal" id="btn-confirmar-viagem">
+                    <i class="fas fa-play-circle"></i> Confirmar e Iniciar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         MODAL: Confirmar Entrega (sem assinatura)
+    ====================================================== -->
     <div class="modal-overlay" id="modal-entregar" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
@@ -120,7 +198,6 @@
                 <button class="btn-fechar-modal" id="btn-fechar-entregar"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <!-- Foto da carga para validacao do destinatario -->
                 <div id="entregar-foto-wrap" style="display:none;margin-bottom:12px;">
                     <div class="foto-validacao-label"><i class="fas fa-camera"></i> Foto da Carga</div>
                     <img class="foto-validacao-img" id="entregar-foto-img" alt="Foto da carga">
@@ -129,6 +206,17 @@
                 <div class="form-group">
                     <label>Nome do Destinatario *</label>
                     <input type="text" id="entregar-destinatario" placeholder="Quem recebeu o material..." maxlength="200" autocomplete="off">
+                </div>
+                <!-- Entrega Parcial -->
+                <div class="parcial-wrap">
+                    <label class="parcial-check-label">
+                        <input type="checkbox" id="entregar-parcial">
+                        <span><i class="fas fa-exclamation-triangle" style="color:#e67e00;"></i> Entrega Parcial (parte do material nao foi entregue)</span>
+                    </label>
+                    <div id="entregar-parcial-obs-wrap" style="display:none;margin-top:8px;">
+                        <textarea id="entregar-parcial-obs" rows="2" maxlength="300"
+                            placeholder="Descreva o que foi entregue e o que nao foi..."></textarea>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Observacao (opcional)</label>
@@ -144,7 +232,9 @@
         </div>
     </div>
 
-    <!-- Modal: Entrega com Assinatura -->
+    <!-- =====================================================
+         MODAL: Entrega com Assinatura
+    ====================================================== -->
     <div class="modal-overlay" id="modal-assinatura" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
@@ -152,7 +242,6 @@
                 <button class="btn-fechar-modal" id="btn-fechar-assinatura"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <!-- Foto da carga para validacao do destinatario -->
                 <div id="assin-foto-wrap" style="display:none;margin-bottom:12px;">
                     <div class="foto-validacao-label"><i class="fas fa-camera"></i> Foto da Carga</div>
                     <img class="foto-validacao-img" id="assin-foto-img" alt="Foto da carga">
@@ -162,7 +251,6 @@
                     <label>Nome do Destinatario *</label>
                     <input type="text" id="assin-destinatario" placeholder="Nome de quem recebeu..." maxlength="200" autocomplete="off">
                 </div>
-
                 <div class="pin-wrap">
                     <div class="pin-label"><i class="fas fa-lock"></i> PIN do Motorista (matricula) *</div>
                     <div class="pin-input-wrap">
@@ -170,7 +258,17 @@
                         <span class="pin-status" id="pin-status"></span>
                     </div>
                 </div>
-
+                <!-- Entrega Parcial -->
+                <div class="parcial-wrap">
+                    <label class="parcial-check-label">
+                        <input type="checkbox" id="assin-parcial">
+                        <span><i class="fas fa-exclamation-triangle" style="color:#e67e00;"></i> Entrega Parcial</span>
+                    </label>
+                    <div id="assin-parcial-obs-wrap" style="display:none;margin-top:8px;">
+                        <textarea id="assin-parcial-obs" rows="2" maxlength="300"
+                            placeholder="Descreva o que foi entregue e o que nao foi..."></textarea>
+                    </div>
+                </div>
                 <div>
                     <div class="assinatura-label"><i class="fas fa-pen-nib"></i> Assinatura do Destinatario *</div>
                     <div class="assinatura-wrap">
@@ -183,7 +281,6 @@
                     </div>
                     <div class="assinatura-hint">Solicite que o destinatario assine no campo acima</div>
                 </div>
-
                 <div class="form-group">
                     <label>Observacao (opcional)</label>
                     <textarea id="assin-obs" rows="2" maxlength="300" placeholder="Alguma observacao..."></textarea>

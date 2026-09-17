@@ -20,7 +20,8 @@ painel54_bp = Blueprint('painel54', __name__)
 # Whitelists para UPDATEs dinâmicos — nunca iterar sobre request diretamente
 _CAMPOS_MOTORISTA  = ('nome', 'matricula', 'turno')
 _CAMPOS_TIPO_CARGA = ('nome', 'icone', 'cor', 'ordem', 'requer_lista_itens', 'requer_assinatura',
-                      'requer_foto', 'foto_obrigatoria')
+                      'requer_foto', 'foto_obrigatoria',
+                      'requer_assinatura_motorista', 'requer_foto_inicio')
 _CAMPOS_DESTINO    = ('nome', 'tipo_carga_id', 'ordem', 'km_distancia')
 _CAMPOS_ORIGEM     = ('nome', 'ordem', 'km_distancia')
 _CAMPOS_VEICULO    = ('tipo', 'placa', 'descricao', 'km_max_dia')
