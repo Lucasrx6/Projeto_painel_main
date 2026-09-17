@@ -16,6 +16,7 @@ _HUB_PAINEIS = {
     'painel41', 'painel42', 'painel43',
     'painel45', 'painel46', 'painel47',
     'painel48',
+    'painel52', 'painel53', 'painel54',
 }
 
 # ============================================================
@@ -78,6 +79,18 @@ _SUBSISTEMAS = [
         'paineis': [
             {'nome': 'Abrir Chamado',   'icone': 'fa-ticket',  'url': '/painel/painel14', 'permissao': 'painel14'},
             {'nome': 'Painel Helpdesk', 'icone': 'fa-desktop', 'url': '/painel/painel15', 'permissao': 'painel15'},
+        ]
+    },
+    {
+        'id': 'transporte_material',
+        'grupo': 'Transporte de Material',
+        'descricao': 'Solicitação e rastreio de transporte interno de documentos, materiais e itens com protocolo',
+        'icone': 'fa-dolly',
+        'cor': '#1C5C9B',
+        'paineis': [
+            {'nome': 'Solicitar Transporte', 'icone': 'fa-circle-plus', 'url': '/painel/painel52', 'permissao': 'painel52'},
+            {'nome': 'Tela do Motorista',    'icone': 'fa-id-card',     'url': '/painel/painel53', 'permissao': 'painel53'},
+            {'nome': 'Gestão e Relatórios',  'icone': 'fa-chart-bar',   'url': '/painel/painel54', 'permissao': 'painel54'},
         ]
     },
     {
