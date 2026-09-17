@@ -704,7 +704,8 @@ def api_painel54_cfg_tipo_listar():
         with get_db_cursor() as cursor:
             cursor.execute("""
                 SELECT id, nome, icone, cor, requer_lista_itens, requer_assinatura,
-                       requer_foto, foto_obrigatoria, ativo, ordem
+                       requer_foto, foto_obrigatoria, ativo, ordem,
+                       requer_assinatura_motorista, requer_foto_inicio
                 FROM transporte_material_tipos_carga ORDER BY ordem, nome
             """)
             return jsonify({'success': True, 'tipos': [dict(r) for r in cursor.fetchall()]})

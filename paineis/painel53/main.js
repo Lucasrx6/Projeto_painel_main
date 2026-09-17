@@ -474,8 +474,12 @@
             if (itensSecao) itensSecao.style.display = 'none';
         }
         if (Estado.requerFotoInicio) {
-            if (fotoSecao) fotoSecao.style.display = '';
-            if (passoAssin) passoAssin.textContent = String(passoBase + 1);
+            if (fotoSecao) {
+                fotoSecao.style.display = '';
+                var passoFotoSpan = fotoSecao.querySelector('.viagem-passo-num');
+                if (passoFotoSpan) passoFotoSpan.textContent = String(passoBase++);
+            }
+            if (passoAssin) passoAssin.textContent = String(passoBase);
         } else {
             if (fotoSecao) fotoSecao.style.display = 'none';
             if (passoAssin) passoAssin.textContent = String(passoBase);

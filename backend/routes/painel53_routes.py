@@ -427,6 +427,8 @@ def api_painel53_entregar_com_assinatura(chamado_id):
                     it['quantidade'] = float(it['quantidade'])
                 itens_list.append(it)
 
+        viagem_id_para_verificar = chamado.get('viagem_id')
+
         conteudo = {
             'protocolo':       chamado['nr_protocolo'],
             'tipo_carga':      chamado['tipo_carga_nome'],
@@ -487,10 +489,10 @@ def api_painel53_entregar_com_assinatura(chamado_id):
                   veiculo_id, veiculo_placa,
                   entrega_parcial, obs_parcial or None, chamado_id))
 
-            # Verificar se todos os chamados da viagem foram entregues
-            if chamado.get('viagem_id'):
-                with get_db_cursor() as cur2:
-                    _verificar_concluir_viagem(cur2, chamado['viagem_id'])
+        # Verificar viagem após o commit do bloco anterior
+        if viagem_id_para_verificar:
+            with get_db_cursor() as cursor:
+                _verificar_concluir_viagem(cursor, viagem_id_para_verificar)
 
         cache_delete_pattern('painel54:*')
         current_app.logger.info(
