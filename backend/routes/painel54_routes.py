@@ -248,7 +248,8 @@ def api_painel54_chamados():
                     id, nr_protocolo, tipo_carga_nome,
                     descricao, setor_origem_nome, destino_nome, destino_complemento,
                     prioridade, status, solicitante_nome, motorista_nome, observacao,
-                    nm_destinatario, observacao_entrega,
+                    nm_destinatario, cpf_destinatario, dt_nascimento_destinatario,
+                    observacao_entrega, entrega_parcial, obs_entrega_parcial,
                     CASE WHEN assinatura_id IS NOT NULL THEN TRUE ELSE FALSE END AS tem_assinatura,
                     criado_em, dt_aceite, dt_inicio_transporte, dt_entrega,
                     dt_cancelamento, motivo_cancelamento,
@@ -323,7 +324,10 @@ def api_painel54_assinatura(chamado_id):
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT s.nr_protocolo, s.nm_destinatario, s.dt_entrega,
+                SELECT s.nr_protocolo, s.nm_destinatario,
+                       s.cpf_destinatario, s.dt_nascimento_destinatario,
+                       s.observacao_entrega, s.entrega_parcial, s.obs_entrega_parcial,
+                       s.dt_entrega,
                        a.assinatura_img, a.nm_signatario, a.criado_em AS dt_assinatura,
                        a.coletado_por_nome, a.coletado_por_matricula
                 FROM transporte_material_solicitacoes s
@@ -440,7 +444,9 @@ def api_painel54_exportar():
                     id, nr_protocolo, tipo_carga_nome,
                     descricao, setor_origem_nome, destino_nome, destino_complemento,
                     prioridade, status, solicitante_nome, motorista_nome,
-                    nm_destinatario, observacao,
+                    nm_destinatario, cpf_destinatario,
+                    TO_CHAR(dt_nascimento_destinatario, 'DD/MM/YYYY') AS dt_nascimento_destinatario,
+                    observacao,
                     TO_CHAR(criado_em,            'DD/MM/YYYY HH24:MI') AS criado_em,
                     TO_CHAR(dt_aceite,            'DD/MM/YYYY HH24:MI') AS dt_aceite,
                     TO_CHAR(dt_inicio_transporte, 'DD/MM/YYYY HH24:MI') AS dt_inicio_transporte,
@@ -513,7 +519,9 @@ def api_painel54_exportar():
                   24)
         hdrs1 = [
             '#', 'Protocolo', 'Tipo Carga', 'Descricao', 'Origem', 'Destino', 'Compl. Destino',
-            'Prioridade', 'Status', 'Solicitante', 'Motorista', 'Destinatario', 'Observacao',
+            'Prioridade', 'Status', 'Solicitante', 'Motorista',
+            'Destinatario', 'CPF Destinatario', 'Dt. Nascimento Dest.',
+            'Observacao',
             'Criado Em', 'Aceito Em', 'Ini. Transporte', 'Entregue Em', 'Cancelado Em',
             'Motivo Cancelamento', 'Assinado?', 'T.Aceite(min)', 'T.Entrega(min)', 'T.Total(min)',
         ]
@@ -524,7 +532,9 @@ def api_painel54_exportar():
         keys1 = [
             'id', 'nr_protocolo', 'tipo_carga_nome', 'descricao', 'setor_origem_nome',
             'destino_nome', 'destino_complemento', 'prioridade', 'status',
-            'solicitante_nome', 'motorista_nome', 'nm_destinatario', 'observacao',
+            'solicitante_nome', 'motorista_nome',
+            'nm_destinatario', 'cpf_destinatario', 'dt_nascimento_destinatario',
+            'observacao',
             'criado_em', 'dt_aceite', 'dt_inicio_transporte', 'dt_entrega', 'dt_cancelamento',
             'motivo_cancelamento', 'assinado', 't_aceite_min', 't_entrega_min', 't_total_min',
         ]

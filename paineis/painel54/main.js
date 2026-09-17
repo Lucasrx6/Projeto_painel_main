@@ -157,7 +157,8 @@
             return;
         }
         var html = '<table class="chamados-tabela"><thead><tr>' +
-            '<th>Protocolo</th><th>Tipo</th><th>Rota</th><th>Prioridade</th><th>Status</th><th>Solicitante</th><th>Motorista</th><th>Espera</th>' +
+            '<th>Protocolo</th><th>Tipo</th><th>Rota</th><th>Prioridade</th><th>Status</th>' +
+            '<th>Solicitante</th><th>Motorista</th><th>Recebido Por</th><th>Tempo</th><th>Criado Em</th><th>Acoes</th>' +
             '</tr></thead><tbody>';
         for (var i = 0; i < ativos.length; i++) {
             var c = ativos[i];
@@ -193,7 +194,7 @@
 
         var tbody = document.getElementById('chamados-tbody');
         var total = document.getElementById('chamados-total');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;"><div class="loading-inline" style="justify-content:center;"><div class="loading-spinner-sm"></div> Carregando...</div></td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;"><div class="loading-inline" style="justify-content:center;"><div class="loading-spinner-sm"></div> Carregando...</div></td></tr>';
 
         fetch(CONFIG.api + '/chamados?' + params.toString(), { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
@@ -203,7 +204,7 @@
                 if (total) total.textContent = chamados.length + ' chamado(s) encontrado(s)';
                 if (!tbody) return;
                 if (!chamados.length) {
-                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:#aaa;">Nenhum chamado encontrado com estes filtros.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:#aaa;">Nenhum chamado encontrado com estes filtros.</td></tr>';
                     return;
                 }
                 var html = '';
@@ -211,18 +212,24 @@
                     var c = chamados[i];
                     var bc = _STATUS_BADGE[c.status] || '';
                     var podeCancelar = ['aguardando', 'aceito', 'em_transporte'].indexOf(c.status) >= 0;
+                    var isEntregue = c.status === 'entregue';
+                    var recebidoPor = isEntregue ? (c.nm_destinatario || '—') : '—';
+                    var recebidoTitle = '';
+                    if (isEntregue && c.cpf_destinatario) recebidoTitle += 'CPF: ' + c.cpf_destinatario;
+                    if (isEntregue && c.dt_entrega) recebidoTitle += (recebidoTitle ? ' | ' : '') + 'Entregue: ' + formatarData(c.dt_entrega);
                     html += '<tr>' +
                         '<td class="protocolo-col">' + escHtml(c.nr_protocolo) + '</td>' +
                         '<td>' + escHtml(c.tipo_carga_nome || '') + '</td>' +
-                        '<td style="max-width:200px;">' + escHtml(c.setor_origem_nome) + ' → ' + escHtml(c.destino_nome) + '</td>' +
+                        '<td style="max-width:180px;">' + escHtml(c.setor_origem_nome) + ' → ' + escHtml(c.destino_nome) + '</td>' +
                         '<td>' + (c.prioridade === 'urgente' ? '<span class="badge-urgente-sm">URGENTE</span>' : 'Normal') + '</td>' +
                         '<td><span class="badge-status ' + bc + '">' + escHtml(_STATUS_LABEL[c.status] || c.status) + '</span></td>' +
                         '<td>' + escHtml(c.solicitante_nome || '') + '</td>' +
                         '<td>' + escHtml(c.motorista_nome || '—') + '</td>' +
+                        '<td title="' + escHtml(recebidoTitle) + '" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(recebidoPor) + '</td>' +
                         '<td>' + (c.t_total_min != null ? formatarMin(c.t_total_min) : '—') + '</td>' +
                         '<td style="white-space:nowrap;">' + escHtml(formatarData(c.criado_em)) + '</td>' +
                         '<td class="acoes-col">' +
-                        (c.tem_assinatura ? '<button class="btn-acao-tabela" data-id="' + c.id + '" data-acao="assinatura"><i class="fas fa-signature"></i></button>' : '') +
+                        (isEntregue ? '<button class="btn-acao-tabela" data-id="' + c.id + '" data-acao="assinatura" title="Detalhes da entrega">' + (c.tem_assinatura ? '<i class="fas fa-signature"></i>' : '<i class="fas fa-clipboard-check"></i>') + '</button>' : '') +
                         (podeCancelar ? '<button class="btn-acao-tabela btn-acao-cancelar" data-id="' + c.id + '" data-acao="cancelar"><i class="fas fa-times"></i></button>' : '') +
                         '</td>' +
                         '</tr>';
@@ -287,12 +294,37 @@
                 }
                 html += '<div class="assin-info-row">' +
                     '<span class="assin-info-item"><strong>Protocolo:</strong> ' + escHtml(a.nr_protocolo || '') + '</span>' +
-                    '<span class="assin-info-item"><strong>Destinatario:</strong> ' + escHtml(a.nm_destinatario || '') + '</span>' +
+                    '<span class="assin-info-item"><strong>Entregue em:</strong> ' + escHtml(formatarData(a.dt_entrega)) + '</span>' +
                     '</div>' +
                     '<div class="assin-info-row">' +
-                    '<span class="assin-info-item"><strong>Entregue em:</strong> ' + escHtml(formatarData(a.dt_entrega)) + '</span>' +
-                    '<span class="assin-info-item"><strong>Motorista:</strong> ' + escHtml(a.coletado_por_nome || '') + '</span>' +
+                    '<span class="assin-info-item"><strong>Recebido por:</strong> ' + escHtml(a.nm_destinatario || '—') + '</span>' +
+                    '<span class="assin-info-item"><strong>Motorista:</strong> ' + escHtml(a.coletado_por_nome || a.nm_signatario || '—') + '</span>' +
                     '</div>';
+                if (a.cpf_destinatario || a.dt_nascimento_destinatario) {
+                    html += '<div class="assin-info-row">';
+                    if (a.cpf_destinatario) {
+                        html += '<span class="assin-info-item"><strong>CPF:</strong> ' + escHtml(a.cpf_destinatario) + '</span>';
+                    }
+                    if (a.dt_nascimento_destinatario) {
+                        var nasc = a.dt_nascimento_destinatario;
+                        if (nasc && nasc.indexOf('T') > 0) nasc = nasc.split('T')[0];
+                        if (nasc && nasc.indexOf('-') > 0) {
+                            var partes = nasc.split('-');
+                            nasc = partes[2] + '/' + partes[1] + '/' + partes[0];
+                        }
+                        html += '<span class="assin-info-item"><strong>Nascimento:</strong> ' + escHtml(nasc) + '</span>';
+                    }
+                    html += '</div>';
+                }
+                if (a.entrega_parcial) {
+                    html += '<div class="assin-info-row" style="background:#fff3cd;border-radius:6px;padding:6px 10px;">' +
+                        '<span class="assin-info-item" style="color:#856404;"><i class="fas fa-exclamation-triangle"></i> <strong>Entrega Parcial</strong>' +
+                        (a.obs_entrega_parcial ? ': ' + escHtml(a.obs_entrega_parcial) : '') + '</span></div>';
+                }
+                if (a.observacao_entrega) {
+                    html += '<div class="assin-info-row">' +
+                        '<span class="assin-info-item"><strong>Obs. entrega:</strong> ' + escHtml(a.observacao_entrega) + '</span></div>';
+                }
                 body.innerHTML = html;
             })
             .catch(function (e) {
