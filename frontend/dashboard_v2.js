@@ -39,7 +39,7 @@ var CONFIG = {
 
 // Paineis que dão acesso ao Hub de Serviços (painel44):
 // painel44 aparece no dashboard se o usuário tiver ao menos um desses
-var HUB_PAINEIS = ['painel14', 'painel15', 'painel28', 'painel34', 'painel35', 'painel36', 'painel41', 'painel42', 'painel43'];
+var HUB_PAINEIS = ['painel14', 'painel15', 'painel28', 'painel34', 'painel35', 'painel36', 'painel41', 'painel42', 'painel43', 'painel52', 'painel53', 'painel54'];
 
 var Estado = {
     usuarioAtual: null,
@@ -54,7 +54,9 @@ var Estado = {
         'painel31', 'painel32', 'painel33',
         'painel34', 'painel35', 'painel36',
         'painel37', 'painel38', 'painel39', 'painel40',
-        'painel41', 'painel42', 'painel43', 'painel44'
+        'painel41', 'painel42', 'painel43', 'painel44',
+        'painel50', 'painel51',
+        'painel52', 'painel53', 'painel54'
     ]
 };
 

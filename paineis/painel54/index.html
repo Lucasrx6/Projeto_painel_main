@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestao - Transporte de Material - HAC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel54/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+    <div class="painel-container">
+
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-chart-bar"></i> Gestao — Transporte de Material</h1>
+                </div>
+                <div class="header-right">
+                    <button class="btn-header" id="btn-exportar" title="Exportar Excel">
+                        <i class="fas fa-file-excel"></i> <span>Exportar</span>
+                    </button>
+                    <button class="btn-header" id="btn-voltar" title="Voltar">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+
+            <!-- TABS -->
+            <div class="tabs-bar">
+                <button class="tab-btn ativa" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+                    <span class="tab-badge" id="badge-ativos-tab">0</span>
+                </button>
+                <button class="tab-btn" data-tab="chamados">
+                    <i class="fas fa-list-alt"></i> <span>Chamados</span>
+                </button>
+                <button class="tab-btn" data-tab="analytics">
+                    <i class="fas fa-chart-pie"></i> <span>Analíticos</span>
+                </button>
+                <button class="tab-btn" data-tab="config">
+                    <i class="fas fa-cogs"></i> <span>Configuracoes</span>
+                </button>
+            </div>
+
+            <!-- TAB: DASHBOARD -->
+            <div class="tab-content" id="tab-dashboard">
+                <div class="stats-grid" id="stats-grid">
+                    <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                </div>
+                <div class="ativos-titulo">
+                    <i class="fas fa-bolt" style="color:var(--cor-transporte);"></i>
+                    Chamados em Andamento
+                </div>
+                <div class="lista-ativos" id="lista-ativos">
+                    <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                </div>
+            </div>
+
+            <!-- TAB: CHAMADOS -->
+            <div class="tab-content" id="tab-chamados" style="display:none;">
+                <div class="filtros-bar">
+                    <div class="filtro-grupo">
+                        <label>Data Inicio</label>
+                        <input type="date" id="filtro-data-inicio">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Data Fim</label>
+                        <input type="date" id="filtro-data-fim">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Status</label>
+                        <select id="filtro-status">
+                            <option value="">Todos</option>
+                            <option value="aguardando">Aguardando</option>
+                            <option value="aceito">Aceito</option>
+                            <option value="em_transporte">Em Transporte</option>
+                            <option value="entregue">Entregue</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Prioridade</label>
+                        <select id="filtro-prioridade">
+                            <option value="">Todas</option>
+                            <option value="urgente">Urgente</option>
+                            <option value="normal">Normal</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Setor</label>
+                        <input type="text" id="filtro-setor" placeholder="Ex: UTI, PS...">
+                    </div>
+                    <button class="btn-filtrar" id="btn-filtrar">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <button class="btn-limpar-filtro" id="btn-limpar-filtro">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                </div>
+                <div class="chamados-total" id="chamados-total">—</div>
+                <div class="chamados-tabela-wrap">
+                    <table class="chamados-tabela" id="chamados-tabela">
+                        <thead>
+                            <tr>
+                                <th>Protocolo</th>
+                                <th>Tipo</th>
+                                <th>Origem → Destino</th>
+                                <th>Prioridade</th>
+                                <th>Status</th>
+                                <th>Solicitante</th>
+                                <th>Motorista</th>
+                                <th>T.Total</th>
+                                <th>Criado Em</th>
+                                <th>Acoes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chamados-tbody">
+                            <tr><td colspan="10" style="text-align:center;padding:30px;color:#aaa;">Aplique filtros para ver os chamados</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: ANALYTICS -->
+            <div class="tab-content" id="tab-analytics" style="display:none;">
+                <div class="analytics-periodo" id="analytics-periodo">
+                    <button class="periodo-btn ativo" data-dias="7">7 dias</button>
+                    <button class="periodo-btn" data-dias="15">15 dias</button>
+                    <button class="periodo-btn" data-dias="30">30 dias</button>
+                    <button class="periodo-btn" data-dias="90">90 dias</button>
+                </div>
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-card-titulo"><i class="fas fa-building" style="color:var(--cor-primaria);"></i> Por Setor</div>
+                        <div style="overflow-x:auto;">
+                            <table class="analytics-tabela" id="tabela-por-setor">
+                                <thead><tr><th>Setor</th><th class="num">Total</th><th class="num">Entregues</th><th class="num">T.Total(min)</th></tr></thead>
+                                <tbody id="tbody-por-setor">
+                                    <tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card-titulo"><i class="fas fa-id-card" style="color:var(--cor-aceito);"></i> Por Motorista</div>
+                        <div style="overflow-x:auto;">
+                            <table class="analytics-tabela" id="tabela-por-motorista">
+                                <thead><tr><th>Motorista</th><th class="num">Total</th><th class="num">Entregues</th><th class="num">T.Medio(min)</th></tr></thead>
+                                <tbody id="tbody-por-motorista">
+                                    <tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: CONFIG -->
+            <div class="tab-content" id="tab-config" style="display:none;">
+                <div class="config-secoes">
+
+                    <!-- Motoristas -->
+                    <div class="config-secao">
+                        <div class="config-secao-titulo">
+                            <h3><i class="fas fa-id-card" style="color:var(--cor-aceito);"></i> Motoristas / Entregadores</h3>
+                            <button class="btn-add-config" data-tipo="motorista"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div class="config-lista" id="lista-motoristas">
+                            <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                        </div>
+                    </div>
+
+                    <!-- Tipos de Carga -->
+                    <div class="config-secao">
+                        <div class="config-secao-titulo">
+                            <h3><i class="fas fa-boxes" style="color:var(--cor-transporte);"></i> Tipos de Carga</h3>
+                            <button class="btn-add-config" data-tipo="tipo-carga"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div class="config-lista" id="lista-tipos-carga">
+                            <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                        </div>
+                    </div>
+
+                    <!-- Destinos -->
+                    <div class="config-secao">
+                        <div class="config-secao-titulo">
+                            <h3><i class="fas fa-map-marker-alt" style="color:#dc3545;"></i> Destinos</h3>
+                            <button class="btn-add-config" data-tipo="destino"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div class="config-lista" id="lista-destinos">
+                            <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                        </div>
+                    </div>
+
+                    <!-- Origens -->
+                    <div class="config-secao">
+                        <div class="config-secao-titulo">
+                            <h3><i class="fas fa-hospital" style="color:#6f42c1;"></i> Setores de Origem</h3>
+                            <button class="btn-add-config" data-tipo="origem"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div class="config-lista" id="lista-origens">
+                            <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div><!-- /.main-content -->
+
+        <footer class="sistema-footer">
+            <span id="sistema-versao-footer">Central de Informacoes V 1.1.4</span>
+        </footer>
+
+    </div><!-- /.painel-container -->
+
+    <!-- Modal: Cancelar Admin -->
+    <div class="modal-overlay" id="modal-cancelar-admin" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-times-circle" style="color:#dc3545;margin-right:8px;"></i> Cancelar Chamado</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-cancelar-admin"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:14px;color:#666;">Informe o motivo do cancelamento administrativo:</p>
+                <div class="form-group">
+                    <label>Motivo *</label>
+                    <textarea id="admin-cancelar-motivo" rows="3" maxlength="300" placeholder="Descreva o motivo (min. 10 caracteres)..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-fechar" data-fecha="modal-cancelar-admin">Voltar</button>
+                <button class="btn-salvar btn-cancelar-admin" id="btn-confirmar-cancelar-admin">
+                    <i class="fas fa-times"></i> Cancelar Chamado
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ver Assinatura -->
+    <div class="modal-overlay" id="modal-assinatura" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-signature" style="color:var(--cor-primaria);margin-right:8px;"></i> Comprovante de Entrega</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-assinatura"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="modal-assinatura-body">
+                <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-salvar" data-fecha="modal-assinatura"><i class="fas fa-check"></i> Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Config Motorista -->
+    <div class="modal-overlay" id="modal-motorista" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-motorista-titulo">Motorista</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-motorista"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="motorista-edit-id">
+                <div class="form-group"><label>Nome *</label><input type="text" id="motorista-nome" maxlength="200"></div>
+                <div class="form-group"><label>Matricula (usada como PIN)</label><input type="text" id="motorista-matricula" maxlength="50"></div>
+                <div class="form-group">
+                    <label>Turno</label>
+                    <select id="motorista-turno">
+                        <option value="todos">Todos</option>
+                        <option value="manha">Manha</option>
+                        <option value="tarde">Tarde</option>
+                        <option value="noite">Noite</option>
+                    </select>
+                </div>
+                <label class="check-label" id="motorista-ativo-wrap">
+                    <input type="checkbox" id="motorista-ativo" checked> Ativo
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-fechar" data-fecha="modal-motorista">Cancelar</button>
+                <button class="btn-salvar" id="btn-salvar-motorista"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Config Tipo Carga -->
+    <div class="modal-overlay" id="modal-tipo-carga" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-tipo-titulo">Tipo de Carga</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-tipo-carga"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="tipo-edit-id">
+                <div class="form-group"><label>Nome *</label><input type="text" id="tipo-nome" maxlength="100"></div>
+                <div class="form-group"><label>Icone Font Awesome</label><input type="text" id="tipo-icone" placeholder="fa-box" maxlength="50"></div>
+                <div class="form-group"><label>Cor (hex)</label><input type="color" id="tipo-cor" value="#6c757d"></div>
+                <div class="form-group"><label>Ordem</label><input type="number" id="tipo-ordem" value="0" min="0"></div>
+                <label class="check-label">
+                    <input type="checkbox" id="tipo-requer-lista"> Requer lista de itens
+                </label>
+                <label class="check-label">
+                    <input type="checkbox" id="tipo-requer-assinatura"> Requer assinatura na entrega
+                </label>
+                <label class="check-label" id="tipo-ativo-wrap">
+                    <input type="checkbox" id="tipo-ativo" checked> Ativo
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-fechar" data-fecha="modal-tipo-carga">Cancelar</button>
+                <button class="btn-salvar" id="btn-salvar-tipo"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Config Destino -->
+    <div class="modal-overlay" id="modal-destino" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-destino-titulo">Destino</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-destino"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="destino-edit-id">
+                <div class="form-group"><label>Nome *</label><input type="text" id="destino-nome" maxlength="200"></div>
+                <div class="form-group">
+                    <label>Tipo de Carga (deixe vazio para destino geral)</label>
+                    <select id="destino-tipo-carga-id">
+                        <option value="">Geral (todos os tipos)</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Ordem</label><input type="number" id="destino-ordem" value="0" min="0"></div>
+                <label class="check-label" id="destino-ativo-wrap">
+                    <input type="checkbox" id="destino-ativo" checked> Ativo
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-fechar" data-fecha="modal-destino">Cancelar</button>
+                <button class="btn-salvar" id="btn-salvar-destino"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Config Origem -->
+    <div class="modal-overlay" id="modal-origem" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-origem-titulo">Setor de Origem</h3>
+                <button class="btn-fechar-modal" data-fecha="modal-origem"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="origem-edit-id">
+                <div class="form-group"><label>Nome *</label><input type="text" id="origem-nome" maxlength="200"></div>
+                <div class="form-group"><label>Ordem</label><input type="number" id="origem-ordem" value="0" min="0"></div>
+                <label class="check-label" id="origem-ativo-wrap">
+                    <input type="checkbox" id="origem-ativo" checked> Ativo
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-fechar" data-fecha="modal-origem">Cancelar</button>
+                <button class="btn-salvar" id="btn-salvar-origem"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/paineis/painel54/main.js"></script>
+    <script src="/static/js/versao.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

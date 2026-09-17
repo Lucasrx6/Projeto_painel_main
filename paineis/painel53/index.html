@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Motorista - Transporte de Material - HAC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/paineis/painel53/style.css">
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <meta name="theme-color" content="#343a40">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+    <div class="painel-container">
+
+        <div class="painel-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <img src="/static/img/logo.png" alt="HAC" onerror="this.style.display='none'">
+                    <h1><i class="fas fa-id-card"></i> Motorista</h1>
+                </div>
+                <div class="header-right">
+                    <button id="btn-voltar" class="btn-header" title="Voltar">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+
+            <!-- TELA 1: Selecao de Motorista -->
+            <div class="tela" id="tela-selecao">
+                <div class="selecao-motorista">
+                    <i class="fas fa-truck" style="font-size:56px;color:#343a40;"></i>
+                    <h2>Transporte de Material</h2>
+                    <p>Selecione seu nome para visualizar a fila</p>
+                    <div class="motorista-select-wrap">
+                        <select id="select-motorista">
+                            <option value="">Selecione o motorista...</option>
+                        </select>
+                    </div>
+                    <button class="btn-entrar" id="btn-entrar">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </button>
+                </div>
+            </div>
+
+            <!-- TELA 2: Tela Principal do Motorista -->
+            <div class="tela" id="tela-motorista" style="display:none;">
+
+                <div class="motorista-info-bar" id="motorista-info-bar">
+                    <div class="motorista-avatar"><i class="fas fa-id-card"></i></div>
+                    <div>
+                        <div class="motorista-nome" id="motorista-nome-display">--</div>
+                        <div class="motorista-turno" id="motorista-turno-display">--</div>
+                    </div>
+                    <button class="btn-sair-motorista" id="btn-sair-motorista">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+
+                <!-- Chamado Ativo -->
+                <div id="area-ativo" style="display:none;">
+                    <div class="chamado-ativo-wrap">
+                        <div class="chamado-ativo-label">
+                            <i class="fas fa-bolt"></i> CHAMADO ATIVO
+                        </div>
+                        <div class="chamado-ativo-card" id="chamado-ativo-card">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila -->
+                <div class="fila-header">
+                    <span class="fila-label"><i class="fas fa-list-ol"></i> Fila de Espera</span>
+                    <span class="fila-total" id="fila-total">0 chamado(s)</span>
+                </div>
+                <div class="fila-lista" id="fila-lista">
+                    <div class="loading"><div class="loading-spinner"></div><p>Carregando...</p></div>
+                </div>
+                <div class="fila-vazia" id="fila-vazia" style="display:none;">
+                    <i class="fas fa-check-circle" style="color:#28a745;"></i>
+                    <p>Nenhum chamado aguardando</p>
+                </div>
+
+                <!-- Historico do Dia -->
+                <div style="margin-top:24px;">
+                    <div class="fila-header">
+                        <span class="fila-label"><i class="fas fa-history"></i> Historico de Hoje</span>
+                    </div>
+                    <div class="historico-lista" id="historico-lista">
+                        <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div><!-- /.main-content -->
+
+        <footer class="sistema-footer">
+            <span id="sistema-versao-footer">Central de Informacoes V 1.1.4</span>
+        </footer>
+
+    </div><!-- /.painel-container -->
+
+    <!-- Modal: Confirmar Entrega (sem assinatura) -->
+    <div class="modal-overlay" id="modal-entregar" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-box-open" style="color:#28a745;margin-right:8px;"></i> Confirmar Entrega</h3>
+                <button class="btn-fechar-modal" id="btn-fechar-entregar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome do Destinatario *</label>
+                    <input type="text" id="entregar-destinatario" placeholder="Quem recebeu o material..." maxlength="200" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Observacao (opcional)</label>
+                    <textarea id="entregar-obs" rows="2" maxlength="300" placeholder="Alguma observacao sobre a entrega..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-secundario" id="btn-fechar-entregar2">Cancelar</button>
+                <button class="btn-modal-principal" id="btn-confirmar-entrega">
+                    <i class="fas fa-check"></i> Confirmar Entrega
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Entrega com Assinatura -->
+    <div class="modal-overlay" id="modal-assinatura" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-signature" style="color:var(--cor-primaria);margin-right:8px;"></i> Entrega com Assinatura</h3>
+                <button class="btn-fechar-modal" id="btn-fechar-assinatura"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome do Destinatario *</label>
+                    <input type="text" id="assin-destinatario" placeholder="Nome de quem recebeu..." maxlength="200" autocomplete="off">
+                </div>
+
+                <div class="pin-wrap">
+                    <div class="pin-label"><i class="fas fa-lock"></i> PIN do Motorista (matricula) *</div>
+                    <div class="pin-input-wrap">
+                        <input type="password" id="assin-pin" class="pin-input" placeholder="PIN" maxlength="20" autocomplete="off" inputmode="numeric">
+                        <span class="pin-status" id="pin-status"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="assinatura-label"><i class="fas fa-pen-nib"></i> Assinatura do Destinatario *</div>
+                    <div class="assinatura-wrap">
+                        <canvas id="canvas-assinatura"></canvas>
+                        <div class="assinatura-acoes">
+                            <button type="button" class="btn-limpar-assinatura" id="btn-limpar-canvas">
+                                <i class="fas fa-eraser"></i> Limpar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="assinatura-hint">Solicite que o destinatario assine no campo acima</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observacao (opcional)</label>
+                    <textarea id="assin-obs" rows="2" maxlength="300" placeholder="Alguma observacao..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-secundario" id="btn-fechar-assinatura2">Cancelar</button>
+                <button class="btn-modal-principal" id="btn-confirmar-assinatura">
+                    <i class="fas fa-check-circle"></i> Confirmar com Assinatura
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ver Itens -->
+    <div class="modal-overlay" id="modal-itens" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-list-ul" style="color:var(--cor-primaria);margin-right:8px;"></i> Manifesto de Itens</h3>
+                <button class="btn-fechar-modal" id="btn-fechar-itens"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="itens-lista" id="itens-lista">
+                    <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-principal" id="btn-fechar-itens2">
+                    <i class="fas fa-check"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cancelar Chamado -->
+    <div class="modal-overlay modal-cancelar" id="modal-cancelar" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-times-circle"></i> Cancelar Chamado</h3>
+                <button class="btn-fechar-modal" id="btn-fechar-cancelar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>Informe o motivo do cancelamento:</p>
+                <div class="form-group">
+                    <label>Motivo *</label>
+                    <textarea id="cancelar-motivo" rows="3" maxlength="300" placeholder="Descreva o motivo..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-secundario" id="btn-fechar-cancelar2">Voltar</button>
+                <button class="btn-modal-principal btn-cancelar-sim" id="btn-confirmar-cancelar">
+                    <i class="fas fa-times"></i> Cancelar Chamado
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script src="/paineis/painel53/main.js"></script>
+    <script src="/static/js/versao.js"></script>
+    <script src="/static/js/auto-auth.js"></script>
+</body>
+</html>
