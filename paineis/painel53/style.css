@@ -524,6 +524,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     background: white;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 .oas-header {
     display: flex;

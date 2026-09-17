@@ -553,8 +553,8 @@
         abrirModal('modal-iniciar-viagem');
 
         // Configurar UI de assinatura do motorista (mobile vs desktop)
-        configurarUiAssinatura('motorista', 'assin-wrap-motorista', 'assin-mobile-motorista');
-        atualizarPreviewAssin('preview-assin-motorista', false);
+        configurarUiAssinatura('assin-wrap-motorista', 'assin-mobile-motorista');
+        atualizarPreviewAssin('btn-abrir-fs-motorista', 'preview-assin-motorista', false);
 
         if (!ehTouchDevice()) {
             inicializarPadMotorista();
@@ -684,13 +684,18 @@
     function inicializarPadFS() {
         var canvas = document.getElementById('oas-canvas');
         if (!canvas || !window.SignaturePad) return;
+
+        // Ajustar dimensões do canvas (reseta o contexto — scale deve ser re-aplicado depois)
+        var ratio = window.devicePixelRatio || 1;
+        var w = canvas.offsetWidth;
+        var h = canvas.offsetHeight;
+        if (w === 0 || h === 0) return; // layout ainda não calculado
+        canvas.width  = w * ratio;
+        canvas.height = h * ratio;
+        canvas.getContext('2d').scale(ratio, ratio);
+
         if (Estado.signaturePadFS) {
-            Estado.signaturePadFS.clear();
-            // Re-ajustar tamanho pois pode ter mudado
-            var ratio = window.devicePixelRatio || 1;
-            canvas.width  = canvas.offsetWidth  * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext('2d').scale(ratio, ratio);
+            // Re-usar instância existente — canvas já foi redimensionado/re-escalado acima
             Estado.signaturePadFS.clear();
             return;
         }
@@ -700,10 +705,6 @@
             minWidth: 1.5,
             maxWidth: 3.5
         });
-        var ratio = window.devicePixelRatio || 1;
-        canvas.width  = canvas.offsetWidth  * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext('2d').scale(ratio, ratio);
         Estado.signaturePadFS.clear();
     }
 
@@ -728,14 +729,16 @@
             return;
         }
         var dataURL = Estado.signaturePadFS.toDataURL('image/png');
+        // Salvar callback antes de fechar (fecharAssinaturaFS anula Estado.fsCallback)
+        var cb = Estado.fsCallback;
         fecharAssinaturaFS();
-        if (typeof Estado.fsCallback === 'function') {
-            Estado.fsCallback(dataURL);
+        if (typeof cb === 'function') {
+            cb(dataURL);
         }
     }
 
     // Configura UI mobile/desktop de assinatura dentro de um modal
-    function configurarUiAssinatura(tipoKey, wrapId, mobileWrapId) {
+    function configurarUiAssinatura(wrapId, mobileWrapId) {
         var wrapEl   = document.getElementById(wrapId);
         var mobileEl = document.getElementById(mobileWrapId);
         if (!wrapEl || !mobileEl) return;
@@ -749,8 +752,8 @@
     }
 
     // Atualiza o preview mobile após captura
-    function atualizarPreviewAssin(previewId, capturado) {
-        var btn     = document.getElementById(previewId.replace('preview-assin-', 'btn-abrir-fs-'));
+    function atualizarPreviewAssin(btnId, previewId, capturado) {
+        var btn     = document.getElementById(btnId);
         var preview = document.getElementById(previewId);
         if (!btn || !preview) return;
         if (capturado) {
@@ -997,8 +1000,8 @@
         abrirModal('modal-assinatura');
 
         // Configurar UI de assinatura do destinatário (mobile vs desktop)
-        configurarUiAssinatura('destinatario', 'assin-wrap-destinatario', 'assin-mobile-destinatario');
-        atualizarPreviewAssin('preview-assin-destinatario', false);
+        configurarUiAssinatura('assin-wrap-destinatario', 'assin-mobile-destinatario');
+        atualizarPreviewAssin('btn-abrir-fs-destinatario', 'preview-assin-destinatario', false);
         var hintEl = document.getElementById('assin-hint-destinatario');
         if (hintEl) hintEl.style.display = ehTouchDevice() ? 'none' : '';
 
@@ -1259,16 +1262,16 @@
         if (btnAbrirFSMot) btnAbrirFSMot.addEventListener('click', function () {
             abrirAssinaturaFS(function (dataURL) {
                 Estado.assinaturaFSMotorista = dataURL;
-                atualizarPreviewAssin('preview-assin-motorista', true);
+                atualizarPreviewAssin('btn-abrir-fs-motorista', 'preview-assin-motorista', true);
             });
         });
         var btnReassinarMot = document.getElementById('btn-reassinar-motorista');
         if (btnReassinarMot) btnReassinarMot.addEventListener('click', function () {
             Estado.assinaturaFSMotorista = null;
-            atualizarPreviewAssin('preview-assin-motorista', false);
+            atualizarPreviewAssin('btn-abrir-fs-motorista', 'preview-assin-motorista', false);
             abrirAssinaturaFS(function (dataURL) {
                 Estado.assinaturaFSMotorista = dataURL;
-                atualizarPreviewAssin('preview-assin-motorista', true);
+                atualizarPreviewAssin('btn-abrir-fs-motorista', 'preview-assin-motorista', true);
             });
         });
 
@@ -1277,16 +1280,16 @@
         if (btnAbrirFSDest) btnAbrirFSDest.addEventListener('click', function () {
             abrirAssinaturaFS(function (dataURL) {
                 Estado.assinaturaFSDestinatario = dataURL;
-                atualizarPreviewAssin('preview-assin-destinatario', true);
+                atualizarPreviewAssin('btn-abrir-fs-destinatario', 'preview-assin-destinatario', true);
             });
         });
         var btnReassinarDest = document.getElementById('btn-reassinar-destinatario');
         if (btnReassinarDest) btnReassinarDest.addEventListener('click', function () {
             Estado.assinaturaFSDestinatario = null;
-            atualizarPreviewAssin('preview-assin-destinatario', false);
+            atualizarPreviewAssin('btn-abrir-fs-destinatario', 'preview-assin-destinatario', false);
             abrirAssinaturaFS(function (dataURL) {
                 Estado.assinaturaFSDestinatario = dataURL;
-                atualizarPreviewAssin('preview-assin-destinatario', true);
+                atualizarPreviewAssin('btn-abrir-fs-destinatario', 'preview-assin-destinatario', true);
             });
         });
 
