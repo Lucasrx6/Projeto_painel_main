@@ -189,6 +189,26 @@
                         </div>
                     </div>
 
+                    <!-- Agendamento -->
+                    <div class="form-section">
+                        <label class="section-label">
+                            <i class="fas fa-calendar-alt"></i> Agendamento
+                        </label>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="chk-agendar">
+                            <span>Agendar para um horario especifico</span>
+                        </label>
+                        <div id="agendamento-wrap" style="display:none; margin-top:10px;">
+                            <div class="form-group">
+                                <label for="input-dt-agendamento">
+                                    <i class="fas fa-clock"></i> Data e hora desejada *
+                                </label>
+                                <input type="datetime-local" id="input-dt-agendamento">
+                                <small class="campo-hint">O motorista sera avisado se iniciar mais de 1h antes do horario agendado.</small>
+                            </div>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn-enviar" id="btn-enviar">
                         <i class="fas fa-paper-plane"></i> Enviar Solicitacao
                     </button>

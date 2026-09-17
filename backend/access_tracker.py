@@ -77,6 +77,12 @@ PAINEIS_NOMES = {
     'painel46': 'Radiologia',
     'painel47': 'Gestão de Radiologia',
     'painel48': 'Assinatura Digital HUB',
+    'painel49': 'Relatório de Salas Cirúrgicas',
+    'painel50': 'Enfermagem por Setor',
+    'painel51': 'Checagem à Beira do Leito',
+    'painel52': 'Solicitar Transporte de Material',
+    'painel53': 'Tela do Motorista — Transporte',
+    'painel54': 'Gestão de Transporte de Material',
 }
 
 # Descrição humanizada de sub-endpoints

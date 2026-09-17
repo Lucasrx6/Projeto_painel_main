@@ -426,6 +426,9 @@ def api_listar_paineis():
             {'nome': 'painel36', 'titulo': 'Padioleiro — Gestão',      'descricao': '[Aux] Gestão, relatórios e configurações do padioleiro', 'ativo': True, 'categoria': 'auxiliar'},
             {'nome': 'painel44', 'titulo': 'Hub de Serviços',          'descricao': 'Central de navegação para todos os subsistemas do HAC',  'ativo': True, 'categoria': 'auxiliar'},
             {'nome': 'painel48', 'titulo': 'Assinatura Digital — HUB', 'descricao': '[Aux] Coleta de assinaturas eletrônicas (AES) com PIN e auditoria completa', 'ativo': True, 'categoria': 'auxiliar'},
+            {'nome': 'painel52', 'titulo': 'Transporte de Material — Solicitação', 'descricao': '[Aux] Solicitação de transporte de materiais e cargas hospitalares', 'ativo': True, 'categoria': 'auxiliar'},
+            {'nome': 'painel53', 'titulo': 'Transporte de Material — Motorista',   'descricao': '[Aux] Tela do motorista — fila, viagens e entregas com assinatura', 'ativo': True, 'categoria': 'auxiliar'},
+            {'nome': 'painel54', 'titulo': 'Transporte de Material — Gestão',      'descricao': '[Aux] Gestão, relatórios, exportação Excel e configurações de transporte', 'ativo': True, 'categoria': 'auxiliar'},
             # --- Centro Cirúrgico / Hemodinâmica ---
             {'nome': 'painel49', 'titulo': 'Relatório de Salas Cirúrgicas', 'descricao': 'Relatório de tempo de uso e ociosidade das salas — CC e Hemodinâmica', 'ativo': True, 'categoria': 'cirurgia'},
             # --- Enfermagem ---

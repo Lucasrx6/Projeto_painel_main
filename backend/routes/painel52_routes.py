@@ -123,6 +123,8 @@ def api_painel52_solicitar():
     prioridade           = dados.get('prioridade', 'normal')
     itens                = dados.get('itens') or []
     foto_carga           = (dados.get('foto_carga') or '').strip() or None
+    tipo_solicitacao     = dados.get('tipo_solicitacao', 'imediato')
+    dt_agendamento_str   = (dados.get('dt_agendamento') or '').strip() or None
 
     if foto_carga and not foto_carga.startswith('data:image/'):
         foto_carga = None
@@ -133,6 +135,22 @@ def api_painel52_solicitar():
 
     if prioridade not in ('normal', 'urgente'):
         prioridade = 'normal'
+
+    if tipo_solicitacao not in ('imediato', 'agendado'):
+        tipo_solicitacao = 'imediato'
+
+    dt_agendamento = None
+    if tipo_solicitacao == 'agendado':
+        if not dt_agendamento_str:
+            return jsonify({'success': False,
+                            'error': 'Informe a data e hora do agendamento'}), 400
+        try:
+            dt_agendamento = datetime.fromisoformat(dt_agendamento_str)
+            if dt_agendamento <= datetime.now():
+                return jsonify({'success': False,
+                                'error': 'A data/hora do agendamento deve ser no futuro'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Data de agendamento invalida'}), 400
 
     try:
         with get_db_cursor() as cursor:
@@ -147,13 +165,15 @@ def api_painel52_solicitar():
                     nr_protocolo, tipo_carga_id, tipo_carga_nome,
                     descricao, setor_origem_nome, destino_nome, destino_complemento,
                     observacao, prioridade, status,
+                    tipo_solicitacao, dt_agendamento,
                     solicitante_id, solicitante_nome, foto_carga, criado_em
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'aguardando', %s, %s, %s, NOW())
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'aguardando', %s, %s, %s, %s, %s, NOW())
                 RETURNING id
             """, (
                 nr_protocolo, tipo_carga_id, tipo_carga_nome or None,
                 descricao or None, setor_origem_nome, destino_nome, destino_complemento or None,
                 observacao or None, prioridade,
+                tipo_solicitacao, dt_agendamento,
                 usuario_id, solicitante_nome, foto_carga
             ))
             solicitacao_id = cursor.fetchone()['id']

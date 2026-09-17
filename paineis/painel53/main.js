@@ -242,10 +242,18 @@
             var corBorda = c.tipo_carga_cor ? 'border-left:4px solid ' + escHtml(c.tipo_carga_cor) + ';' : '';
             var badgePrio = c.prioridade === 'urgente'
                 ? '<span class="badge-urgente"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>' : '';
+            var badgeAgendAtivo = '';
+            if (c.tipo_solicitacao === 'agendado' && c.dt_agendamento) {
+                var dtAgA = new Date(c.dt_agendamento);
+                var agLbl = dtAgA.toLocaleDateString('pt-BR') + ' ' +
+                    dtAgA.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                badgeAgendAtivo = '<span class="badge-agendado" style="background:#0d6efd;">' +
+                    '<i class="fas fa-calendar-clock"></i> Agendado: ' + escHtml(agLbl) + '</span>';
+            }
             html += '<div class="chamado-ativo-card" data-id="' + escHtml(String(c.id)) + '" style="' + corBorda + '">' +
                 '<div class="chamado-ativo-header">' +
                     '<span class="chamado-protocolo"><i class="fas fa-hashtag"></i> ' + escHtml(c.nr_protocolo) + '</span>' +
-                    badgePrio +
+                    badgePrio + badgeAgendAtivo +
                 '</div>' +
                 '<div class="chamado-tipo-nome">' +
                     (c.tipo_carga_icone ? '<i class="fas ' + escHtml(c.tipo_carga_icone) + '"></i> ' : '') +
@@ -331,6 +339,17 @@
             var corBorda = c.tipo_carga_cor ? 'border-left:4px solid ' + escHtml(c.tipo_carga_cor) + ';' : '';
             var badgePrio = c.prioridade === 'urgente'
                 ? '<span class="badge-urgente"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>' : '';
+            var badgeAgend = '';
+            if (c.tipo_solicitacao === 'agendado' && c.dt_agendamento) {
+                var dtAgend = new Date(c.dt_agendamento);
+                var agendLabel = dtAgend.toLocaleDateString('pt-BR') + ' ' +
+                    dtAgend.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                var agora = new Date();
+                var diffMin = Math.round((dtAgend - agora) / 60000);
+                var agendColor = diffMin < 0 ? '#dc3545' : (diffMin < 60 ? '#fd7e14' : '#0d6efd');
+                badgeAgend = '<span class="badge-agendado" style="background:' + agendColor + ';">' +
+                    '<i class="fas fa-calendar-clock"></i> ' + escHtml(agendLabel) + '</span>';
+            }
             var mins = c.minutos_espera != null ? (' | <i class="fas fa-clock"></i> ' + escHtml(String(c.minutos_espera)) + ' min') : '';
 
             html += '<div class="fila-card' + (selecionado ? ' fila-card-selecionado' : '') +
@@ -341,7 +360,7 @@
                     '<div class="fila-card-body">' +
                         '<div class="fila-card-header">' +
                             '<span class="chamado-protocolo"><i class="fas fa-hashtag"></i> ' + escHtml(c.nr_protocolo) + '</span>' +
-                            badgePrio +
+                            badgePrio + badgeAgend +
                         '</div>' +
                         '<div class="chamado-tipo-nome">' +
                             (c.tipo_carga_icone ? '<i class="fas ' + escHtml(c.tipo_carga_icone) + '"></i> ' : '') +
@@ -685,6 +704,30 @@
                 toast('Assinatura do motorista e obrigatoria para este tipo de carga.', 'warning'); return;
             }
             assinaturaMotorista = Estado.signaturePadMotorista.toDataURL('image/png');
+        }
+
+        // Verificar chamados agendados com início antecipado (> 60 min antes)
+        var agora = new Date();
+        for (var si = 0; si < Estado.selecionados.length; si++) {
+            var selId = Estado.selecionados[si];
+            for (var fi = 0; fi < Estado.fila.length; fi++) {
+                var fc = Estado.fila[fi];
+                if (fc.id === selId && fc.tipo_solicitacao === 'agendado' && fc.dt_agendamento) {
+                    var dtPrev = new Date(fc.dt_agendamento);
+                    var diffMin = Math.round((dtPrev - agora) / 60000);
+                    if (diffMin > 60) {
+                        var dtLabel = dtPrev.toLocaleDateString('pt-BR') + ' às ' +
+                            dtPrev.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        var confirmou = window.confirm(
+                            'Atenção: o chamado ' + fc.nr_protocolo + ' está agendado para ' + dtLabel + '.\n' +
+                            'Você está iniciando ' + diffMin + ' minutos antes do horário previsto.\n\n' +
+                            'Deseja iniciar mesmo assim?'
+                        );
+                        if (!confirmou) return;
+                        break;
+                    }
+                }
+            }
         }
 
         var payload = {

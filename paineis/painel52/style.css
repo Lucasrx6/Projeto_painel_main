@@ -394,3 +394,40 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     .item-row-3 { grid-template-columns: 1fr 70px; }
     .item-row-3 .item-unidade { display: none; }
 }
+
+/* Agendamento */
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--texto);
+    padding: 8px 0;
+}
+.toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--cor-primaria);
+    cursor: pointer;
+}
+.campo-hint {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-top: 4px;
+}
+input[type="datetime-local"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--borda);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--fundo-input);
+    color: var(--texto);
+    box-sizing: border-box;
+}
+input[type="datetime-local"]:focus {
+    border-color: var(--cor-primaria);
+    outline: none;
+}

@@ -344,6 +344,14 @@
             if (radios[i].checked) { prioridade = radios[i].value; break; }
         }
 
+        var chkAgend = document.getElementById('chk-agendar');
+        var agendado = chkAgend && chkAgend.checked;
+        var dtAgend  = agendado ? (document.getElementById('input-dt-agendamento').value || '') : '';
+        if (agendado && !dtAgend) {
+            toast('Informe a data e hora do agendamento.', 'warning');
+            return;
+        }
+
         var payload = {
             tipo_carga_id:      Estado.tipoCargaId,
             tipo_carga_nome:    Estado.tipoCargaNome,
@@ -354,7 +362,9 @@
             observacao:         document.getElementById('input-obs').value,
             prioridade:         prioridade,
             itens:              Estado.tipoRequerLista ? Estado.itens : [],
-            foto_carga:         Estado.fotoBase64 || null
+            foto_carga:         Estado.fotoBase64 || null,
+            tipo_solicitacao:   agendado ? 'agendado' : 'imediato',
+            dt_agendamento:     agendado ? dtAgend : null
         };
 
         var btn = document.getElementById('btn-enviar');
@@ -377,10 +387,13 @@
                 }
                 document.getElementById('conf-protocolo').textContent = data.nr_protocolo || '';
                 var det = document.getElementById('confirmacao-detalhes');
+                var agendadoLabel = agendado && dtAgend
+                    ? '<br><b>Agendado para:</b> ' + escHtml(formatarDtLocal(dtAgend))
+                    : '';
                 det.innerHTML = '<b>Tipo:</b> ' + escHtml(Estado.tipoCargaNome) + '<br>' +
                     '<b>Origem:</b> ' + escHtml(origem) + '<br>' +
                     '<b>Destino:</b> ' + escHtml(destino) + '<br>' +
-                    '<b>Prioridade:</b> ' + escHtml(prioridade);
+                    '<b>Prioridade:</b> ' + escHtml(prioridade) + agendadoLabel;
                 mostrarTela('tela-confirmacao');
                 limparFormulario();
             })
@@ -501,6 +514,14 @@
         } catch (e) { return iso; }
     }
 
+    function formatarDtLocal(dtStr) {
+        if (!dtStr) return '';
+        try {
+            var d = new Date(dtStr);
+            return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        } catch (e) { return dtStr; }
+    }
+
     /* ── CANCELAR ─────────────────────── */
     function confirmarCancelamento() {
         if (!Estado.chamadoIdCancelar) return;
@@ -583,6 +604,26 @@
             var grp = document.getElementById('grupo-complemento');
             if (grp) grp.style.display = this.value ? '' : 'none';
         });
+
+        /* toggle agendamento */
+        var chkAgend = document.getElementById('chk-agendar');
+        if (chkAgend) chkAgend.addEventListener('change', function () {
+            var wrap = document.getElementById('agendamento-wrap');
+            if (wrap) wrap.style.display = this.checked ? '' : 'none';
+            if (!this.checked) {
+                var inp = document.getElementById('input-dt-agendamento');
+                if (inp) inp.value = '';
+            }
+        });
+
+        /* valor mínimo do datetime (agora + 5min) */
+        var inpDtAgend = document.getElementById('input-dt-agendamento');
+        if (inpDtAgend) {
+            var agora = new Date(Date.now() + 5 * 60000);
+            var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+            inpDtAgend.min = agora.getFullYear() + '-' + pad(agora.getMonth() + 1) + '-' + pad(agora.getDate()) +
+                'T' + pad(agora.getHours()) + ':' + pad(agora.getMinutes());
+        }
 
         /* atualizar badge a cada refresh */
         setInterval(function () {

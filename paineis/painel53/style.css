@@ -502,3 +502,16 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 /* ── FORM ROW 2 COLUNAS ────────────────────────────────── */
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── BADGE AGENDADO ─────────────────────────────────────── */
+.badge-agendado {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}

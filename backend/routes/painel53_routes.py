@@ -102,7 +102,7 @@ def api_painel53_fila():
                     tc.requer_assinatura_motorista, tc.requer_foto_inicio,
                     s.descricao, s.setor_origem_nome, s.destino_nome, s.destino_complemento,
                     s.prioridade, s.status, s.solicitante_nome, s.observacao,
-                    s.foto_carga,
+                    s.foto_carga, s.tipo_solicitacao, s.dt_agendamento,
                     s.criado_em,
                     ROUND(EXTRACT(EPOCH FROM (NOW() - s.criado_em)) / 60, 1) AS minutos_espera
                 FROM transporte_material_solicitacoes s
@@ -110,6 +110,7 @@ def api_painel53_fila():
                 WHERE s.status = 'aguardando'
                 ORDER BY
                     CASE s.prioridade WHEN 'urgente' THEN 0 ELSE 1 END,
+                    CASE s.tipo_solicitacao WHEN 'agendado' THEN 1 ELSE 0 END,
                     s.criado_em ASC
             """)
             fila = []
@@ -130,7 +131,7 @@ def api_painel53_fila():
                         tc.requer_assinatura_motorista, tc.requer_foto_inicio,
                         s.descricao, s.setor_origem_nome, s.destino_nome, s.destino_complemento,
                         s.prioridade, s.status, s.solicitante_nome, s.observacao,
-                        s.foto_carga,
+                        s.foto_carga, s.tipo_solicitacao, s.dt_agendamento,
                         s.criado_em, s.dt_aceite, s.dt_inicio_transporte,
                         ROUND(EXTRACT(EPOCH FROM (NOW() - s.criado_em)) / 60, 1) AS minutos_espera
                     FROM transporte_material_solicitacoes s
