@@ -31,9 +31,9 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 /* ── HEADER ────────────────────────────────────── */
 .painel-header {
-    background: linear-gradient(135deg, #343a40 0%, #23272b 100%);
+    background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
     color: white; padding: 10px 16px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.18);
     position: sticky; top: 0; z-index: 100;
 }
 .header-content { display: flex; align-items: center; justify-content: space-between; max-width: 700px; margin: 0 auto; }
@@ -444,4 +444,61 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 @media (max-width: 480px) {
     .cac-acoes { flex-direction: column; }
     .btn-acao  { min-width: auto; }
+    .form-row-2 { grid-template-columns: 1fr; }
 }
+
+/* ── CLASSES COMPARTILHADAS (ativo + fila) ────────────── */
+.chamado-protocolo {
+    font-size: 11px; font-weight: 700; color: var(--cor-primaria); letter-spacing: 0.5px;
+}
+.chamado-tipo-nome {
+    font-size: 14px; font-weight: 700; color: var(--texto);
+    margin: 6px 0 4px; display: flex; align-items: center; gap: 6px;
+}
+.chamado-rota {
+    font-size: 13px; color: var(--texto-sec);
+    display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.chamado-meta { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+/* ── CHAMADO ATIVO — layout interno ──────────────────── */
+.chamado-ativo-card { padding: 14px 16px; }
+.chamado-ativo-acoes {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--borda);
+}
+
+/* ── CORES DOS BOTÕES DE AÇÃO ──────────────────────────── */
+.btn-acao.btn-entregar       { background: var(--cor-entregue); color: white; }
+.btn-acao.btn-entregar:hover { filter: brightness(1.1); }
+.btn-acao.btn-entregar-assin       { background: var(--cor-primaria); color: white; }
+.btn-acao.btn-entregar-assin:hover { background: var(--cor-primaria-dark); }
+.btn-acao.btn-cancelar-chamado       { background: white; color: #dc3545; border: 2px solid #dc3545; }
+.btn-acao.btn-cancelar-chamado:hover { background: #f8d7da; }
+.btn-acao.btn-itens       { background: #f8f9fa; color: var(--texto); border: 2px solid var(--borda); }
+.btn-acao.btn-itens:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+
+/* ── HISTÓRICO (classes usadas pelo JS) ────────────────── */
+.historico-item {
+    background: white; border-radius: 10px; padding: 10px 14px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06); border-left: 4px solid var(--cor-entregue);
+}
+.historico-item + .historico-item { margin-top: 8px; }
+.historico-item-header {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px;
+}
+.historico-protocolo { font-size: 11px; font-weight: 700; color: var(--cor-primaria); letter-spacing: 0.5px; }
+.historico-status {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+}
+.historico-rota { font-size: 13px; color: var(--texto-sec); margin: 2px 0; }
+.historico-dest { font-size: 12px; color: var(--texto-sec); margin-top: 3px; }
+.historico-vazio { text-align: center; padding: 20px; color: var(--texto-sec); font-size: 13px; }
+
+/* Status badges usados pelo JS */
+.status-entregue  { background: #d4edda; color: #155724; }
+.status-cancelado { background: #f8f9fa; color: #6c757d; }
+.status-andamento { background: #ffe5d0; color: #7c3b00; }
+
+/* ── FORM ROW 2 COLUNAS ────────────────────────────────── */
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

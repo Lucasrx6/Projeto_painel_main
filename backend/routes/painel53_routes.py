@@ -313,6 +313,8 @@ def api_painel53_entregar(chamado_id):
     dados           = request.get_json() or {}
     motorista_id    = dados.get('motorista_id')
     nm_destinatario = (dados.get('nm_destinatario') or '').strip()
+    cpf_destinatario = (dados.get('cpf_destinatario') or '').strip() or None
+    dt_nasc_dest    = dados.get('dt_nascimento_destinatario') or None
     obs_entrega     = (dados.get('observacao_entrega') or '').strip()
     veiculo_id      = dados.get('veiculo_id') or None
     veiculo_placa   = (dados.get('veiculo_placa') or '').strip() or None
@@ -338,18 +340,20 @@ def api_painel53_entregar(chamado_id):
 
             cursor.execute("""
                 UPDATE transporte_material_solicitacoes
-                SET status             = 'entregue',
-                    dt_entrega         = NOW(),
-                    nm_destinatario    = %s,
-                    observacao_entrega = %s,
-                    veiculo_id         = COALESCE(%s, veiculo_id),
-                    veiculo_placa      = COALESCE(%s, veiculo_placa),
-                    entrega_parcial    = %s,
-                    obs_entrega_parcial = %s,
-                    atualizado_em      = NOW()
+                SET status                      = 'entregue',
+                    dt_entrega                  = NOW(),
+                    nm_destinatario             = %s,
+                    cpf_destinatario            = %s,
+                    dt_nascimento_destinatario  = %s,
+                    observacao_entrega          = %s,
+                    veiculo_id                  = COALESCE(%s, veiculo_id),
+                    veiculo_placa               = COALESCE(%s, veiculo_placa),
+                    entrega_parcial             = %s,
+                    obs_entrega_parcial         = %s,
+                    atualizado_em               = NOW()
                 WHERE id = %s
-            """, (nm_destinatario or None, obs_entrega or None,
-                  veiculo_id, veiculo_placa,
+            """, (nm_destinatario or None, cpf_destinatario, dt_nasc_dest,
+                  obs_entrega or None, veiculo_id, veiculo_placa,
                   entrega_parcial, obs_parcial or None, chamado_id))
 
             # Verificar se todos os chamados da viagem foram entregues
@@ -374,6 +378,8 @@ def api_painel53_entregar_com_assinatura(chamado_id):
     dados           = request.get_json() or {}
     motorista_pin   = (dados.get('motorista_pin') or '').strip()
     nm_destinatario = (dados.get('nm_destinatario') or '').strip()
+    cpf_destinatario = (dados.get('cpf_destinatario') or '').strip() or None
+    dt_nasc_dest    = dados.get('dt_nascimento_destinatario') or None
     assinatura_img  = (dados.get('assinatura_img') or '').strip()
     obs_entrega     = (dados.get('observacao_entrega') or '').strip()
     veiculo_id      = dados.get('veiculo_id') or None
@@ -430,15 +436,17 @@ def api_painel53_entregar_com_assinatura(chamado_id):
         viagem_id_para_verificar = chamado.get('viagem_id')
 
         conteudo = {
-            'protocolo':       chamado['nr_protocolo'],
-            'tipo_carga':      chamado['tipo_carga_nome'],
-            'origem':          chamado['setor_origem_nome'],
-            'destino':         chamado['destino_nome'],
-            'itens':           itens_list,
-            'motorista':       motorista['nome'],
-            'nm_destinatario': nm_destinatario,
-            'entrega_parcial': entrega_parcial,
-            'dt_entrega':      datetime.now().isoformat()
+            'protocolo':                chamado['nr_protocolo'],
+            'tipo_carga':               chamado['tipo_carga_nome'],
+            'origem':                   chamado['setor_origem_nome'],
+            'destino':                  chamado['destino_nome'],
+            'itens':                    itens_list,
+            'motorista':                motorista['nome'],
+            'nm_destinatario':          nm_destinatario,
+            'cpf_destinatario':         cpf_destinatario,
+            'dt_nascimento_destinatario': str(dt_nasc_dest) if dt_nasc_dest else None,
+            'entrega_parcial':          entrega_parcial,
+            'dt_entrega':               datetime.now().isoformat()
         }
         conteudo_json = _json.dumps(conteudo, ensure_ascii=False)
         hash_conteudo = hashlib.sha256(conteudo_json.encode('utf-8')).hexdigest()
@@ -474,19 +482,21 @@ def api_painel53_entregar_com_assinatura(chamado_id):
 
             cursor.execute("""
                 UPDATE transporte_material_solicitacoes
-                SET status              = 'entregue',
-                    dt_entrega          = NOW(),
-                    assinatura_id       = %s,
-                    nm_destinatario     = %s,
-                    observacao_entrega  = %s,
-                    veiculo_id          = COALESCE(%s, veiculo_id),
-                    veiculo_placa       = COALESCE(%s, veiculo_placa),
-                    entrega_parcial     = %s,
-                    obs_entrega_parcial = %s,
-                    atualizado_em       = NOW()
+                SET status                      = 'entregue',
+                    dt_entrega                  = NOW(),
+                    assinatura_id               = %s,
+                    nm_destinatario             = %s,
+                    cpf_destinatario            = %s,
+                    dt_nascimento_destinatario  = %s,
+                    observacao_entrega          = %s,
+                    veiculo_id                  = COALESCE(%s, veiculo_id),
+                    veiculo_placa               = COALESCE(%s, veiculo_placa),
+                    entrega_parcial             = %s,
+                    obs_entrega_parcial         = %s,
+                    atualizado_em               = NOW()
                 WHERE id = %s
-            """, (assinatura_id, nm_destinatario, obs_entrega or None,
-                  veiculo_id, veiculo_placa,
+            """, (assinatura_id, nm_destinatario, cpf_destinatario, dt_nasc_dest,
+                  obs_entrega or None, veiculo_id, veiculo_placa,
                   entrega_parcial, obs_parcial or None, chamado_id))
 
         # Verificar viagem após o commit do bloco anterior

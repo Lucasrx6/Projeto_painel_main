@@ -727,8 +727,9 @@ def api_painel54_cfg_tipo_criar():
             cursor.execute("""
                 INSERT INTO transporte_material_tipos_carga
                     (nome, icone, cor, requer_lista_itens, requer_assinatura,
-                     requer_foto, foto_obrigatoria, ativo, ordem)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, %s) RETURNING id
+                     requer_foto, foto_obrigatoria, ativo, ordem,
+                     requer_assinatura_motorista, requer_foto_inicio)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s) RETURNING id
             """, (
                 nome,
                 dados.get('icone', 'fa-box'),
@@ -737,7 +738,9 @@ def api_painel54_cfg_tipo_criar():
                 bool(dados.get('requer_assinatura', False)),
                 bool(dados.get('requer_foto', False)),
                 bool(dados.get('foto_obrigatoria', False)),
-                dados.get('ordem', 0)
+                dados.get('ordem', 0),
+                bool(dados.get('requer_assinatura_motorista', False)),
+                bool(dados.get('requer_foto_inicio', False))
             ))
             return jsonify({'success': True, 'id': cursor.fetchone()['id']}), 201
     except Exception as e:

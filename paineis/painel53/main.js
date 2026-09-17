@@ -21,6 +21,7 @@
         // viagem
         fotoInicioCapturada: null,
         requerFotoInicio: false,
+        requerAssinaturaMotorista: false,
         // pads
         signaturePadMotorista: null,
         signaturePadDestinatario: null,
@@ -196,6 +197,8 @@
         Estado.selecionados = [];
         Estado.fotoCargaAtual = null;
         Estado.fotoInicioCapturada = null;
+        Estado.requerFotoInicio = false;
+        Estado.requerAssinaturaMotorista = false;
         mostrarTela('tela-selecao');
         var selMot = document.getElementById('select-motorista');
         var selVei = document.getElementById('select-veiculo');
@@ -449,12 +452,14 @@
 
         // Verificar flags dos tipos selecionados
         Estado.requerFotoInicio = false;
+        Estado.requerAssinaturaMotorista = false;
         var chamadosComItens = [];
         for (var i = 0; i < Estado.fila.length; i++) {
             var c = Estado.fila[i];
             if (Estado.selecionados.indexOf(c.id) === -1) continue;
-            if (c.requer_foto_inicio) Estado.requerFotoInicio = true;
-            if (c.requer_lista_itens) chamadosComItens.push(c);
+            if (c.requer_foto_inicio)           Estado.requerFotoInicio = true;
+            if (c.requer_assinatura_motorista)  Estado.requerAssinaturaMotorista = true;
+            if (c.requer_lista_itens)           chamadosComItens.push(c);
         }
 
         // Resetar estado de itens
@@ -479,10 +484,16 @@
                 var passoFotoSpan = fotoSecao.querySelector('.viagem-passo-num');
                 if (passoFotoSpan) passoFotoSpan.textContent = String(passoBase++);
             }
-            if (passoAssin) passoAssin.textContent = String(passoBase);
         } else {
             if (fotoSecao) fotoSecao.style.display = 'none';
+        }
+
+        var assinSecao = document.getElementById('viagem-assinatura-secao');
+        if (Estado.requerAssinaturaMotorista) {
+            if (assinSecao) assinSecao.style.display = '';
             if (passoAssin) passoAssin.textContent = String(passoBase);
+        } else {
+            if (assinSecao) assinSecao.style.display = 'none';
         }
 
         // Montar resumo dos chamados selecionados
@@ -667,12 +678,14 @@
             toast('Foto do material e obrigatoria para iniciar a viagem.', 'warning'); return;
         }
 
-        // Validar assinatura do motorista (sempre obrigatória)
-        if (!Estado.signaturePadMotorista || Estado.signaturePadMotorista.isEmpty()) {
-            toast('Assinatura do motorista e obrigatoria.', 'warning'); return;
+        // Validar assinatura do motorista (apenas se exigido pelo tipo de carga)
+        var assinaturaMotorista = null;
+        if (Estado.requerAssinaturaMotorista) {
+            if (!Estado.signaturePadMotorista || Estado.signaturePadMotorista.isEmpty()) {
+                toast('Assinatura do motorista e obrigatoria para este tipo de carga.', 'warning'); return;
+            }
+            assinaturaMotorista = Estado.signaturePadMotorista.toDataURL('image/png');
         }
-
-        var assinaturaMotorista = Estado.signaturePadMotorista.toDataURL('image/png');
 
         var payload = {
             motorista_id:         Estado.motoristaSelecionado.id,
@@ -746,11 +759,15 @@
         Estado.fotoCargaAtual = fotoBase64 || null;
         _mostrarFotoModal('entregar-foto-wrap', 'entregar-foto-img');
         var dest = document.getElementById('entregar-destinatario');
+        var cpf  = document.getElementById('entregar-cpf');
+        var nasc = document.getElementById('entregar-nascimento');
         var obs  = document.getElementById('entregar-obs');
         var chk  = document.getElementById('entregar-parcial');
         var obsW = document.getElementById('entregar-parcial-obs-wrap');
         var obsT = document.getElementById('entregar-parcial-obs');
         if (dest) dest.value = '';
+        if (cpf)  cpf.value  = '';
+        if (nasc) nasc.value = '';
         if (obs)  obs.value  = '';
         if (chk)  { chk.checked = false; }
         if (obsW) obsW.style.display = 'none';
@@ -759,10 +776,12 @@
     }
 
     function confirmarEntrega() {
-        var btn  = document.getElementById('btn-confirmar-entrega');
-        var dest = (document.getElementById('entregar-destinatario').value || '').trim();
-        var obs  = (document.getElementById('entregar-obs').value || '').trim();
-        var parcial = document.getElementById('entregar-parcial').checked;
+        var btn       = document.getElementById('btn-confirmar-entrega');
+        var dest      = (document.getElementById('entregar-destinatario').value || '').trim();
+        var cpf       = (document.getElementById('entregar-cpf').value || '').trim();
+        var nasc      = (document.getElementById('entregar-nascimento').value || '').trim();
+        var obs       = (document.getElementById('entregar-obs').value || '').trim();
+        var parcial   = document.getElementById('entregar-parcial').checked;
         var obsParcial = (document.getElementById('entregar-parcial-obs').value || '').trim();
         if (!dest) { toast('Informe o nome do destinatario.', 'warning'); return; }
 
@@ -772,13 +791,15 @@
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             body: JSON.stringify({
-                motorista_id:       Estado.motoristaSelecionado.id,
-                nm_destinatario:    dest,
-                observacao_entrega: obs,
-                veiculo_id:         Estado.veiculoId,
-                veiculo_placa:      Estado.veiculoPlaca || null,
-                entrega_parcial:    parcial,
-                obs_entrega_parcial: obsParcial || null
+                motorista_id:                Estado.motoristaSelecionado.id,
+                nm_destinatario:             dest,
+                cpf_destinatario:            cpf || null,
+                dt_nascimento_destinatario:  nasc || null,
+                observacao_entrega:          obs,
+                veiculo_id:                  Estado.veiculoId,
+                veiculo_placa:               Estado.veiculoPlaca || null,
+                entrega_parcial:             parcial,
+                obs_entrega_parcial:         obsParcial || null
             })
         })
         .then(function (r) { return r.json(); })
@@ -802,6 +823,8 @@
         Estado.fotoCargaAtual = fotoBase64 || null;
         _mostrarFotoModal('assin-foto-wrap', 'assin-foto-img');
         var dest = document.getElementById('assin-destinatario');
+        var cpf  = document.getElementById('assin-cpf');
+        var nasc = document.getElementById('assin-nascimento');
         var pin  = document.getElementById('assin-pin');
         var obs  = document.getElementById('assin-obs');
         var chk  = document.getElementById('assin-parcial');
@@ -809,6 +832,8 @@
         var obsT = document.getElementById('assin-parcial-obs');
         var pinSt = document.getElementById('pin-status');
         if (dest)  dest.value  = '';
+        if (cpf)   cpf.value   = '';
+        if (nasc)  nasc.value  = '';
         if (pin)   pin.value   = '';
         if (obs)   obs.value   = '';
         if (chk)   chk.checked = false;
@@ -844,11 +869,13 @@
     }
 
     function confirmarEntregaAssinatura() {
-        var btn  = document.getElementById('btn-confirmar-assinatura');
-        var dest = (document.getElementById('assin-destinatario').value || '').trim();
-        var pin  = (document.getElementById('assin-pin').value || '').trim();
-        var obs  = (document.getElementById('assin-obs').value || '').trim();
-        var parcial = document.getElementById('assin-parcial').checked;
+        var btn        = document.getElementById('btn-confirmar-assinatura');
+        var dest       = (document.getElementById('assin-destinatario').value || '').trim();
+        var cpf        = (document.getElementById('assin-cpf').value || '').trim();
+        var nasc       = (document.getElementById('assin-nascimento').value || '').trim();
+        var pin        = (document.getElementById('assin-pin').value || '').trim();
+        var obs        = (document.getElementById('assin-obs').value || '').trim();
+        var parcial    = document.getElementById('assin-parcial').checked;
         var obsParcial = (document.getElementById('assin-parcial-obs').value || '').trim();
 
         if (!dest) { toast('Informe o nome do destinatario.', 'warning'); return; }
@@ -865,14 +892,16 @@
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             body: JSON.stringify({
-                motorista_pin:      pin,
-                nm_destinatario:    dest,
-                assinatura_img:     assinaturaImg,
-                observacao_entrega: obs,
-                veiculo_id:         Estado.veiculoId,
-                veiculo_placa:      Estado.veiculoPlaca || null,
-                entrega_parcial:    parcial,
-                obs_entrega_parcial: obsParcial || null
+                motorista_pin:               pin,
+                nm_destinatario:             dest,
+                cpf_destinatario:            cpf || null,
+                dt_nascimento_destinatario:  nasc || null,
+                assinatura_img:              assinaturaImg,
+                observacao_entrega:          obs,
+                veiculo_id:                  Estado.veiculoId,
+                veiculo_placa:               Estado.veiculoPlaca || null,
+                entrega_parcial:             parcial,
+                obs_entrega_parcial:         obsParcial || null
             })
         })
         .then(function (r) { return r.json(); })
