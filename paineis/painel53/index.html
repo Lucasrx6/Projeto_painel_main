@@ -139,6 +139,18 @@
                     <!-- Preenchido via JS -->
                 </div>
 
+                <!-- Passo 0: Selecao de itens (apenas se houver requer_lista_itens) -->
+                <div id="viagem-itens-secao" style="display:none;">
+                    <div class="viagem-passo-label">
+                        <span class="viagem-passo-num" id="viagem-passo-itens-num">1</span>
+                        <span><i class="fas fa-clipboard-list"></i> Confirmar Itens a Transportar</span>
+                    </div>
+                    <div class="viagem-itens-hint">Desmarque os itens que nao serao transportados e informe o motivo.</div>
+                    <div id="viagem-itens-lista">
+                        <div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando itens...</div>
+                    </div>
+                </div>
+
                 <!-- Passo 1: Foto no inicio (condicional por tipo) -->
                 <div id="viagem-foto-secao" style="display:none;">
                     <div class="viagem-passo-label">

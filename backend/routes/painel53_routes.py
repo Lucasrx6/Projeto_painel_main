@@ -170,7 +170,8 @@ def api_painel53_itens(chamado_id):
     try:
         with get_db_cursor() as cursor:
             cursor.execute("""
-                SELECT descricao, quantidade, unidade, observacao, nr_identificador
+                SELECT id, descricao, quantidade, unidade, observacao, nr_identificador,
+                       aceito, motivo_recusa
                 FROM transporte_material_itens
                 WHERE solicitacao_id = %s
                 ORDER BY ordem
@@ -200,6 +201,7 @@ def api_painel53_viagem_iniciar():
     chamado_ids         = dados.get('chamado_ids') or []
     assinatura_motorista = (dados.get('assinatura_motorista') or '').strip() or None
     foto_inicio         = (dados.get('foto_inicio') or '').strip() or None
+    itens_recusados     = dados.get('itens_recusados') or []   # [{id, motivo}]
 
     if not motorista_id:
         return jsonify({'success': False, 'error': 'Informe o motorista_id'}), 400
@@ -270,6 +272,19 @@ def api_painel53_viagem_iniciar():
             """, (motorista_id, motorista_nome, veiculo_id, veiculo_placa,
                   viagem_id, chamado_ids_int))
             atualizados = len(cursor.fetchall())
+
+            # Salvar itens recusados pelo motorista
+            for item_rec in itens_recusados:
+                try:
+                    item_id = int(item_rec.get('id'))
+                    motivo  = (item_rec.get('motivo') or 'Nao aceito pelo motorista').strip()
+                    cursor.execute("""
+                        UPDATE transporte_material_itens
+                        SET aceito = FALSE, motivo_recusa = %s
+                        WHERE id = %s AND solicitacao_id = ANY(%s)
+                    """, (motivo[:300], item_id, chamado_ids_int))
+                except (TypeError, ValueError):
+                    pass
 
         cache_delete_pattern('painel54:*')
         current_app.logger.info(

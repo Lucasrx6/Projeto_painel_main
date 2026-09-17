@@ -399,6 +399,32 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .foto-validacao-label { font-size: 13px; font-weight: 600; color: var(--texto-sec); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
 .foto-validacao-img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; background: #000; border: 2px solid var(--borda); }
 
+/* ── ITEM MANIFESTO RECUSADO ─────────────────────────── */
+.item-manifesto-recusado { background: #fff3cd; border-left: 3px solid #ffc107; opacity: 0.8; }
+.item-manifesto-recusado .item-manifesto-desc { color: var(--texto-sec); text-decoration: line-through; }
+.item-manifesto-motivo { font-size: 12px; color: #856404; margin-top: 3px; }
+.badge-recusado { font-size: 10px; font-weight: 600; color: #856404; background: #ffc107; padding: 2px 5px; border-radius: 4px; margin-right: 4px; text-decoration: none; display: inline-block; }
+
+/* ── ITENS DA VIAGEM (selecao por item) ──────────────── */
+.viagem-itens-hint { font-size: 12px; color: var(--texto-sec); margin-bottom: 10px; }
+.viagem-itens-chamado { margin-bottom: 14px; background: #f8f9fa; border-radius: 8px; padding: 10px; }
+.viagem-itens-chamado-titulo { font-size: 12px; font-weight: 600; color: var(--texto-sec); margin-bottom: 8px; border-bottom: 1px solid var(--borda); padding-bottom: 6px; }
+.viagem-item-row { padding: 6px 0; border-bottom: 1px solid var(--borda); }
+.viagem-item-row:last-child { border-bottom: none; }
+.viagem-item-check-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.viagem-item-check-label input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; margin-top: 2px; accent-color: var(--cor-entregue); }
+.viagem-item-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.viagem-item-desc { font-size: 14px; font-weight: 500; color: var(--texto); }
+.viagem-item-det  { font-size: 12px; color: var(--texto-sec); }
+.viagem-item-recusa { margin-top: 6px; }
+.viagem-item-motivo {
+    width: 100%; padding: 7px 10px; border: 1px solid #ffc107;
+    border-radius: 6px; font-size: 13px; background: #fff8e7;
+    outline: none;
+}
+.viagem-item-recusado .viagem-item-check-label { opacity: 0.5; text-decoration: line-through; }
+.viagem-item-recusado { background: #fff3cd; border-radius: 6px; padding: 4px 6px; }
+
 /* ── FOTO CAPTURE (viagem) ───────────────────────────── */
 .foto-capture-wrap { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .btn-tirar-foto {

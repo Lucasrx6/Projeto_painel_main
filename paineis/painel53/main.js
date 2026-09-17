@@ -439,29 +439,46 @@
 
     // ── Iniciar Viagem ────────────────────────────────────
 
+    // Estado dos itens na viagem: { chamadoId: [ {id, descricao, aceito, motivo} ] }
+    var _itensViagem = {};
+
     function abrirIniciarViagem() {
         if (Estado.selecionados.length === 0) {
             toast('Selecione pelo menos um chamado.', 'warning'); return;
         }
 
-        // Verificar se algum tipo requer foto_inicio
+        // Verificar flags dos tipos selecionados
         Estado.requerFotoInicio = false;
+        var chamadosComItens = [];
         for (var i = 0; i < Estado.fila.length; i++) {
             var c = Estado.fila[i];
-            if (Estado.selecionados.indexOf(c.id) !== -1 && c.requer_foto_inicio) {
-                Estado.requerFotoInicio = true; break;
-            }
+            if (Estado.selecionados.indexOf(c.id) === -1) continue;
+            if (c.requer_foto_inicio) Estado.requerFotoInicio = true;
+            if (c.requer_lista_itens) chamadosComItens.push(c);
         }
 
-        // Atualizar numero do passo da assinatura
-        var passoAssin = document.getElementById('viagem-passo-assin-num');
-        var fotoSecao  = document.getElementById('viagem-foto-secao');
-        if (Estado.requerFotoInicio) {
-            if (fotoSecao)  fotoSecao.style.display  = '';
-            if (passoAssin) passoAssin.textContent = '2';
+        // Resetar estado de itens
+        _itensViagem = {};
+
+        // Calcular numeração dos passos
+        var passoBase = 1;
+        var itensSecao  = document.getElementById('viagem-itens-secao');
+        var passoItens  = document.getElementById('viagem-passo-itens-num');
+        var fotoSecao   = document.getElementById('viagem-foto-secao');
+        var passoAssin  = document.getElementById('viagem-passo-assin-num');
+
+        if (chamadosComItens.length > 0) {
+            if (itensSecao) itensSecao.style.display = '';
+            if (passoItens) passoItens.textContent = String(passoBase++);
         } else {
-            if (fotoSecao)  fotoSecao.style.display  = 'none';
-            if (passoAssin) passoAssin.textContent = '1';
+            if (itensSecao) itensSecao.style.display = 'none';
+        }
+        if (Estado.requerFotoInicio) {
+            if (fotoSecao) fotoSecao.style.display = '';
+            if (passoAssin) passoAssin.textContent = String(passoBase + 1);
+        } else {
+            if (fotoSecao) fotoSecao.style.display = 'none';
+            if (passoAssin) passoAssin.textContent = String(passoBase);
         }
 
         // Montar resumo dos chamados selecionados
@@ -481,19 +498,134 @@
             resumoEl.innerHTML = html;
         }
 
-        // Resetar foto e assinatura do motorista
+        // Resetar foto e assinatura
         Estado.fotoInicioCapturada = null;
         var prevFoto = document.getElementById('viagem-foto-preview');
         var btnFoto  = document.getElementById('viagem-btn-tirar-foto');
         if (prevFoto) prevFoto.style.display = 'none';
         if (btnFoto)  btnFoto.style.display  = '';
-
-        if (Estado.signaturePadMotorista) {
-            Estado.signaturePadMotorista.clear();
-        }
+        if (Estado.signaturePadMotorista) Estado.signaturePadMotorista.clear();
 
         abrirModal('modal-iniciar-viagem');
         inicializarPadMotorista();
+
+        // Carregar itens de cada chamado com lista
+        if (chamadosComItens.length > 0) {
+            carregarItensViagem(chamadosComItens);
+        }
+    }
+
+    function carregarItensViagem(chamadosComItens) {
+        var lista = document.getElementById('viagem-itens-lista');
+        if (!lista) return;
+        lista.innerHTML = '<div class="loading-inline"><div class="loading-spinner-sm"></div> Carregando itens...</div>';
+
+        var resultados = {};
+        var pendentes  = chamadosComItens.length;
+
+        function renderTodos() {
+            var html = '';
+            for (var ci = 0; ci < chamadosComItens.length; ci++) {
+                var chamado = chamadosComItens[ci];
+                var itens   = resultados[chamado.id] || [];
+                if (itens.length === 0) continue;
+                html += '<div class="viagem-itens-chamado">';
+                html += '<div class="viagem-itens-chamado-titulo">' +
+                    '<i class="fas fa-hashtag"></i> ' + escHtml(chamado.nr_protocolo) +
+                    ' — ' + escHtml(chamado.tipo_carga_nome) +
+                    ' → ' + escHtml(chamado.destino_nome) +
+                    '</div>';
+                for (var ii = 0; ii < itens.length; ii++) {
+                    var it = itens[ii];
+                    var uid = 'item-' + chamado.id + '-' + it.id;
+                    html += '<div class="viagem-item-row" id="row-' + uid + '">' +
+                        '<label class="viagem-item-check-label">' +
+                            '<input type="checkbox" class="viagem-item-check" checked' +
+                                ' data-chamado="' + chamado.id + '" data-item="' + it.id + '"' +
+                                ' id="chk-' + uid + '">' +
+                            '<div class="viagem-item-info">' +
+                                '<span class="viagem-item-desc">' + escHtml(it.descricao) + '</span>' +
+                                '<span class="viagem-item-det">' +
+                                    escHtml(String(it.quantidade)) + ' ' + escHtml(it.unidade) +
+                                    (it.nr_identificador ? ' | ' + escHtml(it.nr_identificador) : '') +
+                                '</span>' +
+                            '</div>' +
+                        '</label>' +
+                        '<div class="viagem-item-recusa" id="recusa-' + uid + '" style="display:none;">' +
+                            '<input type="text" class="viagem-item-motivo" placeholder="Motivo da recusa (obrigatorio)..."' +
+                                ' data-chamado="' + chamado.id + '" data-item="' + it.id + '" maxlength="200">' +
+                        '</div>' +
+                        '</div>';
+                }
+                html += '</div>';
+            }
+            if (!html) {
+                lista.innerHTML = '<div class="historico-vazio">Nenhum item encontrado.</div>';
+                return;
+            }
+            lista.innerHTML = html;
+
+            // Eventos nos checkboxes
+            var checks = lista.querySelectorAll('.viagem-item-check');
+            for (var k = 0; k < checks.length; k++) {
+                checks[k].addEventListener('change', function () {
+                    var uid2 = 'item-' + this.getAttribute('data-chamado') + '-' + this.getAttribute('data-item');
+                    var recusaDiv = document.getElementById('recusa-' + uid2);
+                    var rowDiv    = document.getElementById('row-'    + uid2);
+                    if (!this.checked) {
+                        if (recusaDiv) recusaDiv.style.display = '';
+                        if (rowDiv)    rowDiv.classList.add('viagem-item-recusado');
+                    } else {
+                        if (recusaDiv) recusaDiv.style.display = 'none';
+                        if (rowDiv)    rowDiv.classList.remove('viagem-item-recusado');
+                    }
+                });
+            }
+        }
+
+        for (var idx = 0; idx < chamadosComItens.length; idx++) {
+            (function (chamado) {
+                fetch(CONFIG.api + '/chamados/' + chamado.id + '/itens', { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        resultados[chamado.id] = data.success ? (data.itens || []) : [];
+                        pendentes--;
+                        if (pendentes === 0) renderTodos();
+                    })
+                    .catch(function () {
+                        resultados[chamado.id] = [];
+                        pendentes--;
+                        if (pendentes === 0) renderTodos();
+                    });
+            })(chamadosComItens[idx]);
+        }
+    }
+
+    function coletarItensRecusados() {
+        var lista = document.getElementById('viagem-itens-lista');
+        if (!lista) return [];
+        var recusados = [];
+        var checks = lista.querySelectorAll('.viagem-item-check');
+        for (var i = 0; i < checks.length; i++) {
+            var chk = checks[i];
+            if (!chk.checked) {
+                var chamadoId = chk.getAttribute('data-chamado');
+                var itemId    = chk.getAttribute('data-item');
+                var uid = 'item-' + chamadoId + '-' + itemId;
+                var recusaDiv = document.getElementById('recusa-' + uid);
+                var motivo = '';
+                if (recusaDiv) {
+                    var input = recusaDiv.querySelector('.viagem-item-motivo');
+                    if (input) motivo = (input.value || '').trim();
+                }
+                if (!motivo) {
+                    toast('Informe o motivo da recusa do item desmarcado.', 'warning');
+                    return null;  // sinaliza erro de validação
+                }
+                recusados.push({ id: parseInt(itemId, 10), motivo: motivo });
+            }
+        }
+        return recusados;
     }
 
     function inicializarPadMotorista() {
@@ -522,6 +654,10 @@
     function confirmarIniciarViagem() {
         var btn = document.getElementById('btn-confirmar-viagem');
 
+        // Coletar itens recusados (null = erro de validação)
+        var itensRecusados = coletarItensRecusados();
+        if (itensRecusados === null) return;
+
         // Validar foto se obrigatório
         if (Estado.requerFotoInicio && !Estado.fotoInicioCapturada) {
             toast('Foto do material e obrigatoria para iniciar a viagem.', 'warning'); return;
@@ -535,12 +671,13 @@
         var assinaturaMotorista = Estado.signaturePadMotorista.toDataURL('image/png');
 
         var payload = {
-            motorista_id:        Estado.motoristaSelecionado.id,
-            veiculo_id:          Estado.veiculoId,
-            veiculo_placa:       Estado.veiculoPlaca || null,
-            chamado_ids:         Estado.selecionados,
+            motorista_id:         Estado.motoristaSelecionado.id,
+            veiculo_id:           Estado.veiculoId,
+            veiculo_placa:        Estado.veiculoPlaca || null,
+            chamado_ids:          Estado.selecionados,
             assinatura_motorista: assinaturaMotorista,
-            foto_inicio:         Estado.fotoInicioCapturada || null
+            foto_inicio:          Estado.fotoInicioCapturada || null,
+            itens_recusados:      itensRecusados
         };
 
         setLoading(btn, true);
@@ -776,13 +913,18 @@
                 var html = '';
                 for (var i = 0; i < data.itens.length; i++) {
                     var it = data.itens[i];
-                    html += '<div class="item-manifesto">' +
-                        '<div class="item-manifesto-desc">' + escHtml(it.descricao) + '</div>' +
+                    var recusado = it.aceito === false;
+                    html += '<div class="item-manifesto' + (recusado ? ' item-manifesto-recusado' : '') + '">' +
+                        '<div class="item-manifesto-desc">' +
+                            (recusado ? '<span class="badge-recusado"><i class="fas fa-ban"></i> Nao transportado</span> ' : '') +
+                            escHtml(it.descricao) +
+                        '</div>' +
                         '<div class="item-manifesto-det">' +
                             escHtml(String(it.quantidade)) + ' ' + escHtml(it.unidade) +
                             (it.nr_identificador ? ' | <i class="fas fa-hashtag"></i> ' + escHtml(it.nr_identificador) : '') +
                             (it.observacao ? ' — ' + escHtml(it.observacao) : '') +
                         '</div>' +
+                        (recusado && it.motivo_recusa ? '<div class="item-manifesto-motivo"><i class="fas fa-comment-alt"></i> ' + escHtml(it.motivo_recusa) + '</div>' : '') +
                         '</div>';
                 }
                 lista.innerHTML = html;
