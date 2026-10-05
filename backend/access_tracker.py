@@ -83,6 +83,7 @@ PAINEIS_NOMES = {
     'painel52': 'Solicitar Transporte de Material',
     'painel53': 'Tela do Motorista — Transporte',
     'painel54': 'Gestão de Transporte de Material',
+    'painel55': 'Auditoria Pré-Faturamento',
 }
 
 # Descrição humanizada de sub-endpoints

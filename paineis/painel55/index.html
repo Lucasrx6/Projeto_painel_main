@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria Pré-Faturamento — Hospital Anchieta</title>
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/frontend/tema.css">
+    <link rel="stylesheet" href="/paineis/painel55/style.css">
+    <script>if(localStorage.getItem('tema_sistema')==='azul')document.documentElement.classList.add('tema-azul');</script>
+</head>
+<body>
+<div id="app">
+
+    <!-- ── Header ──────────────────────────────────────────────── -->
+    <header id="app-header">
+        <div class="header-left">
+            <img src="/static/img/logo.png" alt="HAC" class="header-logo" onerror="this.style.display='none'">
+            <div>
+                <div class="header-title">Auditoria Pré-Faturamento</div>
+                <div class="header-subtitle">Hospital Anchieta Ceilândia</div>
+            </div>
+        </div>
+        <div class="header-stats" id="header-stats">
+            <div class="stat-item">
+                <span class="stat-value" id="stat-contas">–</span>
+                <span class="stat-label">Contas</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value stat-critico" id="stat-criticos">–</span>
+                <span class="stat-label">Críticos</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="stat-pendentes">–</span>
+                <span class="stat-label">Pendentes</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="stat-risco">–</span>
+                <span class="stat-label">Valor em Risco</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" id="btn-refresh" title="Atualizar lista">
+                <i class="fa fa-sync-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ── Body ────────────────────────────────────────────────── -->
+    <div class="app-body">
+
+        <!-- Sidebar: lista de contas -->
+        <aside class="sidebar">
+            <div class="sidebar-toolbar">
+                <div class="sidebar-title">Contas Abertas<span id="contas-total" style="font-weight:400;color:#94a3b8;font-size:12px;"></span></div>
+                <div class="search-wrapper">
+                    <i class="fa fa-search search-icon"></i>
+                    <input type="text" id="filtro-busca" class="search-input"
+                           placeholder="Nº atendimento ou conta…" autocomplete="off" maxlength="80">
+                </div>
+                <select id="filtro-gravidade" class="filter-select" title="Filtrar por gravidade máxima do achado">
+                    <option value="">Todas as gravidades</option>
+                    <option value="critica">Crítica</option>
+                    <option value="alta">Alta</option>
+                    <option value="media">Média</option>
+                    <option value="baixa">Baixa</option>
+                </select>
+            </div>
+            <div class="contas-lista" id="contas-lista">
+                <div class="loading-state">
+                    <i class="fa fa-circle-notch fa-spin"></i>
+                    <p>Carregando contas…</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main: detalhe da conta -->
+        <main class="main-content">
+            <!-- Card de validação do ambiente -->
+            <div class="validacao-card" id="validacao-card">
+                <div class="validacao-card-header">
+                    <i class="fa fa-shield-alt"></i>
+                    <span>Validação do Ambiente</span>
+                    <button class="btn-sm" id="btn-validacao">Verificar</button>
+                </div>
+                <div id="validacao-resultado" class="validacao-resultado"></div>
+            </div>
+
+            <!-- Estado vazio inicial -->
+            <div class="empty-state" id="empty-state">
+                <i class="fa fa-file-invoice-dollar"></i>
+                <p>Selecione uma conta para ver os achados de auditoria</p>
+            </div>
+
+            <!-- Detalhe da conta selecionada -->
+            <div id="conta-detalhe" style="display:none;">
+                <!-- Header da conta -->
+                <div class="detalhe-header">
+                    <div class="detalhe-info">
+                        <div class="detalhe-titulo" id="detalhe-titulo">Conta</div>
+                        <div class="detalhe-meta" id="detalhe-meta"></div>
+                    </div>
+                    <div class="detalhe-acoes">
+                        <div class="job-bar" id="job-bar" style="display:none;">
+                            <i class="fa fa-circle-notch fa-spin"></i>
+                            <span id="job-texto">Executando regras…</span>
+                        </div>
+                        <button class="btn-primary" id="btn-executar">
+                            <i class="fa fa-play"></i> Executar Regras
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros por status de tratamento -->
+                <div class="achados-filtros" id="achados-filtros">
+                    <button class="filtro-tab ativo" data-status="">Todos</button>
+                    <button class="filtro-tab" data-status="pendente">Pendentes</button>
+                    <button class="filtro-tab" data-status="procede_corrigido">Corrigidos</button>
+                    <button class="filtro-tab" data-status="nao_procede">Não Procedem</button>
+                    <button class="filtro-tab" data-status="ja_justificado">Justificados</button>
+                </div>
+
+                <!-- Tabela de achados -->
+                <div class="achados-wrapper">
+                    <div id="achados-loading" class="loading-inline" style="display:none;">
+                        <i class="fa fa-circle-notch fa-spin"></i> Carregando achados…
+                    </div>
+                    <div id="achados-vazio" class="empty-inline" style="display:none;">
+                        <i class="fa fa-check-circle"></i>&nbsp; Nenhum achado para os filtros selecionados.
+                    </div>
+                    <table class="achados-tabela" id="achados-tabela" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th style="width:64px">Regra</th>
+                                <th>Tipo</th>
+                                <th style="width:90px">Gravidade</th>
+                                <th>Encontrado / Esperado</th>
+                                <th class="col-valor" style="width:90px">Risco R$</th>
+                                <th style="width:110px">Status</th>
+                                <th class="col-acoes" style="width:90px">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="achados-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal de feedback -->
+<div id="modal-feedback" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modal-titulo">Registrar Decisão</h3>
+            <button class="btn-icon" id="modal-fechar" aria-label="Fechar modal">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="achado-resumo" id="modal-resumo"></div>
+            <div class="form-group">
+                <label class="form-label" for="modal-decisao">Decisão <span class="obrigatorio">*</span></label>
+                <select id="modal-decisao" class="form-select">
+                    <option value="">Selecione uma decisão…</option>
+                    <option value="procede_corrigido">Procede — Corrigido</option>
+                    <option value="nao_procede">Não Procede</option>
+                    <option value="ja_justificado">Já Justificado</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="modal-justificativa">Justificativa <span class="obrigatorio">*</span></label>
+                <textarea id="modal-justificativa" class="form-textarea" rows="4"
+                    placeholder="Descreva o motivo da decisão (mínimo 10 caracteres)…"></textarea>
+            </div>
+            <p id="modal-erro" class="form-erro" style="display:none;"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="modal-cancelar">Cancelar</button>
+            <button class="btn-primary" id="modal-confirmar">Confirmar decisão</button>
+        </div>
+    </div>
+</div>
+
+<script src="/paineis/painel55/main.js"></script>
+<script src="/static/js/versao.js"></script>
+<script src="/static/js/auto-auth.js"></script>
+</body>
+</html>

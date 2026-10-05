@@ -49,7 +49,8 @@ def api_minhas_permissoes():
                     'painel38', 'painel39', 'painel40',
                     'painel41', 'painel42', 'painel43', 'painel44',
                     'painel45', 'painel46', 'painel47', 'painel48', 'painel49',
-                    'painel50', 'painel51'
+                    'painel50', 'painel51',
+                    'painel52', 'painel53', 'painel54', 'painel55'
                 ],
                 'is_admin': True
             })
@@ -429,6 +430,7 @@ def api_listar_paineis():
             {'nome': 'painel52', 'titulo': 'Transporte de Material — Solicitação', 'descricao': '[Aux] Solicitação de transporte de materiais e cargas hospitalares', 'ativo': True, 'categoria': 'auxiliar'},
             {'nome': 'painel53', 'titulo': 'Transporte de Material — Motorista',   'descricao': '[Aux] Tela do motorista — fila, viagens e entregas com assinatura', 'ativo': True, 'categoria': 'auxiliar'},
             {'nome': 'painel54', 'titulo': 'Transporte de Material — Gestão',      'descricao': '[Aux] Gestão, relatórios, exportação Excel e configurações de transporte', 'ativo': True, 'categoria': 'auxiliar'},
+            {'nome': 'painel55', 'titulo': 'Auditoria Pré-Faturamento',           'descricao': 'Conferência pré-faturamento de contas hospitalares — 30 regras automáticas, achados por gravidade e feedback do faturista', 'ativo': True, 'categoria': 'administrativo'},
             # --- Centro Cirúrgico / Hemodinâmica ---
             {'nome': 'painel49', 'titulo': 'Relatório de Salas Cirúrgicas', 'descricao': 'Relatório de tempo de uso e ociosidade das salas — CC e Hemodinâmica', 'ativo': True, 'categoria': 'cirurgia'},
             # --- Enfermagem ---
