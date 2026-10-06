@@ -6,8 +6,10 @@
 
     var CONFIG = {
         api: {
-            dashboard:  '/api/auditoria/dashboard',
-            contas:     '/api/auditoria/contas',
+            dashboard:    '/api/auditoria/dashboard',
+            atendimentos: '/api/auditoria/atendimentos',
+            setores:      '/api/auditoria/setores',
+            contas:       '/api/auditoria/contas',
             achados:    function (nric) { return '/api/auditoria/contas/' + encodeURIComponent(nric) + '/achados'; },
             auditar:    function (nric) { return '/api/auditoria/contas/' + encodeURIComponent(nric) + '/auditar'; },
             job:        function (id)   { return '/api/auditoria/jobs/' + encodeURIComponent(id); },
@@ -19,8 +21,11 @@
     };
 
     var Estado = {
-        contas:              [],
+        atendimentos:        [],
+        atendimentoAtivo:    null,
         contaAtiva:          null,
+        setores:             [],
+        setorFiltro:         '',
         achados:             [],
         statusFiltro:        '',
         gravFiltro:          '',
@@ -31,9 +36,9 @@
         jobTimer:            null,
         feedbackAchado:      null,
         validacaoRodando:    false,
-        analiseFeita:        false,  // true após job concluir nesta conta
-        analiseQtTotal:      null,   // qt_achados_regras + qt_achados_ia do último job
-        analiseIaUsada:      false   // se o job usou IA Groq
+        analiseFeita:        false,
+        analiseQtTotal:      null,
+        analiseIaUsada:      false
     };
 
     var _buscaTimer = null;
@@ -144,16 +149,17 @@
     }
 
     // =========================================================
-    // Lista de contas (sidebar)
+    // Lista de atendimentos agrupados (sidebar)
     // =========================================================
 
-    function carregarContas() {
+    function carregarAtendimentos() {
         var params = [];
-        if (Estado.busca)      params.push('busca='     + encodeURIComponent(Estado.busca));
-        if (Estado.gravFiltro) params.push('gravidade=' + encodeURIComponent(Estado.gravFiltro));
+        if (Estado.busca)       params.push('busca='     + encodeURIComponent(Estado.busca));
+        if (Estado.gravFiltro)  params.push('gravidade=' + encodeURIComponent(Estado.gravFiltro));
+        if (Estado.setorFiltro) params.push('setor='     + encodeURIComponent(Estado.setorFiltro));
         params.push('pagina=' + Estado.pagina);
-        params.push('por_pagina=50');
-        var url = CONFIG.api.contas + (params.length ? '?' + params.join('&') : '');
+        params.push('por_pagina=100');
+        var url = CONFIG.api.atendimentos + (params.length ? '?' + params.join('&') : '');
 
         DOM.contasLista.innerHTML =
             '<div class="loading-state"><i class="fa fa-circle-notch fa-spin"></i><p>Carregando…</p></div>';
@@ -163,17 +169,18 @@
             .then(function (data) {
                 if (!data.success) {
                     DOM.contasLista.innerHTML =
-                        '<div class="loading-state"><i class="fa fa-exclamation-triangle" style="color:#dc2626;"></i>' +
-                        '<p style="color:#dc2626;">Não foi possível carregar as contas.<br>' +
+                        '<div class="loading-state">' +
+                        '<i class="fa fa-exclamation-triangle" style="color:#dc2626;"></i>' +
+                        '<p style="color:#dc2626;">Não foi possível carregar os atendimentos.<br>' +
                         '<small style="color:#64748b;">Verifique o log do servidor.</small></p></div>';
-                    Estado.contas = [];
-                    Estado.total  = 0;
+                    Estado.atendimentos = [];
+                    Estado.total = 0;
                     if (DOM.contasTotal) DOM.contasTotal.textContent = '';
                     return;
                 }
-                Estado.contas = data.contas || [];
-                Estado.total  = data.total  || 0;
-                renderContas();
+                Estado.atendimentos = data.atendimentos || [];
+                Estado.total        = data.total        || 0;
+                renderAtendimentos();
             })
             .catch(function () {
                 DOM.contasLista.innerHTML =
@@ -181,54 +188,61 @@
             });
     }
 
-    function renderContas() {
+    function _nomeSetor(cd) {
+        if (!cd) return '';
+        for (var i = 0; i < Estado.setores.length; i++) {
+            if (Estado.setores[i].cd === cd) return Estado.setores[i].nm;
+        }
+        return 'Setor ' + cd;
+    }
+
+    function renderAtendimentos() {
         // Atualiza contador no título da sidebar
         if (DOM.contasTotal) {
             DOM.contasTotal.textContent = Estado.total > 0 ? ' (' + Estado.total + ')' : '';
         }
 
-        if (Estado.contas.length === 0) {
-            var msgFiltro = Estado.busca
-                ? 'Nenhum resultado para "' + escHtml(Estado.busca) + '".'
-                : Estado.gravFiltro
-                    ? 'Nenhuma conta com gravidade máxima "' + escHtml(Estado.gravFiltro) + '".'
-                    : 'Nenhuma conta aberta encontrada.';
-            DOM.contasLista.innerHTML = '<div class="loading-state"><p>' + msgFiltro + '</p></div>';
+        if (Estado.atendimentos.length === 0) {
+            DOM.contasLista.innerHTML =
+                '<div class="loading-state"><p>' +
+                (Estado.busca ? 'Nenhum resultado para "' + escHtml(Estado.busca) + '".'
+                              : 'Nenhum atendimento encontrado.') +
+                '</p></div>';
             return;
         }
 
         var html = '';
-        for (var i = 0; i < Estado.contas.length; i++) {
-            var c = Estado.contas[i];
-            var ativo = Estado.contaAtiva && Estado.contaAtiva.nr_interno_conta === c.nr_interno_conta;
-
-            var badgeGrav = '';
-            if (c.gravidade_maxima) {
-                badgeGrav = badgeGravidade(c.gravidade_maxima);
-            }
-            var data = c.dt_periodo_final ? formatarData(c.dt_periodo_final) : '';
-            var total = c.total_achados || 0;
-            var criticos = c.criticos || 0;
-            var pendentes = c.pendentes || 0;
+        for (var i = 0; i < Estado.atendimentos.length; i++) {
+            var at = Estado.atendimentos[i];
+            var ativo = Estado.atendimentoAtivo &&
+                Estado.atendimentoAtivo.nr_atendimento === at.nr_atendimento;
+            var contaLabel = at.qt_contas === 1 ? '1 conta' : (at.qt_contas + ' contas');
+            var setor = _nomeSetor(at.cd_setor_atendimento);
 
             html +=
-                '<button class="conta-item' + (ativo ? ' ativo' : '') + '" ' +
-                'data-nric="' + escHtml(c.nr_interno_conta) + '" ' +
-                'data-idx="' + i + '">' +
+                '<button class="conta-item' + (ativo ? ' ativo' : '') + '" data-idx="' + i + '">' +
                 '<div class="conta-item-header">' +
-                '<span class="conta-nr">AT ' + escHtml(c.nr_atendimento) + ' · ' + escHtml(c.nr_interno_conta) + '</span>' +
-                (data ? '<span class="conta-data">' + escHtml(data) + '</span>' : '') +
+                '<span class="conta-nr">AT ' + escHtml(String(at.nr_atendimento)) +
+                ' <span style="font-weight:400;color:#94a3b8;font-size:11px;">· ' + escHtml(contaLabel) + '</span></span>' +
+                (at.gravidade_maxima
+                    ? '<span class="grav grav-' + escHtml(at.gravidade_maxima) + '">' + escHtml(labelGravidade(at.gravidade_maxima)) + '</span>'
+                    : '') +
                 '</div>' +
                 '<div class="conta-item-body">' +
-                (badgeGrav || '') +
-                (total > 0
-                    ? '<span class="tipo-tag">' + total + ' achado' + (total !== 1 ? 's' : '') + '</span>'
-                    : '<span class="conta-sem-achados">sem achados</span>') +
-                (criticos > 0
-                    ? '<span class="grav grav-critica">' + criticos + ' crít.</span>'
+                (at.dt_periodo_final_max
+                    ? '<span class="conta-data">' + escHtml(formatarData(at.dt_periodo_final_max)) + '</span>'
                     : '') +
-                (pendentes > 0
-                    ? '<span class="status-badge status-pendente">' + pendentes + ' pend.</span>'
+                (at.criticos
+                    ? '<span class="mini-badge mini-critica">' + escHtml(String(at.criticos)) + ' crít</span>'
+                    : '') +
+                (at.pendentes
+                    ? '<span class="mini-badge mini-pendente">' + escHtml(String(at.pendentes)) + ' pend</span>'
+                    : '') +
+                (at.vl_risco_total
+                    ? '<span class="mini-badge mini-risco">' + escHtml(formatarMoeda(at.vl_risco_total)) + '</span>'
+                    : '') +
+                (setor
+                    ? '<span class="conta-setor-tag">' + escHtml(setor) + '</span>'
                     : '') +
                 '</div>' +
                 '</button>';
@@ -238,41 +252,128 @@
 
         var botoes = DOM.contasLista.querySelectorAll('.conta-item');
         for (var j = 0; j < botoes.length; j++) {
-            botoes[j].addEventListener('click', onContaClick);
+            botoes[j].addEventListener('click', onAtendimentoClick);
         }
     }
 
-    function onContaClick(e) {
+    function onAtendimentoClick(e) {
         var btn = e.currentTarget;
         var idx = parseInt(btn.getAttribute('data-idx'), 10);
-        var conta = Estado.contas[idx];
-        if (!conta) return;
-        Estado.contaAtiva = conta;
-        Estado.statusFiltro = '';
-        Estado.analiseFeita   = false;
-        Estado.analiseQtTotal = null;
-        Estado.analiseIaUsada = false;
+        var atend = Estado.atendimentos[idx];
+        if (!atend || !atend.contas || !atend.contas.length) return;
+
         if (Estado.jobId) { clearTimeout(Estado.jobTimer); Estado.jobId = null; Estado.jobTimer = null; }
-        renderContas();
-        mostrarDetalhe(conta);
+        DOM.btnExecutar.disabled = false;
+        DOM.jobBar.style.display = 'none';
+
+        Estado.atendimentoAtivo = atend;
+        Estado.contaAtiva       = atend.contas[0];
+        Estado.statusFiltro     = '';
+        Estado.analiseFeita     = false;
+        Estado.analiseQtTotal   = null;
+        Estado.analiseIaUsada   = false;
+
+        // Atualiza sidebar
+        var items = DOM.contasLista.querySelectorAll('.conta-item');
+        for (var j = 0; j < items.length; j++) {
+            items[j].classList.toggle('ativo', items[j] === btn);
+        }
+
+        mostrarDetalhe(atend);
+        carregarAchados();
+    }
+
+    function onContaSelectorChange() {
+        if (!Estado.atendimentoAtivo) return;
+        var val = DOM.contaSelector.value;
+        var contas = Estado.atendimentoAtivo.contas || [];
+        for (var i = 0; i < contas.length; i++) {
+            if (String(contas[i].nr_interno_conta) === val) {
+                if (Estado.jobId) {
+                    clearTimeout(Estado.jobTimer);
+                    Estado.jobId = null;
+                    Estado.jobTimer = null;
+                }
+                DOM.btnExecutar.disabled = false;
+                DOM.jobBar.style.display = 'none';
+                Estado.contaAtiva     = contas[i];
+                Estado.analiseFeita   = false;
+                Estado.analiseQtTotal = null;
+                Estado.analiseIaUsada = false;
+                _atualizarMetaConta();
+                carregarAchados();
+                return;
+            }
+        }
+    }
+
+    function carregarSetores() {
+        apiFetch(CONFIG.api.setores)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) return;
+                Estado.setores = data.setores || [];
+                _popularFiltroSetor();
+            })
+            .catch(function () {});
+    }
+
+    function _popularFiltroSetor() {
+        if (!DOM.filtroSetor) return;
+        var html = '<option value="">Todos os setores</option>';
+        for (var i = 0; i < Estado.setores.length; i++) {
+            var s = Estado.setores[i];
+            html += '<option value="' + escHtml(String(s.cd)) + '">' + escHtml(s.nm) + '</option>';
+        }
+        DOM.filtroSetor.innerHTML = html;
     }
 
     // =========================================================
     // Detalhe da conta + achados
     // =========================================================
 
-    function mostrarDetalhe(conta) {
+    function mostrarDetalhe(atend) {
         DOM.emptyState.style.display   = 'none';
         DOM.contaDetalhe.style.display = '';
 
-        DOM.detalheTitulo.textContent = 'Atendimento ' + conta.nr_atendimento;
-        var meta = [];
-        if (conta.nr_interno_conta) meta.push('Conta ' + conta.nr_interno_conta);
-        if (conta.dt_periodo_final)  meta.push('Período até ' + formatarData(conta.dt_periodo_final));
-        DOM.detalheMeta.textContent = meta.join(' · ');
+        var setor = _nomeSetor(atend.cd_setor_atendimento);
+        DOM.detalheTitulo.textContent = 'Atendimento ' + atend.nr_atendimento +
+            (setor ? ' — ' + setor : '');
 
+        _atualizarMetaConta();
+        _atualizarContaSelector(atend);
         resetarFiltrosTabs();
-        carregarAchados();
+    }
+
+    function _atualizarMetaConta() {
+        if (!Estado.contaAtiva) return;
+        var c = Estado.contaAtiva;
+        var meta = [];
+        if (c.nr_interno_conta) meta.push('Conta ' + c.nr_interno_conta);
+        if (c.dt_periodo_final)  meta.push('Período até ' + formatarData(c.dt_periodo_final));
+        DOM.detalheMeta.textContent = meta.join(' · ');
+    }
+
+    function _atualizarContaSelector(atend) {
+        var contas = (atend && atend.contas) ? atend.contas : [];
+        if (!DOM.contaSelectorWrapper) return;
+        if (contas.length <= 1) {
+            DOM.contaSelectorWrapper.style.display = 'none';
+            return;
+        }
+        DOM.contaSelectorWrapper.style.display = '';
+        var html = '';
+        for (var i = 0; i < contas.length; i++) {
+            var c = contas[i];
+            var label = 'Conta ' + c.nr_interno_conta +
+                (c.dt_periodo_final ? ' (' + formatarData(c.dt_periodo_final) + ')' : '');
+            var sel = (Estado.contaAtiva &&
+                       Estado.contaAtiva.nr_interno_conta === c.nr_interno_conta)
+                      ? ' selected' : '';
+            html += '<option value="' + escHtml(String(c.nr_interno_conta)) + '"' + sel + '>' +
+                escHtml(label) + '</option>';
+        }
+        DOM.contaSelector.innerHTML = html;
     }
 
     function resetarFiltrosTabs() {
@@ -537,7 +638,7 @@
                     Estado.analiseIaUsada = job.ia_usada || false;
                     carregarAchados();
                     carregarDashboard();
-                    carregarContas();
+                    carregarAtendimentos();
                     return;
                 }
 
@@ -680,6 +781,7 @@
                     fecharModal();
                     carregarAchados();
                     carregarDashboard();
+                    carregarAtendimentos();
                 } else {
                     mostrarErroModal((data && data.error) ? data.error : 'Erro ao registrar decisão');
                 }
@@ -708,37 +810,43 @@
         DOM.contasTotal    = document.getElementById('contas-total');
         DOM.filtroBusca    = document.getElementById('filtro-busca');
         DOM.filtrGrav      = document.getElementById('filtro-gravidade');
+        DOM.filtroSetor    = document.getElementById('filtro-setor');
 
-        // Garante que os filtros começam limpos (evita valor pré-selecionado de sessão anterior)
+        // Garante que os filtros começam limpos
         if (DOM.filtroBusca) DOM.filtroBusca.value = '';
         Estado.busca      = '';
-        if (DOM.filtrGrav) DOM.filtrGrav.value = '';
+        if (DOM.filtrGrav)   DOM.filtrGrav.value   = '';
         Estado.gravFiltro = '';
-        DOM.emptyState     = document.getElementById('empty-state');
-        DOM.contaDetalhe   = document.getElementById('conta-detalhe');
-        DOM.detalheTitulo  = document.getElementById('detalhe-titulo');
-        DOM.detalheMeta    = document.getElementById('detalhe-meta');
-        DOM.btnExecutar    = document.getElementById('btn-executar');
-        DOM.jobBar         = document.getElementById('job-bar');
-        DOM.jobTexto       = document.getElementById('job-texto');
-        DOM.achFiltros     = document.getElementById('achados-filtros');
-        DOM.achLoading     = document.getElementById('achados-loading');
-        DOM.achVazio       = document.getElementById('achados-vazio');
-        DOM.achTabela      = document.getElementById('achados-tabela');
-        DOM.achTbody       = document.getElementById('achados-tbody');
-        DOM.modalFeedback  = document.getElementById('modal-feedback');
-        DOM.modalOverlay   = document.getElementById('modal-overlay');
-        DOM.modalResumo    = document.getElementById('modal-resumo');
-        DOM.modalDecisao   = document.getElementById('modal-decisao');
-        DOM.modalJustificativa = document.getElementById('modal-justificativa');
-        DOM.modalErro      = document.getElementById('modal-erro');
-        DOM.modalConfirmar = document.getElementById('modal-confirmar');
+        if (DOM.filtroSetor) DOM.filtroSetor.value  = '';
+        Estado.setorFiltro = '';
+
+        DOM.emptyState          = document.getElementById('empty-state');
+        DOM.contaDetalhe        = document.getElementById('conta-detalhe');
+        DOM.detalheTitulo       = document.getElementById('detalhe-titulo');
+        DOM.detalheMeta         = document.getElementById('detalhe-meta');
+        DOM.contaSelectorWrapper = document.getElementById('conta-selector-wrapper');
+        DOM.contaSelector       = document.getElementById('conta-selector');
+        DOM.btnExecutar         = document.getElementById('btn-executar');
+        DOM.jobBar              = document.getElementById('job-bar');
+        DOM.jobTexto            = document.getElementById('job-texto');
+        DOM.achFiltros          = document.getElementById('achados-filtros');
+        DOM.achLoading          = document.getElementById('achados-loading');
+        DOM.achVazio            = document.getElementById('achados-vazio');
+        DOM.achTabela           = document.getElementById('achados-tabela');
+        DOM.achTbody            = document.getElementById('achados-tbody');
+        DOM.modalFeedback       = document.getElementById('modal-feedback');
+        DOM.modalOverlay        = document.getElementById('modal-overlay');
+        DOM.modalResumo         = document.getElementById('modal-resumo');
+        DOM.modalDecisao        = document.getElementById('modal-decisao');
+        DOM.modalJustificativa  = document.getElementById('modal-justificativa');
+        DOM.modalErro           = document.getElementById('modal-erro');
+        DOM.modalConfirmar      = document.getElementById('modal-confirmar');
 
         // Eventos
         document.getElementById('btn-refresh').addEventListener('click', function () {
             Estado.pagina = 1;
             carregarDashboard();
-            carregarContas();
+            carregarAtendimentos();
         });
 
         if (DOM.filtroBusca) {
@@ -748,7 +856,7 @@
                 _buscaTimer = setTimeout(function () {
                     Estado.busca  = termo;
                     Estado.pagina = 1;
-                    carregarContas();
+                    carregarAtendimentos();
                 }, 450);
             });
         }
@@ -756,8 +864,20 @@
         DOM.filtrGrav.addEventListener('change', function () {
             Estado.gravFiltro = this.value;
             Estado.pagina     = 1;
-            carregarContas();
+            carregarAtendimentos();
         });
+
+        if (DOM.filtroSetor) {
+            DOM.filtroSetor.addEventListener('change', function () {
+                Estado.setorFiltro = this.value;
+                Estado.pagina      = 1;
+                carregarAtendimentos();
+            });
+        }
+
+        if (DOM.contaSelector) {
+            DOM.contaSelector.addEventListener('change', onContaSelectorChange);
+        }
 
         DOM.btnExecutar.addEventListener('click', executarAnalise);
 
@@ -782,7 +902,8 @@
 
         // Carga inicial
         carregarDashboard();
-        carregarContas();
+        carregarSetores();
+        carregarAtendimentos();
     }
 
     function onFiltroTabClick(e) {

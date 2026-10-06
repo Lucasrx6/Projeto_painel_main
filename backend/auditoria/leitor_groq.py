@@ -207,7 +207,10 @@ class LeitorGroq(LeitorDeTexto):
         '(ex.: "na evolução de enfermagem", "no lançamento de procedimento cirúrgico", '
         '"na dispensação de farmácia").\n'
         '  2. Qual é exatamente o problema — seja específico com os valores e diferenças.\n'
-        '  3. Por que isso impacta o faturamento ou pode causar glosa.\n\n'
+        '  3. Por que isso impacta o faturamento ou pode causar glosa.\n'
+        'Quando um "Trecho de evidência" for fornecido, cite-o diretamente entre aspas na '
+        'explicação para mostrar onde o item aparece no prontuário '
+        '(ex.: conforme registrado na evolução: "2 LUVAS PROCEDIMENTO").\n\n'
         '"recomendacao": Em até 2 frases diretas, diga o que o auditor ou faturista deve '
         'fazer para corrigir ou verificar. Seja concreto e prático.\n\n'
         'Use linguagem hospitalar acessível: "evolução de enfermagem", "prescrição médica", '
@@ -259,11 +262,12 @@ class LeitorGroq(LeitorDeTexto):
 
         return None
 
-    def explicar_achado(self, achado: dict, nr_ref: str):
+    def explicar_achado(self, achado: dict, nr_ref: str, trecho: str = None):
         """
         Gera explicação e recomendação em linguagem clara para um achado.
         Retorna (explicacao: str, recomendacao: str) ou (None, None) se indisponível.
         Não registra conteúdo em log — apenas contagem e hash.
+        trecho: trecho literal de evidência do prontuário (evidencia_trecho do achado).
         """
         if not self._autorizada():
             return None, None

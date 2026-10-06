@@ -66,6 +66,9 @@
                     <option value="media">Média</option>
                     <option value="baixa">Baixa</option>
                 </select>
+                <select id="filtro-setor" class="filter-select" style="margin-top:6px;" title="Filtrar por setor">
+                    <option value="">Todos os setores</option>
+                </select>
             </div>
             <div class="contas-lista" id="contas-lista">
                 <div class="loading-state">
@@ -100,6 +103,10 @@
                     <div class="detalhe-info">
                         <div class="detalhe-titulo" id="detalhe-titulo">Conta</div>
                         <div class="detalhe-meta" id="detalhe-meta"></div>
+                        <div id="conta-selector-wrapper" class="conta-selector-wrap" style="display:none;">
+                            <span class="conta-selector-label">Conta do ciclo:</span>
+                            <select id="conta-selector" class="conta-selector-select"></select>
+                        </div>
                     </div>
                     <div class="detalhe-acoes">
                         <div class="job-bar" id="job-bar" style="display:none;">

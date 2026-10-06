@@ -336,6 +336,59 @@ body {
     padding: 5px 12px;
 }
 
+/* ── Conta selector (troca de conta dentro do mesmo atendimento) ── */
+.conta-selector-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+.conta-selector-label {
+    font-size: 11px;
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+.conta-selector-select {
+    font-size: 12px;
+    padding: 3px 24px 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+}
+.conta-selector-select:focus { border-color: var(--accent); }
+
+/* Tag de setor na sidebar */
+.conta-setor-tag {
+    font-size: 10px;
+    color: var(--text-soft);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+/* Mini badges de stats na sidebar */
+.mini-badge {
+    font-size: 10px;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-variant-numeric: tabular-nums;
+}
+.mini-critica { color: var(--critica); background: var(--critica-bg); }
+.mini-pendente { color: var(--pendente-c); background: var(--pendente-bg); }
+.mini-risco { color: var(--text-mid); background: var(--bg); border: 1px solid var(--border); }
+
 /* ── Filtros de achados ───────────────────────────────────────── */
 .achados-filtros {
     flex-shrink: 0;

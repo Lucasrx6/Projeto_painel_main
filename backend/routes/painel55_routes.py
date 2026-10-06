@@ -134,6 +134,18 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                 )
             conn.commit()
 
+            # Período de faturamento desta conta — limita extração de IA ao ciclo correto
+            conta_periodo = None
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT dt_periodo_inicial, dt_periodo_final "
+                    "FROM core.conta WHERE nr_interno_conta = %s LIMIT 1",
+                    (nr_interno_conta,)
+                )
+                cp = cur.fetchone()
+                if cp:
+                    conta_periodo = dict(cp)
+
             try:
                 from backend.auditoria.leitor_groq import LeitorGroq
                 leitor = LeitorGroq()
@@ -148,18 +160,36 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                     )
                 conn.commit()
 
-                # Busca evoluções com texto disponível
+                # Busca evoluções limitadas ao período de faturamento desta conta
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                    cur.execute("""
-                        SELECT cd_evolucao, dt_evolucao,
-                               cd_profissional_pseud, texto_limpo
-                        FROM core.evolucao
-                        WHERE nr_atendimento = %s
-                          AND texto_limpo IS NOT NULL
-                          AND qt_caracteres > 10
-                          AND (ie_situacao IS NULL
-                               OR ie_situacao NOT IN ('I', 'C'))
-                    """, (nr_atendimento,))
+                    if (conta_periodo
+                            and conta_periodo.get('dt_periodo_inicial')
+                            and conta_periodo.get('dt_periodo_final')):
+                        cur.execute("""
+                            SELECT cd_evolucao, dt_evolucao,
+                                   cd_profissional_pseud, texto_limpo
+                            FROM core.evolucao
+                            WHERE nr_atendimento = %s
+                              AND dt_evolucao >= %s
+                              AND dt_evolucao <= %s
+                              AND texto_limpo IS NOT NULL
+                              AND qt_caracteres > 10
+                              AND (ie_situacao IS NULL
+                                   OR ie_situacao NOT IN ('I', 'C'))
+                        """, (nr_atendimento,
+                              conta_periodo['dt_periodo_inicial'],
+                              conta_periodo['dt_periodo_final']))
+                    else:
+                        cur.execute("""
+                            SELECT cd_evolucao, dt_evolucao,
+                                   cd_profissional_pseud, texto_limpo
+                            FROM core.evolucao
+                            WHERE nr_atendimento = %s
+                              AND texto_limpo IS NOT NULL
+                              AND qt_caracteres > 10
+                              AND (ie_situacao IS NULL
+                                   OR ie_situacao NOT IN ('I', 'C'))
+                        """, (nr_atendimento,))
                     evolucoes = [dict(r) for r in cur.fetchall()]
 
                 # Extrai itens de cada evolução e insere em core.evento_documentado
@@ -217,7 +247,7 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                         cur.execute("""
                             SELECT a.id, r.ds_regra, a.cd_regra, a.tipo_achado,
                                    a.gravidade, a.ds_encontrado, a.ds_esperado,
-                                   a.vl_risco
+                                   a.vl_risco, a.evidencia_trecho
                             FROM audit.achado a
                             LEFT JOIN audit.regra r ON a.cd_regra = r.cd_regra
                             WHERE a.nr_atendimento = %s
@@ -232,7 +262,8 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
 
                     for ach in achados_sem_expl:
                         nr_ref_ach = hashlib.md5(str(ach['id']).encode()).hexdigest()[:8]
-                        expl, rec = leitor.explicar_achado(ach, nr_ref_ach)
+                        trecho_ev = ach.get('evidencia_trecho') or None
+                        expl, rec = leitor.explicar_achado(ach, nr_ref_ach, trecho=trecho_ev)
                         if expl:
                             with conn.cursor() as cur:
                                 cur.execute(
@@ -432,6 +463,212 @@ def api_auditoria_contas():
     except Exception as e:
         current_app.logger.error('Erro listar contas auditoria: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar contas'}), 500
+
+
+# =============================================================================
+# Listagem de atendimentos agrupados (sidebar UX — 1 item por atendimento)
+# =============================================================================
+
+@painel55_bp.route('/api/auditoria/atendimentos')
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_atendimentos():
+    try:
+        busca        = request.args.get('busca',     '').strip()
+        grav_filtro  = request.args.get('gravidade', '').strip()
+        setor_filtro = request.args.get('setor',     '').strip()
+        pagina       = max(1, int(request.args.get('pagina',    '1')   or '1'))
+        por_pagina   = min(200, max(10, int(request.args.get('por_pagina', '100') or '100')))
+        offset       = (pagina - 1) * por_pagina
+
+        # Filtros para a CTE contas_agg
+        ca_wheres = ["c.ie_conta_aberta IS DISTINCT FROM 'N'"]
+        params    = []
+        if busca:
+            ca_wheres.append(
+                "(CAST(c.nr_atendimento AS TEXT) ILIKE %s "
+                "OR CAST(c.nr_interno_conta AS TEXT) ILIKE %s)"
+            )
+            params += ['%' + busca + '%', '%' + busca + '%']
+        ca_where_sql = ' AND '.join(ca_wheres)
+
+        # Filtros externos (aplicados ao join final)
+        outer_wheres = []
+        outer_params = []
+        if setor_filtro:
+            outer_wheres.append('sa.cd_setor_atendimento = %s')
+            outer_params.append(int(setor_filtro))
+        if grav_filtro:
+            outer_wheres.append('aa.gravidade_maxima = %s')
+            outer_params.append(grav_filtro)
+        outer_where_sql = ('WHERE ' + ' AND '.join(outer_wheres)) if outer_wheres else ''
+
+        # CTE principal: achados e setores agregados separadamente para evitar
+        # multiplicação de linhas ao cruzar contas × achados
+        sql_cte = """
+            WITH
+            ca AS (
+                SELECT
+                    c.nr_atendimento,
+                    COUNT(DISTINCT c.nr_interno_conta) AS qt_contas,
+                    MAX(c.dt_periodo_final)             AS dt_periodo_final_max
+                FROM core.conta c
+                WHERE {ca_where}
+                GROUP BY c.nr_atendimento
+            ),
+            aa AS (
+                SELECT
+                    a.nr_atendimento,
+                    COUNT(a.id)                                                         AS total_achados,
+                    SUM(CASE WHEN a.gravidade = 'critica' THEN 1 ELSE 0 END)           AS criticos,
+                    SUM(CASE WHEN a.gravidade = 'alta'    THEN 1 ELSE 0 END)           AS altos,
+                    SUM(CASE WHEN a.gravidade = 'media'   THEN 1 ELSE 0 END)           AS medios,
+                    SUM(CASE WHEN a.gravidade = 'baixa'   THEN 1 ELSE 0 END)           AS baixos,
+                    SUM(CASE WHEN a.status_tratamento = 'pendente' THEN 1 ELSE 0 END)  AS pendentes,
+                    COALESCE(SUM(a.vl_risco), 0)                                        AS vl_risco_total,
+                    CASE MAX(CASE a.gravidade
+                        WHEN 'critica' THEN 4 WHEN 'alta' THEN 3
+                        WHEN 'media'   THEN 2 WHEN 'baixa' THEN 1 ELSE 0 END)
+                        WHEN 4 THEN 'critica' WHEN 3 THEN 'alta'
+                        WHEN 2 THEN 'media'   WHEN 1 THEN 'baixa' ELSE NULL
+                    END AS gravidade_maxima
+                FROM audit.achado a
+                INNER JOIN ca ON ca.nr_atendimento = a.nr_atendimento
+                GROUP BY a.nr_atendimento
+            ),
+            sa AS (
+                SELECT DISTINCT ON (nr_atendimento) nr_atendimento, cd_setor_atendimento
+                FROM core.item_procedimento
+                WHERE nr_atendimento IN (SELECT nr_atendimento FROM ca)
+                  AND cd_setor_atendimento IS NOT NULL
+                ORDER BY nr_atendimento, cd_setor_atendimento
+            )
+        """.format(ca_where=ca_where_sql)
+
+        sql_select = """
+            SELECT
+                ca.nr_atendimento,
+                ca.qt_contas,
+                ca.dt_periodo_final_max,
+                COALESCE(aa.total_achados,  0) AS total_achados,
+                COALESCE(aa.criticos,       0) AS criticos,
+                COALESCE(aa.altos,          0) AS altos,
+                COALESCE(aa.medios,         0) AS medios,
+                COALESCE(aa.baixos,         0) AS baixos,
+                COALESCE(aa.pendentes,      0) AS pendentes,
+                COALESCE(aa.vl_risco_total, 0) AS vl_risco_total,
+                aa.gravidade_maxima,
+                sa.cd_setor_atendimento,
+                (
+                    SELECT JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'nr_interno_conta',    c2.nr_interno_conta,
+                            'dt_periodo_inicial',  TO_CHAR(c2.dt_periodo_inicial, 'YYYY-MM-DD'),
+                            'dt_periodo_final',    TO_CHAR(c2.dt_periodo_final,   'YYYY-MM-DD'),
+                            'ie_conta_aberta',     c2.ie_conta_aberta,
+                            'status_job',          j2.status,
+                            'dt_ultima_auditoria', TO_CHAR(j2.dt_fim, 'YYYY-MM-DD HH24:MI')
+                        ) ORDER BY c2.dt_periodo_final DESC
+                    )
+                    FROM core.conta c2
+                    LEFT JOIN LATERAL (
+                        SELECT status, dt_fim FROM audit.analise_job
+                        WHERE nr_interno_conta = c2.nr_interno_conta
+                        ORDER BY dt_criacao DESC LIMIT 1
+                    ) j2 ON TRUE
+                    WHERE c2.nr_atendimento = ca.nr_atendimento
+                      AND c2.ie_conta_aberta IS DISTINCT FROM 'N'
+                ) AS contas
+            FROM ca
+            LEFT JOIN aa ON aa.nr_atendimento = ca.nr_atendimento
+            LEFT JOIN sa ON sa.nr_atendimento = ca.nr_atendimento
+            {outer_where}
+        """.format(outer_where=outer_where_sql)
+
+        all_params = params + outer_params
+
+        sql_count = (sql_cte
+                     + "SELECT COUNT(1) AS total FROM ca "
+                     + "LEFT JOIN aa ON aa.nr_atendimento = ca.nr_atendimento "
+                     + "LEFT JOIN sa ON sa.nr_atendimento = ca.nr_atendimento "
+                     + outer_where_sql)
+        sql_pag   = (sql_cte + sql_select
+                     + " ORDER BY COALESCE(aa.vl_risco_total,0) DESC,"
+                       " COALESCE(aa.criticos,0) DESC,"
+                       " ca.dt_periodo_final_max DESC LIMIT %s OFFSET %s")
+
+        with _cursor() as cur:
+            cur.execute(sql_count, all_params if all_params else None)
+            r = cur.fetchone()
+            total = int(r['total']) if r else 0
+
+        with _cursor() as cur:
+            cur.execute(sql_pag, (all_params + [por_pagina, offset]) if all_params
+                        else [por_pagina, offset])
+            rows = cur.fetchall()
+
+        atendimentos = []
+        for r in rows:
+            d = _serial(dict(r))
+            if not isinstance(d.get('contas'), list):
+                d['contas'] = []
+            atendimentos.append(d)
+
+        return jsonify({
+            'success':      True,
+            'atendimentos': atendimentos,
+            'total':        total,
+            'pagina':       pagina,
+            'por_pagina':   por_pagina,
+        })
+    except Exception as e:
+        current_app.logger.error(
+            'Erro listar atendimentos auditoria: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar atendimentos'}), 500
+
+
+# =============================================================================
+# Setores disponíveis (para filtro da sidebar)
+# =============================================================================
+
+@painel55_bp.route('/api/auditoria/setores')
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_setores():
+    try:
+        with _cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT cd_setor_atendimento
+                FROM core.item_procedimento
+                WHERE cd_setor_atendimento IS NOT NULL
+                ORDER BY cd_setor_atendimento
+            """)
+            codigos = [r['cd_setor_atendimento'] for r in cur.fetchall()]
+
+        if not codigos:
+            return jsonify({'success': True, 'setores': []})
+
+        setor_map = {}
+        try:
+            from backend.database import get_db_cursor
+            with get_db_cursor() as cur:
+                cur.execute(
+                    "SELECT cd_setor, nm_setor FROM setores_hospital "
+                    "WHERE cd_setor = ANY(%s) ORDER BY nm_setor",
+                    (codigos,)
+                )
+                for r in cur.fetchall():
+                    setor_map[r['cd_setor']] = r['nm_setor']
+        except Exception:
+            pass
+
+        setores = [{'cd': cd, 'nm': setor_map.get(cd, 'Setor ' + str(cd))}
+                   for cd in codigos]
+        setores.sort(key=lambda s: s['nm'])
+        return jsonify({'success': True, 'setores': setores})
+    except Exception as e:
+        current_app.logger.error('Erro setores auditoria: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar setores'}), 500
 
 
 # =============================================================================
