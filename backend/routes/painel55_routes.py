@@ -2,6 +2,7 @@
 Painel 55 — Auditoria Pré-Faturamento de Contas Hospitalares
 Sistema separado: banco 'auditoria' próprio, auth via sistema principal.
 """
+import logging
 import os
 import hashlib
 import threading
@@ -18,6 +19,9 @@ from backend.middleware.decorators import login_required, panel_permission_requi
 from backend.auditoria.leitor_groq import matar_ia, ia_esta_viva
 
 painel55_bp = Blueprint('painel55', __name__)
+
+# Logger de módulo — usado dentro de threads (sem contexto Flask)
+_log = logging.getLogger(__name__)
 
 # Limite de jobs simultâneos
 _JOBS_MAX    = int(os.getenv('AUDITORIA_JOBS_MAX', '2'))
@@ -275,12 +279,12 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                                 )
                             conn.commit()
                 except Exception as e_expl:
-                    current_app.logger.error(
+                    _log.error(
                         'Erro fase explicação IA job %s: %s', job_id, type(e_expl).__name__
                     )
 
             except Exception as e:
-                current_app.logger.error(
+                _log.error(
                     'Erro etapa IA job %s: %s', job_id, type(e).__name__
                 )
 

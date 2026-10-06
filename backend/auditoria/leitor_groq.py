@@ -301,6 +301,9 @@ class LeitorGroq(LeitorDeTexto):
             'Risco financeiro: R$ ' + '{:.2f}'.format(float(achado.get('vl_risco') or 0))
         )
 
+        if trecho:
+            msg = msg + '\nTrecho de evidência encontrado no prontuário:\n"' + trecho[:500] + '"'
+
         raw = self._chamar_api(chave, msg, sistema=self._SISTEMA_EXPLICAR)
         if raw is None:
             return None, None
