@@ -96,11 +96,11 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
             )
         conn.commit()
 
-        # Executa regras determinísticas
+        # Executa regras determinísticas apenas para a conta selecionada
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT audit.executar_regras(%s) AS total",
-                (nr_atendimento,)
+                "SELECT audit.executar_regras(%s, %s) AS total",
+                (nr_atendimento, nr_interno_conta)
             )
             row = cur.fetchone()
             qt_regras = int(row['total'] or 0)
@@ -231,8 +231,8 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                 # Re-executa regras para capturar achados baseados nos eventos extraídos
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
-                        "SELECT audit.executar_regras(%s) AS total",
-                        (nr_atendimento,)
+                        "SELECT audit.executar_regras(%s, %s) AS total",
+                        (nr_atendimento, nr_interno_conta)
                     )
                     row2 = cur.fetchone()
                     qt_ia = int(row2['total'] or 0) - qt_regras
@@ -251,13 +251,14 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                             FROM audit.achado a
                             LEFT JOIN audit.regra r ON a.cd_regra = r.cd_regra
                             WHERE a.nr_atendimento = %s
+                              AND a.nr_interno_conta = %s
                               AND a.explicacao_ia IS NULL
                             ORDER BY CASE a.gravidade
                                 WHEN 'critica' THEN 1 WHEN 'alta'  THEN 2
                                 WHEN 'media'   THEN 3 WHEN 'baixa' THEN 4
                                 ELSE 5 END
                             LIMIT 15
-                        """, (nr_atendimento,))
+                        """, (nr_atendimento, nr_interno_conta))
                         achados_sem_expl = [dict(r) for r in cur.fetchall()]
 
                     for ach in achados_sem_expl:
@@ -342,7 +343,7 @@ def api_auditoria_dashboard():
                     SUM(CASE WHEN a.status_tratamento = 'pendente' THEN 1 ELSE 0 END)  AS pendentes,
                     COALESCE(SUM(a.vl_risco), 0)                                       AS vl_risco_total
                 FROM core.conta c
-                LEFT JOIN audit.achado a ON c.nr_atendimento = a.nr_atendimento
+                LEFT JOIN audit.achado a ON a.nr_interno_conta = c.nr_interno_conta
                 WHERE c.ie_conta_aberta IS DISTINCT FROM 'N'
             """)
             row = cur.fetchone()
@@ -534,6 +535,11 @@ def api_auditoria_atendimentos():
                     END AS gravidade_maxima
                 FROM audit.achado a
                 INNER JOIN ca ON ca.nr_atendimento = a.nr_atendimento
+                -- Conta somente achados de contas abertas (mesma regra do ca)
+                -- ou achados sem conta (nível de atendimento)
+                LEFT JOIN core.conta ck ON ck.nr_interno_conta = a.nr_interno_conta
+                WHERE ck.ie_conta_aberta IS DISTINCT FROM 'N'
+                   OR a.nr_interno_conta IS NULL
                 GROUP BY a.nr_atendimento
             ),
             sa AS (
