@@ -110,7 +110,7 @@ class LeitorGroq(LeitorDeTexto):
     Leitor de texto via Groq API (Llama 3.3 70B).
     Desativado por padrão; requer kill switch + flags de autorização.
     """
-    _MODELO_PADRAO = 'llama-3.3-70b-versatile'
+    _MODELO_PADRAO = 'openai/gpt-oss-120b'
 
     _SISTEMA = (
         'Você é um auditor especialista em faturamento hospitalar brasileiro (TUSS/SUS/AMB).\n'
