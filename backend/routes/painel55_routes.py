@@ -103,7 +103,7 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
         # Executa regras determinísticas para o atendimento
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT audit.executar_regras(%s) AS total",
+                "SELECT audit.executar_regras(%s::bigint) AS total",
                 (nr_atendimento,)
             )
             row = cur.fetchone()
@@ -246,7 +246,7 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                 # Re-executa regras para capturar achados baseados nos eventos extraídos
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
-                        "SELECT audit.executar_regras(%s) AS total",
+                        "SELECT audit.executar_regras(%s::bigint) AS total",
                         (nr_atendimento,)
                     )
                     row2 = cur.fetchone()
