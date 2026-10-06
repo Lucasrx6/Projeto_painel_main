@@ -535,11 +535,14 @@ def api_auditoria_atendimentos():
                     END AS gravidade_maxima
                 FROM audit.achado a
                 INNER JOIN ca ON ca.nr_atendimento = a.nr_atendimento
-                -- Conta somente achados de contas abertas (mesma regra do ca)
-                -- ou achados sem conta (nível de atendimento)
-                LEFT JOIN core.conta ck ON ck.nr_interno_conta = a.nr_interno_conta
-                WHERE ck.ie_conta_aberta IS DISTINCT FROM 'N'
-                   OR a.nr_interno_conta IS NULL
+                WHERE (
+                    a.nr_interno_conta IS NULL
+                    OR EXISTS (
+                        SELECT 1 FROM core.conta ck
+                        WHERE ck.nr_interno_conta = a.nr_interno_conta
+                          AND ck.ie_conta_aberta IS DISTINCT FROM 'N'
+                    )
+                )
                 GROUP BY a.nr_atendimento
             ),
             sa AS (
@@ -963,10 +966,59 @@ def api_auditoria_ia_kill():
 @panel_permission_required('painel55')
 def api_auditoria_ia_status():
     ia_env = os.getenv('IA_HABILITADA', 'false').lower() in ('true', '1')
-    groq_configurada = bool(os.getenv('GROQ_API_KEY', ''))
+    groq_key_ok = bool(os.getenv('GROQ_API_KEY', ''))
+
+    # Porta 2: verificar parâmetro no banco
+    db_autorizada = False
+    db_erro = None
+    try:
+        with get_db_cursor() as cur:
+            cur.execute(
+                "SELECT valor FROM audit.parametro WHERE chave = 'ia_externa_autorizada'"
+            )
+            p = cur.fetchone()
+            if p is None:
+                db_erro = 'linha nao encontrada em audit.parametro'
+            else:
+                db_autorizada = str(p['valor']).strip().lower() in ('true', 't', '1')
+    except Exception as exc:
+        db_erro = str(exc)
+
+    # Verificar biblioteca groq instalada
+    groq_instalada = False
+    try:
+        import importlib
+        groq_instalada = importlib.util.find_spec('groq') is not None
+    except Exception:
+        pass
+
+    ia_pronta = ia_esta_viva() and ia_env and groq_key_ok and db_autorizada and groq_instalada
+
+    bloqueios = []
+    if not ia_esta_viva():
+        bloqueios.append('kill_switch_ativado')
+    if not ia_env:
+        bloqueios.append('IA_HABILITADA nao e true no .env')
+    if not groq_key_ok:
+        bloqueios.append('GROQ_API_KEY vazia ou ausente no .env')
+    if not groq_instalada:
+        bloqueios.append('biblioteca groq nao instalada (pip install groq)')
+    if not db_autorizada:
+        bloqueios.append(
+            'audit.parametro ia_externa_autorizada nao e true'
+            + (' — ' + db_erro if db_erro else '')
+        )
+
     return jsonify({
         'success': True,
-        'ia_viva': ia_esta_viva(),
-        'ia_habilitada_env': ia_env,
-        'groq_configurada': groq_configurada,
+        'ia_pronta': ia_pronta,
+        'gates': {
+            'kill_switch_vivo':       ia_esta_viva(),
+            'ia_habilitada_env':      ia_env,
+            'groq_key_configurada':   groq_key_ok,
+            'groq_lib_instalada':     groq_instalada,
+            'db_ia_externa_autorizada': db_autorizada,
+            'db_erro':                db_erro,
+        },
+        'bloqueios': bloqueios,
     })
