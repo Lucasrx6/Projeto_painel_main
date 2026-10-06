@@ -100,11 +100,11 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
             )
         conn.commit()
 
-        # Executa regras determinísticas apenas para a conta selecionada
+        # Executa regras determinísticas para o atendimento
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT audit.executar_regras(%s, %s) AS total",
-                (nr_atendimento, nr_interno_conta)
+                "SELECT audit.executar_regras(%s) AS total",
+                (nr_atendimento,)
             )
             row = cur.fetchone()
             qt_regras = int(row['total'] or 0)
@@ -246,8 +246,8 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                 # Re-executa regras para capturar achados baseados nos eventos extraídos
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
-                        "SELECT audit.executar_regras(%s, %s) AS total",
-                        (nr_atendimento, nr_interno_conta)
+                        "SELECT audit.executar_regras(%s) AS total",
+                        (nr_atendimento,)
                     )
                     row2 = cur.fetchone()
                     qt_ia = int(row2['total'] or 0) - qt_regras
@@ -272,6 +272,10 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
     except Exception as e:
         try:
             if conn:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 msg = type(e).__name__ + ': ' + str(e)[:200]
                 with conn.cursor() as cur:
                     cur.execute(
