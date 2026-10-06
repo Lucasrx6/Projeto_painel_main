@@ -245,44 +245,6 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                 ia_usada = True
                 modelo   = leitor.nome_modelo()
 
-                # Fase de explicação: gera texto claro para cada achado
-                try:
-                    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                        cur.execute("""
-                            SELECT a.id, r.ds_regra, a.cd_regra, a.tipo_achado,
-                                   a.gravidade, a.ds_encontrado, a.ds_esperado,
-                                   a.vl_risco, a.evidencia_trecho
-                            FROM audit.achado a
-                            LEFT JOIN audit.regra r ON a.cd_regra = r.cd_regra
-                            WHERE a.nr_atendimento = %s
-                              AND a.nr_interno_conta = %s
-                              AND a.explicacao_ia IS NULL
-                            ORDER BY CASE a.gravidade
-                                WHEN 'critica' THEN 1 WHEN 'alta'  THEN 2
-                                WHEN 'media'   THEN 3 WHEN 'baixa' THEN 4
-                                ELSE 5 END
-                            LIMIT 15
-                        """, (nr_atendimento, nr_interno_conta))
-                        achados_sem_expl = [dict(r) for r in cur.fetchall()]
-
-                    for ach in achados_sem_expl:
-                        nr_ref_ach = hashlib.md5(str(ach['id']).encode()).hexdigest()[:8]
-                        trecho_ev = ach.get('evidencia_trecho') or None
-                        expl, rec = leitor.explicar_achado(ach, nr_ref_ach, trecho=trecho_ev)
-                        if expl:
-                            with conn.cursor() as cur:
-                                cur.execute(
-                                    "UPDATE audit.achado "
-                                    "SET explicacao_ia = %s, recomendacao_ia = %s "
-                                    "WHERE id = %s",
-                                    (expl, rec, ach['id'])
-                                )
-                            conn.commit()
-                except Exception as e_expl:
-                    _log.error(
-                        'Erro fase explicação IA job %s: %s', job_id, type(e_expl).__name__
-                    )
-
             except Exception as e:
                 _log.error(
                     'Erro etapa IA job %s: %s', job_id, type(e).__name__
@@ -913,6 +875,78 @@ def api_auditoria_feedback(achado_id):
     except Exception as e:
         current_app.logger.error('Erro feedback achado %s: %s', achado_id, e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao registrar feedback'}), 500
+
+
+# =============================================================================
+# Explicação IA sob demanda (por achado com evidência de evolução)
+# =============================================================================
+
+@painel55_bp.route('/api/auditoria/achados/<int:achado_id>/explicar-ia', methods=['POST'])
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_explicar_ia(achado_id):
+    try:
+        if not ia_esta_viva():
+            return jsonify({'success': False, 'error': 'IA desativada (kill switch)'}), 409
+        if os.getenv('IA_HABILITADA', 'false').lower() not in ('true', '1'):
+            return jsonify({'success': False, 'error': 'IA não habilitada neste ambiente'}), 409
+
+        with _cursor() as cur:
+            cur.execute("SELECT valor FROM audit.parametro WHERE chave = 'ia_externa_autorizada'")
+            p = cur.fetchone()
+        if not (p and p['valor'] in ('true', 't', '1')):
+            return jsonify({'success': False, 'error': 'IA externa não autorizada neste ambiente'}), 409
+
+        with _cursor() as cur:
+            cur.execute("""
+                SELECT a.id, a.cd_regra, r.ds_regra,
+                       a.tipo_achado, a.gravidade,
+                       a.ds_encontrado, a.ds_esperado,
+                       a.vl_risco, a.evidencia_trecho,
+                       a.explicacao_ia, a.recomendacao_ia
+                FROM audit.achado a
+                LEFT JOIN audit.regra r ON a.cd_regra = r.cd_regra
+                WHERE a.id = %s
+            """, (achado_id,))
+            ach = cur.fetchone()
+        if not ach:
+            return jsonify({'success': False, 'error': 'Achado não encontrado'}), 404
+        ach = dict(ach)
+
+        # Cache: já tem explicação salva
+        if ach.get('explicacao_ia'):
+            return jsonify({
+                'success': True,
+                'explicacao_ia':   ach['explicacao_ia'],
+                'recomendacao_ia': ach.get('recomendacao_ia'),
+                'cached': True,
+            })
+
+        trecho = ach.get('evidencia_trecho') or None
+        if not trecho:
+            return jsonify({
+                'success': False,
+                'error': 'Achado sem trecho de evolução — não é possível gerar explicação com IA',
+            }), 422
+
+        from backend.auditoria.leitor_groq import LeitorGroq
+        leitor = LeitorGroq()
+        nr_ref = hashlib.md5(str(achado_id).encode()).hexdigest()[:8]
+        expl, rec = leitor.explicar_achado(ach, nr_ref, trecho=trecho)
+
+        if not expl:
+            return jsonify({'success': False, 'error': 'IA não conseguiu gerar explicação para este achado'}), 502
+
+        with _cursor(dict_cur=False) as cur:
+            cur.execute(
+                "UPDATE audit.achado SET explicacao_ia = %s, recomendacao_ia = %s WHERE id = %s",
+                (expl, rec, achado_id)
+            )
+
+        return jsonify({'success': True, 'explicacao_ia': expl, 'recomendacao_ia': rec})
+    except Exception as e:
+        current_app.logger.error('Erro explicar IA achado %s: %s', achado_id, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao gerar explicação'}), 500
 
 
 # =============================================================================

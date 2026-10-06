@@ -695,6 +695,21 @@ body {
 }
 .btn-feedback:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
+.btn-explicar-ia {
+    font-size: 12px;
+    padding: 5px 14px;
+    border: 1px dashed var(--accent);
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    outline: none;
+}
+.btn-explicar-ia:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.btn-explicar-ia:disabled { opacity: .6; cursor: default; }
+
 /* ── Loading state ────────────────────────────────────────────── */
 .loading-state {
     display: flex;

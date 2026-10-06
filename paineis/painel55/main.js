@@ -14,6 +14,7 @@
             auditar:    function (nric) { return '/api/auditoria/contas/' + encodeURIComponent(nric) + '/auditar'; },
             job:        function (id)   { return '/api/auditoria/jobs/' + encodeURIComponent(id); },
             feedback:   function (id)   { return '/api/auditoria/achados/' + id + '/feedback'; },
+            explicarIa: function (id)   { return '/api/auditoria/achados/' + id + '/explicar-ia'; },
             validacao:  '/api/auditoria/validacao',
             iaStatus:   '/api/auditoria/ia/status'
         },
@@ -511,12 +512,20 @@
                     '</div>';
             }
             if (!a.explicacao_ia && !a.recomendacao_ia) {
-                detalheHtml +=
-                    '<div class="detalhe-bloco detalhe-bloco-vazio">' +
-                    '<i class="fa fa-circle-info"></i> ' +
-                    'Explicação de IA não disponível para este achado. ' +
-                    'Execute a análise com IA habilitada para gerar explicações detalhadas.' +
-                    '</div>';
+                if (a.evidencia_trecho) {
+                    detalheHtml +=
+                        '<div class="detalhe-bloco detalhe-bloco-vazio">' +
+                        '<button class="btn-explicar-ia" data-id="' + a.id + '" data-idx="' + i + '">' +
+                        '<i class="fa fa-wand-magic-sparkles"></i> Solicitar explicação com IA' +
+                        '</button>' +
+                        '</div>';
+                } else {
+                    detalheHtml +=
+                        '<div class="detalhe-bloco detalhe-bloco-vazio">' +
+                        '<i class="fa fa-circle-info"></i> ' +
+                        'Achado sem trecho de evolução — análise com IA não disponível para este tipo.' +
+                        '</div>';
+                }
             }
             if (a.evidencia_trecho) {
                 detalheHtml +=
@@ -539,6 +548,10 @@
         var btns = DOM.achTbody.querySelectorAll('.btn-feedback');
         for (var j = 0; j < btns.length; j++) {
             btns[j].addEventListener('click', onFeedbackClick);
+        }
+        var btnsExpl = DOM.achTbody.querySelectorAll('.btn-explicar-ia');
+        for (var k = 0; k < btnsExpl.length; k++) {
+            btnsExpl[k].addEventListener('click', onExplicarIaClick);
         }
     }
 
@@ -615,8 +628,8 @@
         if (!Estado.jobId) return;
 
         Estado.pollTentativas = (Estado.pollTentativas || 0) + 1;
-        if (Estado.pollTentativas > 80) {
-            // Limite de ~2 minutos (80 × 1,5s) — evita loop infinito
+        if (Estado.pollTentativas > 200) {
+            // Limite de ~5 minutos (200 × 1,5s) — cobre jobs com IA em múltiplos achados
             mostrarErroJob('Tempo limite de análise atingido. Tente novamente.');
             return;
         }
@@ -740,6 +753,83 @@
         Estado.jobId = null;
         if (Estado.jobTimer) { clearTimeout(Estado.jobTimer); Estado.jobTimer = null; }
         alert('Erro: ' + msg);
+    }
+
+    // =========================================================
+    // Explicação IA sob demanda
+    // =========================================================
+
+    function onExplicarIaClick() {
+        solicitarExplicacaoIa(this);
+    }
+
+    function solicitarExplicacaoIa(btn) {
+        var achId  = parseInt(btn.getAttribute('data-id'), 10);
+        var achIdx = parseInt(btn.getAttribute('data-idx'), 10);
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Consultando IA…';
+
+        apiFetch(CONFIG.api.explicarIa(achId), { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa fa-wand-magic-sparkles"></i> Solicitar explicação com IA';
+                    alert('Erro: ' + (data.error || 'Não foi possível gerar explicação'));
+                    return;
+                }
+                if (!isNaN(achIdx) && Estado.achados[achIdx]) {
+                    Estado.achados[achIdx].explicacao_ia   = data.explicacao_ia;
+                    Estado.achados[achIdx].recomendacao_ia = data.recomendacao_ia;
+                }
+                _atualizarDetalheAchado(
+                    achId,
+                    data.explicacao_ia,
+                    data.recomendacao_ia,
+                    (!isNaN(achIdx) && Estado.achados[achIdx])
+                        ? Estado.achados[achIdx].evidencia_trecho
+                        : null
+                );
+                // Atualiza seta da linha principal para indicar que há conteúdo
+                var mainTr = DOM.achTbody.querySelector('tr.achado-row[data-id="' + achId + '"]');
+                if (mainTr) {
+                    var arrow = mainTr.querySelector('.row-expand-arrow-vazio');
+                    if (arrow) arrow.classList.remove('row-expand-arrow-vazio');
+                }
+            })
+            .catch(function () {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-wand-magic-sparkles"></i> Solicitar explicação com IA';
+                alert('Falha de comunicação. Tente novamente.');
+            });
+    }
+
+    function _atualizarDetalheAchado(achId, expl, rec, trecho) {
+        var detailTr = document.getElementById('detail-' + achId);
+        if (!detailTr) return;
+        var novo = '<div class="achado-detalhe-conteudo">';
+        if (expl) {
+            novo += '<div class="detalhe-bloco">' +
+                '<div class="detalhe-bloco-titulo"><i class="fa fa-magnifying-glass-chart"></i> Onde foi encontrado o problema</div>' +
+                '<p class="detalhe-bloco-texto">' + escHtml(expl) + '</p>' +
+                '</div>';
+        }
+        if (rec) {
+            novo += '<div class="detalhe-bloco detalhe-bloco-rec">' +
+                '<div class="detalhe-bloco-titulo"><i class="fa fa-circle-check"></i> O que fazer para corrigir</div>' +
+                '<p class="detalhe-bloco-texto">' + escHtml(rec) + '</p>' +
+                '</div>';
+        }
+        if (trecho) {
+            novo += '<div class="detalhe-bloco detalhe-bloco-evidencia">' +
+                '<div class="detalhe-bloco-titulo"><i class="fa fa-quote-left"></i> Trecho de evidência</div>' +
+                '<pre class="detalhe-pre">' + escHtml(trecho) + '</pre>' +
+                '</div>';
+        }
+        novo += '</div>';
+        var td = detailTr.querySelector('td');
+        if (td) td.innerHTML = novo;
     }
 
     // =========================================================
