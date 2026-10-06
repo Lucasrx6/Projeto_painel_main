@@ -367,7 +367,7 @@ def api_painel10_clinicas_consolidado():
             # Médicos ativos por clínica: usa consultório (sala) de medicos_ps.
             # Consultórios são fixos por clínica → mapeamento confiável independente do
             # cadastro de especialidade do médico.
-            # Salas: 9,10=Pediatria | 7,8=Ortopedia | 3=Cirúrgica Geral | 6=Gineco | 0,1,2,4,5=Clínica Médica
+            # Salas: 9,10=Pediatria | 0=Ortopedia | 3=Cirúrgica Geral | 1,2,4,5,6=Clínica Médica
             canonical_medicos = {}
             try:
                 cursor.execute("""
@@ -375,10 +375,9 @@ def api_painel10_clinicas_consolidado():
                     FROM (
                         SELECT CASE
                             WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('09', '10') THEN 'PEDIATRIA'
-                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('07', '08') THEN 'ORTOPEDIA'
+                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('00')       THEN 'ORTOPEDIA'
                             WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('03')       THEN 'CIRURGICA GERAL'
-                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('06')       THEN 'GINECOLOGIA'
-                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('00', '01', '02', '04', '05') THEN 'CLINICA MEDICA'
+                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('01', '02', '04', '05', '06') THEN 'CLINICA MEDICA'
                         END AS clinica_canonical
                         FROM medicos_ps
                         WHERE consultorio IS NOT NULL
@@ -793,10 +792,9 @@ def api_painel10_diagnostico_ps():
                     FROM (
                         SELECT CASE
                             WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('09', '10') THEN 'PEDIATRIA'
-                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('07', '08') THEN 'ORTOPEDIA'
+                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('00')       THEN 'ORTOPEDIA'
                             WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('03')       THEN 'CIRURGICA GERAL'
-                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('06')       THEN 'GINECOLOGIA'
-                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('00', '01', '02', '04', '05') THEN 'CLINICA MEDICA'
+                            WHEN REGEXP_REPLACE(consultorio, '[^0-9]', '', 'g') IN ('01', '02', '04', '05', '06') THEN 'CLINICA MEDICA'
                             ELSE '(sem match: ' || consultorio || ')'
                         END AS clinica_canonical
                         FROM medicos_ps
