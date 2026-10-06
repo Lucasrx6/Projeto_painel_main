@@ -624,6 +624,36 @@
             });
     }
 
+    function _textoStatus(job) {
+        var etapa  = job.etapa  || '';
+        var status = job.status || '';
+
+        var seg = '';
+        if (job.dt_inicio) {
+            var ms = Date.now() - new Date(job.dt_inicio).getTime();
+            if (ms > 2000) seg = ' · ' + Math.floor(ms / 1000) + 's';
+        }
+
+        if (status === 'fila') return 'Aguardando na fila…';
+
+        if (etapa === 'regras') return 'Executando regras de auditoria' + seg + '…';
+
+        if (etapa === 'ia')     return 'Preparando leitura de evoluções com IA' + seg + '…';
+
+        // ia_X_N — progresso da extração de evoluções
+        if (etapa.indexOf('ia_') === 0) {
+            var parts = etapa.split('_');
+            if (parts.length === 3) {
+                var atual = parts[1];
+                var total = parts[2];
+                return 'IA: lendo evolução ' + atual + ' de ' + total + seg;
+            }
+            return 'IA: lendo evoluções' + seg + '…';
+        }
+
+        return 'Processando' + seg + '…';
+    }
+
     function pollJob() {
         if (!Estado.jobId) return;
 
@@ -650,10 +680,7 @@
                 var status = job.status || '';
 
                 if (status === 'fila' || status === 'rodando') {
-                    var etapaTxt = status === 'rodando'
-                        ? (job.etapa === 'ia' ? 'Executando leitura IA…' : 'Executando regras…')
-                        : 'Na fila…';
-                    DOM.jobTexto.textContent = etapaTxt;
+                    DOM.jobTexto.textContent = _textoStatus(job);
                     Estado.jobTimer = setTimeout(pollJob, CONFIG.pollMs);
                     return;
                 }

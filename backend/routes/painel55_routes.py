@@ -198,7 +198,18 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
 
                 # Extrai itens de cada evolução e insere em core.evento_documentado
                 metodo_tag = 'groq_' + leitor.nome_modelo()[:18]
-                for ev in evolucoes:
+                qt_evolucoes = len(evolucoes)
+                for ev_idx, ev in enumerate(evolucoes):
+                    # Atualiza etapa com progresso a cada 3 evoluções (visível no poll do frontend)
+                    if ev_idx % 3 == 0:
+                        progresso = 'ia_%d_%d' % (ev_idx + 1, qt_evolucoes)
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                "UPDATE audit.analise_job SET etapa = %s WHERE id = %s",
+                                (progresso, job_id)
+                            )
+                        conn.commit()
+
                     data_ref = (ev['dt_evolucao'].strftime('%Y-%m-%d')
                                 if ev['dt_evolucao'] else '')
                     nr_ref = hashlib.md5(
