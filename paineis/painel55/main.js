@@ -596,6 +596,7 @@
             .then(function (data) {
                 if (data.success && data.job_id) {
                     Estado.jobId = data.job_id;
+                    Estado.pollTentativas = 0;
                     if (data.existente) {
                         DOM.jobTexto.textContent = 'Retomando job existente…';
                     }
@@ -613,9 +614,24 @@
     function pollJob() {
         if (!Estado.jobId) return;
 
+        Estado.pollTentativas = (Estado.pollTentativas || 0) + 1;
+        if (Estado.pollTentativas > 80) {
+            // Limite de ~2 minutos (80 × 1,5s) — evita loop infinito
+            mostrarErroJob('Tempo limite de análise atingido. Tente novamente.');
+            return;
+        }
+
         apiFetch(CONFIG.api.job(Estado.jobId))
-            .then(function (r) { return r.json(); })
+            .then(function (r) {
+                if (r.status === 401 || r.status === 403) {
+                    // Sessão expirada — redirecionar para login
+                    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                    return null;
+                }
+                return r.json();
+            })
             .then(function (data) {
+                if (!data) return;
                 if (!data.success) { mostrarErroJob('Job não encontrado'); return; }
                 var job = data.job;
                 var status = job.status || '';
@@ -633,6 +649,7 @@
                     DOM.jobBar.style.display = 'none';
                     DOM.btnExecutar.disabled = false;
                     Estado.jobId = null;
+                    Estado.pollTentativas = 0;
                     Estado.analiseFeita   = true;
                     Estado.analiseQtTotal = (job.qt_achados_regras || 0) + (job.qt_achados_ia || 0);
                     Estado.analiseIaUsada = job.ia_usada || false;
@@ -647,7 +664,12 @@
                 }
             })
             .catch(function () {
-                Estado.jobTimer = setTimeout(pollJob, CONFIG.pollMs * 2);
+                if (Estado.pollTentativas <= 3) {
+                    // Falha de rede transitória — retry rápido
+                    Estado.jobTimer = setTimeout(pollJob, CONFIG.pollMs * 2);
+                } else {
+                    mostrarErroJob('Falha de comunicação com o servidor. Verifique a conexão.');
+                }
             });
     }
 

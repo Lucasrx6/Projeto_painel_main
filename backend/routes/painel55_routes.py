@@ -776,17 +776,31 @@ def api_auditoria_auditar(nr_interno_conta):
             return jsonify({'success': False, 'error': 'Conta não encontrada'}), 404
         nr_atendimento = row['nr_atendimento']
 
-        # Idempotência: se há job fila|rodando, devolve o existente
+        # Idempotência: se há job fila|rodando recente (< 10 min), devolve o existente.
+        # Jobs mais antigos são considerados órfãos (restart do servidor) e marcados como erro.
         with _cursor() as cur:
             cur.execute("""
-                SELECT id, status FROM audit.analise_job
+                SELECT id, status,
+                       (now() - dt_criacao) > interval '10 minutes' AS orfao
+                FROM audit.analise_job
                 WHERE nr_interno_conta = %s AND status IN ('fila', 'rodando')
                 ORDER BY dt_criacao DESC LIMIT 1
             """, (nr_interno_conta,))
             existente = cur.fetchone()
+
         if existente:
-            return jsonify({'success': True, 'job_id': existente['id'],
-                            'status': existente['status'], 'existente': True}), 202
+            if existente['orfao']:
+                # Job abandonado por restart — marcar como erro e criar novo
+                with _cursor() as cur:
+                    cur.execute(
+                        "UPDATE audit.analise_job SET status = 'erro', etapa = 'erro', "
+                        "dt_fim = now(), erro = 'Abandonado por reinicialização do servidor' "
+                        "WHERE id = %s",
+                        (existente['id'],)
+                    )
+            else:
+                return jsonify({'success': True, 'job_id': existente['id'],
+                                'status': existente['status'], 'existente': True}), 202
 
         # Verifica capacidade
         with _jobs_lock:
