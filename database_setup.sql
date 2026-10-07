@@ -6447,7 +6447,7 @@ CREATE OR REPLACE VIEW public.vw_ocupacao_dashboard AS
         END), 1) AS media_permanencia_geral,
     max(dt_carga) AS ultima_atualizacao
    FROM public.ocupacao_hospitalar
-  WHERE (cd_setor_atendimento <> ALL (ARRAY[184, 168]));
+  WHERE cd_setor_atendimento <> 184;
 
 
 --
