@@ -321,6 +321,69 @@ def api_p43_cancelar(sid):
 
 
 # =========================================================
+# RASTREABILIDADE COMPLETA
+# =========================================================
+
+@painel43_bp.route('/api/paineis/painel43/rastreabilidade', methods=['GET'])
+@login_required
+def api_p43_rastreabilidade():
+    setor  = request.args.get('setor') or None
+    status = request.args.get('status') or None
+
+    fd_where, fd_params = _filtro_data(request.args, dias_default=7)
+    where  = [fd_where]
+    params = fd_params[:]
+
+    if setor:
+        where.append("setor_nome ILIKE %s")
+        params.append('%' + setor + '%')
+    if status:
+        where.append("status = %s")
+        params.append(status)
+
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    id, codigo_entrega, nm_paciente, leito, setor_nome, ds_clinica,
+                    tipo_dieta_nome, refeicao_nome, prioridade, status,
+                    solicitante_nome, responsavel_nome, entregue_por,
+                    motivo_cancelamento,
+                    TO_CHAR(criado_em,         'DD/MM/YYYY HH24:MI') AS criado_em,
+                    TO_CHAR(dt_aceite,         'DD/MM/YYYY HH24:MI') AS dt_aceite,
+                    TO_CHAR(dt_inicio_preparo, 'DD/MM/YYYY HH24:MI') AS dt_inicio_preparo,
+                    TO_CHAR(dt_pronto,         'DD/MM/YYYY HH24:MI') AS dt_pronto,
+                    TO_CHAR(dt_inicio_entrega, 'DD/MM/YYYY HH24:MI') AS dt_inicio_entrega,
+                    TO_CHAR(dt_entrega,        'DD/MM/YYYY HH24:MI') AS dt_entrega,
+                    TO_CHAR(dt_cancelamento,   'DD/MM/YYYY HH24:MI') AS dt_cancelamento,
+                    CASE WHEN dt_aceite IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_aceite - criado_em)) / 60)::int
+                    END AS min_ate_aceite,
+                    CASE WHEN dt_inicio_preparo IS NOT NULL AND dt_aceite IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_inicio_preparo - dt_aceite)) / 60)::int
+                    END AS min_aceite_preparo,
+                    CASE WHEN dt_pronto IS NOT NULL AND dt_inicio_preparo IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_pronto - dt_inicio_preparo)) / 60)::int
+                    END AS min_preparo_pronto,
+                    CASE WHEN dt_inicio_entrega IS NOT NULL AND dt_pronto IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_inicio_entrega - dt_pronto)) / 60)::int
+                    END AS min_pronto_entrega,
+                    CASE WHEN dt_entrega IS NOT NULL
+                        THEN ROUND(EXTRACT(EPOCH FROM (dt_entrega - criado_em)) / 60)::int
+                    END AS min_total
+                FROM nutricao_solicitacoes
+                WHERE """ + " AND ".join(where) + """
+                ORDER BY criado_em DESC
+                LIMIT 1000
+            """, params)
+            dados = [dict(r) for r in cursor.fetchall()]
+        return jsonify({'success': True, 'dados': dados, 'total': len(dados)})
+    except Exception as e:
+        current_app.logger.error('Erro rastreabilidade p43: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar rastreabilidade'}), 500
+
+
+# =========================================================
 # EXPORTAÇÃO CSV
 # =========================================================
 

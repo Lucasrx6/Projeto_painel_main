@@ -120,6 +120,9 @@
                     <button class="rel-aba" data-relaba="assinaturas">
                         <i class="fas fa-signature"></i> Assinaturas
                     </button>
+                    <button class="rel-aba" data-relaba="rastreabilidade">
+                        <i class="fas fa-route"></i> Rastreabilidade
+                    </button>
                 </div>
 
                 <!-- Filtro bar -->
@@ -315,6 +318,51 @@
                                 <tbody id="tbody-rel-assinaturas"></tbody>
                             </table>
                             <div id="rel-assin-empty" class="tabela-vazio" style="display:none;">
+                                <i class="fas fa-search"></i> Nenhum registro encontrado para o período selecionado.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB: Rastreabilidade -->
+                <div id="rel-rastreabilidade" class="rel-sub-conteudo" style="display:none;">
+                    <div class="secao">
+                        <h3 class="secao-titulo">
+                            <i class="fas fa-route"></i> Rastreabilidade Completa
+                            <span id="rast-count" style="font-size:12px;font-weight:normal;color:#666;margin-left:8px;"></span>
+                        </h3>
+                        <div class="tabela-wrapper rast-wrapper">
+                            <table class="tabela tabela-rast">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Solicitado em</th>
+                                        <th>Paciente</th>
+                                        <th>Leito</th>
+                                        <th>Setor</th>
+                                        <th>Dieta</th>
+                                        <th>Refeição</th>
+                                        <th>Prio.</th>
+                                        <th>Status</th>
+                                        <th>Solicitante</th>
+                                        <th>Aceito por</th>
+                                        <th>Aceito em</th>
+                                        <th>Início Preparo</th>
+                                        <th>Pronto</th>
+                                        <th>Início Entrega</th>
+                                        <th>Entregue por</th>
+                                        <th>Entregue em</th>
+                                        <th>Cancelado em</th>
+                                        <th title="Minutos do pedido até aceite">→Aceite</th>
+                                        <th title="Minutos do aceite até início preparo">→Preparo</th>
+                                        <th title="Minutos do início até pronto">→Pronto</th>
+                                        <th title="Minutos do pronto até entregue">→Entreg.</th>
+                                        <th title="Tempo total: pedido até entrega">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-rast"></tbody>
+                            </table>
+                            <div id="rast-empty" class="tabela-vazio" style="display:none;">
                                 <i class="fas fa-search"></i> Nenhum registro encontrado para o período selecionado.
                             </div>
                         </div>
@@ -614,6 +662,7 @@
     ║  [data-relaba], #rel-*               relatorios.js (trocarRelAba)          ║
     ║  #tbody-historico, #tbody-rel-*      relatorios.js (carregarHistorico etc) ║
     ║  #tbody-rel-assinaturas              relatorios.js (carregarRelAssinaturas)║
+    ║  #tbody-rast, #rast-count            relatorios.js (carregarRastreabilidade)║
     ║  #tbody-equipe, #tbody-tipos-dieta   config.js (renderEquipe/Tipos)        ║
     ║  #tbody-refeicoes, #tbody-restricoes config.js (renderRefeicoes/Restricoes)║
     ║  .btn-edit, .btn-toggle-ativo        config.js (bindActionBtns)            ║

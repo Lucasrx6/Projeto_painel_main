@@ -85,14 +85,14 @@
         for (var i = 0; i < btns.length; i++) {
             btns[i].className = 'rel-aba' + (btns[i].getAttribute('data-relaba') === aba ? ' rel-aba-ativa' : '');
         }
-        var subs = ['resumo', 'historico', 'por-refeicao', 'por-setor', 'por-responsavel', 'assinaturas'];
+        var subs = ['resumo', 'historico', 'por-refeicao', 'por-setor', 'por-responsavel', 'assinaturas', 'rastreabilidade'];
         for (var j = 0; j < subs.length; j++) {
             var el = document.getElementById('rel-' + subs[j]);
             if (el) el.style.display = (subs[j] === aba) ? '' : 'none';
         }
         var extras = document.querySelectorAll('.rel-filtro-extra');
         for (var k = 0; k < extras.length; k++) {
-            extras[k].style.display = (aba === 'historico') ? '' : 'none';
+            extras[k].style.display = (aba === 'historico' || aba === 'rastreabilidade') ? '' : 'none';
         }
         carregarRelAbaAtiva();
     }
@@ -107,6 +107,7 @@
         else if (aba === 'por-setor')       carregarRelPorSetor();
         else if (aba === 'por-responsavel') carregarRelPorResponsavel();
         else if (aba === 'assinaturas')     carregarRelAssinaturas();
+        else if (aba === 'rastreabilidade') carregarRastreabilidade();
     }
 
     // ── Helper genérico de tabela ─────────────────────────────────────────────
@@ -337,6 +338,82 @@
             });
     }
 
+    function carregarRastreabilidade() {
+        var escHtml     = window.P43.escHtml;
+        var fmtMin      = window.P43.fmtMin;
+        var badgeStatus = window.P43.badgeStatus;
+        var CONFIG      = window.P43.CONFIG;
+
+        var q = _buildRelQueryParams();
+        var f = _getRelFiltros();
+        if (f.status) q += '&status=' + encodeURIComponent(f.status);
+        if (f.setor)  q += '&setor='  + encodeURIComponent(f.setor);
+
+        var tbody = document.getElementById('tbody-rast');
+        var empty = document.getElementById('rast-empty');
+        var count = document.getElementById('rast-count');
+        var NCOLS = 23;
+        if (empty) empty.style.display = 'none';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="' + NCOLS + '" class="tabela-vazio"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+        fetch(CONFIG.apiBase + '/rastreabilidade?' + q, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="' + NCOLS + '" class="tabela-vazio">Erro ao carregar dados.</td></tr>';
+                    return;
+                }
+                var rows = data.dados || [];
+                if (count) count.textContent = rows.length + ' registro(s)' + (rows.length >= 1000 ? ' (máx. 1000)' : '');
+                if (!rows.length) {
+                    if (tbody) tbody.innerHTML = '';
+                    if (empty) empty.style.display = 'block';
+                    return;
+                }
+
+                function cel(v) { return '<td style="white-space:nowrap;">' + escHtml(v != null ? String(v) : '--') + '</td>'; }
+                function celMin(v) { return '<td style="white-space:nowrap;text-align:right;">' + (v != null ? fmtMin(v) : '--') + '</td>'; }
+
+                var html = '';
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    var prioBadge = r.prioridade === 'urgente'
+                        ? '<span class="badge-urg">URG</span>'
+                        : '<span style="color:#6c757d;font-size:11px;">Norm.</span>';
+                    html += '<tr>' +
+                        '<td><span class="cod-mini">' + escHtml(r.codigo_entrega || '--') + '</span></td>' +
+                        cel(r.criado_em) +
+                        '<td>' + escHtml(r.nm_paciente || '--') + '</td>' +
+                        cel(r.leito) +
+                        '<td>' + escHtml(r.setor_nome || '--') + '</td>' +
+                        '<td>' + escHtml(r.tipo_dieta_nome || '--') + '</td>' +
+                        '<td>' + escHtml(r.refeicao_nome || '--') + '</td>' +
+                        '<td style="text-align:center;">' + prioBadge + '</td>' +
+                        '<td>' + badgeStatus(r.status) + '</td>' +
+                        '<td>' + escHtml(r.solicitante_nome || '--') + '</td>' +
+                        '<td>' + escHtml(r.responsavel_nome || '--') + '</td>' +
+                        cel(r.dt_aceite) +
+                        cel(r.dt_inicio_preparo) +
+                        cel(r.dt_pronto) +
+                        cel(r.dt_inicio_entrega) +
+                        '<td>' + escHtml(r.entregue_por || '--') + '</td>' +
+                        cel(r.dt_entrega) +
+                        cel(r.dt_cancelamento) +
+                        celMin(r.min_ate_aceite) +
+                        celMin(r.min_aceite_preparo) +
+                        celMin(r.min_preparo_pronto) +
+                        celMin(r.min_pronto_entrega) +
+                        celMin(r.min_total) +
+                    '</tr>';
+                }
+                if (tbody) tbody.innerHTML = html;
+            })
+            .catch(function (e) {
+                console.error('rastreabilidade', e);
+                if (tbody) tbody.innerHTML = '<tr><td colspan="' + NCOLS + '" class="tabela-vazio">Erro ao carregar.</td></tr>';
+            });
+    }
+
     // ── Exportar CSV ──────────────────────────────────────────────────────────
 
     function exportarCSV() {
@@ -357,15 +434,19 @@
             if (f.status) q += '&status='        + encodeURIComponent(f.status);
             if (f.dieta)  q += '&tipo_dieta_id=' + encodeURIComponent(f.dieta);
             if (f.setor)  q += '&setor='         + encodeURIComponent(f.setor);
+        } else if (abaAtiva === 'rastreabilidade') {
+            if (f.status) q += '&status=' + encodeURIComponent(f.status);
+            if (f.setor)  q += '&setor='  + encodeURIComponent(f.setor);
         }
         window.location.href = CONFIG.apiBase + '/exportar?' + q;
     }
 
-    window.P43.initRelDatas         = initRelDatas;
-    window.P43.carregarDietasFiltro = carregarDietasFiltro;
-    window.P43.trocarRelAba         = trocarRelAba;
-    window.P43.carregarRelatorios   = carregarRelatorios;
-    window.P43.carregarRelAbaAtiva  = carregarRelAbaAtiva;
-    window.P43.exportarCSV          = exportarCSV;
+    window.P43.initRelDatas            = initRelDatas;
+    window.P43.carregarDietasFiltro   = carregarDietasFiltro;
+    window.P43.trocarRelAba           = trocarRelAba;
+    window.P43.carregarRelatorios     = carregarRelatorios;
+    window.P43.carregarRelAbaAtiva    = carregarRelAbaAtiva;
+    window.P43.carregarRastreabilidade = carregarRastreabilidade;
+    window.P43.exportarCSV            = exportarCSV;
 
 })();
