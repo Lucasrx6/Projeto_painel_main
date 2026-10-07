@@ -150,7 +150,20 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .tabela-rast { font-size: 11px; }
 .tabela-rast th { font-size: 10px; padding: 8px 10px; }
 .tabela-rast td { padding: 7px 10px; }
-.rast-wrapper { min-height: 120px; }
+.rast-wrapper {
+    overflow: auto;
+    max-height: calc(100vh - 290px);
+    min-height: 120px;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+}
+.tabela-rast thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8f9fa;
+    box-shadow: 0 1px 0 var(--borda);
+}
 
 .badge-st {
     color: #fff; font-size: 11px; font-weight: 600;
