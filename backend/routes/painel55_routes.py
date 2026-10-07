@@ -196,6 +196,20 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                         """, (nr_atendimento,))
                     evolucoes = [dict(r) for r in cur.fetchall()]
 
+                # Janela de confronto (parâmetro ou padrão 6h)
+                janela_h = 6.0
+                try:
+                    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                        cur.execute(
+                            "SELECT valor FROM audit.parametro "
+                            "WHERE chave = 'janela_evolucao_horas'"
+                        )
+                        _p = cur.fetchone()
+                        if _p:
+                            janela_h = float(_p['valor'])
+                except Exception:
+                    pass
+
                 # Extrai itens de cada evolução e insere em core.evento_documentado
                 metodo_tag = 'groq_' + leitor.nome_modelo()[:18]
                 qt_evolucoes = len(evolucoes)
@@ -218,6 +232,23 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                     itens = leitor.extrair(ev['texto_limpo'], data_ref, nr_ref)
 
                     for item in itens:
+                        # Tenta resolver o termo extraído para cd_material via ref.material_alias
+                        cd_material_res = None
+                        try:
+                            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                                cur.execute(
+                                    "SELECT cd_material FROM ref.material_alias "
+                                    "WHERE LOWER(TRIM(termo)) = LOWER(TRIM(%s)) "
+                                    "  AND confirmado = TRUE LIMIT 1",
+                                    (item.item,)
+                                )
+                                _alias = cur.fetchone()
+                                if _alias:
+                                    cd_material_res = _alias['cd_material']
+                        except Exception as _ae:
+                            _log.warning('alias lookup falhou para "%s": %s',
+                                         item.item[:40], type(_ae).__name__)
+
                         with conn.cursor() as cur:
                             cur.execute("""
                                 INSERT INTO core.evento_documentado
@@ -225,9 +256,11 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                                      dt_evento, dt_registro,
                                      ds_item, qt_item, unidade,
                                      profissional_pseud, trecho_origem,
-                                     metodo, versao_modelo, dt_extracao)
+                                     metodo, versao_modelo, dt_extracao,
+                                     cd_material_resolvido, janela_horas)
                                 VALUES (%s, 'evolucao', %s, %s, NOW(),
-                                        %s, %s, %s, %s, %s, %s, %s, NOW())
+                                        %s, %s, %s, %s, %s, %s, %s, NOW(),
+                                        %s, %s)
                             """, (
                                 nr_atendimento,
                                 ev['cd_evolucao'],
@@ -239,6 +272,8 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                                 item.trecho,
                                 metodo_tag,
                                 leitor.nome_modelo(),
+                                cd_material_res,
+                                janela_h,
                             ))
                         conn.commit()
                         qt_eventos += 1
@@ -965,6 +1000,153 @@ def api_auditoria_explicar_ia(achado_id):
 
 
 # =============================================================================
+# Mapeamentos R28 — CRUD de ref.material_alias
+# =============================================================================
+
+@painel55_bp.route('/api/auditoria/material-alias')
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_material_alias_list():
+    busca             = request.args.get('busca',       '').strip()
+    so_pendentes      = request.args.get('pendentes',   '').lower() in ('1', 'true')
+    so_confirmados    = request.args.get('confirmados', '').lower() in ('1', 'true')
+    try:
+        wheres, params = ['1=1'], []
+        if busca:
+            wheres.append(
+                "(LOWER(termo) LIKE %s OR LOWER(ds_material) LIKE %s OR cd_material LIKE %s)"
+            )
+            busca_like = '%' + busca.lower() + '%'
+            params += [busca_like, busca_like, '%' + busca + '%']
+        if so_pendentes:
+            wheres.append('confirmado = FALSE')
+        if so_confirmados:
+            wheres.append('confirmado = TRUE')
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT id, termo, cd_material, ds_material, confirmado, "
+                "       criado_em, atualizado_em "
+                "FROM ref.material_alias "
+                "WHERE " + ' AND '.join(wheres) +
+                " ORDER BY confirmado, LOWER(termo) LIMIT 500",
+                params or None
+            )
+            aliases = [_serial(dict(r)) for r in cur.fetchall()]
+        return jsonify({'success': True, 'aliases': aliases})
+    except Exception as e:
+        current_app.logger.error('Erro listar material-alias: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar aliases'}), 500
+
+
+@painel55_bp.route('/api/auditoria/material-alias', methods=['POST'])
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_material_alias_create():
+    dados       = request.get_json(silent=True) or {}
+    termo       = (dados.get('termo')       or '').strip()
+    cd_material = (dados.get('cd_material') or '').strip()
+    ds_material = (dados.get('ds_material') or '').strip() or None
+    confirmado  = bool(dados.get('confirmado', False))
+
+    if not termo or not cd_material:
+        return jsonify({'success': False, 'error': 'termo e cd_material são obrigatórios'}), 400
+
+    try:
+        with _cursor() as cur:
+            cur.execute("""
+                INSERT INTO ref.material_alias (termo, cd_material, ds_material, confirmado)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (LOWER(TRIM(termo))) DO UPDATE
+                    SET cd_material  = EXCLUDED.cd_material,
+                        ds_material  = EXCLUDED.ds_material,
+                        confirmado   = EXCLUDED.confirmado,
+                        atualizado_em = NOW()
+                RETURNING id
+            """, (termo, cd_material, ds_material, confirmado))
+            row = cur.fetchone()
+            new_id = row['id'] if row else None
+        return jsonify({'success': True, 'id': new_id}), 201
+    except Exception as e:
+        current_app.logger.error('Erro criar material-alias: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao criar alias'}), 500
+
+
+_CAMPOS_ALIAS = ('cd_material', 'ds_material', 'confirmado')
+
+
+@painel55_bp.route('/api/auditoria/material-alias/<int:alias_id>', methods=['PUT'])
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_material_alias_update(alias_id):
+    dados   = request.get_json(silent=True) or {}
+    sets, vals = [], []
+    for campo in _CAMPOS_ALIAS:
+        if campo in dados:
+            sets.append(campo + ' = %s')
+            vals.append(dados[campo])
+    if not sets:
+        return jsonify({'success': False, 'error': 'Nenhum campo para atualizar'}), 400
+    sets.append('atualizado_em = NOW()')
+    vals.append(alias_id)
+    try:
+        with _cursor(dict_cur=False) as cur:
+            cur.execute(
+                'UPDATE ref.material_alias SET ' + ', '.join(sets) + ' WHERE id = %s',
+                vals
+            )
+            if cur.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Alias não encontrado'}), 404
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro atualizar material-alias %s: %s', alias_id, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao atualizar alias'}), 500
+
+
+@painel55_bp.route('/api/auditoria/material-alias/<int:alias_id>', methods=['DELETE'])
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_material_alias_delete(alias_id):
+    try:
+        with _cursor(dict_cur=False) as cur:
+            cur.execute('DELETE FROM ref.material_alias WHERE id = %s', (alias_id,))
+            if cur.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Alias não encontrado'}), 404
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error('Erro deletar material-alias %s: %s', alias_id, e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao excluir alias'}), 500
+
+
+@painel55_bp.route('/api/auditoria/itens-nao-mapeados')
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_itens_nao_mapeados():
+    """Termos extraídos pela IA que não têm alias em ref.material_alias."""
+    try:
+        with _cursor() as cur:
+            cur.execute("""
+                SELECT ed.ds_item,
+                       COUNT(ed.id)          AS ocorrencias,
+                       MAX(ed.dt_extracao)   AS ultima_extracao
+                FROM core.evento_documentado ed
+                WHERE ed.cd_material_resolvido IS NULL
+                  AND ed.ds_item               IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM ref.material_alias ma
+                      WHERE LOWER(TRIM(ma.termo)) = LOWER(TRIM(ed.ds_item))
+                  )
+                GROUP BY ed.ds_item
+                ORDER BY COUNT(ed.id) DESC, ed.ds_item
+                LIMIT 200
+            """)
+            itens = [_serial(dict(r)) for r in cur.fetchall()]
+        return jsonify({'success': True, 'itens': itens})
+    except Exception as e:
+        current_app.logger.error('Erro itens-nao-mapeados: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao buscar itens'}), 500
+
+
+# =============================================================================
 # Catálogo de regras
 # =============================================================================
 
@@ -1035,11 +1217,11 @@ def api_auditoria_ia_status():
     ia_env = os.getenv('IA_HABILITADA', 'false').lower() in ('true', '1')
     groq_key_ok = bool(os.getenv('GROQ_API_KEY', ''))
 
-    # Porta 2: verificar parâmetro no banco
+    # Porta 2: verificar parâmetro no banco auditoria
     db_autorizada = False
     db_erro = None
     try:
-        with get_db_cursor() as cur:
+        with _cursor() as cur:
             cur.execute(
                 "SELECT valor FROM audit.parametro WHERE chave = 'ia_externa_autorizada'"
             )

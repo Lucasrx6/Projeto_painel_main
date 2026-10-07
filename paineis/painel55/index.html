@@ -85,6 +85,9 @@
                 <div class="validacao-card-header">
                     <i class="fa fa-shield-alt"></i>
                     <span>Validação do Ambiente</span>
+                    <button class="btn-sm" id="btn-mapeamentos" title="Gerenciar mapeamentos de material para R28" style="margin-right:6px;">
+                        <i class="fa fa-link"></i> Mapeamentos R28
+                    </button>
                     <button class="btn-sm" id="btn-validacao">Verificar</button>
                 </div>
                 <div id="validacao-resultado" class="validacao-resultado"></div>
@@ -153,6 +156,106 @@
                 </div>
             </div>
         </main>
+    </div>
+</div>
+
+<!-- Modal de Mapeamentos R28 -->
+<div id="modal-mapeamentos" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="map-titulo">
+    <div class="modal-overlay" id="map-overlay"></div>
+    <div class="modal-box modal-box-wide">
+        <div class="modal-header">
+            <h3 id="map-titulo"><i class="fa fa-link" style="margin-right:6px;"></i>Mapeamentos de Material (R28)</h3>
+            <button class="btn-icon" id="map-fechar" aria-label="Fechar"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <!-- Abas: pendentes / todos / novo -->
+            <div class="map-abas">
+                <button class="map-aba ativo" data-mapaba="pendentes">
+                    <i class="fa fa-clock"></i> Pendentes
+                    <span id="map-badge-pendentes" class="map-badge" style="display:none;"></span>
+                </button>
+                <button class="map-aba" data-mapaba="todos">
+                    <i class="fa fa-list"></i> Todos os mapeamentos
+                </button>
+                <button class="map-aba" data-mapaba="novo">
+                    <i class="fa fa-plus"></i> Novo mapeamento
+                </button>
+            </div>
+
+            <!-- Aba: termos pendentes (extraídos pela IA sem mapeamento) -->
+            <div id="map-aba-pendentes" class="map-aba-conteudo">
+                <p class="map-info">Termos extraídos pela IA de evoluções que ainda não têm um <code>cd_material</code> associado. Defina o código e confirme para que a R28 passe a monitorar.</p>
+                <div id="map-pend-loading" class="loading-inline" style="display:none;">
+                    <i class="fa fa-circle-notch fa-spin"></i> Carregando…
+                </div>
+                <div id="map-pend-vazio" class="empty-inline" style="display:none;">
+                    <i class="fa fa-check-circle"></i> Nenhum termo pendente de mapeamento.
+                </div>
+                <table class="map-tabela" id="map-pend-tabela" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Termo extraído pela IA</th>
+                            <th style="width:80px">Ocorrências</th>
+                            <th style="width:130px">Última extração</th>
+                            <th style="width:200px">cd_material</th>
+                            <th style="width:200px">Descrição material</th>
+                            <th style="width:90px">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="map-pend-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Aba: todos os mapeamentos -->
+            <div id="map-aba-todos" class="map-aba-conteudo" style="display:none;">
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                    <input type="text" id="map-busca" class="search-input" placeholder="Buscar termo ou código…" style="flex:1;" maxlength="100">
+                    <button class="btn-sm" id="map-busca-btn"><i class="fa fa-search"></i></button>
+                </div>
+                <div id="map-todos-loading" class="loading-inline" style="display:none;">
+                    <i class="fa fa-circle-notch fa-spin"></i> Carregando…
+                </div>
+                <div id="map-todos-vazio" class="empty-inline" style="display:none;">
+                    <i class="fa fa-info-circle"></i> Nenhum mapeamento encontrado.
+                </div>
+                <table class="map-tabela" id="map-todos-tabela" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Termo</th>
+                            <th style="width:120px">cd_material</th>
+                            <th>Descrição</th>
+                            <th style="width:80px">Status</th>
+                            <th style="width:100px">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="map-todos-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Aba: novo mapeamento -->
+            <div id="map-aba-novo" class="map-aba-conteudo" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label">Termo (texto que a IA extrai) <span class="obrigatorio">*</span></label>
+                    <input type="text" id="map-novo-termo" class="form-input" placeholder="Ex: luva descartável, soro fisiológico 100ml…" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">cd_material no Tasy <span class="obrigatorio">*</span></label>
+                    <input type="text" id="map-novo-cd" class="form-input" placeholder="Ex: MAT-00123" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descrição do material (opcional)</label>
+                    <input type="text" id="map-novo-ds" class="form-input" placeholder="Ex: Luva de procedimento G (cx 100 un)" maxlength="400">
+                </div>
+                <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" id="map-novo-confirmado" style="width:16px;height:16px;">
+                    <label for="map-novo-confirmado" class="form-label" style="margin:0;">Já confirmado (ativa monitoramento R28 imediatamente)</label>
+                </div>
+                <p id="map-novo-erro" class="form-erro" style="display:none;"></p>
+                <button class="btn-primary" id="map-novo-salvar" style="margin-top:8px;">
+                    <i class="fa fa-save"></i> Salvar mapeamento
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 

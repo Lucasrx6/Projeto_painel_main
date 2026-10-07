@@ -6,17 +6,20 @@
 
     var CONFIG = {
         api: {
-            dashboard:    '/api/auditoria/dashboard',
-            atendimentos: '/api/auditoria/atendimentos',
-            setores:      '/api/auditoria/setores',
-            contas:       '/api/auditoria/contas',
+            dashboard:         '/api/auditoria/dashboard',
+            atendimentos:      '/api/auditoria/atendimentos',
+            setores:           '/api/auditoria/setores',
+            contas:            '/api/auditoria/contas',
             achados:    function (nric) { return '/api/auditoria/contas/' + encodeURIComponent(nric) + '/achados'; },
             auditar:    function (nric) { return '/api/auditoria/contas/' + encodeURIComponent(nric) + '/auditar'; },
             job:        function (id)   { return '/api/auditoria/jobs/' + encodeURIComponent(id); },
             feedback:   function (id)   { return '/api/auditoria/achados/' + id + '/feedback'; },
             explicarIa: function (id)   { return '/api/auditoria/achados/' + id + '/explicar-ia'; },
-            validacao:  '/api/auditoria/validacao',
-            iaStatus:   '/api/auditoria/ia/status'
+            validacao:         '/api/auditoria/validacao',
+            iaStatus:          '/api/auditoria/ia/status',
+            materialAlias:     '/api/auditoria/material-alias',
+            materialAliasId: function (id) { return '/api/auditoria/material-alias/' + id; },
+            itensNaoMapeados:  '/api/auditoria/itens-nao-mapeados'
         },
         pollMs: 1500
     };
@@ -1039,6 +1042,10 @@
         var btnVal = document.getElementById('btn-validacao');
         if (btnVal) btnVal.addEventListener('click', executarValidacao);
 
+        // Botão mapeamentos R28
+        var btnMap = document.getElementById('btn-mapeamentos');
+        if (btnMap) btnMap.addEventListener('click', abrirModalMapeamentos);
+
         // Carga inicial
         carregarDashboard();
         carregarSetores();
@@ -1055,5 +1062,316 @@
         carregarAchados();
     }
 
+    // =========================================================
+    // Modal de Mapeamentos R28
+    // =========================================================
+
+    var _mapAbaAtiva = 'pendentes';
+
+    function abrirModalMapeamentos() {
+        var modal = document.getElementById('modal-mapeamentos');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        trocarMapAba('pendentes');
+    }
+
+    function fecharModalMapeamentos() {
+        var modal = document.getElementById('modal-mapeamentos');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function trocarMapAba(aba) {
+        _mapAbaAtiva = aba;
+        var abas = document.querySelectorAll('.map-aba');
+        for (var i = 0; i < abas.length; i++) {
+            abas[i].classList.toggle('ativo', abas[i].getAttribute('data-mapaba') === aba);
+        }
+        var conteudos = document.querySelectorAll('.map-aba-conteudo');
+        for (var j = 0; j < conteudos.length; j++) {
+            conteudos[j].style.display = 'none';
+        }
+        var alvo = document.getElementById('map-aba-' + aba);
+        if (alvo) alvo.style.display = 'block';
+
+        if (aba === 'pendentes') carregarItensPendentes();
+        if (aba === 'todos')     carregarTodosAlias();
+    }
+
+    function carregarItensPendentes() {
+        var loading = document.getElementById('map-pend-loading');
+        var vazio   = document.getElementById('map-pend-vazio');
+        var tabela  = document.getElementById('map-pend-tabela');
+        var tbody   = document.getElementById('map-pend-tbody');
+        var badge   = document.getElementById('map-badge-pendentes');
+
+        if (loading) loading.style.display = 'block';
+        if (vazio)   vazio.style.display   = 'none';
+        if (tabela)  tabela.style.display  = 'none';
+
+        apiFetch(CONFIG.api.itensNaoMapeados)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (loading) loading.style.display = 'none';
+                if (!data.success || !data.itens || data.itens.length === 0) {
+                    if (vazio) vazio.style.display = 'block';
+                    if (badge) badge.style.display = 'none';
+                    return;
+                }
+                var itens = data.itens;
+                if (badge) {
+                    badge.textContent = String(itens.length);
+                    badge.style.display = 'inline';
+                }
+                var html = '';
+                for (var i = 0; i < itens.length; i++) {
+                    var it = itens[i];
+                    var rowId = 'pend-row-' + i;
+                    html +=
+                        '<tr id="' + rowId + '">' +
+                        '<td><code>' + escHtml(it.ds_item || '') + '</code></td>' +
+                        '<td style="text-align:right">' + escHtml(String(it.ocorrencias || 0)) + '</td>' +
+                        '<td>' + escHtml((it.ultima_extracao || '').substring(0, 16).replace('T', ' ')) + '</td>' +
+                        '<td><input type="text" class="form-input pend-cd" style="font-size:12px;" ' +
+                            'data-termo="' + escHtml(it.ds_item || '') + '" ' +
+                            'placeholder="cd_material" maxlength="50"></td>' +
+                        '<td><input type="text" class="form-input pend-ds" style="font-size:12px;" ' +
+                            'placeholder="Descrição (opcional)" maxlength="400"></td>' +
+                        '<td>' +
+                        '<button class="btn-sm pend-salvar" data-idx="' + i + '" ' +
+                            'data-termo="' + escHtml(it.ds_item || '') + '">' +
+                            '<i class="fa fa-check"></i>' +
+                        '</button>' +
+                        '</td>' +
+                        '</tr>';
+                }
+                if (tbody)  tbody.innerHTML = html;
+                if (tabela) tabela.style.display = 'table';
+
+                var btns = tabela ? tabela.querySelectorAll('.pend-salvar') : [];
+                for (var j = 0; j < btns.length; j++) {
+                    btns[j].addEventListener('click', onSalvarPendente);
+                }
+            })
+            .catch(function () {
+                if (loading) loading.style.display = 'none';
+                if (vazio) {
+                    vazio.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Erro ao carregar itens pendentes.';
+                    vazio.style.display = 'block';
+                }
+            });
+    }
+
+    function onSalvarPendente(e) {
+        var btn   = e.currentTarget;
+        var termo = btn.getAttribute('data-termo') || '';
+        var row   = btn.closest('tr');
+        var cdEl  = row ? row.querySelector('.pend-cd') : null;
+        var dsEl  = row ? row.querySelector('.pend-ds') : null;
+        var cd    = cdEl ? cdEl.value.trim() : '';
+        var ds    = dsEl ? dsEl.value.trim() : '';
+
+        if (!cd) { if (cdEl) cdEl.focus(); return; }
+
+        btn.disabled = true;
+        apiFetch(CONFIG.api.materialAlias, {
+            method: 'POST',
+            body: JSON.stringify({ termo: termo, cd_material: cd, ds_material: ds || null, confirmado: true })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    if (row) row.style.opacity = '0.4';
+                    btn.innerHTML = '<i class="fa fa-check" style="color:#22c55e;"></i>';
+                } else {
+                    btn.disabled = false;
+                    alert('Erro: ' + (data.error || 'falha ao salvar'));
+                }
+            })
+            .catch(function () {
+                btn.disabled = false;
+                alert('Erro de comunicação ao salvar mapeamento.');
+            });
+    }
+
+    function carregarTodosAlias(busca) {
+        var loading = document.getElementById('map-todos-loading');
+        var vazio   = document.getElementById('map-todos-vazio');
+        var tabela  = document.getElementById('map-todos-tabela');
+        var tbody   = document.getElementById('map-todos-tbody');
+
+        if (loading) loading.style.display = 'block';
+        if (vazio)   vazio.style.display   = 'none';
+        if (tabela)  tabela.style.display  = 'none';
+
+        var url = CONFIG.api.materialAlias;
+        if (busca) url += '?busca=' + encodeURIComponent(busca);
+
+        apiFetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (loading) loading.style.display = 'none';
+                if (!data.success || !data.aliases || data.aliases.length === 0) {
+                    if (vazio) vazio.style.display = 'block';
+                    return;
+                }
+                var aliases = data.aliases;
+                var html = '';
+                for (var i = 0; i < aliases.length; i++) {
+                    var a = aliases[i];
+                    html +=
+                        '<tr>' +
+                        '<td><code>' + escHtml(a.termo || '') + '</code></td>' +
+                        '<td>' + escHtml(a.cd_material || '') + '</td>' +
+                        '<td>' + escHtml(a.ds_material || '–') + '</td>' +
+                        '<td>' +
+                            (a.confirmado
+                                ? '<span class="status-badge status-procede">Ativo</span>'
+                                : '<span class="status-badge status-pendente">Pendente</span>') +
+                        '</td>' +
+                        '<td>' +
+                        (a.confirmado
+                            ? ''
+                            : '<button class="btn-sm alias-confirmar" data-id="' + escHtml(String(a.id)) + '" title="Confirmar">' +
+                              '<i class="fa fa-check"></i></button> ') +
+                        '<button class="btn-sm alias-excluir" data-id="' + escHtml(String(a.id)) + '" ' +
+                            'title="Excluir" style="background:#fee2e2;color:#dc2626;">' +
+                            '<i class="fa fa-trash"></i></button>' +
+                        '</td>' +
+                        '</tr>';
+                }
+                if (tbody)  tbody.innerHTML = html;
+                if (tabela) tabela.style.display = 'table';
+
+                var btnConf = tabela ? tabela.querySelectorAll('.alias-confirmar') : [];
+                for (var j = 0; j < btnConf.length; j++) {
+                    btnConf[j].addEventListener('click', function (ev) {
+                        var id = ev.currentTarget.getAttribute('data-id');
+                        confirmarAlias(id, ev.currentTarget);
+                    });
+                }
+                var btnExcl = tabela ? tabela.querySelectorAll('.alias-excluir') : [];
+                for (var k = 0; k < btnExcl.length; k++) {
+                    btnExcl[k].addEventListener('click', function (ev) {
+                        var id = ev.currentTarget.getAttribute('data-id');
+                        excluirAlias(id, ev.currentTarget);
+                    });
+                }
+            })
+            .catch(function () {
+                if (loading) loading.style.display = 'none';
+                if (vazio) {
+                    vazio.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Erro ao carregar mapeamentos.';
+                    vazio.style.display = 'block';
+                }
+            });
+    }
+
+    function confirmarAlias(id, btn) {
+        if (btn) btn.disabled = true;
+        apiFetch(CONFIG.api.materialAliasId(id), {
+            method: 'PUT',
+            body: JSON.stringify({ confirmado: true })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    carregarTodosAlias();
+                } else {
+                    if (btn) btn.disabled = false;
+                    alert('Erro: ' + (data.error || 'falha'));
+                }
+            })
+            .catch(function () { if (btn) btn.disabled = false; });
+    }
+
+    function excluirAlias(id, btn) {
+        if (!confirm('Excluir este mapeamento?')) return;
+        if (btn) btn.disabled = true;
+        apiFetch(CONFIG.api.materialAliasId(id), { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    carregarTodosAlias();
+                } else {
+                    if (btn) btn.disabled = false;
+                    alert('Erro: ' + (data.error || 'falha'));
+                }
+            })
+            .catch(function () { if (btn) btn.disabled = false; });
+    }
+
+    function salvarNovoAlias() {
+        var termo  = (document.getElementById('map-novo-termo')  || {}).value || '';
+        var cd     = (document.getElementById('map-novo-cd')     || {}).value || '';
+        var ds     = (document.getElementById('map-novo-ds')     || {}).value || '';
+        var conf   = (document.getElementById('map-novo-confirmado') || {}).checked || false;
+        var erroEl = document.getElementById('map-novo-erro');
+
+        termo = termo.trim(); cd = cd.trim(); ds = ds.trim();
+        if (erroEl) erroEl.style.display = 'none';
+
+        if (!termo || !cd) {
+            if (erroEl) { erroEl.textContent = 'Termo e cd_material são obrigatórios.'; erroEl.style.display = 'block'; }
+            return;
+        }
+
+        var btn = document.getElementById('map-novo-salvar');
+        if (btn) btn.disabled = true;
+
+        apiFetch(CONFIG.api.materialAlias, {
+            method: 'POST',
+            body: JSON.stringify({ termo: termo, cd_material: cd, ds_material: ds || null, confirmado: conf })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (btn) btn.disabled = false;
+                if (data.success) {
+                    document.getElementById('map-novo-termo').value = '';
+                    document.getElementById('map-novo-cd').value    = '';
+                    document.getElementById('map-novo-ds').value    = '';
+                    document.getElementById('map-novo-confirmado').checked = false;
+                    trocarMapAba('todos');
+                } else {
+                    if (erroEl) { erroEl.textContent = data.error || 'Erro ao salvar.'; erroEl.style.display = 'block'; }
+                }
+            })
+            .catch(function () {
+                if (btn) btn.disabled = false;
+                if (erroEl) { erroEl.textContent = 'Erro de comunicação.'; erroEl.style.display = 'block'; }
+            });
+    }
+
+    function _inicializarModalMapeamentos() {
+        var modal   = document.getElementById('modal-mapeamentos');
+        var overlay = document.getElementById('map-overlay');
+        var fechar  = document.getElementById('map-fechar');
+        var abas    = document.querySelectorAll('.map-aba');
+        var busca   = document.getElementById('map-busca');
+        var buscaBtn= document.getElementById('map-busca-btn');
+        var btnNovo = document.getElementById('map-novo-salvar');
+
+        if (fechar)   fechar.addEventListener('click', fecharModalMapeamentos);
+        if (overlay)  overlay.addEventListener('click', fecharModalMapeamentos);
+        if (btnNovo)  btnNovo.addEventListener('click', salvarNovoAlias);
+
+        if (buscaBtn) buscaBtn.addEventListener('click', function () {
+            var v = busca ? busca.value.trim() : '';
+            carregarTodosAlias(v || undefined);
+        });
+        if (busca) busca.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                var v = busca.value.trim();
+                carregarTodosAlias(v || undefined);
+            }
+        });
+
+        for (var i = 0; i < abas.length; i++) {
+            abas[i].addEventListener('click', function (e) {
+                trocarMapAba(e.currentTarget.getAttribute('data-mapaba'));
+            });
+        }
+    }
+
     window.addEventListener('DOMContentLoaded', inicializar);
+    window.addEventListener('DOMContentLoaded', _inicializarModalMapeamentos);
 })();
