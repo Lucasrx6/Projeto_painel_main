@@ -1053,16 +1053,25 @@ def api_auditoria_material_alias_create():
 
     try:
         with _cursor() as cur:
-            cur.execute("""
-                INSERT INTO ref.material_alias (termo, cd_material, ds_material, confirmado)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (LOWER(TRIM(termo))) DO UPDATE
-                    SET cd_material  = EXCLUDED.cd_material,
-                        ds_material  = EXCLUDED.ds_material,
-                        confirmado   = EXCLUDED.confirmado,
-                        atualizado_em = NOW()
-                RETURNING id
-            """, (termo, cd_material, ds_material, confirmado))
+            cur.execute(
+                "SELECT id FROM ref.material_alias "
+                "WHERE LOWER(TRIM(termo)) = LOWER(TRIM(%s))",
+                (termo,)
+            )
+            existing = cur.fetchone()
+            if existing:
+                cur.execute(
+                    "UPDATE ref.material_alias "
+                    "SET cd_material=%s, ds_material=%s, confirmado=%s, atualizado_em=NOW() "
+                    "WHERE id=%s RETURNING id",
+                    (cd_material, ds_material, confirmado, existing['id'])
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO ref.material_alias (termo, cd_material, ds_material, confirmado) "
+                    "VALUES (%s, %s, %s, %s) RETURNING id",
+                    (termo, cd_material, ds_material, confirmado)
+                )
             row = cur.fetchone()
             new_id = row['id'] if row else None
         return jsonify({'success': True, 'id': new_id}), 201
