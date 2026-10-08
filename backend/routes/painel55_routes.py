@@ -24,6 +24,20 @@ painel55_bp = Blueprint('painel55', __name__)
 # Logger de módulo — usado dentro de threads (sem contexto Flask)
 _log = logging.getLogger(__name__)
 
+# Nomes dos setores usados no painel de auditoria (fallback quando setores_hospital não tem)
+_SETORES_HAC = {
+    134: 'Berçário Maternidade',
+    41:  'Internação Clínica',
+    54:  'Internação Maternidade',
+    184: 'Internação ALA D',
+    168: 'UTI Adulto A',
+    201: 'UTI Adulto Transição',
+    63:  'UTI Adulto 01',
+    105: 'UTI Adulto 02',
+    88:  'UTI Pediátrica',
+    133: 'Internação Pediátrica',
+}
+
 # Limite de jobs simultâneos
 _JOBS_MAX    = int(os.getenv('AUDITORIA_JOBS_MAX', '2'))
 _jobs_ativos = 0
@@ -689,8 +703,10 @@ def api_auditoria_setores():
         except Exception:
             pass
 
-        setores = [{'cd': cd, 'nm': setor_map.get(cd, 'Setor ' + str(cd))}
-                   for cd in codigos]
+        setores = [
+            {'cd': cd, 'nm': setor_map.get(cd) or _SETORES_HAC.get(cd) or 'Setor ' + str(cd)}
+            for cd in codigos
+        ]
         setores.sort(key=lambda s: s['nm'])
         return jsonify({'success': True, 'setores': setores})
     except Exception as e:
@@ -1282,3 +1298,133 @@ def api_auditoria_ia_status():
         },
         'bloqueios': bloqueios,
     })
+
+
+# =============================================================================
+# Resumo clínico IA por atendimento
+# =============================================================================
+
+_SISTEMA_RESUMO_CLINICO = (
+    'Você é um auditor hospitalar especialista em faturamento. '
+    'Analise as evoluções clínicas a seguir e responda SOMENTE com JSON válido:\n'
+    '{"condicao_principal":"...","intervencoes_documentadas":["..."],'
+    '"observacao_auditoria":"..."}\n\n'
+    '"condicao_principal": em 1-2 frases, qual é a condição clínica principal documentada.\n'
+    '"intervencoes_documentadas": lista de até 6 intervenções, procedimentos ou materiais '
+    'relevantes para faturamento que aparecem nas evoluções.\n'
+    '"observacao_auditoria": em 1-2 frases, aspectos relevantes ao faturamento '
+    '(procedimentos específicos, materiais, dieta, suporte ventilatório).\n'
+    'Use linguagem hospitalar acessível. '
+    'NUNCA mencione nomes de pacientes, datas de nascimento ou documentos pessoais.'
+)
+
+
+@painel55_bp.route('/api/auditoria/atendimentos/<int:nr_atendimento>/resumo')
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_resumo_paciente(nr_atendimento):
+    try:
+        if not ia_esta_viva():
+            return jsonify({'success': False, 'error': 'IA desativada (kill switch)'}), 409
+        if os.getenv('IA_HABILITADA', 'false').lower() not in ('true', '1'):
+            return jsonify({'success': False, 'error': 'IA não habilitada neste ambiente'}), 409
+
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT valor FROM audit.parametro WHERE chave = 'ia_externa_autorizada'"
+            )
+            p = cur.fetchone()
+        if not (p and p['valor'] in ('true', 't', '1')):
+            return jsonify({'success': False, 'error': 'IA externa não autorizada neste ambiente'}), 409
+
+        chave = os.getenv('GROQ_API_KEY', '')
+        if not chave:
+            return jsonify({'success': False, 'error': 'Chave de API não configurada'}), 500
+
+        with _cursor() as cur:
+            cur.execute("""
+                SELECT e.texto_limpo,
+                       e.dt_evolucao,
+                       e.ie_evolucao_clinica,
+                       t.ds_tipo
+                FROM core.evolucao e
+                LEFT JOIN ref.tipo_evolucao t ON t.cd_tipo = e.ie_evolucao_clinica
+                WHERE e.nr_atendimento = %s
+                  AND e.texto_limpo IS NOT NULL
+                ORDER BY e.dt_evolucao DESC
+                LIMIT 12
+            """, (nr_atendimento,))
+            evolucoes = [dict(r) for r in cur.fetchall()]
+
+        if not evolucoes:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhuma evolução encontrada para este atendimento',
+            }), 404
+
+        trechos = []
+        for i, ev in enumerate(evolucoes):
+            texto = limpar_texto_rtf(ev.get('texto_limpo') or '')
+            if len(texto) < 15:
+                continue
+            dt_str = ''
+            try:
+                if ev.get('dt_evolucao'):
+                    dt_str = ev['dt_evolucao'].strftime('%d/%m %H:%M')
+            except Exception:
+                pass
+            tipo = ev.get('ds_tipo') or ev.get('ie_evolucao_clinica') or ''
+            cab = '[Evo ' + (dt_str or str(i + 1))
+            if tipo:
+                cab += ' — ' + tipo
+            cab += ']'
+            trechos.append(cab + '\n' + texto[:1800])
+
+        if not trechos:
+            return jsonify({
+                'success': False,
+                'error': 'Evoluções sem texto útil para análise',
+            }), 422
+
+        payload = '\n\n---\n\n'.join(trechos)
+
+        from backend.auditoria.leitor_groq import LeitorGroq
+        leitor = LeitorGroq()
+        resposta_raw = leitor._chamar_api(chave, payload, sistema=_SISTEMA_RESUMO_CLINICO)
+        if resposta_raw is None:
+            return jsonify({'success': False, 'error': 'Falha na chamada à IA. Tente novamente.'}), 502
+
+        import json as _json
+        import re as _re
+        try:
+            resultado = _json.loads(resposta_raw)
+        except Exception:
+            m = _re.search(r'\{.*\}', resposta_raw, _re.DOTALL)
+            if m:
+                try:
+                    resultado = _json.loads(m.group(0))
+                except Exception:
+                    return jsonify({'success': False, 'error': 'Resposta da IA em formato inválido'}), 502
+            else:
+                return jsonify({'success': False, 'error': 'Resposta da IA em formato inválido'}), 502
+
+        _log.info('Resumo clínico gerado (nr_atendimento hash=%s)',
+                  hashlib.md5(str(nr_atendimento).encode()).hexdigest()[:8])
+
+        return jsonify({
+            'success': True,
+            'resumo': {
+                'condicao_principal':        str(resultado.get('condicao_principal') or '').strip()[:600],
+                'intervencoes_documentadas': [str(x)[:200] for x in (resultado.get('intervencoes_documentadas') or [])[:6]],
+                'observacao_auditoria':      str(resultado.get('observacao_auditoria') or '').strip()[:600],
+            },
+            'evolucoes_analisadas': len(trechos),
+        })
+
+    except Exception as e:
+        current_app.logger.error(
+            'Erro resumo paciente (hash=%s): %s',
+            hashlib.md5(str(nr_atendimento).encode()).hexdigest()[:8],
+            e, exc_info=True,
+        )
+        return jsonify({'success': False, 'error': 'Erro ao gerar resumo'}), 500

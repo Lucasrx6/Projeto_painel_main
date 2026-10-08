@@ -85,6 +85,9 @@
                 <div class="validacao-card-header">
                     <i class="fa fa-shield-alt"></i>
                     <span>Validação do Ambiente</span>
+                    <button class="btn-sm" id="btn-resumo-paciente" title="Resumo clínico do paciente pela IA" style="margin-right:6px;" disabled>
+                        <i class="fa fa-stethoscope"></i> Resumo do Paciente
+                    </button>
                     <button class="btn-sm" id="btn-mapeamentos" title="Gerenciar mapeamentos de material para R28" style="margin-right:6px;">
                         <i class="fa fa-link"></i> Mapeamentos R28
                     </button>
@@ -290,6 +293,41 @@
         <div class="modal-footer">
             <button class="btn-secondary" id="modal-cancelar">Cancelar</button>
             <button class="btn-primary" id="modal-confirmar">Confirmar decisão</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Resumo Clínico (IA) -->
+<div id="modal-resumo-paciente" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="resumo-titulo">
+    <div class="modal-overlay" id="resumo-overlay"></div>
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="resumo-titulo"><i class="fa fa-stethoscope" style="margin-right:6px;"></i>Resumo Clínico do Paciente</h3>
+            <button class="btn-icon" id="resumo-fechar" aria-label="Fechar"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="resumo-body">
+            <div class="loading-inline" id="resumo-loading" style="display:none;">
+                <i class="fa fa-circle-notch fa-spin"></i> Consultando IA…
+            </div>
+            <div id="resumo-erro" class="form-erro" style="display:none;"></div>
+            <div id="resumo-conteudo" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label"><i class="fa fa-diagnoses" style="margin-right:4px;"></i>Condição Principal</label>
+                    <p id="resumo-condicao" style="margin:4px 0 0;line-height:1.55;"></p>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label class="form-label"><i class="fa fa-list-ul" style="margin-right:4px;"></i>Intervenções Documentadas</label>
+                    <ul id="resumo-intervencoes" style="margin:4px 0 0;padding-left:20px;line-height:1.7;"></ul>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label class="form-label"><i class="fa fa-file-invoice-dollar" style="margin-right:4px;"></i>Observação de Auditoria</label>
+                    <p id="resumo-obs" style="margin:4px 0 0;line-height:1.55;"></p>
+                </div>
+                <p id="resumo-footer" style="margin-top:14px;font-size:11px;color:#94a3b8;"></p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="resumo-cancelar">Fechar</button>
         </div>
     </div>
 </div>

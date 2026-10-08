@@ -19,7 +19,8 @@
             iaStatus:          '/api/auditoria/ia/status',
             materialAlias:     '/api/auditoria/material-alias',
             materialAliasId: function (id) { return '/api/auditoria/material-alias/' + id; },
-            itensNaoMapeados:  '/api/auditoria/itens-nao-mapeados'
+            itensNaoMapeados:  '/api/auditoria/itens-nao-mapeados',
+            resumoPaciente: function (nr) { return '/api/auditoria/atendimentos/' + encodeURIComponent(nr) + '/resumo'; }
         },
         pollMs: 1500
     };
@@ -276,6 +277,10 @@
         Estado.analiseFeita     = false;
         Estado.analiseQtTotal   = null;
         Estado.analiseIaUsada   = false;
+
+        // Habilita botão de resumo quando há atendimento selecionado
+        var btnR = document.getElementById('btn-resumo-paciente');
+        if (btnR) btnR.disabled = false;
 
         // Atualiza sidebar
         var items = DOM.contasLista.querySelectorAll('.conta-item');
@@ -1046,6 +1051,18 @@
         var btnMap = document.getElementById('btn-mapeamentos');
         if (btnMap) btnMap.addEventListener('click', abrirModalMapeamentos);
 
+        // Botão resumo do paciente
+        var btnResumo = document.getElementById('btn-resumo-paciente');
+        if (btnResumo) btnResumo.addEventListener('click', abrirResumoPackiente);
+
+        // Modal resumo
+        var ovResumo = document.getElementById('resumo-overlay');
+        if (ovResumo) ovResumo.addEventListener('click', fecharResumoPackiente);
+        var btnRFechar = document.getElementById('resumo-fechar');
+        if (btnRFechar) btnRFechar.addEventListener('click', fecharResumoPackiente);
+        var btnRCancelar = document.getElementById('resumo-cancelar');
+        if (btnRCancelar) btnRCancelar.addEventListener('click', fecharResumoPackiente);
+
         // Carga inicial
         carregarDashboard();
         carregarSetores();
@@ -1370,6 +1387,73 @@
                 trocarMapAba(e.currentTarget.getAttribute('data-mapaba'));
             });
         }
+    }
+
+    // =========================================================
+    // Modal de Resumo Clínico do Paciente (IA)
+    // =========================================================
+
+    function abrirResumoPackiente() {
+        if (!Estado.atendimentoAtivo) return;
+        var nr = Estado.atendimentoAtivo.nr_atendimento;
+        var modal = document.getElementById('modal-resumo-paciente');
+        var loading = document.getElementById('resumo-loading');
+        var conteudo = document.getElementById('resumo-conteudo');
+        var erro = document.getElementById('resumo-erro');
+        if (!modal) return;
+
+        modal.style.display = 'flex';
+        loading.style.display = 'flex';
+        conteudo.style.display = 'none';
+        erro.style.display = 'none';
+
+        apiFetch(CONFIG.api.resumoPaciente(nr))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                loading.style.display = 'none';
+                if (!data.success) {
+                    erro.textContent = data.error || 'Erro ao gerar resumo.';
+                    erro.style.display = 'block';
+                    return;
+                }
+                var r = data.resumo || {};
+                var elCond = document.getElementById('resumo-condicao');
+                var elList = document.getElementById('resumo-intervencoes');
+                var elObs  = document.getElementById('resumo-obs');
+                var elFoot = document.getElementById('resumo-footer');
+
+                if (elCond) elCond.textContent = r.condicao_principal || '—';
+                if (elList) {
+                    elList.innerHTML = '';
+                    var itens = r.intervencoes_documentadas || [];
+                    var li;
+                    if (!itens.length) {
+                        li = document.createElement('li');
+                        li.textContent = 'Nenhuma intervenção identificada.';
+                        elList.appendChild(li);
+                    } else {
+                        for (var i = 0; i < itens.length; i++) {
+                            li = document.createElement('li');
+                            li.textContent = itens[i];
+                            elList.appendChild(li);
+                        }
+                    }
+                }
+                if (elObs)  elObs.textContent  = r.observacao_auditoria || '—';
+                if (elFoot) elFoot.textContent  = 'Baseado em ' + (data.evolucoes_analisadas || 0) +
+                    ' evolução(ões). Gerado por IA — sujeito a revisão.';
+                conteudo.style.display = 'block';
+            })
+            .catch(function (err) {
+                loading.style.display = 'none';
+                erro.textContent = 'Falha na comunicação com o servidor.';
+                erro.style.display = 'block';
+            });
+    }
+
+    function fecharResumoPackiente() {
+        var modal = document.getElementById('modal-resumo-paciente');
+        if (modal) modal.style.display = 'none';
     }
 
     window.addEventListener('DOMContentLoaded', inicializar);
