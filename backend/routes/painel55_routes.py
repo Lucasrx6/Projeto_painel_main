@@ -17,6 +17,7 @@ from flask import (Blueprint, jsonify, send_from_directory,
 
 from backend.middleware.decorators import login_required, panel_permission_required
 from backend.auditoria.leitor_groq import matar_ia, ia_esta_viva
+from backend.text_cleaner import limpar_texto_rtf
 
 painel55_bp = Blueprint('painel55', __name__)
 
@@ -177,7 +178,6 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                               AND dt_evolucao >= %s
                               AND dt_evolucao <= %s
                               AND texto_limpo IS NOT NULL
-                              AND qt_caracteres > 10
                               AND (ie_situacao IS NULL
                                    OR ie_situacao NOT IN ('I', 'C'))
                         """, (nr_atendimento,
@@ -190,7 +190,6 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                             FROM core.evolucao
                             WHERE nr_atendimento = %s
                               AND texto_limpo IS NOT NULL
-                              AND qt_caracteres > 10
                               AND (ie_situacao IS NULL
                                    OR ie_situacao NOT IN ('I', 'C'))
                         """, (nr_atendimento,))
@@ -229,7 +228,10 @@ def _executar_analise(job_id: int, nr_atendimento: str, nr_interno_conta):
                     nr_ref = hashlib.md5(
                         str(ev['cd_evolucao']).encode()
                     ).hexdigest()[:8]
-                    itens = leitor.extrair(ev['texto_limpo'], data_ref, nr_ref)
+                    texto_clean = limpar_texto_rtf(ev.get('texto_limpo') or '')
+                    if len(texto_clean) < 10:
+                        continue
+                    itens = leitor.extrair(texto_clean, data_ref, nr_ref)
 
                     for item in itens:
                         # Tenta resolver o termo extraído para cd_material via ref.material_alias
