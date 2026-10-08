@@ -1325,11 +1325,101 @@ _SISTEMA_RESUMO_CLINICO = (
 )
 
 
+def _comparar_intervencoes(nr_atendimento, nr_interno_conta, intervencoes):
+    """
+    Para cada item de intervenção retornado pela IA, faz busca fuzzy em
+    core.item_material e core.item_procedimento do atendimento/conta.
+    Retorna lista de dicts com resultado da comparação.
+    """
+    import json as _json_cmp
+    comparativo = []
+    try:
+        with _cursor() as cur:
+            for item in intervencoes:
+                item_str = str(item).strip()
+                if not item_str:
+                    continue
+                # Usa a primeira palavra significativa (>= 4 chars) como chave de busca
+                palavras = [w for w in item_str.split() if len(w) >= 4]
+                if not palavras:
+                    palavras = item_str.split()[:1]
+                busca = '%' + palavras[0].lower() + '%'
+
+                achado = None
+                # 1. Busca em materiais
+                cur.execute(
+                    "SELECT ds_material, "
+                    "       SUM(CASE WHEN qt_material > 0 THEN qt_material ELSE 0 END) AS qt_total, "
+                    "       cd_material "
+                    "FROM core.item_material "
+                    "WHERE nr_atendimento = %s "
+                    "  AND (%s::bigint IS NULL OR nr_interno_conta = %s) "
+                    "  AND qt_material > 0 "
+                    "  AND LOWER(ds_material) LIKE %s "
+                    "GROUP BY ds_material, cd_material "
+                    "ORDER BY qt_total DESC "
+                    "LIMIT 1",
+                    (nr_atendimento, nr_interno_conta, nr_interno_conta, busca)
+                )
+                row = cur.fetchone()
+                if row and row['qt_total']:
+                    achado = {
+                        'tipo': 'material',
+                        'ds':   row['ds_material'],
+                        'qt':   float(row['qt_total']),
+                        'cd':   row['cd_material'],
+                    }
+                else:
+                    # 2. Busca em procedimentos
+                    cur.execute(
+                        "SELECT ds_procedimento, "
+                        "       SUM(CASE WHEN qt_procedimento > 0 THEN qt_procedimento ELSE 0 END) AS qt_total, "
+                        "       cd_procedimento "
+                        "FROM core.item_procedimento "
+                        "WHERE nr_atendimento = %s "
+                        "  AND (%s::bigint IS NULL OR nr_interno_conta = %s) "
+                        "  AND qt_procedimento > 0 "
+                        "  AND LOWER(ds_procedimento) LIKE %s "
+                        "GROUP BY ds_procedimento, cd_procedimento "
+                        "ORDER BY qt_total DESC "
+                        "LIMIT 1",
+                        (nr_atendimento, nr_interno_conta, nr_interno_conta, busca)
+                    )
+                    row = cur.fetchone()
+                    if row and row['qt_total']:
+                        achado = {
+                            'tipo': 'procedimento',
+                            'ds':   row['ds_procedimento'],
+                            'qt':   float(row['qt_total']),
+                            'cd':   row['cd_procedimento'],
+                        }
+
+                comparativo.append({
+                    'item':       item_str,
+                    'encontrado': achado is not None,
+                    'ds_faturado': achado['ds']   if achado else None,
+                    'qt_faturada': achado['qt']   if achado else None,
+                    'cd_faturado': achado['cd']   if achado else None,
+                    'tipo_item':   achado['tipo'] if achado else None,
+                })
+    except Exception as e:
+        _log.warning('Erro na comparação de intervenções: %s', e)
+    return comparativo
+
+
 @painel55_bp.route('/api/auditoria/atendimentos/<int:nr_atendimento>/resumo')
 @login_required
 @panel_permission_required('painel55')
 def api_auditoria_resumo_paciente(nr_atendimento):
+    import json as _json
+    import re as _re
+
+    regenerar       = request.args.get('regenerar', '0') in ('1', 'true')
+    nr_interno_conta_str = request.args.get('nr_interno_conta', '')
+    nr_interno_conta = int(nr_interno_conta_str) if nr_interno_conta_str.isdigit() else None
+
     try:
+        # ── Verifica guards de IA ──────────────────────────────────
         if not ia_esta_viva():
             return jsonify({'success': False, 'error': 'IA desativada (kill switch)'}), 409
         if os.getenv('IA_HABILITADA', 'false').lower() not in ('true', '1'):
@@ -1343,88 +1433,154 @@ def api_auditoria_resumo_paciente(nr_atendimento):
         if not (p and p['valor'] in ('true', 't', '1')):
             return jsonify({'success': False, 'error': 'IA externa não autorizada neste ambiente'}), 409
 
-        chave = os.getenv('GROQ_API_KEY', '')
-        if not chave:
-            return jsonify({'success': False, 'error': 'Chave de API não configurada'}), 500
+        # ── Verifica cache ─────────────────────────────────────────
+        resumo_dict = None
+        gerado_em_str = None
+        cache_hit = False
 
-        with _cursor() as cur:
-            cur.execute("""
-                SELECT e.texto_limpo,
-                       e.dt_evolucao,
-                       e.ie_evolucao_clinica,
-                       t.ds_tipo
-                FROM core.evolucao e
-                LEFT JOIN ref.tipo_evolucao t ON t.cd_tipo = e.ie_evolucao_clinica
-                WHERE e.nr_atendimento = %s
-                  AND e.texto_limpo IS NOT NULL
-                ORDER BY e.dt_evolucao DESC
-                LIMIT 12
-            """, (nr_atendimento,))
-            evolucoes = [dict(r) for r in cur.fetchall()]
-
-        if not evolucoes:
-            return jsonify({
-                'success': False,
-                'error': 'Nenhuma evolução encontrada para este atendimento',
-            }), 404
-
-        trechos = []
-        for i, ev in enumerate(evolucoes):
-            texto = limpar_texto_rtf(ev.get('texto_limpo') or '')
-            if len(texto) < 15:
-                continue
-            dt_str = ''
-            try:
-                if ev.get('dt_evolucao'):
-                    dt_str = ev['dt_evolucao'].strftime('%d/%m %H:%M')
-            except Exception:
-                pass
-            tipo = ev.get('ds_tipo') or ev.get('ie_evolucao_clinica') or ''
-            cab = '[Evo ' + (dt_str or str(i + 1))
-            if tipo:
-                cab += ' — ' + tipo
-            cab += ']'
-            trechos.append(cab + '\n' + texto[:1800])
-
-        if not trechos:
-            return jsonify({
-                'success': False,
-                'error': 'Evoluções sem texto útil para análise',
-            }), 422
-
-        payload = '\n\n---\n\n'.join(trechos)
-
-        from backend.auditoria.leitor_groq import LeitorGroq
-        leitor = LeitorGroq()
-        resposta_raw = leitor._chamar_api(chave, payload, sistema=_SISTEMA_RESUMO_CLINICO)
-        if resposta_raw is None:
-            return jsonify({'success': False, 'error': 'Falha na chamada à IA. Tente novamente.'}), 502
-
-        import json as _json
-        import re as _re
-        try:
-            resultado = _json.loads(resposta_raw)
-        except Exception:
-            m = _re.search(r'\{.*\}', resposta_raw, _re.DOTALL)
-            if m:
+        if not regenerar:
+            with _cursor() as cur:
+                cur.execute(
+                    "SELECT condicao_principal, intervencoes_json, observacao_auditoria, "
+                    "       evolucoes_analisadas, gerado_em "
+                    "FROM audit.resumo_clinico WHERE nr_atendimento = %s",
+                    (nr_atendimento,)
+                )
+                cached = cur.fetchone()
+            if cached:
+                cache_hit = True
+                intervencoes = cached['intervencoes_json'] or []
+                if isinstance(intervencoes, str):
+                    try:
+                        intervencoes = _json.loads(intervencoes)
+                    except Exception:
+                        intervencoes = []
+                resumo_dict = {
+                    'condicao_principal':        cached['condicao_principal'] or '',
+                    'intervencoes_documentadas': intervencoes,
+                    'observacao_auditoria':      cached['observacao_auditoria'] or '',
+                }
+                evolucoes_analisadas = cached['evolucoes_analisadas'] or 0
                 try:
-                    resultado = _json.loads(m.group(0))
+                    gerado_em_str = cached['gerado_em'].strftime('%d/%m/%Y %H:%M')
                 except Exception:
-                    return jsonify({'success': False, 'error': 'Resposta da IA em formato inválido'}), 502
-            else:
-                return jsonify({'success': False, 'error': 'Resposta da IA em formato inválido'}), 502
+                    gerado_em_str = ''
 
-        _log.info('Resumo clínico gerado (nr_atendimento hash=%s)',
-                  hashlib.md5(str(nr_atendimento).encode()).hexdigest()[:8])
+        # ── Gera novo resumo via Groq ──────────────────────────────
+        if resumo_dict is None:
+            chave = os.getenv('GROQ_API_KEY', '')
+            if not chave:
+                return jsonify({'success': False, 'error': 'Chave de API não configurada'}), 500
+
+            with _cursor() as cur:
+                cur.execute("""
+                    SELECT e.texto_limpo,
+                           e.dt_evolucao,
+                           e.ie_evolucao_clinica,
+                           t.ds_tipo
+                    FROM core.evolucao e
+                    LEFT JOIN ref.tipo_evolucao t ON t.cd_tipo = e.ie_evolucao_clinica
+                    WHERE e.nr_atendimento = %s
+                      AND e.texto_limpo IS NOT NULL
+                    ORDER BY e.dt_evolucao DESC
+                    LIMIT 12
+                """, (nr_atendimento,))
+                evolucoes = [dict(r) for r in cur.fetchall()]
+
+            if not evolucoes:
+                return jsonify({'success': False, 'error': 'Nenhuma evolução encontrada para este atendimento'}), 404
+
+            trechos = []
+            for i, ev in enumerate(evolucoes):
+                texto = limpar_texto_rtf(ev.get('texto_limpo') or '')
+                if len(texto) < 15:
+                    continue
+                dt_str = ''
+                try:
+                    if ev.get('dt_evolucao'):
+                        dt_str = ev['dt_evolucao'].strftime('%d/%m %H:%M')
+                except Exception:
+                    pass
+                tipo = ev.get('ds_tipo') or ev.get('ie_evolucao_clinica') or ''
+                cab = '[Evo ' + (dt_str or str(i + 1))
+                if tipo:
+                    cab += ' — ' + tipo
+                cab += ']'
+                trechos.append(cab + '\n' + texto[:1800])
+
+            if not trechos:
+                return jsonify({'success': False, 'error': 'Evoluções sem texto útil para análise'}), 422
+
+            payload = '\n\n---\n\n'.join(trechos)
+
+            from backend.auditoria.leitor_groq import LeitorGroq
+            leitor = LeitorGroq()
+            resposta_raw = leitor._chamar_api(chave, payload, sistema=_SISTEMA_RESUMO_CLINICO)
+            if resposta_raw is None:
+                return jsonify({'success': False, 'error': 'Falha na chamada à IA. Tente novamente.'}), 502
+
+            try:
+                resultado = _json.loads(resposta_raw)
+            except Exception:
+                m = _re.search(r'\{.*\}', resposta_raw, _re.DOTALL)
+                if m:
+                    try:
+                        resultado = _json.loads(m.group(0))
+                    except Exception:
+                        return jsonify({'success': False, 'error': 'Resposta da IA em formato inválido'}), 502
+                else:
+                    return jsonify({'success': False, 'error': 'Resposta da IA em formato inválido'}), 502
+
+            intervencoes = [str(x)[:200] for x in (resultado.get('intervencoes_documentadas') or [])[:6]]
+            evolucoes_analisadas = len(trechos)
+
+            resumo_dict = {
+                'condicao_principal':        str(resultado.get('condicao_principal') or '').strip()[:600],
+                'intervencoes_documentadas': intervencoes,
+                'observacao_auditoria':      str(resultado.get('observacao_auditoria') or '').strip()[:600],
+            }
+
+            # Salva no cache
+            with _cursor(dict_cur=False) as cur:
+                cur.execute(
+                    "INSERT INTO audit.resumo_clinico "
+                    "    (nr_atendimento, condicao_principal, intervencoes_json, "
+                    "     observacao_auditoria, evolucoes_analisadas) "
+                    "VALUES (%s, %s, %s, %s, %s) "
+                    "ON CONFLICT (nr_atendimento) DO UPDATE SET "
+                    "    condicao_principal   = EXCLUDED.condicao_principal, "
+                    "    intervencoes_json    = EXCLUDED.intervencoes_json, "
+                    "    observacao_auditoria = EXCLUDED.observacao_auditoria, "
+                    "    evolucoes_analisadas = EXCLUDED.evolucoes_analisadas, "
+                    "    gerado_em            = now()",
+                    (
+                        nr_atendimento,
+                        resumo_dict['condicao_principal'],
+                        _json.dumps(intervencoes, ensure_ascii=False),
+                        resumo_dict['observacao_auditoria'],
+                        evolucoes_analisadas,
+                    )
+                )
+
+            from datetime import datetime as _dt
+            gerado_em_str = _dt.now().strftime('%d/%m/%Y %H:%M')
+            _log.info('Resumo clínico gerado (hash=%s)',
+                      hashlib.md5(str(nr_atendimento).encode()).hexdigest()[:8])
+
+        # ── Comparação com itens faturados ─────────────────────────
+        comparativo = _comparar_intervencoes(
+            nr_atendimento,
+            nr_interno_conta,
+            resumo_dict.get('intervencoes_documentadas') or [],
+        )
 
         return jsonify({
-            'success': True,
-            'resumo': {
-                'condicao_principal':        str(resultado.get('condicao_principal') or '').strip()[:600],
-                'intervencoes_documentadas': [str(x)[:200] for x in (resultado.get('intervencoes_documentadas') or [])[:6]],
-                'observacao_auditoria':      str(resultado.get('observacao_auditoria') or '').strip()[:600],
-            },
-            'evolucoes_analisadas': len(trechos),
+            'success':             True,
+            'resumo':              resumo_dict,
+            'comparativo':         comparativo,
+            'evolucoes_analisadas': evolucoes_analisadas,
+            'cache':               cache_hit,
+            'gerado_em':           gerado_em_str or '',
         })
 
     except Exception as e:

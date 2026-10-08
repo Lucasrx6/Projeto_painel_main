@@ -20,7 +20,13 @@
             materialAlias:     '/api/auditoria/material-alias',
             materialAliasId: function (id) { return '/api/auditoria/material-alias/' + id; },
             itensNaoMapeados:  '/api/auditoria/itens-nao-mapeados',
-            resumoPaciente: function (nr) { return '/api/auditoria/atendimentos/' + encodeURIComponent(nr) + '/resumo'; }
+            resumoPaciente: function (nr, nric, regenerar) {
+                var url = '/api/auditoria/atendimentos/' + encodeURIComponent(nr) + '/resumo';
+                var params = [];
+                if (nric) params.push('nr_interno_conta=' + encodeURIComponent(nric));
+                if (regenerar) params.push('regenerar=1');
+                return params.length ? url + '?' + params.join('&') : url;
+            }
         },
         pollMs: 1500
     };
@@ -1053,7 +1059,7 @@
 
         // Botão resumo do paciente
         var btnResumo = document.getElementById('btn-resumo-paciente');
-        if (btnResumo) btnResumo.addEventListener('click', abrirResumoPackiente);
+        if (btnResumo) btnResumo.addEventListener('click', function () { abrirResumoPackiente(false); });
 
         // Modal resumo
         var ovResumo = document.getElementById('resumo-overlay');
@@ -1062,6 +1068,8 @@
         if (btnRFechar) btnRFechar.addEventListener('click', fecharResumoPackiente);
         var btnRCancelar = document.getElementById('resumo-cancelar');
         if (btnRCancelar) btnRCancelar.addEventListener('click', fecharResumoPackiente);
+        var btnRRegen = document.getElementById('resumo-regenerar');
+        if (btnRRegen) btnRRegen.addEventListener('click', function () { abrirResumoPackiente(true); });
 
         // Carga inicial
         carregarDashboard();
@@ -1393,59 +1401,94 @@
     // Modal de Resumo Clínico do Paciente (IA)
     // =========================================================
 
-    function abrirResumoPackiente() {
+    function _escHtml(s) {
+        return String(s || '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function abrirResumoPackiente(regenerar) {
         if (!Estado.atendimentoAtivo) return;
-        var nr = Estado.atendimentoAtivo.nr_atendimento;
-        var modal = document.getElementById('modal-resumo-paciente');
-        var loading = document.getElementById('resumo-loading');
+        var nr   = Estado.atendimentoAtivo.nr_atendimento;
+        var nric = Estado.contaAtiva ? Estado.contaAtiva.nr_interno_conta : null;
+
+        var modal    = document.getElementById('modal-resumo-paciente');
+        var loading  = document.getElementById('resumo-loading');
         var conteudo = document.getElementById('resumo-conteudo');
-        var erro = document.getElementById('resumo-erro');
+        var erro     = document.getElementById('resumo-erro');
+        var btnRegen = document.getElementById('resumo-regenerar');
         if (!modal) return;
 
-        modal.style.display = 'flex';
+        modal.style.display   = 'flex';
         loading.style.display = 'flex';
         conteudo.style.display = 'none';
-        erro.style.display = 'none';
+        erro.style.display     = 'none';
+        if (btnRegen) btnRegen.disabled = true;
 
-        apiFetch(CONFIG.api.resumoPaciente(nr))
+        apiFetch(CONFIG.api.resumoPaciente(nr, nric, regenerar))
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 loading.style.display = 'none';
+                if (btnRegen) btnRegen.disabled = false;
                 if (!data.success) {
                     erro.textContent = data.error || 'Erro ao gerar resumo.';
                     erro.style.display = 'block';
                     return;
                 }
-                var r = data.resumo || {};
+                var res  = data.resumo       || {};
+                var comp = data.comparativo  || [];
+
                 var elCond = document.getElementById('resumo-condicao');
-                var elList = document.getElementById('resumo-intervencoes');
                 var elObs  = document.getElementById('resumo-obs');
                 var elFoot = document.getElementById('resumo-footer');
+                var elTbl  = document.getElementById('resumo-comp-tabela');
+                var elTbdy = document.getElementById('resumo-comp-tbody');
+                var elVaz  = document.getElementById('resumo-comp-vazio');
 
-                if (elCond) elCond.textContent = r.condicao_principal || '—';
-                if (elList) {
-                    elList.innerHTML = '';
-                    var itens = r.intervencoes_documentadas || [];
-                    var li;
-                    if (!itens.length) {
-                        li = document.createElement('li');
-                        li.textContent = 'Nenhuma intervenção identificada.';
-                        elList.appendChild(li);
+                if (elCond) elCond.textContent = res.condicao_principal || '—';
+                if (elObs)  elObs.textContent  = res.observacao_auditoria || '—';
+
+                // Tabela comparativa
+                if (elTbdy) {
+                    elTbdy.innerHTML = '';
+                    if (!comp.length) {
+                        if (elTbl)  elTbl.style.display  = 'none';
+                        if (elVaz)  elVaz.style.display  = 'flex';
                     } else {
-                        for (var i = 0; i < itens.length; i++) {
-                            li = document.createElement('li');
-                            li.textContent = itens[i];
-                            elList.appendChild(li);
+                        if (elTbl)  elTbl.style.display  = 'table';
+                        if (elVaz)  elVaz.style.display  = 'none';
+                        for (var i = 0; i < comp.length; i++) {
+                            var c = comp[i];
+                            var cor  = c.encontrado ? '#16a34a' : '#dc2626';
+                            var icon = c.encontrado ? 'fa-check-circle' : 'fa-times-circle';
+                            var tr = document.createElement('tr');
+                            tr.innerHTML =
+                                '<td>' + _escHtml(c.item) + '</td>' +
+                                '<td style="text-align:center;color:' + cor + ';">' +
+                                    '<i class="fa ' + icon + '"></i>' +
+                                '</td>' +
+                                '<td style="color:' + (c.encontrado ? '#334155' : '#94a3b8') + ';">' +
+                                    _escHtml(c.ds_faturado || '—') +
+                                '</td>' +
+                                '<td style="text-align:right;font-variant-numeric:tabular-nums;">' +
+                                    (c.qt_faturada !== null ? Number(c.qt_faturada).toFixed(2) : '—') +
+                                '</td>';
+                            elTbdy.appendChild(tr);
                         }
                     }
                 }
-                if (elObs)  elObs.textContent  = r.observacao_auditoria || '—';
-                if (elFoot) elFoot.textContent  = 'Baseado em ' + (data.evolucoes_analisadas || 0) +
-                    ' evolução(ões). Gerado por IA — sujeito a revisão.';
+
+                if (elFoot) {
+                    var cacheLabel = data.cache ? '(cache — ' + (data.gerado_em || '') + ')' : 'gerado agora';
+                    elFoot.textContent = 'Baseado em ' + (data.evolucoes_analisadas || 0) +
+                        ' evolução(ões) · ' + cacheLabel + ' · Gerado por IA — sujeito a revisão.';
+                }
+
                 conteudo.style.display = 'block';
             })
-            .catch(function (err) {
+            .catch(function () {
                 loading.style.display = 'none';
+                if (btnRegen) btnRegen.disabled = false;
                 erro.textContent = 'Falha na comunicação com o servidor.';
                 erro.style.display = 'block';
             });

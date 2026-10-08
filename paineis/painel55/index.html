@@ -300,7 +300,7 @@
 <!-- Modal de Resumo Clínico (IA) -->
 <div id="modal-resumo-paciente" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="resumo-titulo">
     <div class="modal-overlay" id="resumo-overlay"></div>
-    <div class="modal-box">
+    <div class="modal-box modal-box-wide">
         <div class="modal-header">
             <h3 id="resumo-titulo"><i class="fa fa-stethoscope" style="margin-right:6px;"></i>Resumo Clínico do Paciente</h3>
             <button class="btn-icon" id="resumo-fechar" aria-label="Fechar"><i class="fa fa-times"></i></button>
@@ -311,23 +311,43 @@
             </div>
             <div id="resumo-erro" class="form-erro" style="display:none;"></div>
             <div id="resumo-conteudo" style="display:none;">
+                <!-- Resumo clínico -->
                 <div class="form-group">
                     <label class="form-label"><i class="fa fa-diagnoses" style="margin-right:4px;"></i>Condição Principal</label>
                     <p id="resumo-condicao" style="margin:4px 0 0;line-height:1.55;"></p>
                 </div>
                 <div class="form-group" style="margin-top:12px;">
-                    <label class="form-label"><i class="fa fa-list-ul" style="margin-right:4px;"></i>Intervenções Documentadas</label>
-                    <ul id="resumo-intervencoes" style="margin:4px 0 0;padding-left:20px;line-height:1.7;"></ul>
-                </div>
-                <div class="form-group" style="margin-top:12px;">
                     <label class="form-label"><i class="fa fa-file-invoice-dollar" style="margin-right:4px;"></i>Observação de Auditoria</label>
                     <p id="resumo-obs" style="margin:4px 0 0;line-height:1.55;"></p>
                 </div>
+
+                <!-- Tabela de comparação -->
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label"><i class="fa fa-balance-scale" style="margin-right:4px;"></i>Itens na Evolução × Conta</label>
+                    <table class="map-tabela" id="resumo-comp-tabela" style="margin-top:6px;display:none;">
+                        <thead>
+                            <tr>
+                                <th>Item identificado pela IA</th>
+                                <th style="width:46px;text-align:center;">Na conta?</th>
+                                <th>Item faturado correspondente</th>
+                                <th style="width:70px;text-align:right;">Qtd. fat.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resumo-comp-tbody"></tbody>
+                    </table>
+                    <div id="resumo-comp-vazio" class="empty-inline" style="display:none;">
+                        <i class="fa fa-info-circle"></i> Sem intervenções para comparar.
+                    </div>
+                </div>
+
                 <p id="resumo-footer" style="margin-top:14px;font-size:11px;color:#94a3b8;"></p>
             </div>
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" id="resumo-cancelar">Fechar</button>
+            <button class="btn-sm" id="resumo-regenerar" style="margin-left:auto;">
+                <i class="fa fa-sync-alt"></i> Regenerar
+            </button>
         </div>
     </div>
 </div>
