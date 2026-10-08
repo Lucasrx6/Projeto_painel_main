@@ -689,22 +689,28 @@ def api_auditoria_setores():
         if not codigos:
             return jsonify({'success': True, 'setores': []})
 
+        # Mapa de nomes: _SETORES_HAC (curado) > painel_clinico_tasy (ETL real) > fallback
         setor_map = {}
         try:
             from backend.database import get_db_cursor
             with get_db_cursor() as cur:
                 cur.execute(
-                    "SELECT cd_setor, nm_setor FROM setores_hospital "
-                    "WHERE cd_setor = ANY(%s) ORDER BY nm_setor",
+                    "SELECT DISTINCT ON (cd_setor_atendimento) "
+                    "cd_setor_atendimento, nm_setor "
+                    "FROM painel_clinico_tasy "
+                    "WHERE cd_setor_atendimento = ANY(%s) "
+                    "  AND nm_setor IS NOT NULL "
+                    "  AND TRIM(nm_setor) <> '' "
+                    "ORDER BY cd_setor_atendimento, nm_setor",
                     (codigos,)
                 )
                 for r in cur.fetchall():
-                    setor_map[r['cd_setor']] = r['nm_setor']
+                    setor_map[r['cd_setor_atendimento']] = r['nm_setor']
         except Exception:
             pass
 
         setores = [
-            {'cd': cd, 'nm': setor_map.get(cd) or _SETORES_HAC.get(cd) or 'Setor ' + str(cd)}
+            {'cd': cd, 'nm': _SETORES_HAC.get(cd) or setor_map.get(cd) or 'Setor ' + str(cd)}
             for cd in codigos
         ]
         setores.sort(key=lambda s: s['nm'])
