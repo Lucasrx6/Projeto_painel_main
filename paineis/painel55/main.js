@@ -359,6 +359,7 @@
         DOM.detalheTitulo.textContent = 'Atendimento ' + atend.nr_atendimento +
             (setor ? ' — ' + setor : '');
 
+        _atualizarLabelCompacta();
         _atualizarMetaConta();
         _atualizarContaSelector(atend);
         resetarFiltrosTabs();
@@ -489,6 +490,28 @@
                         Object.keys(Estado.filtroTiposOff).length > 0;
         DOM.legendaLimpar.style.display = temFiltro ? '' : 'none';
         DOM.achLegenda.style.display = '';
+    }
+
+    function _atualizarLabelCompacta() {
+        if (!DOM.detalheInfoCompacta) return;
+        var titulo = DOM.detalheTitulo ? DOM.detalheTitulo.textContent : '';
+        DOM.detalheInfoCompacta.textContent = titulo;
+    }
+
+    function _aplicarColapso(colapsar) {
+        if (!DOM.mainContent) return;
+        if (colapsar) {
+            DOM.mainContent.classList.add('cab-colapsado');
+            _atualizarLabelCompacta();
+        } else {
+            DOM.mainContent.classList.remove('cab-colapsado');
+        }
+    }
+
+    function toggleCabecalho() {
+        var estaColapsado = DOM.mainContent.classList.contains('cab-colapsado');
+        _aplicarColapso(!estaColapsado);
+        try { localStorage.setItem('p55_cab_colapsado', estaColapsado ? '0' : '1'); } catch (e) {}
     }
 
     function carregarAchados() {
@@ -1090,6 +1113,10 @@
         DOM.btnExecutar         = document.getElementById('btn-executar');
         DOM.jobBar              = document.getElementById('job-bar');
         DOM.jobTexto            = document.getElementById('job-texto');
+        DOM.mainContent         = document.querySelector('.main-content');
+        DOM.validacaoCard       = document.getElementById('validacao-card');
+        DOM.btnColapsarCab      = document.getElementById('btn-colapsar-cab');
+        DOM.detalheInfoCompacta = document.getElementById('detalhe-info-compacta');
         DOM.achFiltros          = document.getElementById('achados-filtros');
         DOM.achLegenda          = document.getElementById('achados-legenda');
         DOM.legendaResumo       = document.getElementById('legenda-resumo');
@@ -1190,6 +1217,17 @@
                 renderAchados();
             });
         }
+
+        // Colapsar / expandir cabeçalho
+        if (DOM.btnColapsarCab) {
+            DOM.btnColapsarCab.addEventListener('click', toggleCabecalho);
+        }
+        // Restaura preferência salva
+        try {
+            if (localStorage.getItem('p55_cab_colapsado') === '1') {
+                _aplicarColapso(true);
+            }
+        } catch (e) { /* localStorage pode falhar em modo privado */ }
 
         // Modal
         document.getElementById('modal-fechar').addEventListener('click', fecharModal);

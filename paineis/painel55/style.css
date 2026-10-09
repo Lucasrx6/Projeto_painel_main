@@ -1007,6 +1007,37 @@ body {
     margin: 14px 0 0;
 }
 
+/* ── Botão e estado colapsado do cabeçalho ───────────────────── */
+.btn-colapsar-cab {
+    opacity: .55;
+    transition: opacity .15s, transform .2s;
+}
+.btn-colapsar-cab:hover { opacity: 1; }
+
+/* Label compacto (só visível quando colapsado) */
+.detalhe-info-compacta {
+    display: none;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-mid);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Estado: cabeçalho minimizado */
+.main-content.cab-colapsado .validacao-card        { display: none !important; }
+.main-content.cab-colapsado .detalhe-header        { padding: 5px 16px; }
+.main-content.cab-colapsado .detalhe-info          { display: none; }
+.main-content.cab-colapsado .detalhe-info-compacta { display: block; }
+.main-content.cab-colapsado #btn-executar          { display: none; }
+.main-content.cab-colapsado .job-bar               { display: none !important; }
+.main-content.cab-colapsado .achados-filtros        { display: none; }
+.main-content.cab-colapsado .achados-legenda        { display: none !important; }
+.main-content.cab-colapsado .btn-colapsar-cab i    { transform: rotate(180deg); }
+
 /* ── Legenda + filtros rápidos ───────────────────────────────── */
 .achados-legenda {
     padding: 10px 16px 12px;
