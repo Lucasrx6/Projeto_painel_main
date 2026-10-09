@@ -187,7 +187,38 @@
 
             <!-- Aba: termos pendentes (extraídos pela IA sem mapeamento) -->
             <div id="map-aba-pendentes" class="map-aba-conteudo">
-                <p class="map-info">Termos extraídos pela IA de evoluções que ainda não têm um <code>cd_material</code> associado. Defina o código e confirme para que a R28 passe a monitorar.</p>
+                <div class="map-pend-header">
+                    <p class="map-info" style="margin:0;">
+                        Termos extraídos pela IA de evoluções que ainda não têm um <code>cd_material</code> confirmado.
+                        Um termo pode ter <strong>múltiplos equivalentes</strong> (ex: Luva P, M e G).
+                        Adicione quantos forem necessários e confirme para ativar o monitoramento R28.
+                    </p>
+                    <button id="btn-map-sugerir-ia" class="btn-sm btn-ia-sugerir" title="Usar IA para sugerir mapeamentos do catálogo automaticamente">
+                        <i class="fa fa-wand-magic-sparkles"></i> Sugerir com IA
+                    </button>
+                </div>
+                <!-- Painel de sugestões da IA (oculto até ser acionado) -->
+                <div id="map-ia-resultados" style="display:none;margin:10px 0;border:1.5px solid #6366f1;border-radius:8px;padding:12px;background:#f5f3ff;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <strong style="color:#4f46e5;font-size:13px;">
+                            <i class="fa fa-wand-magic-sparkles"></i> Sugestões da IA
+                        </strong>
+                        <button class="btn-sm" id="btn-map-ia-fechar" style="background:transparent;color:#6b7280;font-size:12px;" title="Fechar sugestões">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="map-ia-loading" style="display:none;color:#4f46e5;font-size:13px;">
+                        <i class="fa fa-circle-notch fa-spin"></i> Consultando catálogo e IA…
+                    </div>
+                    <div id="map-ia-erro" style="display:none;color:#dc2626;font-size:12px;"></div>
+                    <div id="map-ia-lista"></div>
+                    <div id="map-ia-acoes" style="display:none;margin-top:10px;">
+                        <button class="btn-primary btn-sm" id="btn-map-ia-confirmar" style="font-size:12px;">
+                            <i class="fa fa-check"></i> Confirmar selecionados
+                        </button>
+                        <span id="map-ia-status" style="margin-left:8px;font-size:11px;color:#6b7280;"></span>
+                    </div>
+                </div>
                 <div id="map-pend-loading" class="loading-inline" style="display:none;">
                     <i class="fa fa-circle-notch fa-spin"></i> Carregando…
                 </div>
@@ -198,11 +229,9 @@
                     <thead>
                         <tr>
                             <th>Termo extraído pela IA</th>
-                            <th style="width:80px">Ocorrências</th>
-                            <th style="width:130px">Última extração</th>
-                            <th style="width:200px">cd_material</th>
-                            <th style="width:200px">Descrição material</th>
-                            <th style="width:90px">Ação</th>
+                            <th style="width:72px">Ocorr.</th>
+                            <th style="width:110px">Última extração</th>
+                            <th>Mapeamentos cd_material</th>
                         </tr>
                     </thead>
                     <tbody id="map-pend-tbody"></tbody>

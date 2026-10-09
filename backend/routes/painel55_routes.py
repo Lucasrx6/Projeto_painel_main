@@ -1221,18 +1221,19 @@ def api_auditoria_material_alias_create():
 
     try:
         with _cursor() as cur:
+            # Upsert em (termo, cd_material) — o mesmo par não cria duplicata
             cur.execute(
                 "SELECT id FROM ref.material_alias "
-                "WHERE LOWER(TRIM(termo)) = LOWER(TRIM(%s))",
-                (termo,)
+                "WHERE LOWER(TRIM(termo)) = LOWER(TRIM(%s)) AND cd_material = %s",
+                (termo, cd_material)
             )
             existing = cur.fetchone()
             if existing:
                 cur.execute(
                     "UPDATE ref.material_alias "
-                    "SET cd_material=%s, ds_material=%s, confirmado=%s, atualizado_em=NOW() "
+                    "SET ds_material=%s, confirmado=%s, atualizado_em=NOW() "
                     "WHERE id=%s RETURNING id",
-                    (cd_material, ds_material, confirmado, existing['id'])
+                    (ds_material, confirmado, existing['id'])
                 )
             else:
                 cur.execute(
@@ -1298,29 +1299,192 @@ def api_auditoria_material_alias_delete(alias_id):
 @login_required
 @panel_permission_required('painel55')
 def api_auditoria_itens_nao_mapeados():
-    """Termos extraídos pela IA que não têm alias em ref.material_alias."""
+    """
+    Termos extraídos pela IA sem alias CONFIRMADO em ref.material_alias.
+    Inclui aliases existentes (pendentes/confirmados) para exibir chips no front.
+    """
     try:
         with _cursor() as cur:
+            # Termos sem alias confirmado (podem ter aliases não confirmados)
             cur.execute("""
                 SELECT ed.ds_item,
-                       COUNT(ed.id)          AS ocorrencias,
-                       MAX(ed.dt_extracao)   AS ultima_extracao
+                       COUNT(ed.id)        AS ocorrencias,
+                       MAX(ed.dt_extracao) AS ultima_extracao
                 FROM core.evento_documentado ed
-                WHERE ed.cd_material_resolvido IS NULL
-                  AND ed.ds_item               IS NOT NULL
+                WHERE ed.ds_item IS NOT NULL
                   AND NOT EXISTS (
                       SELECT 1 FROM ref.material_alias ma
                       WHERE LOWER(TRIM(ma.termo)) = LOWER(TRIM(ed.ds_item))
+                        AND ma.confirmado = TRUE
                   )
                 GROUP BY ed.ds_item
                 ORDER BY COUNT(ed.id) DESC, ed.ds_item
                 LIMIT 200
             """)
             itens = [_serial(dict(r)) for r in cur.fetchall()]
+
+            # Buscar aliases existentes (confirmados ou não) para mostrar chips
+            if itens:
+                termos_lower = [it['ds_item'].lower().strip() for it in itens]
+                cur.execute(
+                    "SELECT id, LOWER(TRIM(termo)) AS termo_norm, "
+                    "       cd_material, ds_material, confirmado "
+                    "FROM ref.material_alias "
+                    "WHERE LOWER(TRIM(termo)) = ANY(%s) "
+                    "ORDER BY confirmado DESC, cd_material",
+                    (termos_lower,)
+                )
+                aliases_por_termo = {}
+                for row in cur.fetchall():
+                    k = row['termo_norm']
+                    if k not in aliases_por_termo:
+                        aliases_por_termo[k] = []
+                    aliases_por_termo[k].append({
+                        'id':          row['id'],
+                        'cd_material': row['cd_material'],
+                        'ds_material': row['ds_material'],
+                        'confirmado':  row['confirmado'],
+                    })
+                for it in itens:
+                    it['aliases_existentes'] = aliases_por_termo.get(
+                        it['ds_item'].lower().strip(), []
+                    )
+            else:
+                for it in itens:
+                    it['aliases_existentes'] = []
+
         return jsonify({'success': True, 'itens': itens})
     except Exception as e:
         current_app.logger.error('Erro itens-nao-mapeados: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': 'Erro ao buscar itens'}), 500
+
+
+@painel55_bp.route('/api/auditoria/material-catalogo')
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_material_catalogo():
+    """Busca fuzzy no catálogo ref.material para autocomplete no front (R28)."""
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify({'success': True, 'resultados': []})
+    try:
+        like = '%' + q.lower() + '%'
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT cd_material, ds_material, classe, grupo "
+                "FROM ref.material "
+                "WHERE LOWER(ds_material) LIKE %s "
+                "ORDER BY LOWER(ds_material) LIKE %s DESC, ds_material "
+                "LIMIT 8",
+                (like, q.lower() + '%')
+            )
+            resultados = [dict(r) for r in cur.fetchall()]
+        return jsonify({'success': True, 'resultados': resultados})
+    except Exception as e:
+        current_app.logger.error('Erro catalogo material: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro na busca'}), 500
+
+
+@painel55_bp.route('/api/auditoria/material-alias/sugerir-ia', methods=['POST'])
+@login_required
+@panel_permission_required('painel55')
+def api_auditoria_material_alias_sugerir_ia():
+    """
+    Recebe lista de termos pendentes, busca candidatos em ref.material
+    e chama a IA Groq para sugerir o(s) cd_material mais adequado(s).
+    Suporta 1-para-N: retorna todos os equivalentes clínicos identificados.
+    """
+    from backend.auditoria.leitor_groq import LeitorGroq, ia_esta_viva
+    import json as _json
+
+    if not ia_esta_viva():
+        return jsonify({'success': False, 'error': 'IA desativada (kill switch)'}), 409
+    if os.getenv('IA_HABILITADA', 'false').lower() not in ('true', '1'):
+        return jsonify({'success': False, 'error': 'IA não habilitada neste ambiente'}), 409
+    with _cursor() as _chk:
+        _chk.execute("SELECT valor FROM audit.parametro WHERE chave = 'ia_externa_autorizada'")
+        _p = _chk.fetchone()
+    if not (_p and _p['valor'] in ('true', 't', '1')):
+        return jsonify({'success': False, 'error': 'IA externa não autorizada'}), 409
+
+    dados  = request.get_json(silent=True) or {}
+    termos = dados.get('termos') or []
+    if not isinstance(termos, list) or not termos:
+        return jsonify({'success': False, 'error': 'Lista de termos obrigatória'}), 400
+    termos = [str(t).strip() for t in termos if t][:30]
+
+    try:
+        with _cursor() as cur:
+            candidatos_por_termo = {}
+            for termo in termos:
+                like = '%' + termo.lower() + '%'
+                cur.execute(
+                    "SELECT cd_material, ds_material, classe, grupo "
+                    "FROM ref.material "
+                    "WHERE LOWER(ds_material) LIKE %s "
+                    "ORDER BY LOWER(ds_material) LIKE %s DESC, ds_material "
+                    "LIMIT 8",
+                    (like, termo.lower() + '%')
+                )
+                candidatos_por_termo[termo] = [dict(r) for r in cur.fetchall()]
+
+        blocos = []
+        for t in termos:
+            cands = candidatos_por_termo[t]
+            if not cands:
+                blocos.append('TERMO: "' + t + '"\nCandidatos: (nenhum no catalogo)')
+            else:
+                linhas = '\n'.join(
+                    '  cd=' + str(c['cd_material']) +
+                    ' | ' + (c['ds_material'] or '') +
+                    ' | classe=' + (c['classe'] or 'n/a') +
+                    ' | grupo=' + (c['grupo'] or 'n/a')
+                    for c in cands
+                )
+                blocos.append('TERMO: "' + t + '"\nCandidatos:\n' + linhas)
+
+        sistema = (
+            'Voce e especialista em materiais hospitalares e codificacao TASY. '
+            'Para cada TERMO extraido de evolucao clinica, selecione do catalogo '
+            'os cd_material mais adequados. Um termo pode ter MULTIPLOS equivalentes '
+            '(ex: luvas tamanho P, M e G; medicamentos com concentracoes diferentes). '
+            'Inclua TODOS os equivalentes clinicos relevantes do catalogo. '
+            'Se nenhum candidato for adequado, retorne lista vazia. '
+            'Responda SOMENTE com JSON valido, sem texto extra:\n'
+            '{"sugestoes":[{"termo":"...","matches":[{"cd_material":12345,'
+            '"ds_material":"...","justificativa":"..."}]}]}'
+        )
+        corpo = (
+            'Analise os termos abaixo e selecione os cd_material equivalentes:\n\n'
+            + '\n\n'.join(blocos)
+        )
+
+        leitor = LeitorGroq()
+        chave  = os.getenv('GROQ_API_KEY', '')
+        if not chave:
+            return jsonify({'success': False, 'error': 'GROQ_API_KEY não configurada'}), 409
+
+        current_app.logger.info(
+            'sugerir-ia R28: %d termos → Groq', len(termos)
+        )
+        resp_raw = leitor._chamar_api(chave, corpo, sistema=sistema)
+        if resp_raw is None:
+            return jsonify({'success': False, 'error': 'Sem resposta da IA'}), 502
+
+        try:
+            resp = _json.loads(resp_raw)
+            sugestoes = resp.get('sugestoes') or []
+        except Exception:
+            sugestoes = []
+
+        current_app.logger.info(
+            'sugerir-ia R28: %d sugestoes recebidas', len(sugestoes)
+        )
+        return jsonify({'success': True, 'sugestoes': sugestoes})
+
+    except Exception as e:
+        current_app.logger.error('Erro sugerir-ia material-alias: %s', e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Erro ao processar sugestões IA'}), 500
 
 
 # =============================================================================

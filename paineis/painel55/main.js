@@ -17,9 +17,11 @@
             explicarIa: function (id)   { return '/api/auditoria/achados/' + id + '/explicar-ia'; },
             validacao:         '/api/auditoria/validacao',
             iaStatus:          '/api/auditoria/ia/status',
-            materialAlias:     '/api/auditoria/material-alias',
-            materialAliasId: function (id) { return '/api/auditoria/material-alias/' + id; },
-            itensNaoMapeados:  '/api/auditoria/itens-nao-mapeados',
+            materialAlias:       '/api/auditoria/material-alias',
+            materialAliasId:     function (id) { return '/api/auditoria/material-alias/' + id; },
+            materialCatalogo:    '/api/auditoria/material-catalogo',
+            materialAliasSugIa:  '/api/auditoria/material-alias/sugerir-ia',
+            itensNaoMapeados:    '/api/auditoria/itens-nao-mapeados',
             resumoPaciente: function (nr, nric, regenerar) {
                 var url = '/api/auditoria/atendimentos/' + encodeURIComponent(nr) + '/resumo';
                 var params = [];
@@ -1122,6 +1124,110 @@
         if (aba === 'todos')     carregarTodosAlias();
     }
 
+    // ── Chips de aliases existentes ─────────────────────────────────────────────
+
+    function _chipsHtml(aliases) {
+        if (!aliases || !aliases.length) return '';
+        var html = '';
+        for (var i = 0; i < aliases.length; i++) {
+            var a    = aliases[i];
+            var cor  = a.confirmado ? '#16a34a' : '#b45309';
+            var bg   = a.confirmado ? '#dcfce7' : '#fef3c7';
+            var icon = a.confirmado ? 'fa-check-circle' : 'fa-clock';
+            html +=
+                '<span class="alias-chip" data-alias-id="' + String(a.id) + '" ' +
+                    'style="display:inline-flex;align-items:center;gap:4px;' +
+                    'background:' + bg + ';color:' + cor + ';border:1px solid ' + cor + ';' +
+                    'border-radius:12px;padding:2px 7px;font-size:11px;margin:2px;">' +
+                    '<i class="fa ' + icon + '"></i> ' +
+                    '<strong>cd=' + escHtml(String(a.cd_material)) + '</strong>' +
+                    (a.ds_material ? ' — ' + escHtml(a.ds_material) : '') +
+                    '<button class="alias-chip-del" data-alias-id="' + String(a.id) + '" ' +
+                        'title="Remover este mapeamento" ' +
+                        'style="background:none;border:none;cursor:pointer;color:' + cor + ';' +
+                        'padding:0 0 0 3px;font-size:11px;line-height:1;">' +
+                        '<i class="fa fa-times"></i>' +
+                    '</button>' +
+                '</span>';
+        }
+        return html;
+    }
+
+    function _removerChip(aliasId, chipEl) {
+        apiFetch(CONFIG.api.materialAliasId(aliasId), { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    var span = chipEl.closest('.alias-chip');
+                    if (span) span.parentNode.removeChild(span);
+                } else {
+                    alert('Erro ao remover: ' + (data.error || 'falha'));
+                }
+            })
+            .catch(function () { alert('Erro de comunicação.'); });
+    }
+
+    // ── Autocomplete de catálogo ─────────────────────────────────────────────────
+
+    var _acTimers = {};
+
+    function _vincularAutocomplete(input, dropdownEl, dsHiddenEl) {
+        input.addEventListener('input', function () {
+            var val = input.value.trim();
+            var idx = input.getAttribute('data-idx');
+            clearTimeout(_acTimers[idx]);
+            if (val.length < 2) { dropdownEl.style.display = 'none'; return; }
+            _acTimers[idx] = setTimeout(function () {
+                apiFetch(CONFIG.api.materialCatalogo + '?q=' + encodeURIComponent(val))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.success || !data.resultados || !data.resultados.length) {
+                            dropdownEl.style.display = 'none';
+                            return;
+                        }
+                        var res = data.resultados;
+                        var html = '';
+                        for (var i = 0; i < res.length; i++) {
+                            var r = res[i];
+                            html +=
+                                '<div class="cat-drop-item" ' +
+                                    'data-cd="' + String(r.cd_material) + '" ' +
+                                    'data-ds="' + escHtml(r.ds_material || '') + '" ' +
+                                    'style="padding:5px 8px;cursor:pointer;border-bottom:1px solid #e5e7eb;' +
+                                    'font-size:12px;" ' +
+                                    'onmouseover="this.style.background=\'#f3f4f6\'" ' +
+                                    'onmouseout="this.style.background=\'\'">' +
+                                    '<strong>cd=' + String(r.cd_material) + '</strong> — ' +
+                                    escHtml(r.ds_material || '') +
+                                    (r.classe ? ' <em style="color:#6b7280;">[' + escHtml(r.classe) + ']</em>' : '') +
+                                '</div>';
+                        }
+                        dropdownEl.innerHTML  = html;
+                        dropdownEl.style.display = 'block';
+
+                        var items = dropdownEl.querySelectorAll('.cat-drop-item');
+                        for (var j = 0; j < items.length; j++) {
+                            (function (item) {
+                                item.addEventListener('mousedown', function (ev) {
+                                    ev.preventDefault();
+                                    input.value              = item.getAttribute('data-cd');
+                                    if (dsHiddenEl) dsHiddenEl.value = item.getAttribute('data-ds');
+                                    dropdownEl.style.display = 'none';
+                                });
+                            })(items[j]);
+                        }
+                    })
+                    .catch(function () { dropdownEl.style.display = 'none'; });
+            }, 280);
+        });
+
+        input.addEventListener('blur', function () {
+            setTimeout(function () { dropdownEl.style.display = 'none'; }, 200);
+        });
+    }
+
+    // ── Carregamento da aba pendentes ────────────────────────────────────────────
+
     function carregarItensPendentes() {
         var loading = document.getElementById('map-pend-loading');
         var vazio   = document.getElementById('map-pend-vazio');
@@ -1137,83 +1243,141 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (loading) loading.style.display = 'none';
-                if (!data.success || !data.itens || data.itens.length === 0) {
+                if (!data.success || !data.itens || !data.itens.length) {
                     if (vazio) vazio.style.display = 'block';
                     if (badge) badge.style.display = 'none';
                     return;
                 }
                 var itens = data.itens;
                 if (badge) {
-                    badge.textContent = String(itens.length);
+                    badge.textContent   = String(itens.length);
                     badge.style.display = 'inline';
                 }
+
                 var html = '';
                 for (var i = 0; i < itens.length; i++) {
                     var it = itens[i];
-                    var rowId = 'pend-row-' + i;
                     html +=
-                        '<tr id="' + rowId + '">' +
+                        '<tr id="pend-row-' + i + '">' +
                         '<td><code>' + escHtml(it.ds_item || '') + '</code></td>' +
-                        '<td style="text-align:right">' + escHtml(String(it.ocorrencias || 0)) + '</td>' +
-                        '<td>' + escHtml((it.ultima_extracao || '').substring(0, 16).replace('T', ' ')) + '</td>' +
-                        '<td><input type="text" class="form-input pend-cd" style="font-size:12px;" ' +
-                            'data-termo="' + escHtml(it.ds_item || '') + '" ' +
-                            'placeholder="cd_material" maxlength="50"></td>' +
-                        '<td><input type="text" class="form-input pend-ds" style="font-size:12px;" ' +
-                            'placeholder="Descrição (opcional)" maxlength="400"></td>' +
+                        '<td style="text-align:right">' + String(it.ocorrencias || 0) + '</td>' +
+                        '<td style="font-size:11px;color:#6b7280;">' +
+                            escHtml((it.ultima_extracao || '').substring(0, 16).replace('T', ' ')) +
+                        '</td>' +
                         '<td>' +
-                        '<button class="btn-sm pend-salvar" data-idx="' + i + '" ' +
-                            'data-termo="' + escHtml(it.ds_item || '') + '">' +
-                            '<i class="fa fa-check"></i>' +
-                        '</button>' +
+                            // chips de aliases existentes
+                            '<div class="pend-chips" id="pend-chips-' + i + '" ' +
+                                'style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;">' +
+                                _chipsHtml(it.aliases_existentes || []) +
+                            '</div>' +
+                            // formulário de adicionar novo
+                            '<div style="display:flex;gap:4px;align-items:center;position:relative;">' +
+                                '<div style="position:relative;flex:1;">' +
+                                    '<input type="text" class="form-input pend-cd" ' +
+                                        'data-idx="' + i + '" ' +
+                                        'data-termo="' + escHtml(it.ds_item || '') + '" ' +
+                                        'placeholder="Buscar ou digitar cd_material…" maxlength="100" ' +
+                                        'autocomplete="off" style="font-size:12px;width:100%;">' +
+                                    '<div class="catalogo-dropdown" id="cat-drop-' + i + '" ' +
+                                        'style="display:none;position:absolute;top:100%;left:0;right:0;' +
+                                        'background:#fff;border:1px solid #d1d5db;border-radius:4px;' +
+                                        'box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:200;max-height:200px;overflow-y:auto;">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<input type="hidden" class="pend-ds" id="pend-ds-' + i + '">' +
+                                '<button class="btn-sm pend-salvar" ' +
+                                    'data-idx="' + i + '" ' +
+                                    'data-termo="' + escHtml(it.ds_item || '') + '" ' +
+                                    'title="Confirmar mapeamento" style="white-space:nowrap;">' +
+                                    '<i class="fa fa-plus"></i> Adicionar' +
+                                '</button>' +
+                            '</div>' +
                         '</td>' +
                         '</tr>';
                 }
                 if (tbody)  tbody.innerHTML = html;
                 if (tabela) tabela.style.display = 'table';
 
-                var btns = tabela ? tabela.querySelectorAll('.pend-salvar') : [];
-                for (var j = 0; j < btns.length; j++) {
-                    btns[j].addEventListener('click', onSalvarPendente);
+                // Vincular eventos após renderizar
+                for (var j = 0; j < itens.length; j++) {
+                    (function (idx) {
+                        var cdInput = document.querySelector('#pend-row-' + idx + ' .pend-cd');
+                        var dropEl  = document.getElementById('cat-drop-' + idx);
+                        var dsHid   = document.getElementById('pend-ds-' + idx);
+                        var salvar  = document.querySelector('#pend-row-' + idx + ' .pend-salvar');
+                        var chips   = document.getElementById('pend-chips-' + idx);
+
+                        if (cdInput && dropEl) _vincularAutocomplete(cdInput, dropEl, dsHid);
+
+                        if (salvar) salvar.addEventListener('click', function () {
+                            onAdicionarMapping(idx, salvar);
+                        });
+
+                        if (chips) chips.addEventListener('click', function (ev) {
+                            var del = ev.target.closest('.alias-chip-del');
+                            if (del) {
+                                var aid = del.getAttribute('data-alias-id');
+                                if (confirm('Remover este mapeamento?')) _removerChip(aid, del);
+                            }
+                        });
+                    })(j);
                 }
             })
             .catch(function () {
                 if (loading) loading.style.display = 'none';
                 if (vazio) {
-                    vazio.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Erro ao carregar itens pendentes.';
+                    vazio.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Erro ao carregar.';
                     vazio.style.display = 'block';
                 }
             });
     }
 
-    function onSalvarPendente(e) {
-        var btn   = e.currentTarget;
-        var termo = btn.getAttribute('data-termo') || '';
-        var row   = btn.closest('tr');
+    function onAdicionarMapping(idx, btn) {
+        var row   = document.getElementById('pend-row-' + idx);
         var cdEl  = row ? row.querySelector('.pend-cd') : null;
-        var dsEl  = row ? row.querySelector('.pend-ds') : null;
+        var dsHid = document.getElementById('pend-ds-' + idx);
+        var chips = document.getElementById('pend-chips-' + idx);
+        var termo = btn ? btn.getAttribute('data-termo') : '';
         var cd    = cdEl ? cdEl.value.trim() : '';
-        var ds    = dsEl ? dsEl.value.trim() : '';
+        var ds    = (dsHid ? dsHid.value.trim() : '') || '';
 
         if (!cd) { if (cdEl) cdEl.focus(); return; }
 
-        btn.disabled = true;
+        if (btn) btn.disabled = true;
         apiFetch(CONFIG.api.materialAlias, {
             method: 'POST',
             body: JSON.stringify({ termo: termo, cd_material: cd, ds_material: ds || null, confirmado: true })
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
+                if (btn) btn.disabled = false;
                 if (data.success) {
-                    if (row) row.style.opacity = '0.4';
-                    btn.innerHTML = '<i class="fa fa-check" style="color:#22c55e;"></i>';
+                    // Adicionar chip inline sem recarregar a tabela
+                    if (chips) {
+                        var novoChip = document.createElement('span');
+                        novoChip.innerHTML = _chipsHtml([{
+                            id: data.id, cd_material: cd, ds_material: ds || null, confirmado: true
+                        }]);
+                        chips.innerHTML += novoChip.innerHTML;
+                        // Re-vincular evento de remoção nos novos chips
+                        var dels = chips.querySelectorAll('.alias-chip-del');
+                        for (var k = 0; k < dels.length; k++) {
+                            (function (del) {
+                                del.addEventListener('click', function () {
+                                    var aid = del.getAttribute('data-alias-id');
+                                    if (confirm('Remover este mapeamento?')) _removerChip(aid, del);
+                                });
+                            })(dels[k]);
+                        }
+                    }
+                    if (cdEl)  cdEl.value  = '';
+                    if (dsHid) dsHid.value = '';
                 } else {
-                    btn.disabled = false;
                     alert('Erro: ' + (data.error || 'falha ao salvar'));
                 }
             })
             .catch(function () {
-                btn.disabled = false;
+                if (btn) btn.disabled = false;
                 alert('Erro de comunicação ao salvar mapeamento.');
             });
     }
@@ -1366,6 +1530,150 @@
             });
     }
 
+    // ── Sugestão IA para todos os termos pendentes ──────────────────────────────
+
+    function sugerirIaParaTodos() {
+        var btnIa    = document.getElementById('btn-map-sugerir-ia');
+        var painel   = document.getElementById('map-ia-resultados');
+        var loading  = document.getElementById('map-ia-loading');
+        var erroEl   = document.getElementById('map-ia-erro');
+        var lista    = document.getElementById('map-ia-lista');
+        var acoes    = document.getElementById('map-ia-acoes');
+        var status   = document.getElementById('map-ia-status');
+
+        // Coletar termos do tbody atual
+        var tbody = document.getElementById('map-pend-tbody');
+        if (!tbody) return;
+        var cdInputs = tbody.querySelectorAll('[data-termo]');
+        var termosSet = {};
+        for (var i = 0; i < cdInputs.length; i++) {
+            var t = cdInputs[i].getAttribute('data-termo');
+            if (t) termosSet[t] = true;
+        }
+        var termos = [];
+        for (var k in termosSet) { termos.push(k); }
+        if (!termos.length) { alert('Nenhum termo pendente encontrado.'); return; }
+
+        if (painel) painel.style.display = 'block';
+        if (loading) loading.style.display = 'block';
+        if (erroEl)  erroEl.style.display = 'none';
+        if (lista)   lista.innerHTML = '';
+        if (acoes)   acoes.style.display = 'none';
+        if (btnIa)   btnIa.disabled = true;
+
+        apiFetch(CONFIG.api.materialAliasSugIa, {
+            method: 'POST',
+            body: JSON.stringify({ termos: termos })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (loading) loading.style.display = 'none';
+                if (btnIa)   btnIa.disabled = false;
+                if (!data.success) {
+                    if (erroEl) { erroEl.textContent = data.error || 'Erro na IA.'; erroEl.style.display = 'block'; }
+                    return;
+                }
+                var sugestoes = data.sugestoes || [];
+                if (!sugestoes.length) {
+                    if (lista) lista.innerHTML = '<p style="color:#6b7280;font-size:12px;">A IA não encontrou equivalentes no catálogo para os termos enviados.</p>';
+                    return;
+                }
+
+                var html = '';
+                var totalMatches = 0;
+                for (var si = 0; si < sugestoes.length; si++) {
+                    var sug = sugestoes[si];
+                    var matches = sug.matches || [];
+                    if (!matches.length) continue;
+                    html +=
+                        '<div style="margin-bottom:10px;padding:8px;background:#fff;border:1px solid #e0e7ff;border-radius:6px;">' +
+                        '<div style="font-size:12px;font-weight:600;color:#1e1b4b;margin-bottom:6px;">' +
+                            '<i class="fa fa-tag" style="margin-right:4px;"></i>' +
+                            escHtml(sug.termo || '') +
+                        '</div>';
+                    for (var mi = 0; mi < matches.length; mi++) {
+                        var m   = matches[mi];
+                        var uid = 'ia-chk-' + si + '-' + mi;
+                        totalMatches++;
+                        html +=
+                            '<label style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;' +
+                                'padding:4px 6px;border-radius:4px;cursor:pointer;font-size:12px;" ' +
+                                'onmouseover="this.style.background=\'#ede9fe\'" ' +
+                                'onmouseout="this.style.background=\'\'">' +
+                                '<input type="checkbox" id="' + uid + '" checked ' +
+                                    'data-termo="' + escHtml(sug.termo || '') + '" ' +
+                                    'data-cd="' + escHtml(String(m.cd_material || '')) + '" ' +
+                                    'data-ds="' + escHtml(m.ds_material || '') + '" ' +
+                                    'style="margin-top:2px;flex-shrink:0;">' +
+                                '<span>' +
+                                    '<strong>cd=' + escHtml(String(m.cd_material || '')) + '</strong>' +
+                                    ' — ' + escHtml(m.ds_material || '') +
+                                    (m.justificativa
+                                        ? '<br><em style="color:#6b7280;">' + escHtml(m.justificativa) + '</em>'
+                                        : '') +
+                                '</span>' +
+                            '</label>';
+                    }
+                    html += '</div>';
+                }
+
+                if (!totalMatches) {
+                    if (lista) lista.innerHTML = '<p style="color:#6b7280;font-size:12px;">Nenhum equivalente encontrado no catálogo.</p>';
+                    return;
+                }
+
+                if (lista) lista.innerHTML = html;
+                if (acoes) { acoes.style.display = 'block'; }
+                if (status) status.textContent = totalMatches + ' sugestão(ões) pronta(s) para confirmar.';
+            })
+            .catch(function () {
+                if (loading) loading.style.display = 'none';
+                if (btnIa)   btnIa.disabled = false;
+                if (erroEl)  { erroEl.textContent = 'Erro de comunicação.'; erroEl.style.display = 'block'; }
+            });
+    }
+
+    function _confirmarSugestoesIa() {
+        var lista   = document.getElementById('map-ia-lista');
+        var status  = document.getElementById('map-ia-status');
+        var btn     = document.getElementById('btn-map-ia-confirmar');
+        if (!lista) return;
+
+        var chks = lista.querySelectorAll('input[type="checkbox"]:checked');
+        if (!chks.length) { if (status) status.textContent = 'Selecione ao menos uma sugestão.'; return; }
+
+        if (btn) btn.disabled = true;
+        if (status) status.textContent = 'Salvando…';
+
+        var promises = [];
+        for (var i = 0; i < chks.length; i++) {
+            (function (chk) {
+                var p = apiFetch(CONFIG.api.materialAlias, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        termo:       chk.getAttribute('data-termo'),
+                        cd_material: chk.getAttribute('data-cd'),
+                        ds_material: chk.getAttribute('data-ds') || null,
+                        confirmado:  true
+                    })
+                }).then(function (r) { return r.json(); });
+                promises.push(p);
+            })(chks[i]);
+        }
+
+        Promise.all(promises).then(function (results) {
+            var ok   = results.filter(function (r) { return r.success; }).length;
+            var fail = results.length - ok;
+            if (btn) btn.disabled = false;
+            if (status) status.textContent = ok + ' salvo(s)' + (fail ? ', ' + fail + ' com erro.' : '.');
+            // Recarrega a lista de pendentes para refletir os novos chips
+            carregarItensPendentes();
+        }).catch(function () {
+            if (btn)    btn.disabled = false;
+            if (status) status.textContent = 'Erro ao salvar.';
+        });
+    }
+
     function _inicializarModalMapeamentos() {
         var modal   = document.getElementById('modal-mapeamentos');
         var overlay = document.getElementById('map-overlay');
@@ -1374,10 +1682,19 @@
         var busca   = document.getElementById('map-busca');
         var buscaBtn= document.getElementById('map-busca-btn');
         var btnNovo = document.getElementById('map-novo-salvar');
+        var btnIa   = document.getElementById('btn-map-sugerir-ia');
+        var btnIaFch= document.getElementById('btn-map-ia-fechar');
+        var btnConf = document.getElementById('btn-map-ia-confirmar');
 
         if (fechar)   fechar.addEventListener('click', fecharModalMapeamentos);
         if (overlay)  overlay.addEventListener('click', fecharModalMapeamentos);
         if (btnNovo)  btnNovo.addEventListener('click', salvarNovoAlias);
+        if (btnIa)    btnIa.addEventListener('click', sugerirIaParaTodos);
+        if (btnConf)  btnConf.addEventListener('click', _confirmarSugestoesIa);
+        if (btnIaFch) btnIaFch.addEventListener('click', function () {
+            var p = document.getElementById('map-ia-resultados');
+            if (p) p.style.display = 'none';
+        });
 
         if (buscaBtn) buscaBtn.addEventListener('click', function () {
             var v = busca ? busca.value.trim() : '';
