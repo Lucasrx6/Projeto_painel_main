@@ -51,7 +51,9 @@
         validacaoRodando:    false,
         analiseFeita:        false,
         analiseQtTotal:      null,
-        analiseIaUsada:      false
+        analiseIaUsada:      false,
+        filtroRegrasOff:     {},
+        filtroTiposOff:      {}
     };
 
     var _buscaTimer = null;
@@ -394,11 +396,99 @@
     }
 
     function resetarFiltrosTabs() {
-        Estado.statusFiltro = '';
+        Estado.statusFiltro  = '';
+        Estado.filtroRegrasOff = {};
+        Estado.filtroTiposOff  = {};
         var tabs = DOM.achFiltros.querySelectorAll('.filtro-tab');
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.toggle('ativo', tabs[i].getAttribute('data-status') === '');
         }
+    }
+
+    function _parentWithClass(el, root, cls) {
+        while (el && el !== root) {
+            if (el.classList && el.classList.contains(cls)) return el;
+            el = el.parentNode;
+        }
+        return null;
+    }
+
+    function _filtrarAchados() {
+        var semFiltroRegra = Object.keys(Estado.filtroRegrasOff).length === 0;
+        var semFiltroTipo  = Object.keys(Estado.filtroTiposOff).length === 0;
+        if (semFiltroRegra && semFiltroTipo) return Estado.achados;
+        var resultado = [];
+        for (var i = 0; i < Estado.achados.length; i++) {
+            var a = Estado.achados[i];
+            if (Estado.filtroRegrasOff[a.cd_regra || '']) continue;
+            if (Estado.filtroTiposOff[a.tipo_achado || ''])  continue;
+            resultado.push(a);
+        }
+        return resultado;
+    }
+
+    function renderLegenda() {
+        if (!DOM.achLegenda) return;
+        if (Estado.achados.length === 0) {
+            DOM.achLegenda.style.display = 'none';
+            return;
+        }
+
+        var regras = {};
+        var tipos  = {};
+        var totRisco    = 0;
+        var totCrit     = 0;
+        var totPend     = 0;
+        for (var i = 0; i < Estado.achados.length; i++) {
+            var a = Estado.achados[i];
+            var rk = a.cd_regra    || 'S/N';
+            var tk = a.tipo_achado || 'outro';
+            regras[rk] = (regras[rk] || 0) + 1;
+            tipos[tk]  = (tipos[tk]  || 0) + 1;
+            if (a.gravidade === 'critica') totCrit++;
+            if (a.status_tratamento === 'pendente') totPend++;
+            if (a.vl_risco) totRisco += parseFloat(a.vl_risco) || 0;
+        }
+
+        var resumoParts = [Estado.achados.length + ' achado' + (Estado.achados.length === 1 ? '' : 's')];
+        if (totPend > 0) resumoParts.push(totPend + ' pendente' + (totPend === 1 ? '' : 's'));
+        if (totCrit > 0) resumoParts.push(totCrit + ' crítico' + (totCrit === 1 ? '' : 's'));
+        if (totRisco > 0) resumoParts.push(
+            'R$ ' + totRisco.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' em risco'
+        );
+        DOM.legendaResumo.textContent = resumoParts.join(' · ');
+
+        var htmlR = '';
+        var rKeys = Object.keys(regras).sort();
+        for (var j = 0; j < rKeys.length; j++) {
+            var rk2 = rKeys[j];
+            var rOff = !!Estado.filtroRegrasOff[rk2];
+            htmlR +=
+                '<button class="leg-chip leg-chip-regra' + (rOff ? ' leg-chip-off' : '') + '" data-regra="' + escHtml(rk2) + '">' +
+                escHtml(rk2) +
+                '<span class="leg-chip-cnt">' + regras[rk2] + '</span>' +
+                '</button>';
+        }
+
+        var htmlT = '';
+        var tKeys = Object.keys(tipos).sort();
+        for (var k = 0; k < tKeys.length; k++) {
+            var tk2 = tKeys[k];
+            var tOff = !!Estado.filtroTiposOff[tk2];
+            htmlT +=
+                '<button class="leg-chip leg-chip-tipo' + (tOff ? ' leg-chip-off' : '') + '" data-tipo="' + escHtml(tk2) + '">' +
+                escHtml(labelTipo(tk2)) +
+                '<span class="leg-chip-cnt">' + tipos[tk2] + '</span>' +
+                '</button>';
+        }
+
+        DOM.legendaChipsRegra.innerHTML = htmlR;
+        DOM.legendaChipsTipo.innerHTML  = htmlT;
+
+        var temFiltro = Object.keys(Estado.filtroRegrasOff).length > 0 ||
+                        Object.keys(Estado.filtroTiposOff).length > 0;
+        DOM.legendaLimpar.style.display = temFiltro ? '' : 'none';
+        DOM.achLegenda.style.display = '';
     }
 
     function carregarAchados() {
@@ -444,6 +534,7 @@
 
     function renderAchados() {
         DOM.achLoading.style.display = 'none';
+        renderLegenda();
 
         if (Estado.achados.length === 0) {
             DOM.achVazio.style.display  = '';
@@ -469,12 +560,24 @@
             return;
         }
 
+        var achadosVisiveis = _filtrarAchados();
+
+        if (achadosVisiveis.length === 0) {
+            DOM.achVazio.style.display  = '';
+            DOM.achTabela.style.display = 'none';
+            DOM.achVazio.innerHTML =
+                '<i class="fa fa-eye-slash" style="opacity:.5;"></i>' +
+                '&nbsp; Todos os achados estão ocultos pelos filtros de regra/categoria.' +
+                '<br><span style="font-size:11px;color:#64748b;">Use <strong>Limpar filtros</strong> na barra acima para exibir.</span>';
+            return;
+        }
+
         DOM.achVazio.style.display  = 'none';
         DOM.achTabela.style.display = '';
 
         var html = '';
-        for (var i = 0; i < Estado.achados.length; i++) {
-            var a = Estado.achados[i];
+        for (var i = 0; i < achadosVisiveis.length; i++) {
+            var a = achadosVisiveis[i];
 
             var podeFeedback = a.status_tratamento === 'pendente';
             var btnFeedback = podeFeedback
@@ -807,8 +910,7 @@
     }
 
     function solicitarExplicacaoIa(btn) {
-        var achId  = parseInt(btn.getAttribute('data-id'), 10);
-        var achIdx = parseInt(btn.getAttribute('data-idx'), 10);
+        var achId = parseInt(btn.getAttribute('data-id'), 10);
 
         btn.disabled = true;
         btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Consultando IA…';
@@ -822,19 +924,20 @@
                     alert('Erro: ' + (data.error || 'Não foi possível gerar explicação'));
                     return;
                 }
-                if (!isNaN(achIdx) && Estado.achados[achIdx]) {
-                    Estado.achados[achIdx].explicacao_ia   = data.explicacao_ia;
-                    Estado.achados[achIdx].recomendacao_ia = data.recomendacao_ia;
+                var achadoRef = null;
+                for (var _ei = 0; _ei < Estado.achados.length; _ei++) {
+                    if (Estado.achados[_ei].id === achId) { achadoRef = Estado.achados[_ei]; break; }
+                }
+                if (achadoRef) {
+                    achadoRef.explicacao_ia   = data.explicacao_ia;
+                    achadoRef.recomendacao_ia = data.recomendacao_ia;
                 }
                 _atualizarDetalheAchado(
                     achId,
                     data.explicacao_ia,
                     data.recomendacao_ia,
-                    (!isNaN(achIdx) && Estado.achados[achIdx])
-                        ? Estado.achados[achIdx].evidencia_trecho
-                        : null
+                    achadoRef ? achadoRef.evidencia_trecho : null
                 );
-                // Atualiza seta da linha principal para indicar que há conteúdo
                 var mainTr = DOM.achTbody.querySelector('tr.achado-row[data-id="' + achId + '"]');
                 if (mainTr) {
                     var arrow = mainTr.querySelector('.row-expand-arrow-vazio');
@@ -881,8 +984,11 @@
 
     function onFeedbackClick(e) {
         var btn = e.currentTarget;
-        var idx = parseInt(btn.getAttribute('data-idx'), 10);
-        var achado = Estado.achados[idx];
+        var id = parseInt(btn.getAttribute('data-id'), 10);
+        var achado = null;
+        for (var _fi = 0; _fi < Estado.achados.length; _fi++) {
+            if (Estado.achados[_fi].id === id) { achado = Estado.achados[_fi]; break; }
+        }
         if (!achado) return;
         Estado.feedbackAchado = achado;
         abrirModal(achado);
@@ -985,6 +1091,11 @@
         DOM.jobBar              = document.getElementById('job-bar');
         DOM.jobTexto            = document.getElementById('job-texto');
         DOM.achFiltros          = document.getElementById('achados-filtros');
+        DOM.achLegenda          = document.getElementById('achados-legenda');
+        DOM.legendaResumo       = document.getElementById('legenda-resumo');
+        DOM.legendaChipsRegra   = document.getElementById('legenda-chips-regra');
+        DOM.legendaChipsTipo    = document.getElementById('legenda-chips-tipo');
+        DOM.legendaLimpar       = document.getElementById('legenda-limpar');
         DOM.achLoading          = document.getElementById('achados-loading');
         DOM.achVazio            = document.getElementById('achados-vazio');
         DOM.achTabela           = document.getElementById('achados-tabela');
@@ -1040,6 +1151,44 @@
         var tabs = DOM.achFiltros.querySelectorAll('.filtro-tab');
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].addEventListener('click', onFiltroTabClick);
+        }
+
+        // Filtros de legenda — delegação de evento para chips gerados dinamicamente
+        if (DOM.legendaChipsRegra) {
+            DOM.legendaChipsRegra.addEventListener('click', function (e) {
+                var btn = _parentWithClass(e.target, this, 'leg-chip-regra');
+                if (!btn) return;
+                var regra = btn.getAttribute('data-regra');
+                if (Estado.filtroRegrasOff[regra]) {
+                    delete Estado.filtroRegrasOff[regra];
+                } else {
+                    Estado.filtroRegrasOff[regra] = true;
+                }
+                renderLegenda();
+                renderAchados();
+            });
+        }
+        if (DOM.legendaChipsTipo) {
+            DOM.legendaChipsTipo.addEventListener('click', function (e) {
+                var btn = _parentWithClass(e.target, this, 'leg-chip-tipo');
+                if (!btn) return;
+                var tipo = btn.getAttribute('data-tipo');
+                if (Estado.filtroTiposOff[tipo]) {
+                    delete Estado.filtroTiposOff[tipo];
+                } else {
+                    Estado.filtroTiposOff[tipo] = true;
+                }
+                renderLegenda();
+                renderAchados();
+            });
+        }
+        if (DOM.legendaLimpar) {
+            DOM.legendaLimpar.addEventListener('click', function () {
+                Estado.filtroRegrasOff = {};
+                Estado.filtroTiposOff  = {};
+                renderLegenda();
+                renderAchados();
+            });
         }
 
         // Modal

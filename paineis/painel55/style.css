@@ -926,3 +926,215 @@ body {
     box-sizing: border-box;
 }
 .form-input:focus { border-color: var(--accent); }
+
+/* ── Modal de Resumo Clínico ─────────────────────────────────── */
+/* O seletor #id tem especificidade maior que .modal-box-wide,   */
+/* sobrescrevendo o padding:0 e max-height:72vh do R28 modal.    */
+#modal-resumo-paciente .modal-box {
+    display: flex;
+    flex-direction: column;
+    max-height: 88vh;
+    width: 900px;
+    max-width: 96vw;
+}
+#modal-resumo-paciente .modal-header,
+#modal-resumo-paciente .modal-footer { flex-shrink: 0; }
+#modal-resumo-paciente .modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0;
+    display: block;
+    max-height: none;
+}
+#resumo-loading {
+    padding: 32px 24px;
+    text-align: center;
+}
+.resumo-erro-bloco { margin: 18px 22px; }
+#resumo-conteudo { padding: 18px 22px 20px; }
+
+.resumo-secao {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+.resumo-secao-azul   { border-left: 4px solid #3b82f6; }
+.resumo-secao-laranja { border-left: 4px solid #f59e0b; }
+.resumo-secao-tabela { padding-bottom: 10px; }
+.resumo-secao:last-of-type { margin-bottom: 0; }
+
+.resumo-secao-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-mid);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.resumo-secao-label i { opacity: .7; }
+
+.resumo-secao-texto {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text);
+    margin: 0;
+}
+
+.resumo-tabela-wrapper {
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    margin-top: 8px;
+}
+.resumo-tabela-wrapper .map-tabela th {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+}
+.resumo-tabela-wrapper .map-tabela td { vertical-align: top; }
+
+.resumo-rodape {
+    font-size: 11px;
+    color: var(--text-soft);
+    font-style: italic;
+    text-align: center;
+    margin: 14px 0 0;
+}
+
+/* ── Legenda + filtros rápidos ───────────────────────────────── */
+.achados-legenda {
+    padding: 10px 16px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.legenda-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.legenda-resumo-txt {
+    font-size: 12px;
+    color: var(--text-mid);
+    font-weight: 500;
+}
+.legenda-limpar {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--critica);
+    background: none;
+    border: 1px solid var(--critica);
+    border-radius: 6px;
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.legenda-limpar:hover { background: var(--critica); color: #fff; }
+
+.legenda-grupos {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    flex-wrap: wrap;
+}
+.legenda-grupo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-width: 0;
+    padding-right: 14px;
+}
+.legenda-sep {
+    width: 1px;
+    background: var(--border);
+    align-self: stretch;
+    margin: 0 14px 0 0;
+    flex-shrink: 0;
+}
+.legenda-grupo-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-soft);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.legenda-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* Chip base */
+.leg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .12s, transform .1s;
+    border: none;
+    white-space: nowrap;
+    user-select: none;
+}
+.leg-chip:hover { opacity: .8; transform: translateY(-1px); }
+.leg-chip:active { transform: translateY(0); }
+
+/* Regra chips: fundo accent sólido */
+.leg-chip-regra {
+    background: var(--accent);
+    color: #fff;
+}
+/* Tipo chips: borda accent, fundo suave */
+.leg-chip-tipo {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+}
+
+/* Estado desativado */
+.leg-chip-off {
+    opacity: .4 !important;
+    text-decoration: line-through;
+    transform: none !important;
+    filter: grayscale(.6);
+}
+.leg-chip-off:hover { opacity: .55 !important; }
+
+/* Contador dentro do chip */
+.leg-chip-cnt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,.28);
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    line-height: 1;
+}
+.leg-chip-tipo .leg-chip-cnt {
+    background: var(--accent);
+    color: #fff;
+}

@@ -134,6 +134,27 @@
                     <button class="filtro-tab" data-status="ja_justificado">Justificados</button>
                 </div>
 
+                <!-- Legenda e filtros rápidos por regra / categoria -->
+                <div class="achados-legenda" id="achados-legenda" style="display:none;">
+                    <div class="legenda-topo">
+                        <span class="legenda-resumo-txt" id="legenda-resumo"></span>
+                        <button class="legenda-limpar" id="legenda-limpar" style="display:none;">
+                            <i class="fa fa-filter-circle-xmark"></i> Limpar filtros
+                        </button>
+                    </div>
+                    <div class="legenda-grupos">
+                        <div class="legenda-grupo">
+                            <span class="legenda-grupo-label">Regras</span>
+                            <div class="legenda-chips" id="legenda-chips-regra"></div>
+                        </div>
+                        <div class="legenda-sep"></div>
+                        <div class="legenda-grupo">
+                            <span class="legenda-grupo-label">Categorias</span>
+                            <div class="legenda-chips" id="legenda-chips-tipo"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tabela de achados -->
                 <div class="achados-wrapper">
                     <div id="achados-loading" class="loading-inline" style="display:none;">
@@ -338,38 +359,48 @@
             <div class="loading-inline" id="resumo-loading" style="display:none;">
                 <i class="fa fa-circle-notch fa-spin"></i> Consultando IA…
             </div>
-            <div id="resumo-erro" class="form-erro" style="display:none;"></div>
+            <div id="resumo-erro" class="form-erro resumo-erro-bloco" style="display:none;"></div>
             <div id="resumo-conteudo" style="display:none;">
-                <!-- Resumo clínico -->
-                <div class="form-group">
-                    <label class="form-label"><i class="fa fa-diagnoses" style="margin-right:4px;"></i>Condição Principal</label>
-                    <p id="resumo-condicao" style="margin:4px 0 0;line-height:1.55;"></p>
+                <!-- Condição Principal -->
+                <div class="resumo-secao resumo-secao-azul">
+                    <div class="resumo-secao-label">
+                        <i class="fa fa-diagnoses"></i> Condição Principal
+                    </div>
+                    <p id="resumo-condicao" class="resumo-secao-texto"></p>
                 </div>
-                <div class="form-group" style="margin-top:12px;">
-                    <label class="form-label"><i class="fa fa-file-invoice-dollar" style="margin-right:4px;"></i>Observação de Auditoria</label>
-                    <p id="resumo-obs" style="margin:4px 0 0;line-height:1.55;"></p>
+
+                <!-- Observação de Auditoria -->
+                <div class="resumo-secao resumo-secao-laranja">
+                    <div class="resumo-secao-label">
+                        <i class="fa fa-file-invoice-dollar"></i> Observação de Auditoria
+                    </div>
+                    <p id="resumo-obs" class="resumo-secao-texto"></p>
                 </div>
 
                 <!-- Tabela de comparação -->
-                <div class="form-group" style="margin-top:16px;">
-                    <label class="form-label"><i class="fa fa-balance-scale" style="margin-right:4px;"></i>Itens na Evolução × Conta</label>
-                    <table class="map-tabela" id="resumo-comp-tabela" style="margin-top:6px;display:none;">
-                        <thead>
-                            <tr>
-                                <th>Item identificado pela IA</th>
-                                <th style="width:46px;text-align:center;">Na conta?</th>
-                                <th>Item faturado / Sugestão catálogo</th>
-                                <th style="width:70px;text-align:right;">Qtd. fat.</th>
-                            </tr>
-                        </thead>
-                        <tbody id="resumo-comp-tbody"></tbody>
-                    </table>
-                    <div id="resumo-comp-vazio" class="empty-inline" style="display:none;">
-                        <i class="fa fa-info-circle"></i> Sem intervenções para comparar.
+                <div class="resumo-secao resumo-secao-tabela">
+                    <div class="resumo-secao-label">
+                        <i class="fa fa-balance-scale"></i> Itens na Evolução × Conta
+                    </div>
+                    <div class="resumo-tabela-wrapper">
+                        <table class="map-tabela" id="resumo-comp-tabela" style="display:none;">
+                            <thead>
+                                <tr>
+                                    <th>Item identificado pela IA</th>
+                                    <th style="width:46px;text-align:center;">Na conta?</th>
+                                    <th>Item faturado / Sugestão catálogo</th>
+                                    <th style="width:70px;text-align:right;">Qtd. fat.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resumo-comp-tbody"></tbody>
+                        </table>
+                        <div id="resumo-comp-vazio" class="empty-inline" style="display:none;">
+                            <i class="fa fa-info-circle"></i> Sem intervenções para comparar.
+                        </div>
                     </div>
                 </div>
 
-                <p id="resumo-footer" style="margin-top:14px;font-size:11px;color:#94a3b8;"></p>
+                <p id="resumo-footer" class="resumo-rodape"></p>
             </div>
         </div>
         <div class="modal-footer">
