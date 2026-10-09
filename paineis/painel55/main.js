@@ -1461,15 +1461,26 @@
                             var c = comp[i];
                             var cor  = c.encontrado ? '#16a34a' : '#dc2626';
                             var icon = c.encontrado ? 'fa-check-circle' : 'fa-times-circle';
+                            var celFaturado;
+                            if (c.encontrado) {
+                                celFaturado = '<td style="color:#334155;">' + _escHtml(c.ds_faturado || '—') + '</td>';
+                            } else if (c.sugestao_catalogo) {
+                                var sug = c.sugestao_catalogo;
+                                var sugTexto = 'cd=' + sug.cd_material + ' — ' + _escHtml(sug.ds_material) + (sug.classe ? ' [' + _escHtml(sug.classe) + ']' : '');
+                                celFaturado = '<td style="color:#b45309;font-size:0.85em;">' +
+                                    '<i class="fa fa-lightbulb" style="margin-right:3px;"></i>' +
+                                    '<strong>Sugerido:</strong> ' + sugTexto +
+                                    '</td>';
+                            } else {
+                                celFaturado = '<td style="color:#94a3b8;">—</td>';
+                            }
                             var tr = document.createElement('tr');
                             tr.innerHTML =
                                 '<td>' + _escHtml(c.item) + '</td>' +
                                 '<td style="text-align:center;color:' + cor + ';">' +
                                     '<i class="fa ' + icon + '"></i>' +
                                 '</td>' +
-                                '<td style="color:' + (c.encontrado ? '#334155' : '#94a3b8') + ';">' +
-                                    _escHtml(c.ds_faturado || '—') +
-                                '</td>' +
+                                celFaturado +
                                 '<td style="text-align:right;font-variant-numeric:tabular-nums;">' +
                                     (c.qt_faturada !== null ? Number(c.qt_faturada).toFixed(2) : '—') +
                                 '</td>';

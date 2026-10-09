@@ -1469,13 +1469,36 @@ _SISTEMA_RESUMO_CLINICO = (
 )
 
 
+def _buscar_catalogo(cur, busca):
+    """
+    Busca em ref.material pelo padrão ILIKE. Retorna dict com cd_material,
+    ds_material, classe ou None se não encontrado / catálogo vazio.
+    """
+    try:
+        cur.execute(
+            "SELECT cd_material, ds_material, classe "
+            "FROM ref.material "
+            "WHERE LOWER(ds_material) LIKE %s "
+            "ORDER BY cd_material "
+            "LIMIT 1",
+            (busca,)
+        )
+        row = cur.fetchone()
+        if row:
+            return dict(row)
+    except Exception:
+        pass
+    return None
+
+
 def _comparar_intervencoes(nr_atendimento, nr_interno_conta, intervencoes):
     """
-    Para cada item de intervenção retornado pela IA, faz busca fuzzy em
-    core.item_material e core.item_procedimento do atendimento/conta.
-    Retorna lista de dicts com resultado da comparação.
+    Para cada item de intervenção retornado pela IA:
+      1. Busca em core.item_material (conta/atendimento)
+      2. Busca em core.item_procedimento (conta/atendimento)
+      3. Se não encontrado na conta: consulta ref.material para sugerir cd_material do catálogo
+    Retorna lista de dicts enriquecidos com sugestão de código quando item ausente.
     """
-    import json as _json_cmp
     comparativo = []
     try:
         with _cursor() as cur:
@@ -1487,10 +1510,12 @@ def _comparar_intervencoes(nr_atendimento, nr_interno_conta, intervencoes):
                 palavras = [w for w in item_str.split() if len(w) >= 4]
                 if not palavras:
                     palavras = item_str.split()[:1]
+                if not palavras:
+                    continue
                 busca = '%' + palavras[0].lower() + '%'
 
                 achado = None
-                # 1. Busca em materiais
+                # 1. Busca em materiais da conta
                 cur.execute(
                     "SELECT ds_material, "
                     "       SUM(CASE WHEN qt_material > 0 THEN qt_material ELSE 0 END) AS qt_total, "
@@ -1514,7 +1539,7 @@ def _comparar_intervencoes(nr_atendimento, nr_interno_conta, intervencoes):
                         'cd':   row['cd_material'],
                     }
                 else:
-                    # 2. Busca em procedimentos
+                    # 2. Busca em procedimentos da conta
                     cur.execute(
                         "SELECT ds_procedimento, "
                         "       SUM(CASE WHEN qt_procedimento > 0 THEN qt_procedimento ELSE 0 END) AS qt_total, "
@@ -1538,13 +1563,25 @@ def _comparar_intervencoes(nr_atendimento, nr_interno_conta, intervencoes):
                             'cd':   row['cd_procedimento'],
                         }
 
+                # 3. Se não encontrado na conta → sugere cd_material do catálogo ref.material
+                sugestao_catalogo = None
+                if achado is None:
+                    cat = _buscar_catalogo(cur, busca)
+                    if cat:
+                        sugestao_catalogo = {
+                            'cd_material':  cat['cd_material'],
+                            'ds_material':  cat['ds_material'],
+                            'classe':       cat.get('classe'),
+                        }
+
                 comparativo.append({
-                    'item':       item_str,
-                    'encontrado': achado is not None,
-                    'ds_faturado': achado['ds']   if achado else None,
-                    'qt_faturada': achado['qt']   if achado else None,
-                    'cd_faturado': achado['cd']   if achado else None,
-                    'tipo_item':   achado['tipo'] if achado else None,
+                    'item':              item_str,
+                    'encontrado':        achado is not None,
+                    'ds_faturado':       achado['ds']   if achado else None,
+                    'qt_faturada':       achado['qt']   if achado else None,
+                    'cd_faturado':       achado['cd']   if achado else None,
+                    'tipo_item':         achado['tipo'] if achado else None,
+                    'sugestao_catalogo': sugestao_catalogo,
                 })
     except Exception as e:
         _log.warning('Erro na comparação de intervenções: %s', e)
