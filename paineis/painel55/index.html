@@ -13,405 +13,448 @@
 <body>
 <div id="app">
 
-    <!-- ── Header ──────────────────────────────────────────────── -->
-    <header id="app-header">
-        <div class="header-left">
-            <img src="/static/img/logo.png" alt="HAC" class="header-logo" onerror="this.style.display='none'">
-            <div>
-                <div class="header-title">Auditoria Pré-Faturamento</div>
-                <div class="header-subtitle">Hospital Anchieta Ceilândia</div>
+    <!-- ── Barra superior ─────────────────────────────────────── -->
+    <header class="topbar">
+        <button type="button" class="icon-btn only-mobile" id="btn-menu" aria-label="Abrir lista de atendimentos">
+            <i class="fa fa-bars"></i>
+        </button>
+
+        <div class="brand">
+            <img src="/static/img/logo.png" alt="" class="brand-logo" onerror="this.style.display='none'">
+            <div class="brand-text">
+                <div class="brand-title">Auditoria Pré-Faturamento</div>
+                <div class="brand-sub">Hospital Anchieta Ceilândia</div>
             </div>
         </div>
-        <div class="header-stats" id="header-stats">
-            <div class="stat-item">
-                <span class="stat-value" id="stat-contas">–</span>
-                <span class="stat-label">Contas</span>
+
+        <div class="kpis" role="group" aria-label="Resumo geral das contas abertas">
+            <div class="kpi">
+                <span class="kpi-value" id="stat-contas">–</span>
+                <span class="kpi-label">Atendimentos</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-value stat-critico" id="stat-criticos">–</span>
-                <span class="stat-label">Críticos</span>
+            <div class="kpi kpi-critico">
+                <span class="kpi-value" id="stat-criticos">–</span>
+                <span class="kpi-label">Críticos</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-value" id="stat-pendentes">–</span>
-                <span class="stat-label">Pendentes</span>
+            <div class="kpi">
+                <span class="kpi-value" id="stat-pendentes">–</span>
+                <span class="kpi-label">Pendentes</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-value" id="stat-risco">–</span>
-                <span class="stat-label">Valor em Risco</span>
+            <div class="kpi">
+                <span class="kpi-value" id="stat-risco">–</span>
+                <span class="kpi-label">Valor em risco</span>
             </div>
         </div>
-        <div class="header-actions">
-            <button class="btn-icon" id="btn-refresh" title="Atualizar lista">
-                <i class="fa fa-sync-alt"></i>
+
+        <div class="topbar-actions">
+            <button type="button" class="top-btn" id="btn-mapeamentos" title="Gerenciar mapeamentos de material para a regra R28">
+                <i class="fa fa-link"></i>
+                <span class="top-btn-txt">Mapeamentos R28</span>
+                <span class="count-badge" id="map-badge-header" hidden></span>
+            </button>
+            <button type="button" class="top-btn" id="btn-validacao" title="Verificar se o ambiente está pronto para auditar">
+                <i class="fa fa-shield-halved"></i>
+                <span class="top-btn-txt">Ambiente</span>
+                <span class="env-dot" id="env-dot" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="icon-btn" id="btn-refresh" aria-label="Atualizar lista" title="Atualizar lista">
+                <i class="fa fa-rotate"></i>
             </button>
         </div>
     </header>
 
-    <!-- ── Body ────────────────────────────────────────────────── -->
-    <div class="app-body">
+    <div class="layout">
 
-        <!-- Sidebar: lista de contas -->
-        <aside class="sidebar">
-            <div class="sidebar-toolbar">
-                <div class="sidebar-title">Contas Abertas<span id="contas-total" style="font-weight:400;color:#94a3b8;font-size:12px;"></span></div>
-                <div class="search-wrapper">
-                    <i class="fa fa-search search-icon"></i>
-                    <input type="text" id="filtro-busca" class="search-input"
-                           placeholder="Nº atendimento ou conta…" autocomplete="off" maxlength="80">
+        <!-- ── Lista de atendimentos ──────────────────────────── -->
+        <aside class="sidebar" id="sidebar" aria-label="Atendimentos">
+            <div class="sidebar-top">
+                <div class="search-box">
+                    <i class="fa fa-search search-ico" aria-hidden="true"></i>
+                    <input type="search" id="filtro-busca" class="field field-search"
+                           placeholder="Atendimento ou conta…   ( / )" autocomplete="off" maxlength="80"
+                           aria-label="Buscar por número de atendimento ou conta">
                 </div>
-                <select id="filtro-gravidade" class="filter-select" title="Filtrar por gravidade máxima do achado">
-                    <option value="">Todas as gravidades</option>
-                    <option value="critica">Crítica</option>
-                    <option value="alta">Alta</option>
-                    <option value="media">Média</option>
-                    <option value="baixa">Baixa</option>
-                </select>
-                <select id="filtro-setor" class="filter-select" style="margin-top:6px;" title="Filtrar por setor">
+
+                <div class="filter-label" id="lbl-grav">Gravidade máxima</div>
+                <div class="seg seg-grav" id="filtro-gravidade" role="group" aria-labelledby="lbl-grav">
+                    <button type="button" class="seg-btn ativo" data-grav="">Todas</button>
+                    <button type="button" class="seg-btn seg-critica" data-grav="critica">Crítica</button>
+                    <button type="button" class="seg-btn seg-alta" data-grav="alta">Alta</button>
+                    <button type="button" class="seg-btn seg-media" data-grav="media">Média</button>
+                    <button type="button" class="seg-btn seg-baixa" data-grav="baixa">Baixa</button>
+                </div>
+
+                <select id="filtro-setor" class="field field-select" aria-label="Filtrar por setor">
                     <option value="">Todos os setores</option>
                 </select>
             </div>
-            <div class="contas-lista" id="contas-lista">
-                <div class="loading-state">
-                    <i class="fa fa-circle-notch fa-spin"></i>
-                    <p>Carregando contas…</p>
-                </div>
+
+            <div class="list-head">
+                <span id="contas-total">Atendimentos</span>
+                <span class="list-head-hint">maior risco primeiro</span>
+            </div>
+
+            <div class="at-lista" id="contas-lista" role="list"></div>
+
+            <div class="sidebar-foot">
+                <button type="button" class="btn btn-ghost btn-block" id="btn-mais" hidden>
+                    <i class="fa fa-angles-down"></i> Carregar mais
+                </button>
+                <span class="versao" id="sistema-versao-footer">Central de Informações V 1.1.4</span>
             </div>
         </aside>
+        <div class="scrim" id="scrim"></div>
 
-        <!-- Main: detalhe da conta -->
-        <main class="main-content">
-            <!-- Card de validação do ambiente -->
-            <div class="validacao-card" id="validacao-card">
-                <div class="validacao-card-header">
-                    <i class="fa fa-shield-alt"></i>
-                    <span>Validação do Ambiente</span>
-                    <button class="btn-sm" id="btn-resumo-paciente" title="Resumo clínico do paciente pela IA" style="margin-right:6px;" disabled>
-                        <i class="fa fa-stethoscope"></i> Resumo do Paciente
-                    </button>
-                    <button class="btn-sm" id="btn-mapeamentos" title="Gerenciar mapeamentos de material para R28" style="margin-right:6px;">
-                        <i class="fa fa-link"></i> Mapeamentos R28
-                    </button>
-                    <button class="btn-sm" id="btn-validacao">Verificar</button>
+        <!-- ── Área principal ─────────────────────────────────── -->
+        <main class="main" id="main">
+
+            <!-- Estado inicial guiado -->
+            <section class="welcome" id="empty-state">
+                <div class="welcome-card">
+                    <div class="welcome-ico"><i class="fa fa-file-invoice-dollar"></i></div>
+                    <h1>Selecione um atendimento</h1>
+                    <p>Escolha um atendimento na lista ao lado para ver os achados de auditoria da conta.</p>
+                    <ol class="welcome-steps">
+                        <li><span class="step-n">1</span><div><strong>Escolha</strong> o atendimento — os de maior risco aparecem primeiro.</div></li>
+                        <li><span class="step-n">2</span><div><strong>Execute as regras</strong> para analisar a conta (ou revise os achados já existentes).</div></li>
+                        <li><span class="step-n">3</span><div><strong>Decida</strong> cada achado: procede, não procede ou já justificado.</div></li>
+                    </ol>
+                    <p class="welcome-dica"><i class="fa fa-keyboard"></i> Dica: tecle <kbd>/</kbd> para buscar e use <kbd>↑</kbd> <kbd>↓</kbd> na lista.</p>
                 </div>
-                <div id="validacao-resultado" class="validacao-resultado"></div>
-            </div>
+            </section>
 
-            <!-- Estado vazio inicial -->
-            <div class="empty-state" id="empty-state">
-                <i class="fa fa-file-invoice-dollar"></i>
-                <p>Selecione uma conta para ver os achados de auditoria</p>
-            </div>
+            <!-- Conta selecionada -->
+            <section class="conta" id="conta-detalhe" hidden>
 
-            <!-- Detalhe da conta selecionada -->
-            <div id="conta-detalhe" style="display:none;">
-                <!-- Header da conta -->
-                <div class="detalhe-header">
-                    <div class="detalhe-info">
-                        <div class="detalhe-titulo" id="detalhe-titulo">Conta</div>
-                        <div class="detalhe-meta" id="detalhe-meta"></div>
-                        <div id="conta-selector-wrapper" class="conta-selector-wrap" style="display:none;">
-                            <span class="conta-selector-label">Conta do ciclo:</span>
-                            <select id="conta-selector" class="conta-selector-select"></select>
+                <div class="conta-head">
+                    <div class="conta-head-info">
+                        <h1 class="conta-titulo" id="detalhe-titulo">Atendimento</h1>
+                        <div class="conta-meta" id="detalhe-meta"></div>
+                        <div class="conta-switch" id="conta-selector-wrapper" hidden>
+                            <span class="conta-switch-label">Conta:</span>
+                            <div class="pills" id="conta-pills" role="group" aria-label="Contas do atendimento"></div>
+                            <select id="conta-selector" class="field field-select field-inline" aria-label="Selecionar conta" hidden></select>
                         </div>
                     </div>
-                    <span class="detalhe-info-compacta" id="detalhe-info-compacta"></span>
-                    <div class="detalhe-acoes">
-                        <div class="job-bar" id="job-bar" style="display:none;">
-                            <i class="fa fa-circle-notch fa-spin"></i>
-                            <span id="job-texto">Executando regras…</span>
-                        </div>
-                        <button class="btn-primary" id="btn-executar">
-                            <i class="fa fa-play"></i> Executar Regras
+                    <div class="conta-head-actions">
+                        <button type="button" class="btn btn-ghost" id="btn-resumo-paciente" title="Resumo clínico do paciente gerado por IA">
+                            <i class="fa fa-stethoscope"></i> <span class="btn-txt">Resumo clínico</span>
                         </button>
-                        <button class="btn-icon btn-colapsar-cab" id="btn-colapsar-cab" title="Minimizar cabeçalho">
-                            <i class="fa fa-chevron-up"></i>
+                        <button type="button" class="btn btn-primary" id="btn-executar">
+                            <i class="fa fa-play"></i> <span class="btn-txt">Executar regras</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Filtros por status de tratamento -->
-                <div class="achados-filtros" id="achados-filtros">
-                    <button class="filtro-tab ativo" data-status="">Todos</button>
-                    <button class="filtro-tab" data-status="pendente">Pendentes</button>
-                    <button class="filtro-tab" data-status="procede_corrigido">Corrigidos</button>
-                    <button class="filtro-tab" data-status="nao_procede">Não Procedem</button>
-                    <button class="filtro-tab" data-status="ja_justificado">Justificados</button>
+                <!-- Progresso da análise -->
+                <div class="job" id="job-bar" hidden role="status" aria-live="polite">
+                    <div class="job-top">
+                        <i class="fa fa-circle-notch fa-spin"></i>
+                        <span id="job-texto">Executando regras…</span>
+                        <span class="job-tempo" id="job-tempo"></span>
+                    </div>
+                    <div class="job-steps">
+                        <span class="job-step" id="job-step-1"><i class="fa fa-list-check"></i> Regras</span>
+                        <span class="job-step-sep"></span>
+                        <span class="job-step" id="job-step-2"><i class="fa fa-wand-magic-sparkles"></i> Leitura das evoluções (IA)</span>
+                    </div>
+                    <div class="progress" id="job-progress" hidden><div class="progress-bar" id="job-progress-bar"></div></div>
                 </div>
 
-                <!-- Legenda e filtros rápidos por regra / categoria -->
-                <div class="achados-legenda" id="achados-legenda" style="display:none;">
-                    <div class="legenda-topo">
-                        <span class="legenda-resumo-txt" id="legenda-resumo"></span>
-                        <button class="legenda-limpar" id="legenda-limpar" style="display:none;">
-                            <i class="fa fa-filter-circle-xmark"></i> Limpar filtros
+                <!-- Indicadores da conta -->
+                <div class="conta-kpis" id="conta-kpis"></div>
+
+                <!-- Barra de filtros -->
+                <div class="toolbar" id="achados-filtros">
+                    <div class="seg seg-status" id="status-tabs" role="tablist" aria-label="Filtrar por situação">
+                        <button type="button" class="seg-btn ativo" role="tab" data-status="">Todos <span class="seg-n" data-n="">0</span></button>
+                        <button type="button" class="seg-btn" role="tab" data-status="pendente">Pendentes <span class="seg-n" data-n="pendente">0</span></button>
+                        <button type="button" class="seg-btn" role="tab" data-status="procede_corrigido">Corrigidos <span class="seg-n" data-n="procede_corrigido">0</span></button>
+                        <button type="button" class="seg-btn" role="tab" data-status="nao_procede">Não procedem <span class="seg-n" data-n="nao_procede">0</span></button>
+                        <button type="button" class="seg-btn" role="tab" data-status="ja_justificado">Justificados <span class="seg-n" data-n="ja_justificado">0</span></button>
+                    </div>
+                    <div class="toolbar-right">
+                        <div class="search-box search-box-sm">
+                            <i class="fa fa-search search-ico" aria-hidden="true"></i>
+                            <input type="search" id="achados-busca" class="field field-search" placeholder="Buscar nos achados…" maxlength="80" aria-label="Buscar nos achados">
+                        </div>
+                        <select id="achados-ordem" class="field field-select field-inline" aria-label="Ordenar achados">
+                            <option value="gravidade">Por gravidade</option>
+                            <option value="risco">Por valor em risco</option>
+                        </select>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btn-chips" aria-expanded="false" aria-controls="chips-panel">
+                            <i class="fa fa-sliders"></i> Regras e categorias <span class="count-badge count-badge-neutral" id="chips-ativos" hidden></span>
                         </button>
                     </div>
-                    <div class="legenda-grupos">
-                        <div class="legenda-grupo">
-                            <span class="legenda-grupo-label">Regras</span>
-                            <div class="legenda-chips" id="legenda-chips-regra"></div>
-                        </div>
-                        <div class="legenda-sep"></div>
-                        <div class="legenda-grupo">
-                            <span class="legenda-grupo-label">Categorias</span>
-                            <div class="legenda-chips" id="legenda-chips-tipo"></div>
-                        </div>
+                </div>
+
+                <div class="chips-panel" id="chips-panel" hidden>
+                    <div class="chips-grupo">
+                        <span class="chips-label">Regras</span>
+                        <div class="chips" id="legenda-chips-regra"></div>
+                    </div>
+                    <div class="chips-grupo">
+                        <span class="chips-label">Categorias</span>
+                        <div class="chips" id="legenda-chips-tipo"></div>
                     </div>
                 </div>
 
-                <!-- Tabela de achados -->
-                <div class="achados-wrapper">
-                    <div id="achados-loading" class="loading-inline" style="display:none;">
-                        <i class="fa fa-circle-notch fa-spin"></i> Carregando achados…
-                    </div>
-                    <div id="achados-vazio" class="empty-inline" style="display:none;">
-                        <i class="fa fa-check-circle"></i>&nbsp; Nenhum achado para os filtros selecionados.
-                    </div>
-                    <table class="achados-tabela" id="achados-tabela" style="display:none;">
-                        <thead>
-                            <tr>
-                                <th style="width:64px">Regra</th>
-                                <th>Tipo</th>
-                                <th style="width:90px">Gravidade</th>
-                                <th>Encontrado / Esperado</th>
-                                <th class="col-valor" style="width:90px">Risco R$</th>
-                                <th style="width:110px">Status</th>
-                                <th class="col-acoes" style="width:90px">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="achados-tbody"></tbody>
-                    </table>
+                <div class="resultado-bar" id="resultado-bar" hidden>
+                    <span id="resultado-txt"></span>
+                    <button type="button" class="link-btn" id="btn-limpar-filtros"><i class="fa fa-filter-circle-xmark"></i> Limpar filtros</button>
                 </div>
-            </div>
+
+                <!-- Lista de achados -->
+                <div class="achados-scroll" id="achados-scroll">
+                    <div id="achados-lista" class="achados-lista"></div>
+                    <div id="achados-aviso" class="aviso" hidden></div>
+                </div>
+            </section>
         </main>
     </div>
 </div>
 
-<!-- Modal de Mapeamentos R28 -->
-<div id="modal-mapeamentos" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="map-titulo">
-    <div class="modal-overlay" id="map-overlay"></div>
-    <div class="modal-box modal-box-wide">
-        <div class="modal-header">
-            <h3 id="map-titulo"><i class="fa fa-link" style="margin-right:6px;"></i>Mapeamentos de Material (R28)</h3>
-            <button class="btn-icon" id="map-fechar" aria-label="Fechar"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-            <!-- Abas: pendentes / todos / novo -->
-            <div class="map-abas">
-                <button class="map-aba ativo" data-mapaba="pendentes">
-                    <i class="fa fa-clock"></i> Pendentes
-                    <span id="map-badge-pendentes" class="map-badge" style="display:none;"></span>
-                </button>
-                <button class="map-aba" data-mapaba="todos">
-                    <i class="fa fa-list"></i> Todos os mapeamentos
-                </button>
-                <button class="map-aba" data-mapaba="novo">
-                    <i class="fa fa-plus"></i> Novo mapeamento
-                </button>
-            </div>
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
 
-            <!-- Aba: termos pendentes (extraídos pela IA sem mapeamento) -->
-            <div id="map-aba-pendentes" class="map-aba-conteudo">
-                <div class="map-pend-header">
-                    <p class="map-info" style="margin:0;">
-                        Termos extraídos pela IA de evoluções que ainda não têm um <code>cd_material</code> confirmado.
-                        Um termo pode ter <strong>múltiplos equivalentes</strong> (ex: Luva P, M e G).
-                        Adicione quantos forem necessários e confirme para ativar o monitoramento R28.
-                    </p>
-                    <button id="btn-map-sugerir-ia" class="btn-sm btn-ia-sugerir" title="Usar IA para sugerir mapeamentos do catálogo automaticamente">
-                        <i class="fa fa-wand-magic-sparkles"></i> Sugerir com IA
-                    </button>
-                </div>
-                <!-- Painel de sugestões da IA (oculto até ser acionado) -->
-                <div id="map-ia-resultados" style="display:none;margin:10px 0;border:1.5px solid #6366f1;border-radius:8px;padding:12px;background:#f5f3ff;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <strong style="color:#4f46e5;font-size:13px;">
-                            <i class="fa fa-wand-magic-sparkles"></i> Sugestões da IA
-                        </strong>
-                        <button class="btn-sm" id="btn-map-ia-fechar" style="background:transparent;color:#6b7280;font-size:12px;" title="Fechar sugestões">
-                            <i class="fa fa-times"></i>
-                        </button>
-                    </div>
-                    <div id="map-ia-loading" style="display:none;color:#4f46e5;font-size:13px;">
-                        <i class="fa fa-circle-notch fa-spin"></i> Consultando catálogo e IA…
-                    </div>
-                    <div id="map-ia-erro" style="display:none;color:#dc2626;font-size:12px;"></div>
-                    <div id="map-ia-lista"></div>
-                    <div id="map-ia-acoes" style="display:none;margin-top:10px;">
-                        <button class="btn-primary btn-sm" id="btn-map-ia-confirmar" style="font-size:12px;">
-                            <i class="fa fa-check"></i> Confirmar selecionados
-                        </button>
-                        <span id="map-ia-status" style="margin-left:8px;font-size:11px;color:#6b7280;"></span>
-                    </div>
-                </div>
-                <div id="map-pend-loading" class="loading-inline" style="display:none;">
-                    <i class="fa fa-circle-notch fa-spin"></i> Carregando…
-                </div>
-                <div id="map-pend-vazio" class="empty-inline" style="display:none;">
-                    <i class="fa fa-check-circle"></i> Nenhum termo pendente de mapeamento.
-                </div>
-                <table class="map-tabela" id="map-pend-tabela" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>Termo extraído pela IA</th>
-                            <th style="width:72px">Ocorr.</th>
-                            <th style="width:110px">Última extração</th>
-                            <th>Mapeamentos cd_material</th>
-                        </tr>
-                    </thead>
-                    <tbody id="map-pend-tbody"></tbody>
-                </table>
-            </div>
-
-            <!-- Aba: todos os mapeamentos -->
-            <div id="map-aba-todos" class="map-aba-conteudo" style="display:none;">
-                <div style="display:flex;gap:8px;margin-bottom:10px;">
-                    <input type="text" id="map-busca" class="search-input" placeholder="Buscar termo ou código…" style="flex:1;" maxlength="100">
-                    <button class="btn-sm" id="map-busca-btn"><i class="fa fa-search"></i></button>
-                </div>
-                <div id="map-todos-loading" class="loading-inline" style="display:none;">
-                    <i class="fa fa-circle-notch fa-spin"></i> Carregando…
-                </div>
-                <div id="map-todos-vazio" class="empty-inline" style="display:none;">
-                    <i class="fa fa-info-circle"></i> Nenhum mapeamento encontrado.
-                </div>
-                <table class="map-tabela" id="map-todos-tabela" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>Termo</th>
-                            <th style="width:120px">cd_material</th>
-                            <th>Descrição</th>
-                            <th style="width:80px">Status</th>
-                            <th style="width:100px">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="map-todos-tbody"></tbody>
-                </table>
-            </div>
-
-            <!-- Aba: novo mapeamento -->
-            <div id="map-aba-novo" class="map-aba-conteudo" style="display:none;">
-                <div class="form-group">
-                    <label class="form-label">Termo (texto que a IA extrai) <span class="obrigatorio">*</span></label>
-                    <input type="text" id="map-novo-termo" class="form-input" placeholder="Ex: luva descartável, soro fisiológico 100ml…" maxlength="300">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">cd_material no Tasy <span class="obrigatorio">*</span></label>
-                    <input type="text" id="map-novo-cd" class="form-input" placeholder="Ex: MAT-00123" maxlength="50">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Descrição do material (opcional)</label>
-                    <input type="text" id="map-novo-ds" class="form-input" placeholder="Ex: Luva de procedimento G (cx 100 un)" maxlength="400">
-                </div>
-                <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-                    <input type="checkbox" id="map-novo-confirmado" style="width:16px;height:16px;">
-                    <label for="map-novo-confirmado" class="form-label" style="margin:0;">Já confirmado (ativa monitoramento R28 imediatamente)</label>
-                </div>
-                <p id="map-novo-erro" class="form-erro" style="display:none;"></p>
-                <button class="btn-primary" id="map-novo-salvar" style="margin-top:8px;">
-                    <i class="fa fa-save"></i> Salvar mapeamento
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de feedback -->
-<div id="modal-feedback" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
-    <div class="modal-overlay" id="modal-overlay"></div>
+<!-- ═══════════ Modal: decisão ═══════════ -->
+<div id="modal-feedback" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <div class="modal-overlay" data-fechar></div>
     <div class="modal-box">
         <div class="modal-header">
-            <h3 id="modal-titulo">Registrar Decisão</h3>
-            <button class="btn-icon" id="modal-fechar" aria-label="Fechar modal">
-                <i class="fa fa-times"></i>
-            </button>
+            <h2 id="modal-titulo">Registrar decisão</h2>
+            <button type="button" class="icon-btn icon-btn-dark" data-fechar aria-label="Fechar"><i class="fa fa-times"></i></button>
         </div>
         <div class="modal-body">
             <div class="achado-resumo" id="modal-resumo"></div>
-            <div class="form-group">
-                <label class="form-label" for="modal-decisao">Decisão <span class="obrigatorio">*</span></label>
-                <select id="modal-decisao" class="form-select">
-                    <option value="">Selecione uma decisão…</option>
-                    <option value="procede_corrigido">Procede — Corrigido</option>
-                    <option value="nao_procede">Não Procede</option>
-                    <option value="ja_justificado">Já Justificado</option>
-                </select>
-            </div>
+
+            <fieldset class="opts" id="modal-decisao">
+                <legend class="form-label">Decisão <span class="obrigatorio">*</span></legend>
+                <label class="opt">
+                    <input type="radio" name="decisao" value="procede_corrigido" class="opt-input">
+                    <span class="opt-body opt-ok"><i class="fa fa-circle-check"></i><span><strong>Procede — corrigido</strong><small>O achado é real e a conta já foi ajustada.</small></span></span>
+                </label>
+                <label class="opt">
+                    <input type="radio" name="decisao" value="nao_procede" class="opt-input">
+                    <span class="opt-body opt-no"><i class="fa fa-circle-xmark"></i><span><strong>Não procede</strong><small>O achado não se aplica a esta conta.</small></span></span>
+                </label>
+                <label class="opt">
+                    <input type="radio" name="decisao" value="ja_justificado" class="opt-input">
+                    <span class="opt-body opt-just"><i class="fa fa-file-circle-check"></i><span><strong>Já justificado</strong><small>Existe documentação que cobre o achado.</small></span></span>
+                </label>
+            </fieldset>
+
             <div class="form-group">
                 <label class="form-label" for="modal-justificativa">Justificativa <span class="obrigatorio">*</span></label>
-                <textarea id="modal-justificativa" class="form-textarea" rows="4"
-                    placeholder="Descreva o motivo da decisão (mínimo 10 caracteres)…"></textarea>
+                <textarea id="modal-justificativa" class="field field-textarea" rows="4"
+                          placeholder="Descreva o motivo da decisão…"></textarea>
+                <div class="field-hint"><span id="just-contador">0 / 10 caracteres mínimos</span></div>
             </div>
-            <p id="modal-erro" class="form-erro" style="display:none;"></p>
+
+            <label class="check">
+                <input type="checkbox" id="modal-proximo" checked>
+                <span>Abrir o próximo achado pendente ao salvar</span>
+            </label>
+            <p id="modal-erro" class="form-erro" hidden></p>
         </div>
         <div class="modal-footer">
-            <button class="btn-secondary" id="modal-cancelar">Cancelar</button>
-            <button class="btn-primary" id="modal-confirmar">Confirmar decisão</button>
+            <span class="atalho-dica">Ctrl + Enter para confirmar</span>
+            <button type="button" class="btn btn-secondary" data-fechar>Cancelar</button>
+            <button type="button" class="btn btn-primary" id="modal-confirmar" disabled>
+                <i class="fa fa-check"></i> Confirmar decisão
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Modal de Resumo Clínico (IA) -->
-<div id="modal-resumo-paciente" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="resumo-titulo">
-    <div class="modal-overlay" id="resumo-overlay"></div>
+<!-- ═══════════ Modal: confirmação genérica ═══════════ -->
+<div id="modal-confirm" class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-titulo">
+    <div class="modal-overlay" data-fechar></div>
+    <div class="modal-box modal-box-sm">
+        <div class="modal-header">
+            <h2 id="confirm-titulo">Confirmar</h2>
+            <button type="button" class="icon-btn icon-btn-dark" data-fechar aria-label="Fechar"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="modal-body"><p id="confirm-msg"></p></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-fechar>Cancelar</button>
+            <button type="button" class="btn btn-danger" id="confirm-ok">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ Modal: ambiente ═══════════ -->
+<div id="modal-validacao" class="modal" role="dialog" aria-modal="true" aria-labelledby="val-titulo">
+    <div class="modal-overlay" data-fechar></div>
+    <div class="modal-box modal-box-md">
+        <div class="modal-header">
+            <h2 id="val-titulo"><i class="fa fa-shield-halved"></i> Verificação do ambiente</h2>
+            <button type="button" class="icon-btn icon-btn-dark" data-fechar aria-label="Fechar"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="modal-body modal-scroll" id="val-corpo"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-fechar>Fechar</button>
+            <button type="button" class="btn btn-primary" id="val-rodar"><i class="fa fa-rotate"></i> Verificar novamente</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ Modal: mapeamentos R28 ═══════════ -->
+<div id="modal-mapeamentos" class="modal" role="dialog" aria-modal="true" aria-labelledby="map-titulo">
+    <div class="modal-overlay" data-fechar></div>
     <div class="modal-box modal-box-wide">
         <div class="modal-header">
-            <h3 id="resumo-titulo"><i class="fa fa-stethoscope" style="margin-right:6px;"></i>Resumo Clínico do Paciente</h3>
-            <button class="btn-icon" id="resumo-fechar" aria-label="Fechar"><i class="fa fa-times"></i></button>
+            <h2 id="map-titulo"><i class="fa fa-link"></i> Mapeamentos de material (R28)</h2>
+            <button type="button" class="icon-btn icon-btn-dark" data-fechar aria-label="Fechar"><i class="fa fa-times"></i></button>
         </div>
-        <div class="modal-body" id="resumo-body">
-            <div class="loading-inline" id="resumo-loading" style="display:none;">
-                <i class="fa fa-circle-notch fa-spin"></i> Consultando IA…
+
+        <div class="tabs" role="tablist">
+            <button type="button" class="tab ativo" role="tab" data-mapaba="pendentes">
+                <i class="fa fa-clock"></i> Pendentes <span class="count-badge" id="map-badge-pendentes" hidden></span>
+            </button>
+            <button type="button" class="tab" role="tab" data-mapaba="todos"><i class="fa fa-list"></i> Todos</button>
+            <button type="button" class="tab" role="tab" data-mapaba="novo"><i class="fa fa-plus"></i> Novo</button>
+        </div>
+
+        <div class="modal-body modal-scroll">
+
+            <!-- Pendentes -->
+            <div id="map-aba-pendentes" class="map-aba-conteudo">
+                <div class="map-intro">
+                    <p>
+                        Termos que a IA extraiu das evoluções e ainda não têm um <code>cd_material</code> confirmado.
+                        Um termo pode ter <strong>vários equivalentes</strong> (ex.: luva P, M e G) — adicione todos que fizerem sentido.
+                    </p>
+                    <button type="button" id="btn-map-sugerir-ia" class="btn btn-ia" title="Pedir à IA sugestões do catálogo para todos os termos pendentes">
+                        <i class="fa fa-wand-magic-sparkles"></i> Sugerir com IA
+                    </button>
+                </div>
+
+                <div id="map-ia-resultados" class="ia-panel" hidden>
+                    <div class="ia-panel-head">
+                        <strong><i class="fa fa-wand-magic-sparkles"></i> Sugestões da IA</strong>
+                        <button type="button" class="icon-btn icon-btn-light" id="btn-map-ia-fechar" aria-label="Fechar sugestões"><i class="fa fa-times"></i></button>
+                    </div>
+                    <div id="map-ia-loading" class="inline-loading" hidden><i class="fa fa-circle-notch fa-spin"></i> Consultando catálogo e IA…</div>
+                    <div id="map-ia-erro" class="form-erro" hidden></div>
+                    <div id="map-ia-lista"></div>
+                    <div id="map-ia-acoes" class="ia-panel-foot" hidden>
+                        <button type="button" class="btn btn-primary btn-sm" id="btn-map-ia-confirmar"><i class="fa fa-check"></i> Confirmar selecionados</button>
+                        <span id="map-ia-status" class="muted"></span>
+                    </div>
+                </div>
+
+                <div id="map-pend-loading" class="inline-loading" hidden><i class="fa fa-circle-notch fa-spin"></i> Carregando…</div>
+                <div id="map-pend-vazio" class="aviso aviso-ok" hidden><i class="fa fa-check-circle"></i> Nenhum termo pendente de mapeamento.</div>
+                <div id="map-pend-lista" class="map-cards"></div>
             </div>
-            <div id="resumo-erro" class="form-erro resumo-erro-bloco" style="display:none;"></div>
-            <div id="resumo-conteudo" style="display:none;">
-                <!-- Condição Principal -->
-                <div class="resumo-secao resumo-secao-azul">
-                    <div class="resumo-secao-label">
-                        <i class="fa fa-diagnoses"></i> Condição Principal
+
+            <!-- Todos -->
+            <div id="map-aba-todos" class="map-aba-conteudo" hidden>
+                <div class="map-busca">
+                    <div class="search-box">
+                        <i class="fa fa-search search-ico" aria-hidden="true"></i>
+                        <input type="search" id="map-busca" class="field field-search" placeholder="Buscar termo, descrição ou código…" maxlength="100">
                     </div>
-                    <p id="resumo-condicao" class="resumo-secao-texto"></p>
+                </div>
+                <div id="map-todos-loading" class="inline-loading" hidden><i class="fa fa-circle-notch fa-spin"></i> Carregando…</div>
+                <div id="map-todos-vazio" class="aviso" hidden><i class="fa fa-info-circle"></i> Nenhum mapeamento encontrado.</div>
+                <div class="tabela-wrap">
+                    <table class="tabela" id="map-todos-tabela" hidden>
+                        <thead>
+                            <tr>
+                                <th>Termo</th>
+                                <th>cd_material</th>
+                                <th>Descrição</th>
+                                <th>Situação</th>
+                                <th class="col-acoes">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="map-todos-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Novo -->
+            <div id="map-aba-novo" class="map-aba-conteudo" hidden>
+                <div class="form-group">
+                    <label class="form-label" for="map-novo-termo">Termo (texto que a IA extrai) <span class="obrigatorio">*</span></label>
+                    <input type="text" id="map-novo-termo" class="field" placeholder="Ex.: luva descartável, soro fisiológico 100 ml…" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="map-novo-cd">cd_material no Tasy <span class="obrigatorio">*</span></label>
+                    <div class="ac-wrap">
+                        <input type="text" id="map-novo-cd" class="field ac-input" data-ds-target="map-novo-ds"
+                               placeholder="Digite para buscar no catálogo ou informe o código" maxlength="50" autocomplete="off">
+                        <div class="ac-drop" hidden></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="map-novo-ds">Descrição do material (opcional)</label>
+                    <input type="text" id="map-novo-ds" class="field" placeholder="Ex.: Luva de procedimento G (cx 100 un)" maxlength="400">
+                </div>
+                <label class="check">
+                    <input type="checkbox" id="map-novo-confirmado">
+                    <span>Já confirmado (ativa o monitoramento R28 imediatamente)</span>
+                </label>
+                <p id="map-novo-erro" class="form-erro" hidden></p>
+                <button type="button" class="btn btn-primary" id="map-novo-salvar"><i class="fa fa-save"></i> Salvar mapeamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ Modal: resumo clínico ═══════════ -->
+<div id="modal-resumo-paciente" class="modal" role="dialog" aria-modal="true" aria-labelledby="resumo-titulo">
+    <div class="modal-overlay" data-fechar></div>
+    <div class="modal-box modal-box-wide">
+        <div class="modal-header">
+            <h2 id="resumo-titulo"><i class="fa fa-stethoscope"></i> Resumo clínico do paciente</h2>
+            <button type="button" class="icon-btn icon-btn-dark" data-fechar aria-label="Fechar"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="modal-body modal-scroll">
+            <div class="inline-loading inline-loading-lg" id="resumo-loading" hidden>
+                <i class="fa fa-circle-notch fa-spin"></i> Consultando IA… isto pode levar alguns segundos.
+            </div>
+            <div id="resumo-erro" class="form-erro" hidden></div>
+
+            <div id="resumo-conteudo" hidden>
+                <div class="resumo-bloco resumo-azul">
+                    <div class="resumo-label"><i class="fa fa-diagnoses"></i> Condição principal</div>
+                    <p id="resumo-condicao"></p>
+                </div>
+                <div class="resumo-bloco resumo-laranja">
+                    <div class="resumo-label"><i class="fa fa-file-invoice-dollar"></i> Observação de auditoria</div>
+                    <p id="resumo-obs"></p>
                 </div>
 
-                <!-- Observação de Auditoria -->
-                <div class="resumo-secao resumo-secao-laranja">
-                    <div class="resumo-secao-label">
-                        <i class="fa fa-file-invoice-dollar"></i> Observação de Auditoria
+                <div class="resumo-bloco">
+                    <div class="resumo-label"><i class="fa fa-scale-balanced"></i> Itens na evolução × conta</div>
+                    <div class="cobertura" id="resumo-cobertura" hidden>
+                        <div class="cobertura-txt" id="resumo-cobertura-txt"></div>
+                        <div class="progress"><div class="progress-bar" id="resumo-cobertura-bar"></div></div>
                     </div>
-                    <p id="resumo-obs" class="resumo-secao-texto"></p>
-                </div>
-
-                <!-- Tabela de comparação -->
-                <div class="resumo-secao resumo-secao-tabela">
-                    <div class="resumo-secao-label">
-                        <i class="fa fa-balance-scale"></i> Itens na Evolução × Conta
-                    </div>
-                    <div class="resumo-tabela-wrapper">
-                        <table class="map-tabela" id="resumo-comp-tabela" style="display:none;">
+                    <div class="tabela-wrap">
+                        <table class="tabela" id="resumo-comp-tabela" hidden>
                             <thead>
                                 <tr>
                                     <th>Item identificado pela IA</th>
-                                    <th style="width:46px;text-align:center;">Na conta?</th>
-                                    <th>Item faturado / Sugestão catálogo</th>
-                                    <th style="width:70px;text-align:right;">Qtd. fat.</th>
+                                    <th class="col-centro">Na conta?</th>
+                                    <th>Item faturado / sugestão do catálogo</th>
+                                    <th class="col-valor">Qtd. fat.</th>
                                 </tr>
                             </thead>
                             <tbody id="resumo-comp-tbody"></tbody>
                         </table>
-                        <div id="resumo-comp-vazio" class="empty-inline" style="display:none;">
-                            <i class="fa fa-info-circle"></i> Sem intervenções para comparar.
-                        </div>
                     </div>
+                    <div id="resumo-comp-vazio" class="aviso" hidden><i class="fa fa-info-circle"></i> Sem intervenções para comparar.</div>
                 </div>
 
                 <p id="resumo-footer" class="resumo-rodape"></p>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn-secondary" id="resumo-cancelar">Fechar</button>
-            <button class="btn-sm" id="resumo-regenerar" style="margin-left:auto;">
-                <i class="fa fa-sync-alt"></i> Regenerar
-            </button>
+            <button type="button" class="btn btn-secondary" data-fechar>Fechar</button>
+            <button type="button" class="btn btn-ghost push-left" id="resumo-regenerar"><i class="fa fa-rotate"></i> Regenerar</button>
         </div>
     </div>
 </div>
